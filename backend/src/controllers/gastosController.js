@@ -1,0 +1,61 @@
+// backend/src/controllers/gastosController.js
+import { gastosModel } from '../models/gastosModel.js';
+
+export const gastosController = {
+  createGasto: async (req, res) => {
+    try {
+      const novoGasto = await gastosModel.create(req.body);
+      res.status(201).json(novoGasto);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  },
+
+  getAllGastos: async (req, res) => {
+    try {
+      const gastos = await gastosModel.getAll();
+      res.status(200).json(gastos);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  getGastoById: async (req, res) => {
+    try {
+      const gasto = await gastosModel.getById(req.params.id);
+      if (!gasto) {
+        return res.status(404).json({ error: 'Gasto não encontrado.' });
+      }
+      res.status(200).json(gasto);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  getGastosByCaminhaoId: async (req, res) => {
+    try {
+      const gastos = await gastosModel.getByCaminhaoId(req.params.caminhaoId);
+      res.status(200).json(gastos);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  updateGasto: async (req, res) => {
+    try {
+      const gastoAtualizado = await gastosModel.update(req.params.id, req.body);
+      res.status(200).json(gastoAtualizado);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  },
+
+  deleteGasto: async (req, res) => {
+    try {
+      await gastosModel.delete(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+};

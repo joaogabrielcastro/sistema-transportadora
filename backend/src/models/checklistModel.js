@@ -1,11 +1,11 @@
 // backend/src/models/checklistModel.js
-import { supabase } from '../config/supabase.js';
+import { supabase } from "../config/supabase.js";
 
 export const checklistModel = {
   // Criar um novo item de checklist
   create: async (checklistData) => {
     const { data, error } = await supabase
-      .from('checklist')
+      .from("checklist")
       .insert([checklistData]);
     if (error) throw error;
     return data;
@@ -14,8 +14,8 @@ export const checklistModel = {
   // Listar todos os itens de checklist
   getAll: async () => {
     const { data, error } = await supabase
-      .from('checklist')
-      .select('*, caminhoes(placa), itens_checklist(nome_item)');
+      .from("checklist")
+      .select("*, caminhoes(placa), itens_checklist(nome_item)");
     if (error) throw error;
     return data;
   },
@@ -23,9 +23,9 @@ export const checklistModel = {
   // Buscar item de checklist por ID
   getById: async (id) => {
     const { data, error } = await supabase
-      .from('checklist')
-      .select('*, caminhoes(placa), itens_checklist(nome_item)')
-      .eq('id', id)
+      .from("checklist")
+      .select("*, caminhoes(placa), itens_checklist(nome_item)")
+      .eq("id", id)
       .single();
     if (error) throw error;
     return data;
@@ -34,9 +34,9 @@ export const checklistModel = {
   // Listar itens de checklist de um caminhão específico (por ID)
   getByCaminhaoId: async (caminhaoId) => {
     const { data, error } = await supabase
-      .from('checklist')
-      .select('*, itens_checklist(nome_item)')
-      .eq('caminhao_id', caminhaoId);
+      .from("checklist")
+      .select("*, itens_checklist(nome_item)")
+      .eq("caminhao_id", caminhaoId);
     if (error) throw error;
     return data;
   },
@@ -44,9 +44,27 @@ export const checklistModel = {
   // Atualizar um item de checklist
   update: async (id, checklistData) => {
     const { data, error } = await supabase
-      .from('checklist')
+      .from("checklist")
       .update(checklistData)
-      .eq('id', id);
+      .eq("id", id);
+    if (error) throw error;
+    return data;
+  },
+  
+  getAll: async () => {
+    const { data, error } = await supabase
+      .from("checklist")
+      .select("*, caminhoes(placa), itens_checklist(nome_item)"); // Alterar aqui
+    if (error) throw error;
+    return data;
+  },
+
+  getById: async (id) => {
+    const { data, error } = await supabase
+      .from("checklist")
+      .select("*, caminhoes(placa), itens_checklist(nome_item)") // Alterar aqui
+      .eq("id", id)
+      .single();
     if (error) throw error;
     return data;
   },
@@ -54,9 +72,9 @@ export const checklistModel = {
   // Deletar um item de checklist
   delete: async (id) => {
     const { data, error } = await supabase
-      .from('checklist')
+      .from("checklist")
       .delete()
-      .eq('id', id);
+      .eq("id", id);
     if (error) throw error;
     return data;
   },

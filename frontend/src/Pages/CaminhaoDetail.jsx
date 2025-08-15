@@ -1,7 +1,7 @@
 // src/pages/CaminhaoDetail.jsx
-import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
-import axios from "axios";
+import React, { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import axios from 'axios';
 
 const CaminhaoDetail = () => {
   const { placa } = useParams();
@@ -9,41 +9,44 @@ const CaminhaoDetail = () => {
   const [gastos, setGastos] = useState([]);
   const [checklists, setChecklists] = useState([]);
   const [pneus, setPneus] = useState([]);
+  const [consumoKmPorLitro, setConsumoKmPorLitro] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Busca o caminhão pela placa para obter o ID
-        const caminhaoRes = await axios.get(
-          `http://localhost:3000/api/caminhoes/${placa}`
-        );
+        const caminhaoRes = await axios.get(`http://localhost:3000/api/caminhoes/${placa}`);
         const caminhaoData = caminhaoRes.data;
         setCaminhao(caminhaoData);
 
         if (caminhaoData) {
-          // Usa o ID do caminhão para buscar os dados relacionados
-          const [gastosRes, checklistRes, pneusRes] = await Promise.all([
-            axios.get(
-              `http://localhost:3000/api/gastos/caminhao/${caminhaoData.id}`
-            ),
-            axios.get(
-              `http://localhost:3000/api/checklist/caminhao/${caminhaoData.id}`
-            ),
-            axios.get(
-              `http://localhost:3000/api/pneus/caminhao/${caminhaoData.id}`
-            ),
+          const [gastosRes, checklistRes, pneusRes, consumoRes] = await Promise.all([
+            axios.get(`http://localhost:3000/api/gastos/caminhao/${caminhaoData.id}`),
+            axios.get(`http://localhost:3000/api/checklist/caminhao/${caminhaoData.id}`),
+            axios.get(`http://localhost:3000/api/pneus/caminhao/${caminhaoData.id}`),
+            axios.get(`http://localhost:3000/api/gastos/consumo/${caminhaoData.id}`),
           ]);
 
           setGastos(gastosRes.data);
           setChecklists(checklistRes.data);
           setPneus(pneusRes.data);
+
+          if (consumoRes.data.length > 1) {
+            const primeiroAbastecimento = consumoRes.data[0];
+            const ultimoAbastecimento = consumoRes.data[consumoRes.data.length - 1];
+            
+            const kmRodado = ultimoAbastecimento.km_registro - primeiroAbastecimento.km_registro;
+            const totalLitros = consumoRes.data.reduce((acc, curr) => acc + parseFloat(curr.quantidade_combustivel), 0);
+
+            if (totalLitros > 0 && kmRodado > 0) {
+              const kmL = (kmRodado / totalLitros).toFixed(2);
+              setConsumoKmPorLitro(kmL);
+            }
+          }
         }
       } catch (err) {
-        setError(
-          "Erro ao carregar dados do caminhão. Verifique a conexão com o backend."
-        );
+        setError('Erro ao carregar dados do caminhão. Verifique a conexão com o backend.');
         console.error(err);
       } finally {
         setLoading(false);
@@ -53,69 +56,46 @@ const CaminhaoDetail = () => {
   }, [placa]);
 
   if (loading) return <div className="text-center mt-10">Carregando...</div>;
-  if (error)
-    return <div className="text-center mt-10 text-accent">{error}</div>;
-  if (!caminhao)
-    return (
-      <div className="text-center mt-10 text-text-dark">
-        Caminhão não encontrado.
-      </div>
-    );
+  if (error) return <div className="text-center mt-10 text-accent">{error}</div>;
+  if (!caminhao) return <div className="text-center mt-10 text-text-dark">Caminhão não encontrado.</div>;
 
   return (
     <div className="p-8 bg-neutral min-h-screen">
-      <Link to="/" className="btn-secondary mb-6 inline-block">
-        ← Voltar para a Home
-      </Link>
-
       <div className="card max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 text-center text-text-dark">
-          Detalhes do Caminhão: {caminhao.placa}
-        </h1>
-
-        {/* Informações Gerais */}
+        <h1 className="text-3xl font-bold mb-8 text-center text-text-dark">Detalhes do Caminhão: {caminhao.placa}</h1>
+        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="card">
             <h2 className="text-xl font-bold mb-2">Dados Gerais</h2>
-            <p>
-              <span className="font-bold">Placa:</span> {caminhao.placa}
-            </p>
-            <p>
-              <span className="font-bold">KM Atual:</span> {caminhao.km_atual}
-            </p>
-            <p>
-              <span className="font-bold">Qtd. de Pneus:</span>{" "}
-              {caminhao.qtd_pneus}
-            </p>
+            <p><span className="font-bold">Placa:</span> {caminhao.placa}</p>
+            <p><span className="font-bold">KM Atual:</span> {caminhao.km_atual}</p>
+            <p><span className="font-bold">Qtd. de Pneus:</span> {caminhao.qtd_pneus}</p>
           </div>
-
-          {/* Outras informações podem ser adicionadas aqui */}
+          <div className="card md:col-span-2">
+            <h2 className="text-xl font-bold mb-2">Indicadores de Desempenho</h2>
+            {consumoKmPorLitro !== null ? (
+              <p className="text-xl font-bold text-secondary">
+                Consumo Médio: {consumoKmPorLitro} Km/L
+              </p>
+            ) : (
+              <p className="text-gray-500">
+                Dados insuficientes para calcular o consumo.
+              </p>
+            )}
+          </div>
         </div>
 
-        {/* Seções de Dados Relacionados */}
         <div className="space-y-8">
-          {/* Gastos */}
           <div className="card">
             <h2 className="text-xl font-bold mb-4">Gastos Recentes</h2>
-            {gastos.length === 0 ? (
-              <p className="text-text-light">Nenhum gasto encontrado.</p>
-            ) : (
+            {gastos.length === 0 ? <p className="text-text-light">Nenhum gasto encontrado.</p> : (
               <ul className="space-y-2">
-                {gastos.map((g) => (
-                  <li
-                    key={g.id}
-                    className="flex justify-between items-center bg-gray-100 p-2 rounded"
-                  >
+                {gastos.slice(0, 5).map(g => (
+                  <li key={g.id} className="flex justify-between items-center bg-gray-100 p-2 rounded">
                     <span>
-                      <span className="font-bold">
-                        {g.tipos_gastos?.nome_tipo}:
-                      </span>{" "}
-                      R$ {g.valor} ({g.data_gasto})
+                      <span className="font-bold">{g.tipos_gastos?.nome_tipo}:</span> R$ {g.valor} ({g.data_gasto})
                     </span>
-                    <Link
-                      to={`/gasto/editar/${g.id}`}
-                      className="btn-secondary text-sm px-2 py-1"
-                    >
+                    <Link to={`/gasto/editar/${g.id}`} className="btn-secondary text-sm px-2 py-1">
                       Editar
                     </Link>
                   </li>
@@ -123,20 +103,37 @@ const CaminhaoDetail = () => {
               </ul>
             )}
           </div>
-          {/* Pneus */}
+          
+          <div className="card">
+            <h2 className="text-xl font-bold mb-4">Checklists de Manutenção</h2>
+            {checklists.length === 0 ? <p className="text-text-light">Nenhum checklist encontrado.</p> : (
+              <ul className="space-y-2">
+                {checklists.slice(0, 5).map(c => (
+                  <li key={c.id} className="flex justify-between items-center bg-gray-100 p-2 rounded">
+                    <span>
+                      <span className="font-bold">{c.itens_checklist?.nome_item}:</span> {c.data_manutencao} - {c.observacao}
+                    </span>
+                    <Link to={`/checklist/editar/${c.id}`} className="btn-secondary text-sm px-2 py-1">
+                      Editar
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
           <div className="card">
             <h2 className="text-xl font-bold mb-4">Pneus</h2>
-            {pneus.length === 0 ? (
-              <p className="text-text-light">Nenhum pneu encontrado.</p>
-            ) : (
-              <ul className="list-disc list-inside space-y-2">
-                {pneus.map((p) => (
-                  <li key={p.id}>
-                    <span className="font-bold">
-                      {p.posicoes_pneus?.nome_posicao}:
-                    </span>{" "}
-                    {p.status_pneus?.nome_status} - {p.marca} ({p.km_instalacao}
-                    km)
+            {pneus.length === 0 ? <p className="text-text-light">Nenhum pneu encontrado.</p> : (
+              <ul className="space-y-2">
+                {pneus.map(p => (
+                  <li key={p.id} className="flex justify-between items-center bg-gray-100 p-2 rounded">
+                    <span>
+                      <span className="font-bold">{p.posicoes_pneus?.nome_posicao}:</span> {p.status_pneus?.nome_status} - {p.marca} ({p.km_instalacao}km)
+                    </span>
+                    <Link to={`/pneu/editar/${p.id}`} className="btn-secondary text-sm px-2 py-1">
+                      Editar
+                    </Link>
                   </li>
                 ))}
               </ul>

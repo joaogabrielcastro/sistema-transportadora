@@ -10,5 +10,6 @@ router.get('/:id', pneusController.getPneuById);
 router.get('/caminhao/:caminhaoId', pneusController.getPneusByCaminhaoId);
 router.put('/:id', pneusController.updatePneu);
 router.delete('/:id', pneusController.deletePneu);
+router.get('/alertas', pneusController.getAlertaPneus);
 
 export default router;

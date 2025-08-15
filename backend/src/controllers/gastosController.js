@@ -1,5 +1,5 @@
 // backend/src/controllers/gastosController.js
-import { gastosModel } from '../models/gastosModel.js';
+import { gastosModel } from "../models/gastosModel.js";
 
 export const gastosController = {
   createGasto: async (req, res) => {
@@ -24,7 +24,7 @@ export const gastosController = {
     try {
       const gasto = await gastosModel.getById(req.params.id);
       if (!gasto) {
-        return res.status(404).json({ error: 'Gasto não encontrado.' });
+        return res.status(404).json({ error: "Gasto não encontrado." });
       }
       res.status(200).json(gasto);
     } catch (error) {
@@ -54,6 +54,17 @@ export const gastosController = {
     try {
       await gastosModel.delete(req.params.id);
       res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  getConsumoCombustivel: async (req, res) => {
+    try {
+      const consumoData = await gastosModel.getConsumoCombustivel(
+        req.params.id
+      );
+      res.status(200).json(consumoData);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

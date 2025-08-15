@@ -1,32 +1,33 @@
-// backend/src/app.js (arquivo principal)
-import express from "express";
-import { supabase } from "./config/supabase.js";
-import caminhoesRoutes from "./routes/caminhoesRoutes.js";
-import gastosRoutes from "./routes/gastosRoutes.js";
-import pneusRoutes from "./routes/pneusRoutes.js";
-import posicoesPneusRoutes from "./routes/posicoesPneusRoutes.js";
-import statusPneusRoutes from "./routes/statusPneusRoutes.js";
-import tiposGastosRoutes from "./routes/tiposGastosRoutes.js";
-import checklistRoutes from "./routes/checklistRoutes.js";
-import itensChecklistRoutes from "./routes/itensChecklistRoutes.js";
-import cors from "cors";
+// backend/src/app.js
+import express from 'express';
+import cors from 'cors';
+
+// Importa todas as rotas
+import caminhoesRoutes from './routes/caminhoesRoutes.js';
+import pneusRoutes from './routes/pneusRoutes.js';
+import posicoesPneusRoutes from './routes/posicoesPneusRoutes.js';
+import statusPneusRoutes from './routes/statusPneusRoutes.js';
+import gastosRoutes from './routes/gastosRoutes.js';
+import checklistRoutes from './routes/checklistRoutes.js';
+import itensChecklistRoutes from './routes/itensChecklistRoutes.js';
+import tiposGastosRoutes from './routes/tiposGastosRoutes.js';
 
 const app = express();
-app.use(express.json());
 app.use(cors());
+app.use(express.json());
 
-// Rotas da API
-app.use("/api/caminhoes", caminhoesRoutes);
-app.use("/api/posicoes-pneus", posicoesPneusRoutes);
-app.use("/api/status-pneus", statusPneusRoutes);
-app.use("/api/gastos", gastosRoutes);
-app.use("/api/pneus", pneusRoutes);
-app.use("/api/tipos-gastos", tiposGastosRoutes);
-app.use("/api/checklist", checklistRoutes);
-app.use("/api/itens-checklist", itensChecklistRoutes);
+// Define as rotas
+app.use('/api/caminhoes', caminhoesRoutes);
+app.use('/api/pneus', pneusRoutes);
+app.use('/api/posicoes-pneus', posicoesPneusRoutes);
+app.use('/api/status-pneus', statusPneusRoutes);
+app.use('/api/gastos', gastosRoutes);
+app.use('/api/checklist', checklistRoutes);
+app.use('/api/itens-checklist', itensChecklistRoutes);
+app.use('/api/tipos-gastos', tiposGastosRoutes);
 
-app.get("/", (req, res) => {
-  res.send("API da Transportadora em execução!");
+app.get('/', (req, res) => {
+    res.send('API do Sistema de Transportadora está funcionando!');
 });
 
 export default app;

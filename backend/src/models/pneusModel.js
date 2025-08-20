@@ -59,28 +59,4 @@ export const pneusModel = {
     if (error) throw error;
     return data;
   },
-  
-  getAlertaPneus: async () => {
-    const { data, error } = await supabase
-      .from("pneus")
-      .select("id, vida_util_km, km_instalacao, caminhoes(placa, km_atual)");
-    if (error) throw error;
-
-    // Calcula o KM rodado e o percentual de vida útil
-    const alertas = data.map((pneu) => {
-      const kmRodado = pneu.caminhoes.km_atual - pneu.km_instalacao;
-      const percentualUso = (kmRodado / pneu.vida_util_km) * 100;
-
-      return {
-        id: pneu.id,
-        placa: pneu.caminhoes.placa,
-        kmRodado,
-        vidaUtilEstimada: pneu.vida_util_km,
-        percentualUso: percentualUso.toFixed(2),
-        alerta: percentualUso >= 80 ? "próximo da troca" : null,
-      };
-    });
-
-    return alertas.filter((alerta) => alerta.alerta !== null);
-  },
 };

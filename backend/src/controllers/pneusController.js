@@ -1,10 +1,19 @@
 // backend/src/controllers/pneusController.js
 import { pneusModel } from "../models/pneusModel.js";
+import { caminhoesModel } from "../models/caminhoesModel.js";
 
 export const pneusController = {
   createPneu: async (req, res) => {
     try {
       const novoPneu = await pneusModel.create(req.body);
+
+      // Nova lógica para atualizar o KM do caminhão
+      if (req.body.km_instalacao) {
+        const caminhaoId = req.body.caminhao_id;
+        const novoKm = req.body.km_instalacao;
+        await caminhoesModel.updateById(caminhaoId, { km_atual: novoKm });
+      }
+
       res.status(201).json(novoPneu);
     } catch (error) {
       res.status(400).json({ error: error.message });
@@ -54,15 +63,6 @@ export const pneusController = {
     try {
       await pneusModel.delete(req.params.id);
       res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  },
-
-  getAlertaPneus: async (req, res) => {
-    try {
-      const alertas = await pneusModel.getAlertaPneus();
-      res.status(200).json(alertas);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

@@ -1,10 +1,20 @@
 // backend/src/controllers/gastosController.js
 import { gastosModel } from "../models/gastosModel.js";
+import { caminhoesModel } from "../models/caminhoesModel.js";
 
 export const gastosController = {
   createGasto: async (req, res) => {
     try {
       const novoGasto = await gastosModel.create(req.body);
+
+      const ID_TIPO_GASTO_COMBUSTIVEL = 1;
+      if (req.body.tipo_gasto_id === ID_TIPO_GASTO_COMBUSTIVEL && req.body.km_registro) {
+        // Agora chamamos a nova função que usa o ID
+        const caminhaoId = req.body.caminhao_id;
+        const novoKm = req.body.km_registro;
+        await caminhoesModel.updateById(caminhaoId, { km_atual: novoKm });
+      }
+
       res.status(201).json(novoGasto);
     } catch (error) {
       res.status(400).json({ error: error.message });

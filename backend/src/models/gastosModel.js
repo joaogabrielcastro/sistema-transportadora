@@ -21,9 +21,9 @@ export const gastosModel = {
   // Buscar gasto por ID
   getById: async (id) => {
     const { data, error } = await supabase
-      .from("gastos")
-      .select("*, caminhoes(placa), tipos_gastos(nome_tipo)")
-      .eq("id", id)
+      .from('gastos')
+      .select('*, caminhoes(placa), tipos_gastos(nome_tipo)') // Adicionado 'caminhoes(placa)'
+      .eq('id', id)
       .single();
     if (error) throw error;
     return data;

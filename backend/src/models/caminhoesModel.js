@@ -1,11 +1,11 @@
 // backend/src/models/caminhoesModel.js
-import { supabase } from '../config/supabase.js';
+import { supabase } from "../config/supabase.js";
 
 export const caminhoesModel = {
   // Lógica para criar um caminhão
   create: async (caminhaoData) => {
     const { data, error } = await supabase
-      .from('caminhoes')
+      .from("caminhoes")
       .insert([caminhaoData]);
     if (error) throw error;
     return data;
@@ -13,9 +13,7 @@ export const caminhoesModel = {
 
   // Lógica para buscar todos os caminhões
   getAll: async () => {
-    const { data, error } = await supabase
-      .from('caminhoes')
-      .select('*');
+    const { data, error } = await supabase.from("caminhoes").select("*");
     if (error) throw error;
     return data;
   },
@@ -23,9 +21,9 @@ export const caminhoesModel = {
   // Lógica para buscar um caminhão por placa
   getByPlaca: async (placa) => {
     const { data, error } = await supabase
-      .from('caminhoes')
-      .select('*')
-      .eq('placa', placa)
+      .from("caminhoes")
+      .select("*")
+      .eq("placa", placa)
       .single();
     if (error) throw error;
     return data;
@@ -34,9 +32,18 @@ export const caminhoesModel = {
   // Lógica para atualizar um caminhão por placa
   update: async (placa, caminhaoData) => {
     const { data, error } = await supabase
-      .from('caminhoes')
+      .from("caminhoes")
       .update(caminhaoData)
-      .eq('placa', placa);
+      .eq("placa", placa);
+    if (error) throw error;
+    return data;
+  },
+
+  updateById: async (id, caminhaoData) => {
+    const { data, error } = await supabase
+      .from("caminhoes")
+      .update(caminhaoData)
+      .eq("id", id);
     if (error) throw error;
     return data;
   },
@@ -44,9 +51,9 @@ export const caminhoesModel = {
   // Lógica para deletar um caminhão por placa
   delete: async (placa) => {
     const { data, error } = await supabase
-      .from('caminhoes')
+      .from("caminhoes")
       .delete()
-      .eq('placa', placa);
+      .eq("placa", placa);
     if (error) throw error;
     return data;
   },

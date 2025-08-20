@@ -6,12 +6,13 @@ import axios from "axios";
 const EditGasto = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [caminhaoPlaca, setCaminhaoPlaca] = useState(""); // Novo estado para a placa
   const [formData, setFormData] = useState({
     caminhao_id: "",
     tipo_gasto_id: "",
     valor: "",
     data_gasto: "",
-    descricao: "", // Adicionando o campo de observações
+    descricao: "",
   });
   const [tiposGastos, setTiposGastos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,12 +25,16 @@ const EditGasto = () => {
           axios.get(`http://localhost:3000/api/gastos/${id}`),
           axios.get("http://localhost:3000/api/tipos-gastos"),
         ]);
+
+        const gastoData = gastoRes.data;
+        setCaminhaoPlaca(gastoData.caminhoes.placa); // Salva a placa do caminhão
+
         setFormData({
-          caminhao_id: gastoRes.data.caminhao_id,
-          tipo_gasto_id: gastoRes.data.tipo_gasto_id,
-          valor: gastoRes.data.valor,
-          data_gasto: gastoRes.data.data_gasto,
-          descricao: gastoRes.data.descricao || "", // Carrega a descrição existente
+          caminhao_id: gastoData.caminhao_id,
+          tipo_gasto_id: gastoData.tipo_gasto_id,
+          valor: gastoData.valor,
+          data_gasto: gastoData.data_gasto,
+          descricao: gastoData.descricao || "",
         });
         setTiposGastos(tiposRes.data);
       } catch (err) {
@@ -55,7 +60,7 @@ const EditGasto = () => {
     try {
       await axios.put(`http://localhost:3000/api/gastos/${id}`, formData);
       alert("Gasto atualizado com sucesso!");
-      navigate(`/caminhao/${formData.caminhao_id}`);
+      navigate(`/caminhao/${caminhaoPlaca}`); // Usa a placa para navegar
     } catch (err) {
       setError("Erro ao atualizar o gasto.");
       console.error(err);
@@ -70,7 +75,7 @@ const EditGasto = () => {
     <div className="flex flex-col items-center justify-center min-h-screen bg-neutral">
       <div className="card w-full max-w-md">
         <Link
-          to={`/caminhao/${formData.caminhao_id}`}
+          to={`/caminhao/${caminhaoPlaca}`}
           className="btn-secondary mb-4 inline-block"
         >
           ← Voltar

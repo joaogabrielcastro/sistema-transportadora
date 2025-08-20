@@ -10,6 +10,7 @@ import EditPneu from "./Pages/EditPneu";
 import ManutencaoGastos from "./Pages/ManutencaoGastos";
 import EditGasto from "./Pages/EditGasto";
 import Navbar from "./components/Navbar";
+import EditChecklist from "./Pages/EditChecklist";
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
         <Route path="/pneu/editar/:id" element={<EditPneu />} />
         <Route path="/manutencao-gastos" element={<ManutencaoGastos />} />
         <Route path="/gasto/editar/:id" element={<EditGasto />} />
+        <Route path="/checklist/editar/:id" element={<EditChecklist />} />
       </Routes>
     </Router>
   );

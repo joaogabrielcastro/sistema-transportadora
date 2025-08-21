@@ -1,16 +1,16 @@
 // frontend/src/App.jsx
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Home from "./Pages/Home";
-import CadastroCaminhao from "./pages/CadastroCaminhao";
-import CaminhaoDetail from "./pages/CaminhaoDetail";
-import Pneus from "./Pages/Pneus";
-import EditCaminhao from "./pages/EditCaminhao";
-import EditPneu from "./Pages/EditPneu";
-import ManutencaoGastos from "./Pages/ManutencaoGastos";
-import EditGasto from "./Pages/EditGasto";
-import Navbar from "./components/Navbar";
-import EditChecklist from "./Pages/EditChecklist";
+import Home from "./Pages/Home.jsx";
+import CadastroCaminhao from "./Pages/CadastroCaminhao.jsx";
+import CaminhaoDetail from "./Pages/CaminhaoDetail.jsx";
+import Pneus from "./Pages/Pneus.jsx";
+import EditCaminhao from "./pages/EditCaminhao.jsx";
+import EditPneu from "./Pages/EditPneu.jsx";
+import ManutencaoGastos from "./Pages/ManutencaoGastos.jsx";
+import EditGasto from "./Pages/EditGasto.jsx";
+import Navbar from "./components/Navbar.jsx";
+import EditChecklist from "./Pages/EditChecklist.jsx";
 
 function App() {
   return (

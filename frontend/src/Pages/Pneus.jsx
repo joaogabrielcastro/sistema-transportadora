@@ -27,10 +27,10 @@ const Pneus = () => {
       try {
         const [caminhoesRes, posicoesRes, statusRes, pneusRes] =
           await Promise.all([
-            axios.get("http://localhost:3000/api/caminhoes"),
-            axios.get("http://localhost:3000/api/posicoes-pneus"),
-            axios.get("http://localhost:3000/api/status-pneus"),
-            axios.get("http://localhost:3000/api/pneus"),
+            axios.get("https://sistema-transportadora.onrender.com/api/caminhoes"),
+            axios.get("https://sistema-transportadora.onrender.com/api/posicoes-pneus"),
+            axios.get("https://sistema-transportadora.onrender.com/api/status-pneus"),
+            axios.get("https://sistema-transportadora.onrender.com/api/pneus"),
           ]);
         setCaminhoes(caminhoesRes.data);
         setPosicoes(posicoesRes.data);
@@ -86,9 +86,9 @@ const Pneus = () => {
         observacao: form.observacao,
       };
 
-      await axios.post("http://localhost:3000/api/pneus", dataToSend);
+      await axios.post("https://sistema-transportadora.onrender.com/api/pneus", dataToSend);
 
-      const pneusRes = await axios.get("http://localhost:3000/api/pneus");
+      const pneusRes = await axios.get("https://sistema-transportadora.onrender.com/api/pneus");
       setPneus(pneusRes.data);
 
       setForm({
@@ -112,7 +112,7 @@ const Pneus = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Tem certeza que deseja deletar este pneu?")) {
       try {
-        await axios.delete(`http://localhost:3000/api/pneus/${id}`);
+        await axios.delete(`https://sistema-transportadora.onrender.com/api/pneus/${id}`);
         setPneus(pneus.filter((p) => p.id !== id));
       } catch (err) {
         setError("Erro ao deletar pneu.");

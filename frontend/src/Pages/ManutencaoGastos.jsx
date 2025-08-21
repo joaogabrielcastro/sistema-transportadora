@@ -29,11 +29,11 @@ const ManutencaoGastos = () => {
     try {
       const [caminhoesRes, itensRes, tiposRes, gastosRes, checklistRes] =
         await Promise.all([
-          axios.get("http://localhost:3000/api/caminhoes"),
-          axios.get("http://localhost:3000/api/itens-checklist"),
-          axios.get("http://localhost:3000/api/tipos-gastos"),
-          axios.get("http://localhost:3000/api/gastos"),
-          axios.get("http://localhost:3000/api/checklist"),
+          axios.get("https://sistema-transportadora.onrender.com/api/caminhoes"),
+          axios.get("https://sistema-transportadora.onrender.com/api/itens-checklist"),
+          axios.get("https://sistema-transportadora.onrender.com/api/tipos-gastos"),
+          axios.get("https://sistema-transportadora.onrender.com/api/gastos"),
+          axios.get("https://sistema-transportadora.onrender.com/api/checklist"),
         ]);
 
       const gastosFormatados = gastosRes.data.map((g) => ({
@@ -127,17 +127,17 @@ const ManutencaoGastos = () => {
             ? parseFloat(form.quantidade_combustivel)
             : null,
         };
-        await axios.post("http://localhost:3000/api/gastos", payload);
+        await axios.post("https://sistema-transportadora.onrender.com/api/gastos", payload);
       } else {
         // tipo === 'manutencao'
-        await axios.post("http://localhost:3000/api/checklist", {
+        await axios.post("https://sistema-transportadora.onrender.com/api/checklist", {
           caminhao_id: parseInt(form.caminhao_id),
           item_id: parseInt(form.tipo_id),
           data_manutencao: form.data,
           observacao: form.observacao,
           oficina: form.oficina,
         });
-        await axios.post("http://localhost:3000/api/gastos", {
+        await axios.post("https://sistema-transportadora.onrender.com/api/gastos", {
           caminhao_id: parseInt(form.caminhao_id),
           tipo_gasto_id: ID_TIPO_GASTO_MANUTENCAO,
           valor: parseFloat(form.valor),
@@ -174,9 +174,9 @@ const ManutencaoGastos = () => {
     if (window.confirm("Tem certeza que deseja deletar este registro?")) {
       try {
         if (tipo === "Manutenção") {
-          await axios.delete(`http://localhost:3000/api/checklist/${id}`);
+          await axios.delete(`https://sistema-transportadora.onrender.com/api/checklist/${id}`);
         } else {
-          await axios.delete(`http://localhost:3000/api/gastos/${id}`);
+          await axios.delete(`https://sistema-transportadora.onrender.com/api/gastos/${id}`);
         }
         setRegistros(
           registros.filter((r) => !(r.id === id && r.tipo_registro === tipo))

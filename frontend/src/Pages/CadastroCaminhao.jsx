@@ -14,7 +14,7 @@ const CadastroCaminhao = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("http://localhost:3000/api/caminhoes", {
+      await axios.post("https://sistema-transportadora.onrender.com/api/caminhoes", {
         placa,
         qtd_pneus: parseInt(qtdPneus),
         km_atual: parseInt(kmAtual),

@@ -17,7 +17,7 @@ const EditCaminhao = () => {
   useEffect(() => {
     const fetchCaminhao = async () => {
       try {
-        const response = await axios.get(`http://localhost:3000/api/caminhoes/${placa}`);
+        const response = await axios.get(`https://sistema-transportadora.onrender.com/api/caminhoes/${placa}`);
         setFormData(response.data);
       } catch (err) {
         setError('Erro ao carregar dados do caminhão.');
@@ -37,7 +37,7 @@ const EditCaminhao = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`http://localhost:3000/api/caminhoes/${placa}`, formData);
+      await axios.put(`https://sistema-transportadora.onrender.com/api/caminhoes/${placa}`, formData);
       alert('Caminhão atualizado com sucesso!');
       navigate(`/caminhao/${placa}`); // Redireciona para a tela de detalhes
     } catch (err) {

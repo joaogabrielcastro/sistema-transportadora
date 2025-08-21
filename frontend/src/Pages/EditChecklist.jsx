@@ -21,9 +21,9 @@ const EditChecklist = () => {
     const fetchData = async () => {
       try {
         const [checklistRes, caminhoesRes, itensRes] = await Promise.all([
-          axios.get(`http://localhost:3000/api/checklist/${id}`),
-          axios.get('http://localhost:3000/api/caminhoes'),
-          axios.get('http://localhost:3000/api/itens-checklist'),
+          axios.get(`https://sistema-transportadora.onrender.com/api/checklist/${id}`),
+          axios.get('https://sistema-transportadora.onrender.com/api/caminhoes'),
+          axios.get('https://sistema-transportadora.onrender.com/api/itens-checklist'),
         ]);
         setFormData({
           caminhao_id: checklistRes.data.caminhao_id,
@@ -54,7 +54,7 @@ const EditChecklist = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`http://localhost:3000/api/checklist/${id}`, formData);
+      await axios.put(`https://sistema-transportadora.onrender.com/api/checklist/${id}`, formData);
       alert('Item de checklist atualizado com sucesso!');
       navigate('/manutencao-gastos'); // Redireciona de volta para a tela unificada
     } catch (err) {

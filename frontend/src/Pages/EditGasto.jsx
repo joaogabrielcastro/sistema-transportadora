@@ -22,8 +22,8 @@ const EditGasto = () => {
     const fetchData = async () => {
       try {
         const [gastoRes, tiposRes] = await Promise.all([
-          axios.get(`http://localhost:3000/api/gastos/${id}`),
-          axios.get("http://localhost:3000/api/tipos-gastos"),
+          axios.get(`https://sistema-transportadora.onrender.com/api/gastos/${id}`),
+          axios.get("https://sistema-transportadora.onrender.com/api/tipos-gastos"),
         ]);
 
         const gastoData = gastoRes.data;
@@ -58,7 +58,7 @@ const EditGasto = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`http://localhost:3000/api/gastos/${id}`, formData);
+      await axios.put(`https://sistema-transportadora.onrender.com/api/gastos/${id}`, formData);
       alert("Gasto atualizado com sucesso!");
       navigate(`/caminhao/${caminhaoPlaca}`); // Usa a placa para navegar
     } catch (err) {

@@ -16,16 +16,16 @@ const CaminhaoDetail = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const caminhaoRes = await axios.get(`http://localhost:3000/api/caminhoes/${placa}`);
+        const caminhaoRes = await axios.get(`https://sistema-transportadora.onrender.com/api/caminhoes/${placa}`);
         const caminhaoData = caminhaoRes.data;
         setCaminhao(caminhaoData);
 
         if (caminhaoData) {
           const [gastosRes, checklistRes, pneusRes, consumoRes] = await Promise.all([
-            axios.get(`http://localhost:3000/api/gastos/caminhao/${caminhaoData.id}`),
-            axios.get(`http://localhost:3000/api/checklist/caminhao/${caminhaoData.id}`),
-            axios.get(`http://localhost:3000/api/pneus/caminhao/${caminhaoData.id}`),
-            axios.get(`http://localhost:3000/api/gastos/consumo/${caminhaoData.id}`),
+            axios.get(`https://sistema-transportadora.onrender.com/api/gastos/caminhao/${caminhaoData.id}`),
+            axios.get(`https://sistema-transportadora.onrender.com/api/checklist/caminhao/${caminhaoData.id}`),
+            axios.get(`https://sistema-transportadora.onrender.com/api/pneus/caminhao/${caminhaoData.id}`),
+            axios.get(`https://sistema-transportadora.onrender.com/api/gastos/consumo/${caminhaoData.id}`),
           ]);
 
           setGastos(gastosRes.data);

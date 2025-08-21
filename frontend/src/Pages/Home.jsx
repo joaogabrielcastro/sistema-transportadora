@@ -37,7 +37,7 @@ const Home = () => {
     const fetchAllCaminhoes = async () => {
       setLoading(true);
       try {
-        const response = await axios.get("http://localhost:3000/api/caminhoes");
+        const response = await axios.get("https://sistema-transportadora.onrender.com/api/caminhoes");
         setCaminhoes(response.data);
       } catch (err) {
         setError("Erro ao carregar a lista de caminhões.");
@@ -62,12 +62,12 @@ const Home = () => {
 
     try {
       const caminhaoResponse = await axios.get(
-        `http://localhost:3000/api/caminhoes/${placa}`
+        `https://sistema-transportadora.onrender.com/api/caminhoes/${placa}`
       );
       setCaminhaoBuscado(caminhaoResponse.data);
 
       const gastosResponse = await axios.get(
-        `http://localhost:3000/api/gastos/caminhao/${caminhaoResponse.data.id}`
+        `https://sistema-transportadora.onrender.com/api/gastos/caminhao/${caminhaoResponse.data.id}`
       );
       setGastos(gastosResponse.data);
     } catch (err) {

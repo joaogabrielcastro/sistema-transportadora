@@ -27,10 +27,10 @@ const EditPneu = () => {
     const fetchData = async () => {
       try {
         const [pneuRes, caminhoesRes, posicoesRes, statusRes] = await Promise.all([
-          axios.get(`http://localhost:3000/api/pneus/${id}`),
-          axios.get('http://localhost:3000/api/caminhoes'),
-          axios.get('http://localhost:3000/api/posicoes-pneus'),
-          axios.get('http://localhost:3000/api/status-pneus'),
+          axios.get(`https://sistema-transportadora.onrender.com/api/pneus/${id}`),
+          axios.get('https://sistema-transportadora.onrender.com/api/caminhoes'),
+          axios.get('https://sistema-transportadora.onrender.com/api/posicoes-pneus'),
+          axios.get('https://sistema-transportadora.onrender.com/api/status-pneus'),
         ]);
         setFormData({
           caminhao_id: pneuRes.data.caminhao_id,
@@ -67,7 +67,7 @@ const EditPneu = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`http://localhost:3000/api/pneus/${id}`, formData);
+      await axios.put(`https://sistema-transportadora.onrender.com/api/pneus/${id}`, formData);
       alert('Pneu atualizado com sucesso!');
       navigate('/pneus'); // Redireciona de volta para a lista
     } catch (err) {

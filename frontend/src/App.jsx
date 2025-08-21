@@ -5,7 +5,7 @@ import Home from "./Pages/Home.jsx";
 import CadastroCaminhao from "./Pages/CadastroCaminhao.jsx";
 import CaminhaoDetail from "./Pages/CaminhaoDetail.jsx";
 import Pneus from "./Pages/Pneus.jsx";
-import EditCaminhao from "./pages/EditCaminhao.jsx";
+import EditCaminhao from "./Pages/EditCaminhao.jsx";
 import EditPneu from "./Pages/EditPneu.jsx";
 import ManutencaoGastos from "./Pages/ManutencaoGastos.jsx";
 import EditGasto from "./Pages/EditGasto.jsx";

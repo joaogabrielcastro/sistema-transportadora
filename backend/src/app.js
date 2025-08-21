@@ -16,6 +16,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const VERCEL_FRONTEND_URL = "https://sistema-transportadora-omega.vercel.app";
+app.use(cors({ origin: VERCEL_FRONTEND_URL }));
+
 // Define as rotas
 app.use("/api/caminhoes", caminhoesRoutes);
 app.use("/api/pneus", pneusRoutes);

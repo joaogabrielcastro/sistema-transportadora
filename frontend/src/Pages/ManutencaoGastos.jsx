@@ -3,6 +3,8 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const ManutencaoGastos = () => {
   const [caminhoes, setCaminhoes] = useState([]);
   const [itensChecklist, setItensChecklist] = useState([]);
@@ -22,18 +24,18 @@ const ManutencaoGastos = () => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const ID_TIPO_GASTO_MANUTENCAO = 2; // Verifique o ID no seu Supabase
-  const ID_TIPO_GASTO_COMBUSTIVEL = 1; // Verifique o ID no seu Supabase
+  const ID_TIPO_GASTO_MANUTENCAO = 10; // Verifique o ID no seu Supabase
+  const ID_TIPO_GASTO_COMBUSTIVEL = 9; // Verifique o ID no seu Supabase
 
   const fetchData = async () => {
     try {
       const [caminhoesRes, itensRes, tiposRes, gastosRes, checklistRes] =
         await Promise.all([
-          axios.get("https://sistema-transportadora.onrender.com/api/caminhoes"),
-          axios.get("https://sistema-transportadora.onrender.com/api/itens-checklist"),
-          axios.get("https://sistema-transportadora.onrender.com/api/tipos-gastos"),
-          axios.get("https://sistema-transportadora.onrender.com/api/gastos"),
-          axios.get("https://sistema-transportadora.onrender.com/api/checklist"),
+          axios.get(`${API_URL}/api/caminhoes`),
+          axios.get(`${API_URL}/api/itens-checklist`),
+          axios.get(`${API_URL}/api/tipos-gastos`),
+          axios.get(`${API_URL}/api/gastos`),
+          axios.get(`${API_URL}/api/checklist`),
         ]);
 
       const gastosFormatados = gastosRes.data.map((g) => ({
@@ -127,17 +129,17 @@ const ManutencaoGastos = () => {
             ? parseFloat(form.quantidade_combustivel)
             : null,
         };
-        await axios.post("https://sistema-transportadora.onrender.com/api/gastos", payload);
+        await axios.post(`${API_URL}/api/gastos`, payload);
       } else {
         // tipo === 'manutencao'
-        await axios.post("https://sistema-transportadora.onrender.com/api/checklist", {
+        await axios.post(`${API_URL}/api/checklist`, {
           caminhao_id: parseInt(form.caminhao_id),
           item_id: parseInt(form.tipo_id),
           data_manutencao: form.data,
           observacao: form.observacao,
           oficina: form.oficina,
         });
-        await axios.post("https://sistema-transportadora.onrender.com/api/gastos", {
+        await axios.post(`${API_URL}/api/gastos`, {
           caminhao_id: parseInt(form.caminhao_id),
           tipo_gasto_id: ID_TIPO_GASTO_MANUTENCAO,
           valor: parseFloat(form.valor),
@@ -174,9 +176,9 @@ const ManutencaoGastos = () => {
     if (window.confirm("Tem certeza que deseja deletar este registro?")) {
       try {
         if (tipo === "Manutenção") {
-          await axios.delete(`https://sistema-transportadora.onrender.com/api/checklist/${id}`);
+          await axios.delete(`${API_URL}/api/checklist/${id}`);
         } else {
-          await axios.delete(`https://sistema-transportadora.onrender.com/api/gastos/${id}`);
+          await axios.delete(`${API_URL}/api/gastos/${id}`);
         }
         setRegistros(
           registros.filter((r) => !(r.id === id && r.tipo_registro === tipo))

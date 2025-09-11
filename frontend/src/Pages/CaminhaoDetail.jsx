@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const CaminhaoDetail = () => {
   const { placa } = useParams();
   const [caminhao, setCaminhao] = useState(null);
@@ -16,16 +18,16 @@ const CaminhaoDetail = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const caminhaoRes = await axios.get(`https://sistema-transportadora.onrender.com/api/caminhoes/${placa}`);
+        const caminhaoRes = await axios.get(`${API_URL}/api/caminhoes/${placa}`);
         const caminhaoData = caminhaoRes.data;
         setCaminhao(caminhaoData);
 
         if (caminhaoData) {
           const [gastosRes, checklistRes, pneusRes, consumoRes] = await Promise.all([
-            axios.get(`https://sistema-transportadora.onrender.com/api/gastos/caminhao/${caminhaoData.id}`),
-            axios.get(`https://sistema-transportadora.onrender.com/api/checklist/caminhao/${caminhaoData.id}`),
-            axios.get(`https://sistema-transportadora.onrender.com/api/pneus/caminhao/${caminhaoData.id}`),
-            axios.get(`https://sistema-transportadora.onrender.com/api/gastos/consumo/${caminhaoData.id}`),
+            axios.get(`${API_URL}/api/gastos/caminhao/${caminhaoData.id}`),
+            axios.get(`${API_URL}/api/checklist/caminhao/${caminhaoData.id}`),
+            axios.get(`${API_URL}/api/pneus/caminhao/${caminhaoData.id}`),
+            axios.get(`${API_URL}/api/gastos/consumo/${caminhaoData.id}`),
           ]);
 
           setGastos(gastosRes.data);

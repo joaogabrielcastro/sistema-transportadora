@@ -24,6 +24,8 @@ ChartJS.register(
   Title
 );
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const Home = () => {
   const [placa, setPlaca] = useState("");
   const [caminhoes, setCaminhoes] = useState([]);
@@ -37,7 +39,7 @@ const Home = () => {
     const fetchAllCaminhoes = async () => {
       setLoading(true);
       try {
-        const response = await axios.get("https://sistema-transportadora.onrender.com/api/caminhoes");
+        const response = await axios.get(`${API_URL}/api/caminhoes`);
         setCaminhoes(response.data);
       } catch (err) {
         setError("Erro ao carregar a lista de caminhões.");
@@ -62,12 +64,12 @@ const Home = () => {
 
     try {
       const caminhaoResponse = await axios.get(
-        `https://sistema-transportadora.onrender.com/api/caminhoes/${placa}`
+        `${API_URL}/api/caminhoes/${placa}`
       );
       setCaminhaoBuscado(caminhaoResponse.data);
 
       const gastosResponse = await axios.get(
-        `https://sistema-transportadora.onrender.com/api/gastos/caminhao/${caminhaoResponse.data.id}`
+        `${API_URL}/api/gastos/caminhao/${caminhaoResponse.data.id}`
       );
       setGastos(gastosResponse.data);
     } catch (err) {

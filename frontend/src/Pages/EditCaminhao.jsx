@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const EditCaminhao = () => {
   const { placa } = useParams();
   const navigate = useNavigate();
@@ -17,7 +19,7 @@ const EditCaminhao = () => {
   useEffect(() => {
     const fetchCaminhao = async () => {
       try {
-        const response = await axios.get(`https://sistema-transportadora.onrender.com/api/caminhoes/${placa}`);
+        const response = await axios.get(`${API_URL}/api/caminhoes/${placa}`);
         setFormData(response.data);
       } catch (err) {
         setError('Erro ao carregar dados do caminhão.');
@@ -37,7 +39,7 @@ const EditCaminhao = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`https://sistema-transportadora.onrender.com/api/caminhoes/${placa}`, formData);
+      await axios.put(`${API_URL}/api/caminhoes/${placa}`, formData);
       alert('Caminhão atualizado com sucesso!');
       navigate(`/caminhao/${placa}`); // Redireciona para a tela de detalhes
     } catch (err) {

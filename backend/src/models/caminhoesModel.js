@@ -24,7 +24,7 @@ export const caminhoesModel = {
       .from("caminhoes")
       .select("*")
       .eq("placa", placa)
-      .single();
+      .maybeSingle();
     if (error) throw error;
     return data;
   },

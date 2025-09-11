@@ -1,7 +1,6 @@
-// backend/src/app.js
 import express from "express";
 import cors from "cors";
-
+import { supabase } from "./config/supabase.js";
 // Importa todas as rotas
 import caminhoesRoutes from "./routes/caminhoesRoutes.js";
 import pneusRoutes from "./routes/pneusRoutes.js";
@@ -13,11 +12,33 @@ import itensChecklistRoutes from "./routes/itensChecklistRoutes.js";
 import tiposGastosRoutes from "./routes/tiposGastosRoutes.js";
 
 const app = express();
-app.use(cors());
+
+const allowedOrigins = [
+  "https://sistema-transportadora-omega.vercel.app",
+  "http://localhost:5173",
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+  })
+);
+
 app.use(express.json());
 
-const VERCEL_FRONTEND_URL = "https://sistema-transportadora-omega.vercel.app";
-app.use(cors({ origin: VERCEL_FRONTEND_URL }));
+// --- NOVO: Middleware de Log de Requisições ---
+// Este bloco irá imprimir no console do backend cada requisição que chegar.
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] Recebida: ${req.method} ${req.originalUrl}`);
+  next(); // Passa a requisição para a próxima etapa (as rotas)
+});
+// ---------------------------------------------
 
 // Define as rotas
 app.use("/api/caminhoes", caminhoesRoutes);
@@ -39,3 +60,4 @@ app.use((err, req, res, next) => {
 });
 
 export default app;
+

@@ -3,6 +3,8 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const Pneus = () => {
   const [caminhoes, setCaminhoes] = useState([]);
   const [posicoes, setPosicoes] = useState([]);
@@ -27,10 +29,10 @@ const Pneus = () => {
       try {
         const [caminhoesRes, posicoesRes, statusRes, pneusRes] =
           await Promise.all([
-            axios.get("https://sistema-transportadora.onrender.com/api/caminhoes"),
-            axios.get("https://sistema-transportadora.onrender.com/api/posicoes-pneus"),
-            axios.get("https://sistema-transportadora.onrender.com/api/status-pneus"),
-            axios.get("https://sistema-transportadora.onrender.com/api/pneus"),
+            axios.get(`${API_URL}/api/caminhoes`),
+            axios.get(`${API_URL}/api/posicoes-pneus`),
+            axios.get(`${API_URL}/api/status-pneus`),
+            axios.get(`${API_URL}/api/pneus`),
           ]);
         setCaminhoes(caminhoesRes.data);
         setPosicoes(posicoesRes.data);
@@ -86,9 +88,9 @@ const Pneus = () => {
         observacao: form.observacao,
       };
 
-      await axios.post("https://sistema-transportadora.onrender.com/api/pneus", dataToSend);
+      await axios.post(`${API_URL}/api/pneus`, dataToSend);
 
-      const pneusRes = await axios.get("https://sistema-transportadora.onrender.com/api/pneus");
+      const pneusRes = await axios.get(`${API_URL}/api/pneus`);
       setPneus(pneusRes.data);
 
       setForm({
@@ -112,7 +114,7 @@ const Pneus = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Tem certeza que deseja deletar este pneu?")) {
       try {
-        await axios.delete(`https://sistema-transportadora.onrender.com/api/pneus/${id}`);
+        await axios.delete(`${API_URL}/api/pneus/${id}`);
         setPneus(pneus.filter((p) => p.id !== id));
       } catch (err) {
         setError("Erro ao deletar pneu.");

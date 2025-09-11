@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const EditPneu = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -27,10 +29,10 @@ const EditPneu = () => {
     const fetchData = async () => {
       try {
         const [pneuRes, caminhoesRes, posicoesRes, statusRes] = await Promise.all([
-          axios.get(`https://sistema-transportadora.onrender.com/api/pneus/${id}`),
-          axios.get('https://sistema-transportadora.onrender.com/api/caminhoes'),
-          axios.get('https://sistema-transportadora.onrender.com/api/posicoes-pneus'),
-          axios.get('https://sistema-transportadora.onrender.com/api/status-pneus'),
+          axios.get(`${API_URL}/api/pneus/${id}`),
+          axios.get(`${API_URL}/api/caminhoes`),
+          axios.get(`${API_URL}/api/posicoes-pneus`),
+          axios.get(`${API_URL}/api/status-pneus`),
         ]);
         setFormData({
           caminhao_id: pneuRes.data.caminhao_id,
@@ -67,7 +69,7 @@ const EditPneu = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`https://sistema-transportadora.onrender.com/api/pneus/${id}`, formData);
+      await axios.put(`${API_URL}/api/pneus/${id}`, formData);
       alert('Pneu atualizado com sucesso!');
       navigate('/pneus'); // Redireciona de volta para a lista
     } catch (err) {

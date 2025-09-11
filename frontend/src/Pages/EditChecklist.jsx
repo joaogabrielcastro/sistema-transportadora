@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const EditChecklist = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -21,9 +23,9 @@ const EditChecklist = () => {
     const fetchData = async () => {
       try {
         const [checklistRes, caminhoesRes, itensRes] = await Promise.all([
-          axios.get(`https://sistema-transportadora.onrender.com/api/checklist/${id}`),
-          axios.get('https://sistema-transportadora.onrender.com/api/caminhoes'),
-          axios.get('https://sistema-transportadora.onrender.com/api/itens-checklist'),
+          axios.get(`${API_URL}/api/checklist/${id}`),
+          axios.get(`${API_URL}/api/caminhoes`),
+          axios.get(`${API_URL}/api/itens-checklist`),
         ]);
         setFormData({
           caminhao_id: checklistRes.data.caminhao_id,
@@ -54,7 +56,7 @@ const EditChecklist = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`https://sistema-transportadora.onrender.com/api/checklist/${id}`, formData);
+      await axios.put(`${API_URL}/api/checklist/${id}`, formData);
       alert('Item de checklist atualizado com sucesso!');
       navigate('/manutencao-gastos'); // Redireciona de volta para a tela unificada
     } catch (err) {

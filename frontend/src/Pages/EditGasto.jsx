@@ -3,6 +3,8 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const EditGasto = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -22,8 +24,8 @@ const EditGasto = () => {
     const fetchData = async () => {
       try {
         const [gastoRes, tiposRes] = await Promise.all([
-          axios.get(`https://sistema-transportadora.onrender.com/api/gastos/${id}`),
-          axios.get("https://sistema-transportadora.onrender.com/api/tipos-gastos"),
+          axios.get(`${API_URL}/api/gastos/${id}`),
+          axios.get(`${API_URL}/api/tipos-gastos`),
         ]);
 
         const gastoData = gastoRes.data;
@@ -58,7 +60,7 @@ const EditGasto = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`https://sistema-transportadora.onrender.com/api/gastos/${id}`, formData);
+      await axios.put(`${API_URL}/api/gastos/${id}`, formData);
       alert("Gasto atualizado com sucesso!");
       navigate(`/caminhao/${caminhaoPlaca}`); // Usa a placa para navegar
     } catch (err) {

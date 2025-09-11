@@ -24,15 +24,15 @@ export const caminhoesController = {
     }
   },
 
-  // Buscar caminhão por placa
   getByPlaca: async (req, res) => {
     try {
       const caminhao = await caminhoesModel.getByPlaca(req.params.placa);
       if (!caminhao) {
-        return res.status(404).json({ error: "Caminhão não encontrado." });
+        return res.status(404).json({ message: "Caminhão não encontrado." });
       }
       res.status(200).json(caminhao);
     } catch (error) {
+      console.error("ERRO AO BUSCAR CAMINHÃO:", error);
       res.status(500).json({ error: error.message });
     }
   },

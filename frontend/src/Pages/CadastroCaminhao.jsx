@@ -9,12 +9,14 @@ const CadastroCaminhao = () => {
   const [kmAtual, setKmAtual] = useState(0);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const navigate = useNavigate();
+  const navigate = useNavigate(); 
+
+  const API_URL = import.meta.env.VITE_API_URL;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("https://sistema-transportadora.onrender.com/api/caminhoes", {
+      await axios.post(`${API_URL}/api/caminhoes`, {
         placa,
         qtd_pneus: parseInt(qtdPneus),
         km_atual: parseInt(kmAtual),

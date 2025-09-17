@@ -1,15 +1,17 @@
-// backend/src/models/gastosModel.js
 import { supabase } from "../config/supabase.js";
 
 export const gastosModel = {
-  // Criar um novo gasto
+  // CORREÇÃO: Adicionado .select() para retornar o registo criado
   create: async (gastoData) => {
-    const { data, error } = await supabase.from("gastos").insert([gastoData]);
+    const { data, error } = await supabase
+      .from("gastos")
+      .insert([gastoData])
+      .select(); // <--- Esta linha resolve o erro
+
     if (error) throw error;
     return data;
   },
 
-  // Listar todos os gastos
   getAll: async () => {
     const { data, error } = await supabase
       .from("gastos")
@@ -18,76 +20,61 @@ export const gastosModel = {
     return data;
   },
 
-  // Buscar gasto por ID
-  getById: async (id) => {
+getById: async (id) => {
     const { data, error } = await supabase
-      .from('gastos')
-      .select('*, caminhoes(placa), tipos_gastos(nome_tipo)') // Adicionado 'caminhoes(placa)'
-      .eq('id', id)
-      .single();
+      .from("gastos")
+      // Adicionado para ir buscar os dados relacionados
+      .select("*, caminhoes(placa), tipos_gastos(nome_tipo)")
+      .eq("id", id)
+      .maybeSingle();
     if (error) throw error;
     return data;
   },
-
-  // Listar gastos de um caminhão específico (por ID)
+  
   getByCaminhaoId: async (caminhaoId) => {
     const { data, error } = await supabase
       .from("gastos")
-      .select("*, tipos_gastos(nome_tipo)")
+      .select("*, tipos_gastos(nome_tipo)") // Também adicionei o join aqui para consistência
       .eq("caminhao_id", caminhaoId);
     if (error) throw error;
     return data;
   },
 
-  // Atualizar um gasto
   update: async (id, gastoData) => {
     const { data, error } = await supabase
       .from("gastos")
       .update(gastoData)
+      .eq("id", id)
+      .select("*, caminhoes(placa), tipos_gastos(nome_tipo)");
+    if (error) throw error;
+    return data;
+  },
+
+delete: async (id) => {
+    const { data, error } = await supabase
+      .from("gastos")
+      .delete()
       .eq("id", id);
     if (error) throw error;
     return data;
   },
 
-  // Deletar um gasto
-  delete: async (id) => {
-    const { data, error } = await supabase.from("gastos").delete().eq("id", id);
-    if (error) throw error;
-    return data;
-  },
-
-  getAll: async () => {
-    const { data, error } = await supabase
-      .from("gastos")
-      .select("*, caminhoes(placa), tipos_gastos(nome_tipo)"); // Alterar aqui
-    if (error) throw error;
-    return data;
-  },
-
-  getById: async (id) => {
-    const { data, error } = await supabase
-      .from("gastos")
-      .select("*, caminhoes(placa), tipos_gastos(nome_tipo)") // Alterar aqui
-      .eq("id", id)
-      .single();
-    if (error) throw error;
-    return data;
-  },
-
-  getConsumoCombustivel: async (caminhaoId) => {
-    const ID_TIPO_COMBUSTIVEL = 1; // Verifique o ID no seu banco de dados
+  // FUNÇÃO CORRIGIDA
+  getConsumoCombustivel: async (id) => {
+    // IMPORTANTE: Confirme que '9' é o ID correto para "Combustível" na sua tabela 'tipos_gastos'
+    const ID_TIPO_GASTO_COMBUSTIVEL = 9;
 
     const { data, error } = await supabase
       .from("gastos")
-      .select(
-        "id, data_gasto, valor, descricao, quantidade_combustivel, km_registro"
-      ) // Adicionei 'km_registro'
-      .eq("caminhao_id", caminhaoId)
-      .eq("tipo_gasto_id", ID_TIPO_COMBUSTIVEL)
-      .order("data_gasto", { ascending: true });
+      .select("km_registro, quantidade_combustivel")
+      .eq("caminhao_id", id)
+      .eq("tipo_gasto_id", ID_TIPO_GASTO_COMBUSTIVEL) // Filtra apenas por combustível
+      .not("km_registro", "is", null) // Garante que os registos têm KM
+      .not("quantidade_combustivel", "is", null) // Garante que os registos têm litros
+      .order("km_registro", { ascending: false }); // Ordena pelo KM (mais seguro)
 
     if (error) throw error;
     return data;
   },
-  // ...
 };
+

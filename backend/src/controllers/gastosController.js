@@ -1,22 +1,33 @@
-// backend/src/controllers/gastosController.js
 import { gastosModel } from "../models/gastosModel.js";
 import { caminhoesModel } from "../models/caminhoesModel.js";
 
 export const gastosController = {
   createGasto: async (req, res) => {
     try {
+      // Primeiro, cria o registo do gasto
       const novoGasto = await gastosModel.create(req.body);
 
-      const ID_TIPO_GASTO_COMBUSTIVEL = 1;
-      if (req.body.tipo_gasto_id === ID_TIPO_GASTO_COMBUSTIVEL && req.body.km_registro) {
-        // Agora chamamos a nova função que usa o ID
-        const caminhaoId = req.body.caminhao_id;
-        const novoKm = req.body.km_registro;
+      // --- LÓGICA DE ATUALIZAÇÃO DO KM CENTRALIZADA ---
+      // Se o novo gasto inclui uma quilometragem, atualizamos o camião.
+      const novoKm = req.body.km_registro;
+      const caminhaoId = req.body.caminhao_id;
+
+      if (caminhaoId && novoKm) {
+        // Não é preciso verificar o tipo de gasto. Qualquer registo com KM deve atualizar o camião.
         await caminhoesModel.updateById(caminhaoId, { km_atual: novoKm });
       }
+      // --- FIM DA LÓGICA DE ATUALIZAÇÃO ---
 
-      res.status(201).json(novoGasto);
+      // VERIFICAÇÃO ADICIONADA: Checa se a criação do gasto retornou dados válidos
+      if (novoGasto && novoGasto.length > 0) {
+        res.status(201).json(novoGasto[0]);
+      } else {
+        // Se 'novoGasto' for null ou um array vazio, envia uma resposta de sucesso genérica.
+        // Isto previne o erro e informa ao frontend que a operação foi bem-sucedida.
+        res.status(201).json({ message: "Gasto criado com sucesso." });
+      }
     } catch (error) {
+      console.error("ERRO AO CRIAR GASTO:", error); // Adicionado para melhor depuração
       res.status(400).json({ error: error.message });
     }
   },
@@ -80,3 +91,4 @@ export const gastosController = {
     }
   },
 };
+

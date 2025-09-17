@@ -6,14 +6,16 @@ export const caminhoesModel = {
   create: async (caminhaoData) => {
     const { data, error } = await supabase
       .from("caminhoes")
-      .insert([caminhaoData]);
+      .insert([caminhaoData])
+      .select();
+
     if (error) throw error;
-    return data;
+    return data[0];
   },
 
   // Lógica para buscar todos os caminhões
   getAll: async () => {
-    const { data, error } = await supabase.from("caminhoes").select("*");
+    const { data, error } = await supabase.from("caminhoes").select("*").order("placa");
     if (error) throw error;
     return data;
   },
@@ -34,18 +36,22 @@ export const caminhoesModel = {
     const { data, error } = await supabase
       .from("caminhoes")
       .update(caminhaoData)
-      .eq("placa", placa);
+      .eq("placa", placa)
+      .select();
+
     if (error) throw error;
-    return data;
+    return data[0];
   },
 
   updateById: async (id, caminhaoData) => {
     const { data, error } = await supabase
       .from("caminhoes")
       .update(caminhaoData)
-      .eq("id", id);
+      .eq("id", id)
+      .select();
+      
     if (error) throw error;
-    return data;
+    return data[0];
   },
 
   // Lógica para deletar um caminhão por placa

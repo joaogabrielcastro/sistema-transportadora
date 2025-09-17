@@ -12,6 +12,8 @@ const EditCaminhao = () => {
     placa: '',
     qtd_pneus: 0,
     km_atual: 0,
+    numero_carreta: '',
+    numero_cavalo: ''
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -20,7 +22,14 @@ const EditCaminhao = () => {
     const fetchCaminhao = async () => {
       try {
         const response = await axios.get(`${API_URL}/api/caminhoes/${placa}`);
-        setFormData(response.data);
+        const caminhao = response.data;
+        setFormData({
+          placa: caminhao.placa,
+          qtd_pneus: caminhao.qtd_pneus,
+          km_atual: caminhao.km_atual,
+          numero_carreta: caminhao.numero_carreta || '',
+          numero_cavalo: caminhao.numero_cavalo || ''
+        });
       } catch (err) {
         setError('Erro ao carregar dados do caminhão.');
         console.error(err);
@@ -33,15 +42,25 @@ const EditCaminhao = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: name === 'qtd_pneus' || name === 'km_atual' ? parseInt(value) : value });
+    setFormData({ 
+      ...formData, 
+      [name]: (name === 'qtd_pneus' || name === 'km_atual' || name === 'numero_carreta' || name === 'numero_cavalo') 
+        ? (value === '' ? '' : parseInt(value)) 
+        : value 
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`${API_URL}/api/caminhoes/${placa}`, formData);
+      await axios.put(`${API_URL}/api/caminhoes/${placa}`, {
+        qtd_pneus: parseInt(formData.qtd_pneus),
+        km_atual: parseInt(formData.km_atual),
+        numero_carreta: formData.numero_carreta ? parseInt(formData.numero_carreta) : null,
+        numero_cavalo: formData.numero_cavalo ? parseInt(formData.numero_cavalo) : null
+      });
       alert('Caminhão atualizado com sucesso!');
-      navigate(`/caminhao/${placa}`); // Redireciona para a tela de detalhes
+      navigate(`/caminhao/${placa}`);
     } catch (err) {
       setError('Erro ao atualizar caminhão. Verifique os dados e tente novamente.');
       console.error(err);
@@ -81,7 +100,7 @@ const EditCaminhao = () => {
               required
             />
           </div>
-          <div className="mb-6">
+          <div className="mb-4">
             <label className="label" htmlFor="kmAtual">KM Atual</label>
             <input
               type="number"
@@ -91,6 +110,33 @@ const EditCaminhao = () => {
               onChange={handleChange}
               className="input"
               required
+            />
+          </div>
+          <div className="mb-4">
+            <label className="label" htmlFor="numeroCarreta">Número da Carreta (0-100)</label>
+            <input
+              type="number"
+              id="numeroCarreta"
+              name="numero_carreta"
+              value={formData.numero_carreta}
+              onChange={handleChange}
+              className="input"
+              min="0"
+              max="100"
+              placeholder="Opcional"
+            />
+          </div>
+          <div className="mb-6">
+            <label className="label" htmlFor="numeroCavalo">Número do Cavalo (101+)</label>
+            <input
+              type="number"
+              id="numeroCavalo"
+              name="numero_cavalo"
+              value={formData.numero_cavalo}
+              onChange={handleChange}
+              className="input"
+              min="101"
+              placeholder="Opcional"
             />
           </div>
           <button

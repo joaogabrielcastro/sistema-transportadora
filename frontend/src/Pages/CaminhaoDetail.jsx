@@ -33,19 +33,25 @@ const CaminhaoDetail = () => {
           setGastos(gastosRes.data);
           setChecklists(checklistRes.data);
           setPneus(pneusRes.data);
-
-          if (consumoRes.data.length > 1) {
-            const primeiroAbastecimento = consumoRes.data[0];
-            const ultimoAbastecimento = consumoRes.data[consumoRes.data.length - 1];
+          
+          // --- LÓGICA DE CÁLCULO CORRIGIDA ---
+          // Verifica se temos pelo menos dois registos de combustível válidos
+          const abastecimentos = consumoRes.data;
+          if (abastecimentos && abastecimentos.length > 1) {
+            // Como os dados vêm ordenados do mais recente para o mais antigo:
+            const ultimoAbastecimento = abastecimentos[0];
+            const penultimoAbastecimento = abastecimentos[1];
             
-            const kmRodado = ultimoAbastecimento.km_registro - primeiroAbastecimento.km_registro;
-            const totalLitros = consumoRes.data.reduce((acc, curr) => acc + parseFloat(curr.quantidade_combustivel), 0);
+            const kmRodado = ultimoAbastecimento.km_registro - penultimoAbastecimento.km_registro;
+            const litrosAbastecidos = parseFloat(ultimoAbastecimento.quantidade_combustivel);
 
-            if (totalLitros > 0 && kmRodado > 0) {
-              const kmL = (kmRodado / totalLitros).toFixed(2);
+            // Calcula o consumo apenas se os valores forem lógicos
+            if (litrosAbastecidos > 0 && kmRodado > 0) {
+              const kmL = (kmRodado / litrosAbastecidos).toFixed(2);
               setConsumoKmPorLitro(kmL);
             }
           }
+          // --- FIM DA LÓGICA DE CÁLCULO ---
         }
       } catch (err) {
         setError('Erro ao carregar dados do caminhão. Verifique a conexão com o backend.');
@@ -95,7 +101,7 @@ const CaminhaoDetail = () => {
                 {gastos.slice(0, 5).map(g => (
                   <li key={g.id} className="flex justify-between items-center bg-gray-100 p-2 rounded">
                     <span>
-                      <span className="font-bold">{g.tipos_gastos?.nome_tipo}:</span> R$ {g.valor} ({g.data_gasto})
+                      <span className="font-bold">{g.tipos_gastos?.nome_tipo}</span> R$ {g.valor} ({g.data_gasto})
                     </span>
                     <Link to={`/gasto/editar/${g.id}`} className="btn-secondary text-sm px-2 py-1">
                       Editar

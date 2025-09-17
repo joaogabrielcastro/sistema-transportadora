@@ -8,7 +8,6 @@ export const caminhoesController = {
       const novoCaminhao = await caminhoesModel.create(req.body);
       res.status(201).json(novoCaminhao);
     } catch (error) {
-      // Alteração: logar o objeto de erro completo
       console.error("Erro ao criar caminhão:", error);
       res.status(400).json({ error: error.message });
     }
@@ -20,6 +19,7 @@ export const caminhoesController = {
       const caminhoes = await caminhoesModel.getAll();
       res.status(200).json(caminhoes);
     } catch (error) {
+      console.error("Erro ao buscar caminhões:", error);
       res.status(500).json({ error: error.message });
     }
   },

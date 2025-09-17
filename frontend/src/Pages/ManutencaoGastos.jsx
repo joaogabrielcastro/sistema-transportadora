@@ -1,4 +1,3 @@
-// src/pages/ManutencaoGastos.jsx
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
@@ -100,31 +99,34 @@ const ManutencaoGastos = () => {
   };
 
   const handleTipoChange = (e) => {
-    const { value } = e.target;
-    setForm({
-      ...form,
-      tipo: value,
+    const newTipo = e.target.value;
+    // Usamos a forma funcional para garantir que o estado anterior seja preservado
+    setForm((prevForm) => ({
+      ...prevForm, // Mantém os valores existentes (como caminhao_id e km_registro)
+      tipo: newTipo,
+      // Reseta apenas os campos que dependem diretamente da troca de tipo
       tipo_id: "",
       valor: "",
-      data: "",
       observacao: "",
       oficina: "",
-      km_registro: "",
       quantidade_combustivel: "",
-    });
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const caminhaoId = parseInt(form.caminhao_id);
+      const newKm = form.km_registro ? parseInt(form.km_registro, 10) : null;
+
       if (form.tipo === "gasto") {
         const payload = {
-          caminhao_id: parseInt(form.caminhao_id),
+          caminhao_id: caminhaoId,
           tipo_gasto_id: parseInt(form.tipo_id),
           valor: parseFloat(form.valor),
           data_gasto: form.data,
           descricao: form.observacao,
-          km_registro: form.km_registro ? parseInt(form.km_registro) : null,
+          km_registro: newKm,
           quantidade_combustivel: form.quantidade_combustivel
             ? parseFloat(form.quantidade_combustivel)
             : null,
@@ -133,14 +135,14 @@ const ManutencaoGastos = () => {
       } else {
         // tipo === 'manutencao'
         await axios.post(`${API_URL}/api/checklist`, {
-          caminhao_id: parseInt(form.caminhao_id),
+          caminhao_id: caminhaoId,
           item_id: parseInt(form.tipo_id),
           data_manutencao: form.data,
           observacao: form.observacao,
           oficina: form.oficina,
         });
         await axios.post(`${API_URL}/api/gastos`, {
-          caminhao_id: parseInt(form.caminhao_id),
+          caminhao_id: caminhaoId,
           tipo_gasto_id: ID_TIPO_GASTO_MANUTENCAO,
           valor: parseFloat(form.valor),
           data_gasto: form.data,
@@ -148,11 +150,22 @@ const ManutencaoGastos = () => {
             itensChecklist.find((item) => item.id === parseInt(form.tipo_id))
               ?.nome_item || ""
           } - ${form.observacao}`,
+          km_registro: newKm, // Adicionado para salvar o KM também no gasto de manutenção
         });
       }
 
-      // Recarrega todos os dados após o sucesso
-      fetchData();
+      // --- NOVA LÓGICA PARA ATUALIZAR O KM DO CAMINHÃO ---
+      if (newKm !== null) {
+        const caminhaoParaAtualizar = caminhoes.find(c => c.id === caminhaoId);
+        // Apenas atualiza se o novo KM for maior que o KM atual do caminhão
+        if (caminhaoParaAtualizar && newKm > caminhaoParaAtualizar.km_atual) {
+          await axios.put(`${API_URL}/api/caminhoes/${caminhaoId}`, {
+            km_atual: newKm,
+          });
+        }
+      }
+
+      fetchData(); // Recarrega todos os dados, incluindo a lista de caminhões atualizada
 
       setForm({
         tipo: "gasto",

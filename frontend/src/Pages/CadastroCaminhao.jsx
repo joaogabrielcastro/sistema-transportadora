@@ -7,6 +7,8 @@ const CadastroCaminhao = () => {
   const [placa, setPlaca] = useState("");
   const [qtdPneus, setQtdPneus] = useState(0);
   const [kmAtual, setKmAtual] = useState(0);
+  const [numeroCarreta, setNumeroCarreta] = useState("");
+  const [numeroCavalo, setNumeroCavalo] = useState("");
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const navigate = useNavigate(); 
@@ -20,12 +22,16 @@ const CadastroCaminhao = () => {
         placa,
         qtd_pneus: parseInt(qtdPneus),
         km_atual: parseInt(kmAtual),
+        numero_carreta: numeroCarreta ? parseInt(numeroCarreta) : null,
+        numero_cavalo: numeroCavalo ? parseInt(numeroCavalo) : null,
       });
       setSuccess("Caminhão cadastrado com sucesso!");
       setError(null);
       setPlaca("");
       setQtdPneus(0);
       setKmAtual(0);
+      setNumeroCarreta("");
+      setNumeroCavalo("");
     } catch (err) {
       setError(
         "Erro ao cadastrar caminhão. Verifique os dados e tente novamente."
@@ -80,7 +86,7 @@ const CadastroCaminhao = () => {
             />
           </div>
 
-          <div className="mb-6">
+          <div className="mb-4">
             <label className="label" htmlFor="kmAtual">
               KM Atual
             </label>
@@ -91,6 +97,37 @@ const CadastroCaminhao = () => {
               onChange={(e) => setKmAtual(e.target.value)}
               className="input"
               required
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="label" htmlFor="numeroCarreta">
+              Número da Carreta (0-100)
+            </label>
+            <input
+              type="number"
+              id="numeroCarreta"
+              value={numeroCarreta}
+              onChange={(e) => setNumeroCarreta(e.target.value)}
+              className="input"
+              min="0"
+              max="100"
+              placeholder="Opcional - apenas para carretas"
+            />
+          </div>
+
+          <div className="mb-6">
+            <label className="label" htmlFor="numeroCavalo">
+              Número do Cavalo (101+)
+            </label>
+            <input
+              type="number"
+              id="numeroCavalo"
+              value={numeroCavalo}
+              onChange={(e) => setNumeroCavalo(e.target.value)}
+              className="input"
+              min="101"
+              placeholder="Opcional - apenas para cavalos"
             />
           </div>
 

@@ -34,24 +34,19 @@ const CaminhaoDetail = () => {
           setChecklists(checklistRes.data);
           setPneus(pneusRes.data);
           
-          // --- LÓGICA DE CÁLCULO CORRIGIDA ---
-          // Verifica se temos pelo menos dois registos de combustível válidos
           const abastecimentos = consumoRes.data;
           if (abastecimentos && abastecimentos.length > 1) {
-            // Como os dados vêm ordenados do mais recente para o mais antigo:
             const ultimoAbastecimento = abastecimentos[0];
             const penultimoAbastecimento = abastecimentos[1];
             
             const kmRodado = ultimoAbastecimento.km_registro - penultimoAbastecimento.km_registro;
             const litrosAbastecidos = parseFloat(ultimoAbastecimento.quantidade_combustivel);
 
-            // Calcula o consumo apenas se os valores forem lógicos
             if (litrosAbastecidos > 0 && kmRodado > 0) {
               const kmL = (kmRodado / litrosAbastecidos).toFixed(2);
               setConsumoKmPorLitro(kmL);
             }
           }
-          // --- FIM DA LÓGICA DE CÁLCULO ---
         }
       } catch (err) {
         setError('Erro ao carregar dados do caminhão. Verifique a conexão com o backend.');
@@ -78,6 +73,12 @@ const CaminhaoDetail = () => {
             <p><span className="font-bold">Placa:</span> {caminhao.placa}</p>
             <p><span className="font-bold">KM Atual:</span> {caminhao.km_atual}</p>
             <p><span className="font-bold">Qtd. de Pneus:</span> {caminhao.qtd_pneus}</p>
+            {caminhao.numero_carreta && (
+              <p><span className="font-bold">Nº Carreta:</span> {caminhao.numero_carreta}</p>
+            )}
+            {caminhao.numero_cavalo && (
+              <p><span className="font-bold">Nº Cavalo:</span> {caminhao.numero_cavalo}</p>
+            )}
           </div>
           <div className="card md:col-span-2">
             <h2 className="text-xl font-bold mb-2">Indicadores de Desempenho</h2>

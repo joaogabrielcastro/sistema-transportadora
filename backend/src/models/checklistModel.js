@@ -11,7 +11,7 @@ export const checklistModel = {
     return data;
   },
 
-  // Listar todos os itens de checklist
+  // Listar todos os itens de checklist - REMOVA ESTA DUPLICAÇÃO
   getAll: async () => {
     const { data, error } = await supabase
       .from("checklist")
@@ -31,7 +31,7 @@ export const checklistModel = {
     return data;
   },
 
-  // Listar itens de checklist de um caminhão específico (por ID)
+  // Listar itens de checklist de um caminhão específico
   getByCaminhaoId: async (caminhaoId) => {
     const { data, error } = await supabase
       .from("checklist")
@@ -47,24 +47,6 @@ export const checklistModel = {
       .from("checklist")
       .update(checklistData)
       .eq("id", id);
-    if (error) throw error;
-    return data;
-  },
-  
-  getAll: async () => {
-    const { data, error } = await supabase
-      .from("checklist")
-      .select("*, caminhoes(placa), itens_checklist(nome_item)"); // Alterar aqui
-    if (error) throw error;
-    return data;
-  },
-
-  getById: async (id) => {
-    const { data, error } = await supabase
-      .from("checklist")
-      .select("*, caminhoes(placa), itens_checklist(nome_item)") // Alterar aqui
-      .eq("id", id)
-      .single();
     if (error) throw error;
     return data;
   },

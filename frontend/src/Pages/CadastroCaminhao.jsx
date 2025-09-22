@@ -176,14 +176,12 @@ const CadastroCaminhao = () => {
 
   // Formatadores de input
   const formatPlaca = (value) => {
-    const cleaned = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-    if (cleaned.length <= 3) return cleaned;
-    if (cleaned.length <= 4)
-      return `${cleaned.slice(0, 3)}-${cleaned.slice(3)}`;
-    return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 4)}${cleaned.slice(
-      4,
-      6
-    )}`;
+    // Limpa, coloca em maiúsculas e limita a 7 caracteres
+    const cleaned = value
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .toUpperCase()
+      .slice(0, 7);
+    return cleaned;
   };
 
   const handleInputChange = (field, value) => {
@@ -314,7 +312,6 @@ const CadastroCaminhao = () => {
               error={errors.placa}
               helpText="Digite a placa no formato mercosul (ABC1D23)"
             />
-
             <FormField
               label="Quantidade de Pneus"
               type="number"
@@ -327,7 +324,6 @@ const CadastroCaminhao = () => {
               error={errors.qtd_pneus}
               helpText="Número total de pneus do veículo"
             />
-
             <FormField
               label="Quilometragem Atual (KM)"
               type="number"
@@ -340,7 +336,7 @@ const CadastroCaminhao = () => {
               error={errors.km_atual}
               helpText="Quilometragem atual do hodômetro"
             />
-
+            f
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 label="Número da Carreta"
@@ -353,7 +349,6 @@ const CadastroCaminhao = () => {
                 max="100"
                 placeholder="0-100"
                 error={errors.numero_carreta}
-                helpText="Opcional - para carretas"
               />
 
               <FormField
@@ -366,10 +361,8 @@ const CadastroCaminhao = () => {
                 min="101"
                 placeholder="101+"
                 error={errors.numero_cavalo}
-                helpText="Opcional - para cavalos mecânicos"
               />
             </div>
-
             {/* Botões de Ação */}
             <div className="flex flex-col sm:flex-row gap-4 mt-8">
               <button
@@ -412,43 +405,6 @@ const CadastroCaminhao = () => {
               </button>
             </div>
           </form>
-
-          {/* Informações Adicionais */}
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <h3 className="text-sm font-medium text-gray-900 mb-2">
-              Informações importantes:
-            </h3>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li className="flex items-center">
-                <svg
-                  className="w-4 h-4 mr-2 text-green-500"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                Todos os campos marcados com * são obrigatórios
-              </li>
-              <li className="flex items-center">
-                <svg
-                  className="w-4 h-4 mr-2 text-green-500"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                A placa será salva no formato mercosul (sem hífen)
-              </li>
-            </ul>
-          </div>
         </div>
       </div>
     </div>

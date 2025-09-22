@@ -538,10 +538,10 @@ const ManutencaoGastos = () => {
         nome_tipo: c.itens_checklist?.nome_item,
         placa: c.caminhoes?.placa,
         data: c.data_manutencao,
-        valor: "N/A",
+        valor: c.valor || "N/A", // ← Agora pega o valor real
         observacao: c.observacao,
         oficina: c.oficina || "N/A",
-        km_registro: "N/A",
+        km_registro: c.km_registro || "N/A", // ← Agora pega o KM real
         quantidade_combustivel: "N/A",
       }));
 
@@ -609,6 +609,20 @@ const ManutencaoGastos = () => {
       const caminhaoId = parseInt(form.caminhao_id);
       const newKm = form.km_registro ? parseInt(form.km_registro, 10) : null;
 
+      console.log("Dados sendo enviados:", {
+        tipo: form.tipo,
+        caminhao_id: caminhaoId,
+        tipo_id: parseInt(form.tipo_id),
+        valor: parseFloat(form.valor),
+        data: form.data,
+        observacao: form.observacao,
+        oficina: form.oficina,
+        km_registro: newKm,
+        quantidade_combustivel: form.quantidade_combustivel
+          ? parseFloat(form.quantidade_combustivel)
+          : null,
+      });
+
       if (form.tipo === "gasto") {
         const payload = {
           caminhao_id: caminhaoId,
@@ -623,29 +637,17 @@ const ManutencaoGastos = () => {
         };
         await axios.post(`${API_URL}/api/gastos`, payload);
       } else {
-        // Criar registro de manutenção
-        await axios.post(`${API_URL}/api/checklist`, {
+        const payload = {
           caminhao_id: caminhaoId,
           item_id: parseInt(form.tipo_id),
           data_manutencao: form.data,
           observacao: form.observacao,
-          oficina: form.oficina,
-        });
-
-        // Criar gasto associado à manutenção
-        const itemManutencao = itensChecklist.find(
-          (item) => item.id === parseInt(form.tipo_id)
-        );
-        await axios.post(`${API_URL}/api/gastos`, {
-          caminhao_id: caminhaoId,
-          tipo_gasto_id: ID_TIPO_GASTO_MANUTENCAO,
           valor: parseFloat(form.valor),
-          data_gasto: form.data,
-          descricao: `Manutenção: ${itemManutencao?.nome_item || ""} - ${
-            form.observacao
-          }`,
+          oficina: form.oficina,
           km_registro: newKm,
-        });
+        };
+        console.log("Enviando para checklist:", payload);
+        await axios.post(`${API_URL}/api/checklist`, payload);
       }
 
       // Atualizar KM do caminhão se necessário
@@ -699,8 +701,15 @@ const ManutencaoGastos = () => {
       );
       setSuccessMessage("Registro excluído com sucesso!");
     } catch (err) {
-      setError("Erro ao excluir registro.");
-      console.error("Erro ao excluir registro:", err);
+      console.error("Erro completo:", err);
+      console.error("Resposta do servidor:", err.response?.data);
+      setError(
+        err.response?.data?.error ||
+          err.response?.data?.message ||
+          "Erro ao cadastrar registro."
+      );
+    } finally {
+      setSubmitting(false);
     }
   };
 

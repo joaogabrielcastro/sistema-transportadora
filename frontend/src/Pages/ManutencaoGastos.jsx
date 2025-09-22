@@ -1,35 +1,514 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 
 const API_URL = import.meta.env.VITE_API_URL;
+
+// Componentes Reutilizáveis
+const LoadingSpinner = () => (
+  <div className="flex justify-center items-center py-20">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+  </div>
+);
+
+const ErrorMessage = ({ message, onRetry }) => (
+  <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6">
+    <div className="flex justify-between items-center">
+      <p className="font-medium">{message}</p>
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="ml-4 bg-red-500 text-white px-4 py-2 rounded text-sm hover:bg-red-600 transition-colors"
+        >
+          Tentar Novamente
+        </button>
+      )}
+    </div>
+  </div>
+);
+
+const SuccessMessage = ({ message }) => (
+  <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-lg mb-6">
+    <div className="flex items-center">
+      <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+        <path
+          fillRule="evenodd"
+          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+          clipRule="evenodd"
+        />
+      </svg>
+      <span className="font-medium">{message}</span>
+    </div>
+  </div>
+);
+
+const StatusBadge = ({ tipo }) => {
+  const config = {
+    Gasto: {
+      bg: "bg-blue-100",
+      text: "text-blue-800",
+      border: "border-blue-200",
+    },
+    Manutenção: {
+      bg: "bg-green-100",
+      text: "text-green-800",
+      border: "border-green-200",
+    },
+  }[tipo] || {
+    bg: "bg-gray-100",
+    text: "text-gray-800",
+    border: "border-gray-200",
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${config.bg} ${config.text} border ${config.border}`}
+    >
+      {tipo}
+    </span>
+  );
+};
+
+const RegistroForm = ({
+  form,
+  caminhoes,
+  itensChecklist,
+  tiposGastos,
+  onChange,
+  onCaminhaoChange,
+  onTipoChange,
+  onSubmit,
+  loading,
+  ID_TIPO_GASTO_COMBUSTIVEL,
+}) => {
+  const isCombustivel =
+    form.tipo === "gasto" &&
+    parseInt(form.tipo_id) === ID_TIPO_GASTO_COMBUSTIVEL;
+  const caminhaoSelecionado = caminhoes.find(
+    (c) => c.id === parseInt(form.caminhao_id)
+  );
+
+  return (
+    <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+      <h2 className="text-xl font-bold text-gray-800 mb-6">
+        Adicionar Novo Registro
+      </h2>
+
+      <form onSubmit={onSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Tipo de Registro */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tipo de Registro *
+            </label>
+            <select
+              name="tipo"
+              value={form.tipo}
+              onChange={onTipoChange}
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            >
+              <option value="gasto">Gasto Financeiro</option>
+              <option value="manutencao">Manutenção (Checklist)</option>
+            </select>
+          </div>
+
+          {/* Caminhão */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Caminhão *
+            </label>
+            <select
+              name="caminhao_id"
+              value={form.caminhao_id}
+              onChange={onCaminhaoChange}
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            >
+              <option value="">Selecione o Caminhão</option>
+              {caminhoes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.placa} - KM: {c.km_atual?.toLocaleString("pt-BR")}
+                </option>
+              ))}
+            </select>
+            {caminhaoSelecionado && (
+              <p className="text-sm text-gray-500 mt-1">
+                KM atual:{" "}
+                {caminhaoSelecionado.km_atual?.toLocaleString("pt-BR")}
+              </p>
+            )}
+          </div>
+
+          {/* Tipo de Gasto ou Item de Manutenção */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {form.tipo === "gasto"
+                ? "Tipo de Gasto *"
+                : "Item de Manutenção *"}
+            </label>
+            <select
+              name="tipo_id"
+              value={form.tipo_id}
+              onChange={onChange}
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            >
+              <option value="">Selecione...</option>
+              {form.tipo === "gasto"
+                ? tiposGastos.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nome_tipo}
+                    </option>
+                  ))
+                : itensChecklist.map((i) => (
+                    <option key={i.id} value={i.id}>
+                      {i.nome_item}
+                    </option>
+                  ))}
+            </select>
+          </div>
+
+          {/* Valor */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Valor (R$) *
+            </label>
+            <input
+              type="number"
+              name="valor"
+              value={form.valor}
+              onChange={onChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              step="0.01"
+              min="0"
+              required
+              placeholder="0,00"
+            />
+          </div>
+
+          {/* Data */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Data *
+            </label>
+            <input
+              type="date"
+              name="data"
+              value={form.data}
+              onChange={onChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              required
+              max={new Date().toISOString().split("T")[0]}
+            />
+          </div>
+
+          {/* Quilometragem */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Quilometragem (KM)
+            </label>
+            <input
+              type="number"
+              name="km_registro"
+              value={form.km_registro}
+              onChange={onChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              min="0"
+              placeholder="KM atual do caminhão"
+            />
+          </div>
+
+          {/* Oficina (apenas para manutenção) */}
+          {form.tipo === "manutencao" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Oficina
+              </label>
+              <input
+                type="text"
+                name="oficina"
+                value={form.oficina}
+                onChange={onChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                placeholder="Nome da oficina"
+              />
+            </div>
+          )}
+
+          {/* Quantidade de Combustível */}
+          {isCombustivel && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Quantidade (Litros) *
+              </label>
+              <input
+                type="number"
+                name="quantidade_combustivel"
+                value={form.quantidade_combustivel}
+                onChange={onChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                step="0.01"
+                min="0"
+                required
+                placeholder="0,00"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Observação */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Observação
+          </label>
+          <textarea
+            name="observacao"
+            value={form.observacao}
+            onChange={onChange}
+            rows={3}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            placeholder="Detalhes adicionais sobre o registro..."
+          />
+        </div>
+
+        {/* Botão Submit */}
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+        >
+          {loading ? "Cadastrando..." : "Cadastrar Registro"}
+        </button>
+      </form>
+    </div>
+  );
+};
+
+const HistoricoRegistros = ({
+  registros,
+  onDelete,
+  filtroPlaca,
+  onFiltroChange,
+  loading,
+}) => {
+  const registrosFormatados = useMemo(() => {
+    return registros.map((registro) => ({
+      ...registro,
+      valorFormatado:
+        registro.valor !== "N/A"
+          ? new Intl.NumberFormat("pt-BR", {
+              style: "currency",
+              currency: "BRL",
+            }).format(registro.valor)
+          : "N/A",
+      dataFormatada: registro.data
+        ? new Date(registro.data).toLocaleDateString("pt-BR")
+        : "N/A",
+      kmFormatado:
+        registro.km_registro !== "N/A"
+          ? parseInt(registro.km_registro).toLocaleString("pt-BR")
+          : "N/A",
+    }));
+  }, [registros]);
+
+  const registrosFiltrados = useMemo(() => {
+    if (!filtroPlaca.trim()) return registrosFormatados;
+
+    return registrosFormatados.filter((registro) =>
+      registro.placa?.toLowerCase().includes(filtroPlaca.toLowerCase())
+    );
+  }, [registrosFormatados, filtroPlaca]);
+
+  const estatisticas = useMemo(() => {
+    const gastos = registrosFormatados.filter(
+      (r) => r.tipo_registro === "Gasto" && r.valor !== "N/A"
+    );
+    const totalGastos = gastos.reduce((sum, g) => sum + parseFloat(g.valor), 0);
+    const totalManutencoes = registrosFormatados.filter(
+      (r) => r.tipo_registro === "Manutenção"
+    ).length;
+
+    return {
+      totalGastos,
+      totalManutencoes,
+      totalRegistros: registrosFormatados.length,
+    };
+  }, [registrosFormatados]);
+
+  if (loading) return <LoadingSpinner />;
+
+  return (
+    <div className="bg-white rounded-xl shadow-md p-6">
+      {/* Header com Estatísticas */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-gray-800">
+            Histórico de Registros
+          </h2>
+          <div className="flex flex-wrap gap-4 mt-2">
+            <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+              {estatisticas.totalRegistros} registros
+            </span>
+            <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+              {estatisticas.totalManutencoes} manutenções
+            </span>
+            <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
+              {estatisticas.totalGastos.toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              })}
+            </span>
+          </div>
+        </div>
+
+        <div className="w-full lg:w-64">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Filtrar por placa:
+          </label>
+          <input
+            type="text"
+            placeholder="Digite a placa..."
+            value={filtroPlaca}
+            onChange={onFiltroChange}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+          />
+        </div>
+      </div>
+
+      {/* Tabela */}
+      {registrosFiltrados.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="text-6xl mb-4">📊</div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            {filtroPlaca
+              ? "Nenhum registro encontrado"
+              : "Nenhum registro cadastrado"}
+          </h3>
+          <p className="text-gray-600">
+            {filtroPlaca
+              ? `Não foram encontrados registros para a placa "${filtroPlaca}"`
+              : "Comece cadastrando o primeiro registro no formulário acima."}
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Tipo
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Caminhão
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Descrição
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Data
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Valor
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  KM
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Ações
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {registrosFiltrados.map((registro) => (
+                <tr
+                  key={`${registro.tipo_registro}-${registro.id}`}
+                  className="hover:bg-gray-50 transition-colors"
+                >
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <StatusBadge tipo={registro.tipo_registro} />
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="font-medium text-gray-900">
+                      {registro.placa || "N/A"}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-900">
+                      {registro.nome_tipo || "N/A"}
+                    </div>
+                    {registro.observacao && (
+                      <div className="text-sm text-gray-500 mt-1">
+                        {registro.observacao}
+                      </div>
+                    )}
+                    {registro.oficina && registro.oficina !== "N/A" && (
+                      <div className="text-sm text-gray-500">
+                        Oficina: {registro.oficina}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {registro.dataFormatada}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="font-semibold text-gray-900">
+                      {registro.valorFormatado}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {registro.kmFormatado}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button
+                      onClick={() =>
+                        onDelete(registro.tipo_registro, registro.id)
+                      }
+                      className="text-red-600 hover:text-red-900 ml-4"
+                      title="Excluir registro"
+                    >
+                      Excluir
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const ManutencaoGastos = () => {
   const [caminhoes, setCaminhoes] = useState([]);
   const [itensChecklist, setItensChecklist] = useState([]);
   const [tiposGastos, setTiposGastos] = useState([]);
   const [registros, setRegistros] = useState([]);
-  const [registrosFiltrados, setRegistrosFiltrados] = useState([]);
   const [filtroPlaca, setFiltroPlaca] = useState("");
   const [form, setForm] = useState({
     tipo: "gasto",
     caminhao_id: "",
     tipo_id: "",
     valor: "",
-    data: "",
+    data: new Date().toISOString().split("T")[0],
     observacao: "",
     oficina: "",
     km_registro: "",
     quantidade_combustivel: "",
   });
   const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [successMessage, setSuccessMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   const ID_TIPO_GASTO_MANUTENCAO = 10;
   const ID_TIPO_GASTO_COMBUSTIVEL = 9;
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
     try {
       const [caminhoesRes, itensRes, tiposRes, gastosRes, checklistRes] =
         await Promise.all([
@@ -40,6 +519,7 @@ const ManutencaoGastos = () => {
           axios.get(`${API_URL}/api/checklist`),
         ]);
 
+      // Formatando dados
       const gastosFormatados = gastosRes.data.map((g) => ({
         ...g,
         tipo_registro: "Gasto",
@@ -68,39 +548,27 @@ const ManutencaoGastos = () => {
       setCaminhoes(caminhoesRes.data);
       setItensChecklist(itensRes.data);
       setTiposGastos(tiposRes.data);
-      
+
       const todosRegistros = [...gastosFormatados, ...checklistFormatados].sort(
         (a, b) => new Date(b.data) - new Date(a.data)
       );
-      
+
       setRegistros(todosRegistros);
-      setRegistrosFiltrados(todosRegistros);
     } catch (err) {
-      setError("Erro ao carregar dados. Verifique a conexão com o backend.");
-      console.error(err);
+      setError("Erro ao carregar dados. Verifique a conexão com o servidor.");
+      console.error("Erro ao carregar dados:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchData();
-  }, []);
-
-  // Filtro por placa
-  useEffect(() => {
-    if (filtroPlaca) {
-      const filtered = registros.filter(registro => 
-        registro.placa && registro.placa.toLowerCase().includes(filtroPlaca.toLowerCase())
-      );
-      setRegistrosFiltrados(filtered);
-    } else {
-      setRegistrosFiltrados(registros);
-    }
-  }, [filtroPlaca, registros]);
+  }, [fetchData]);
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleCaminhaoChange = (e) => {
@@ -108,28 +576,35 @@ const ManutencaoGastos = () => {
     const caminhaoSelecionado = caminhoes.find(
       (c) => c.id === parseInt(caminhaoId)
     );
-    setForm((prevForm) => ({
-      ...prevForm,
+
+    setForm((prev) => ({
+      ...prev,
       caminhao_id: caminhaoId,
-      km_registro: caminhaoSelecionado ? caminhaoSelecionado.km_atual : "",
+      km_registro: caminhaoSelecionado?.km_atual || "",
     }));
   };
 
   const handleTipoChange = (e) => {
     const newTipo = e.target.value;
-    setForm((prevForm) => ({
-      ...prevForm,
+    setForm({
       tipo: newTipo,
+      caminhao_id: form.caminhao_id,
       tipo_id: "",
       valor: "",
+      data: form.data,
       observacao: "",
       oficina: "",
+      km_registro: form.km_registro,
       quantidade_combustivel: "",
-    }));
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    setSuccessMessage("");
+
     try {
       const caminhaoId = parseInt(form.caminhao_id);
       const newKm = form.km_registro ? parseInt(form.km_registro, 10) : null;
@@ -148,6 +623,7 @@ const ManutencaoGastos = () => {
         };
         await axios.post(`${API_URL}/api/gastos`, payload);
       } else {
+        // Criar registro de manutenção
         await axios.post(`${API_URL}/api/checklist`, {
           caminhao_id: caminhaoId,
           item_id: parseInt(form.tipo_id),
@@ -155,335 +631,121 @@ const ManutencaoGastos = () => {
           observacao: form.observacao,
           oficina: form.oficina,
         });
+
+        // Criar gasto associado à manutenção
+        const itemManutencao = itensChecklist.find(
+          (item) => item.id === parseInt(form.tipo_id)
+        );
         await axios.post(`${API_URL}/api/gastos`, {
           caminhao_id: caminhaoId,
           tipo_gasto_id: ID_TIPO_GASTO_MANUTENCAO,
           valor: parseFloat(form.valor),
           data_gasto: form.data,
-          descricao: `Manutenção: ${
-            itensChecklist.find((item) => item.id === parseInt(form.tipo_id))
-              ?.nome_item || ""
-          } - ${form.observacao}`,
+          descricao: `Manutenção: ${itemManutencao?.nome_item || ""} - ${
+            form.observacao
+          }`,
           km_registro: newKm,
         });
       }
 
+      // Atualizar KM do caminhão se necessário
       if (newKm !== null) {
-        const caminhaoParaAtualizar = caminhoes.find(c => c.id === caminhaoId);
-        if (caminhaoParaAtualizar && newKm > caminhaoParaAtualizar.km_atual) {
+        const caminhao = caminhoes.find((c) => c.id === caminhaoId);
+        if (caminhao && newKm > caminhao.km_atual) {
           await axios.put(`${API_URL}/api/caminhoes/${caminhaoId}`, {
             km_atual: newKm,
           });
         }
       }
 
-      fetchData();
+      // Recarregar dados
+      await fetchData();
 
+      // Resetar formulário
       setForm({
         tipo: "gasto",
         caminhao_id: "",
         tipo_id: "",
         valor: "",
-        data: "",
+        data: new Date().toISOString().split("T")[0],
         observacao: "",
         oficina: "",
         km_registro: "",
         quantidade_combustivel: "",
       });
-      
-      setError(null);
+
       setSuccessMessage("Registro cadastrado com sucesso!");
-      setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
-      setError("Erro ao cadastrar registro.");
-      console.error(err);
+      setError(err.response?.data?.message || "Erro ao cadastrar registro.");
+      console.error("Erro ao cadastrar registro:", err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDelete = async (tipo, id) => {
-    if (window.confirm("Tem certeza que deseja deletar este registro?")) {
-      try {
-        if (tipo === "Manutenção") {
-          await axios.delete(`${API_URL}/api/checklist/${id}`);
-        } else {
-          await axios.delete(`${API_URL}/api/gastos/${id}`);
-        }
-        setRegistros(
-          registros.filter((r) => !(r.id === id && r.tipo_registro === tipo))
-        );
-        setSuccessMessage("Registro deletado com sucesso!");
-        setTimeout(() => setSuccessMessage(""), 3000);
-      } catch (err) {
-        setError("Erro ao deletar registro.");
-        console.error(err);
+    if (!window.confirm("Tem certeza que deseja excluir este registro?"))
+      return;
+
+    try {
+      if (tipo === "Manutenção") {
+        await axios.delete(`${API_URL}/api/checklist/${id}`);
+      } else {
+        await axios.delete(`${API_URL}/api/gastos/${id}`);
       }
+
+      setRegistros((prev) =>
+        prev.filter((r) => !(r.id === id && r.tipo_registro === tipo))
+      );
+      setSuccessMessage("Registro excluído com sucesso!");
+    } catch (err) {
+      setError("Erro ao excluir registro.");
+      console.error("Erro ao excluir registro:", err);
     }
   };
 
-  const formatarValor = (valor) => {
-    if (valor === "N/A") return "N/A";
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
-  };
-
-  const formatarData = (dataString) => {
-    if (!dataString) return "N/A";
-    const data = new Date(dataString);
-    return data.toLocaleDateString('pt-BR');
-  };
-
-  if (loading) return <div className="text-center mt-10 text-xl">Carregando...</div>;
-  if (error) return <div className="text-center mt-10 text-xl text-red-600">{error}</div>;
+  if (loading) return <LoadingSpinner />;
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-center text-navy-blue">
-          Manutenção e Gastos
-        </h1>
-
-        {/* Mensagens de feedback */}
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-          </div>
-        )}
-        
-        {successMessage && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-            {successMessage}
-          </div>
-        )}
-
-        <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-          <h2 className="text-xl font-bold mb-4 text-navy-blue">Adicionar Novo Registro</h2>
-          <form
-            onSubmit={handleSubmit}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-          >
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Registro</label>
-              <select
-                name="tipo"
-                value={form.tipo}
-                onChange={handleTipoChange}
-                required
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-navy-blue focus:border-transparent"
-              >
-                <option value="gasto">Gasto Financeiro</option>
-                <option value="manutencao">Manutenção (Checklist)</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Caminhão</label>
-              <select
-                name="caminhao_id"
-                value={form.caminhao_id}
-                onChange={handleCaminhaoChange}
-                required
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-navy-blue focus:border-transparent"
-              >
-                <option value="">Selecione o Caminhão</option>
-                {caminhoes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.placa}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {form.tipo === "gasto" ? "Tipo de Gasto" : "Item de Manutenção"}
-              </label>
-              <select
-                name="tipo_id"
-                value={form.tipo_id}
-                onChange={handleChange}
-                required
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-navy-blue focus:border-transparent"
-              >
-                <option value="">Selecione...</option>
-                {form.tipo === "gasto"
-                  ? tiposGastos.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.nome_tipo}
-                      </option>
-                    ))
-                  : itensChecklist.map((i) => (
-                      <option key={i.id} value={i.id}>
-                        {i.nome_item}
-                      </option>
-                    ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
-              <input
-                type="number"
-                name="valor"
-                value={form.valor}
-                onChange={handleChange}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-navy-blue focus:border-transparent"
-                step="0.01"
-                required
-              />
-            </div>
-            {form.tipo === "manutencao" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Oficina</label>
-                <input
-                  type="text"
-                  name="oficina"
-                  value={form.oficina}
-                  onChange={handleChange}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-navy-blue focus:border-transparent"
-                />
-              </div>
-            )}
-            {form.tipo === "gasto" &&
-              form.tipo_id == ID_TIPO_GASTO_COMBUSTIVEL && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Quantidade (Litros)</label>
-                  <input
-                    type="number"
-                    name="quantidade_combustivel"
-                    value={form.quantidade_combustivel}
-                    onChange={handleChange}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-navy-blue focus:border-transparent"
-                    step="0.01"
-                    required
-                  />
-                </div>
-              )}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Data</label>
-              <input
-                type="date"
-                name="data"
-                value={form.data}
-                onChange={handleChange}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-navy-blue focus:border-transparent"
-                required
-              />
-            </div>
-            <div className="col-span-1 md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Observação</label>
-              <textarea
-                name="observacao"
-                value={form.observacao}
-                onChange={handleChange}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-navy-blue focus:border-transparent"
-                rows="2"
-              ></textarea>
-            </div>
-            <div className="col-span-1 md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Quilometragem (KM)</label>
-              <input
-                type="number"
-                name="km_registro"
-                value={form.km_registro}
-                onChange={handleChange}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-navy-blue focus:border-transparent"
-              />
-            </div>
-            <div className="col-span-1 md:col-span-3 flex justify-end">
-              <button
-                type="submit"
-                className="bg-navy-blue text-white px-6 py-2 rounded-md hover:bg-blue-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-              >
-                Cadastrar Registro
-              </button>
-            </div>
-          </form>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">
+            Manutenção e Gastos
+          </h1>
+          <p className="text-gray-600 text-lg">
+            Controle completo de gastos e manutenções da frota
+          </p>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
-            <h2 className="text-xl font-bold text-navy-blue mb-2 md:mb-0">Histórico de Registros</h2>
-            <div className="w-full md:w-64">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Buscar por placa:</label>
-              <input
-                type="text"
-                placeholder="Digite a placa..."
-                value={filtroPlaca}
-                onChange={(e) => setFiltroPlaca(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-navy-blue focus:border-transparent"
-              />
-            </div>
-          </div>
-          
-          {registrosFiltrados.length === 0 ? (
-            <p className="text-gray-500 text-center py-4">Nenhum registro encontrado.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white border border-gray-200">
-                <thead>
-                  <tr className="bg-navy-blue text-white">
-                    <th className="py-3 px-4 border-b text-left">Tipo</th>
-                    <th className="py-3 px-4 border-b text-left">Placa</th>
-                    <th className="py-3 px-4 border-b text-left">Descrição</th>
-                    <th className="py-3 px-4 border-b text-left">Oficina</th>
-                    <th className="py-3 px-4 border-b text-left">Valor</th>
-                    <th className="py-3 px-4 border-b text-left">Data</th>
-                    <th className="py-3 px-4 border-b text-left">KM</th>
-                    <th className="py-3 px-4 border-b text-center">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {registrosFiltrados.map((r) => (
-                    <tr
-                      key={`${r.tipo_registro}-${r.id}`}
-                      className="border-b hover:bg-gray-50 transition-colors duration-200"
-                    >
-                      <td className="py-3 px-4">
-                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
-                          r.tipo_registro === "Gasto" 
-                            ? "bg-blue-100 text-blue-800" 
-                            : "bg-green-100 text-green-800"
-                        }`}>
-                          {r.tipo_registro}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 font-medium">{r.placa || "N/A"}</td>
-                      <td className="py-3 px-4">{r.nome_tipo || "N/A"}</td>
-                      <td className="py-3 px-4">{r.oficina || "N/A"}</td>
-                      <td className="py-3 px-4 font-semibold text-lg">
-                        {r.valor !== "N/A" ? formatarValor(r.valor) : r.valor}
-                      </td>
-                      <td className="py-3 px-4">{formatarData(r.data)}</td>
-                      <td className="py-3 px-4 font-medium">
-                        {r.km_registro !== "N/A" ? parseInt(r.km_registro).toLocaleString('pt-BR') : "N/A"}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <button
-                          onClick={() => handleDelete(r.tipo_registro, r.id)}
-                          className="text-red-600 hover:text-red-800 transition-colors duration-200"
-                          title="Deletar registro"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        {/* Mensagens de Feedback */}
+        {error && <ErrorMessage message={error} onRetry={fetchData} />}
+        {successMessage && <SuccessMessage message={successMessage} />}
+
+        {/* Formulário */}
+        <RegistroForm
+          form={form}
+          caminhoes={caminhoes}
+          itensChecklist={itensChecklist}
+          tiposGastos={tiposGastos}
+          onChange={handleChange}
+          onCaminhaoChange={handleCaminhaoChange}
+          onTipoChange={handleTipoChange}
+          onSubmit={handleSubmit}
+          loading={submitting}
+          ID_TIPO_GASTO_COMBUSTIVEL={ID_TIPO_GASTO_COMBUSTIVEL}
+        />
+
+        {/* Histórico */}
+        <HistoricoRegistros
+          registros={registros}
+          onDelete={handleDelete}
+          filtroPlaca={filtroPlaca}
+          onFiltroChange={(e) => setFiltroPlaca(e.target.value)}
+          loading={loading}
+        />
       </div>
-
-      <style jsx>{`
-        .text-navy-blue {
-          color: #003366;
-        }
-        .bg-navy-blue {
-          background-color: #003366;
-        }
-        .hover\:bg-blue-800:hover {
-          background-color: #00264d;
-        }
-      `}</style>
     </div>
   );
 };

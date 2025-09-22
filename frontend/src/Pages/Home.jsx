@@ -35,6 +35,7 @@ const API_URL = import.meta.env.VITE_API_URL;
 const Home = () => {
   const [placa, setPlaca] = useState("");
   const [caminhoes, setCaminhoes] = useState([]);
+  const [caminhoesFiltrados, setCaminhoesFiltrados] = useState([]);
   const [caminhaoBuscado, setCaminhaoBuscado] = useState(null);
   const [gastos, setGastos] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -44,6 +45,8 @@ const Home = () => {
     totalGastos: 0,
     mediaGastos: 0
   });
+  const [filtro, setFiltro] = useState("placa");
+  const [termoBusca, setTermoBusca] = useState("");
 
   // Busca todos os caminhões e estatísticas ao carregar a página
   useEffect(() => {
@@ -56,6 +59,7 @@ const Home = () => {
         ]);
         
         setCaminhoes(caminhoesRes.data);
+        setCaminhoesFiltrados(caminhoesRes.data);
         
         // Calcular estatísticas
         const totalGastos = gastosRes.data.reduce((total, gasto) => total + parseFloat(gasto.valor), 0);
@@ -75,6 +79,31 @@ const Home = () => {
     };
     fetchAllData();
   }, []);
+
+  // Filtro de caminhões
+  useEffect(() => {
+    if (!termoBusca) {
+      setCaminhoesFiltrados(caminhoes);
+      return;
+    }
+
+    const filtered = caminhoes.filter(caminhao => {
+      const termo = termoBusca.toLowerCase();
+      
+      switch(filtro) {
+        case "placa":
+          return caminhao.placa && caminhao.placa.toLowerCase().includes(termo);
+        case "carreta":
+          return caminhao.numero_carreta && caminhao.numero_carreta.toLowerCase().includes(termo);
+        case "cavalo":
+          return caminhao.numero_cavalo && caminhao.numero_cavalo.toLowerCase().includes(termo);
+        default:
+          return true;
+      }
+    });
+    
+    setCaminhoesFiltrados(filtered);
+  }, [termoBusca, filtro, caminhoes]);
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -124,8 +153,8 @@ const Home = () => {
         {
           label: "Gastos Mensais (R$)",
           data: Object.values(monthlyData),
-          backgroundColor: "rgba(59, 130, 246, 0.6)",
-          borderColor: "rgba(59, 130, 246, 1)",
+          backgroundColor: "rgba(0, 51, 102, 0.6)",
+          borderColor: "rgba(0, 51, 102, 1)",
           borderWidth: 2,
           borderRadius: 6,
         },
@@ -159,11 +188,11 @@ const Home = () => {
           label: "Gastos Acumulados (R$)",
           data: cumulativeData,
           fill: true,
-          backgroundColor: "rgba(59, 130, 246, 0.1)",
-          borderColor: "rgba(59, 130, 246, 1)",
+          backgroundColor: "rgba(0, 51, 102, 0.1)",
+          borderColor: "rgba(0, 51, 102, 1)",
           borderWidth: 2,
           tension: 0.3,
-          pointBackgroundColor: "rgba(59, 130, 246, 1)",
+          pointBackgroundColor: "rgba(0, 51, 102, 1)",
           pointBorderColor: "#fff",
           pointBorderWidth: 2,
           pointRadius: 5,
@@ -235,7 +264,7 @@ const Home = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">
+          <h1 className="text-4xl font-bold text-navy-blue mb-2">
             Broto Transportadora
           </h1>
           <p className="text-gray-600 text-lg">
@@ -245,10 +274,10 @@ const Home = () => {
 
         {/* Cards de Estatísticas */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-500">
+          <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-navy-blue">
             <div className="flex items-center">
               <div className="rounded-full bg-blue-100 p-3 mr-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-navy-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
               </div>
@@ -259,10 +288,10 @@ const Home = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-green-500">
+          <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-navy-blue">
             <div className="flex items-center">
-              <div className="rounded-full bg-green-100 p-3 mr-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="rounded-full bg-blue-100 p-3 mr-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-navy-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
@@ -275,10 +304,10 @@ const Home = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-purple-500">
+          <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-navy-blue">
             <div className="flex items-center">
-              <div className="rounded-full bg-purple-100 p-3 mr-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="rounded-full bg-blue-100 p-3 mr-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-navy-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
               </div>
@@ -294,7 +323,7 @@ const Home = () => {
 
         {/* Busca de Caminhão */}
         <div className="bg-white rounded-xl shadow-md p-6 mb-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Buscar Caminhão</h2>
+          <h2 className="text-xl font-bold text-navy-blue mb-4">Buscar Caminhão</h2>
           <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4 items-start md:items-end">
             <div className="flex-1 w-full">
               <label className="block text-sm font-medium text-gray-700 mb-1">Placa do Caminhão</label>
@@ -303,12 +332,12 @@ const Home = () => {
                 value={placa}
                 onChange={(e) => setPlaca(e.target.value.toUpperCase())}
                 placeholder="Digite a placa (ex: ABC1D23) ou deixe em branco para ver todos"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-navy-blue focus:border-navy-blue transition-colors"
               />
             </div>
             <button 
               type="submit" 
-              className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center min-w-[120px]"
+              className="px-6 py-2 bg-navy-blue text-white font-medium rounded-lg hover:bg-blue-800 transition-colors flex items-center justify-center min-w-[120px]"
               disabled={loading}
             >
               {loading ? (
@@ -324,6 +353,35 @@ const Home = () => {
           </form>
         </div>
 
+        {/* Filtro de Caminhões */}
+        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+          <h2 className="text-xl font-bold text-navy-blue mb-4">Filtrar Frota</h2>
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-end">
+            <div className="w-full md:w-48">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Filtrar por</label>
+              <select
+                value={filtro}
+                onChange={(e) => setFiltro(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-navy-blue focus:border-navy-blue transition-colors"
+              >
+                <option value="placa">Placa</option>
+                <option value="carreta">Carreta</option>
+                <option value="cavalo">Cavalo</option>
+              </select>
+            </div>
+            <div className="flex-1 w-full">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Termo de busca</label>
+              <input
+                type="text"
+                value={termoBusca}
+                onChange={(e) => setTermoBusca(e.target.value)}
+                placeholder={`Digite o ${filtro} para buscar...`}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-navy-blue focus:border-navy-blue transition-colors"
+              />
+            </div>
+          </div>
+        </div>
+
         {error && (
           <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-lg">
             <p>{error}</p>
@@ -335,17 +393,16 @@ const Home = () => {
           <div className="bg-white rounded-xl shadow-md p-6 mb-8">
             <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-gray-800">
+                <h2 className="text-2xl font-bold text-navy-blue">
                   Caminhão - {caminhaoBuscado.placa}
                 </h2>
                 <div className="flex flex-wrap gap-4 mt-2">
                   <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                    KM: {caminhaoBuscado.km_atual}
+                    KM: {caminhaoBuscado.km_atual.toLocaleString('pt-BR')}
                   </div>
                   <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
                     Pneus: {caminhaoBuscado.qtd_pneus}
                   </div>
-                  {/* Adicionar informações de carreta e cavalo */}
                   {caminhaoBuscado.numero_carreta && (
                     <div className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
                       Carreta: {caminhaoBuscado.numero_carreta}
@@ -370,7 +427,7 @@ const Home = () => {
                 </Link>
                 <Link
                   to={`/caminhao/${caminhaoBuscado.placa}`}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                  className="px-4 py-2 bg-navy-blue text-white rounded-lg hover:bg-blue-800 transition-colors flex items-center"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -380,7 +437,7 @@ const Home = () => {
               </div>
             </div>
 
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Análise de Gastos</h3>
+            <h3 className="text-lg font-semibold text-navy-blue mb-4">Análise de Gastos</h3>
             
             {gastos.length > 0 ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -403,13 +460,13 @@ const Home = () => {
         )}
 
         {/* Lista de Todos os Caminhões */}
-        {!loading && !error && placa === "" && caminhoes.length > 0 && (
+        {!loading && !error && caminhoesFiltrados.length > 0 && (
           <div className="bg-white rounded-xl shadow-md p-6">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">Frota de Caminhões</h2>
+              <h2 className="text-2xl font-bold text-navy-blue">Frota de Caminhões</h2>
               <Link 
                 to="/cadastro-caminhao" 
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
+                className="px-4 py-2 bg-navy-blue text-white rounded-lg hover:bg-blue-800 transition-colors flex items-center"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -431,13 +488,13 @@ const Home = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {caminhoes.map((c) => (
+                  {caminhoesFiltrados.map((c) => (
                     <tr key={c.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="font-medium text-gray-900">{c.placa}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-gray-600">{c.km_atual}</div>
+                        <div className="text-gray-600">{c.km_atual.toLocaleString('pt-BR')}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
@@ -463,7 +520,7 @@ const Home = () => {
                         </Link>
                         <Link
                           to={`/caminhao/${c.placa}`}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="text-navy-blue hover:text-blue-800"
                         >
                           Detalhes
                         </Link>
@@ -475,7 +532,38 @@ const Home = () => {
             </div>
           </div>
         )}
+
+        {!loading && caminhoesFiltrados.length === 0 && termoBusca && (
+          <div className="bg-white rounded-xl shadow-md p-8 text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum caminhão encontrado</h3>
+            <p className="text-gray-600">Não foram encontrados caminhões com {filtro} contendo "{termoBusca}"</p>
+          </div>
+        )}
       </div>
+
+      <style jsx>{`
+        .text-navy-blue {
+          color: #003366;
+        }
+        .bg-navy-blue {
+          background-color: #003366;
+        }
+        .hover\:bg-blue-800:hover {
+          background-color: #00264d;
+        }
+        .focus\:ring-navy-blue:focus {
+          --tw-ring-color: #003366;
+        }
+        .focus\:border-navy-blue:focus {
+          border-color: #003366;
+        }
+        .border-navy-blue {
+          border-color: #003366;
+        }
+      `}</style>
     </div>
   );
 };

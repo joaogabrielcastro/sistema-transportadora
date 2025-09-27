@@ -336,7 +336,7 @@ const CadastroCaminhao = () => {
               error={errors.km_atual}
               helpText="Quilometragem atual do hodômetro"
             />
-            f
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 label="Número da Carreta"

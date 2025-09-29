@@ -62,7 +62,7 @@ export const caminhoesModel = {
     try {
       console.log("=== INICIANDO DELETE ===");
       console.log("Placa recebida:", placa);
-      
+
       // Verificar se o caminhão existe antes de tentar deletar
       const { data: caminhaoExistente, error: errorBusca } = await supabase
         .from("caminhoes")
@@ -83,7 +83,7 @@ export const caminhoesModel = {
       }
 
       console.log("Caminhão encontrado, tentando deletar...");
-      
+
       // Tentar deletar
       const { data, error } = await supabase
         .from("caminhoes")
@@ -97,17 +97,21 @@ export const caminhoesModel = {
           message: error.message,
           details: error.details,
           hint: error.hint,
-          code: error.code
+          code: error.code,
         });
-        
+
         // Verificar se é erro de foreign key
-        if (error.code === "23503" || error.message.includes("foreign key") || error.message.includes("violates")) {
+        if (
+          error.code === "23503" ||
+          error.message.includes("foreign key") ||
+          error.message.includes("violates")
+        ) {
           throw new Error(
             "Não é possível excluir o caminhão pois existem registros vinculados (gastos, checklists ou pneus). " +
-            "Exclua primeiro todos os registros relacionados ou use a opção de exclusão em cascata."
+              "Exclua primeiro todos os registros relacionados ou use a opção de exclusão em cascata."
           );
         }
-        
+
         throw new Error("Erro ao deletar caminhão: " + error.message);
       }
 

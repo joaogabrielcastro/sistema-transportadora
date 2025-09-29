@@ -173,16 +173,41 @@ const CaminhaoDetail = () => {
     fetchData();
   }, [placa]);
 
-  // Dados para gráficos
+  // Combinar gastos e manutenções para os gráficos
+  const todosRegistros = useMemo(() => {
+    const gastosFormatados = gastos.map(g => ({
+      ...g,
+      tipo: 'gasto',
+      valor: parseFloat(g.valor),
+      data: g.data_gasto,
+      descricao: g.tipos_gastos?.nome_tipo
+    }));
+
+    const manutencoesFormatadas = checklists.map(c => ({
+      ...c,
+      tipo: 'manutencao',
+      valor: c.valor ? parseFloat(c.valor) : 0,
+      data: c.data_manutencao,
+      descricao: c.itens_checklist?.nome_item
+    }));
+
+    return [...gastosFormatados, ...manutencoesFormatadas].sort((a, b) => 
+      new Date(b.data) - new Date(a.data)
+    );
+  }, [gastos, checklists]);
+
+  // Dados para gráficos - usando todos os registros
   const gastosChartData = useMemo(() => {
     const monthlyData = {};
-    gastos.forEach((gasto) => {
-      const date = new Date(gasto.data_gasto);
-      const month = date.toLocaleString("pt-BR", {
-        month: "short",
-        year: "numeric",
-      });
-      monthlyData[month] = (monthlyData[month] || 0) + parseFloat(gasto.valor);
+    todosRegistros.forEach((registro) => {
+      if (registro.valor > 0) {
+        const date = new Date(registro.data);
+        const month = date.toLocaleString("pt-BR", {
+          month: "short",
+          year: "numeric",
+        });
+        monthlyData[month] = (monthlyData[month] || 0) + registro.valor;
+      }
     });
 
     return {
@@ -198,23 +223,23 @@ const CaminhaoDetail = () => {
         },
       ],
     };
-  }, [gastos]);
+  }, [todosRegistros]);
 
   const gastosLineChartData = useMemo(() => {
-    const sortedGastos = [...gastos].sort(
-      (a, b) => new Date(a.data_gasto) - new Date(b.data_gasto)
+    const sortedRegistros = [...todosRegistros].filter(r => r.valor > 0).sort(
+      (a, b) => new Date(a.data) - new Date(b.data)
     );
 
-    const dates = sortedGastos.map((g) => {
-      const date = new Date(g.data_gasto);
+    const dates = sortedRegistros.map((r) => {
+      const date = new Date(r.data);
       return date.toLocaleDateString("pt-BR");
     });
 
     const cumulativeData = [];
     let cumulativeTotal = 0;
 
-    sortedGastos.forEach((gasto) => {
-      cumulativeTotal += parseFloat(gasto.valor);
+    sortedRegistros.forEach((registro) => {
+      cumulativeTotal += registro.valor;
       cumulativeData.push(cumulativeTotal);
     });
 
@@ -237,13 +262,25 @@ const CaminhaoDetail = () => {
         },
       ],
     };
-  }, [gastos]);
+  }, [todosRegistros]);
 
   const gastosPorTipoData = useMemo(() => {
     const tipoData = {};
+    
+    // Processar gastos
     gastos.forEach((gasto) => {
-      const tipo = gasto.tipos_gastos?.nome_tipo || "Outros";
-      tipoData[tipo] = (tipoData[tipo] || 0) + parseFloat(gasto.valor);
+      if (gasto.valor) {
+        const tipo = `Gasto: ${gasto.tipos_gastos?.nome_tipo || 'Outros'}`;
+        tipoData[tipo] = (tipoData[tipo] || 0) + parseFloat(gasto.valor);
+      }
+    });
+
+    // Processar manutenções
+    checklists.forEach((checklist) => {
+      if (checklist.valor) {
+        const tipo = `Manutenção: ${checklist.itens_checklist?.nome_item || 'Outros'}`;
+        tipoData[tipo] = (tipoData[tipo] || 0) + parseFloat(checklist.valor);
+      }
     });
 
     const cores = [
@@ -253,6 +290,8 @@ const CaminhaoDetail = () => {
       "rgba(239, 68, 68, 0.8)",
       "rgba(139, 92, 246, 0.8)",
       "rgba(14, 165, 233, 0.8)",
+      "rgba(236, 72, 153, 0.8)",
+      "rgba(20, 184, 166, 0.8)",
     ];
 
     return {
@@ -260,13 +299,13 @@ const CaminhaoDetail = () => {
       datasets: [
         {
           data: Object.values(tipoData),
-          backgroundColor: cores,
-          borderColor: cores.map((color) => color.replace("0.8", "1")),
+          backgroundColor: cores.slice(0, Object.keys(tipoData).length),
+          borderColor: cores.slice(0, Object.keys(tipoData).length).map((color) => color.replace("0.8", "1")),
           borderWidth: 2,
         },
       ],
     };
-  }, [gastos]);
+  }, [gastos, checklists]);
 
   // Opções dos gráficos
   const chartOptions = {
@@ -327,28 +366,38 @@ const CaminhaoDetail = () => {
     },
   };
 
-  // Estatísticas calculadas
+  // Estatísticas calculadas - incluindo manutenções
   const estatisticas = useMemo(() => {
     const totalGastos = gastos.reduce(
-      (sum, gasto) => sum + parseFloat(gasto.valor),
+      (sum, gasto) => sum + parseFloat(gasto.valor || 0),
       0
     );
-    const gastosUltimoMes = gastos
-      .filter((gasto) => {
-        const gastoDate = new Date(gasto.data_gasto);
+    
+    const totalManutencoesValor = checklists.reduce(
+      (sum, checklist) => sum + parseFloat(checklist.valor || 0),
+      0
+    );
+
+    const totalGeral = totalGastos + totalManutencoesValor;
+
+    const gastosUltimoMes = todosRegistros
+      .filter((registro) => {
+        const registroDate = new Date(registro.data);
         const umMesAtras = new Date();
         umMesAtras.setMonth(umMesAtras.getMonth() - 1);
-        return gastoDate > umMesAtras;
+        return registroDate > umMesAtras && registro.valor > 0;
       })
-      .reduce((sum, gasto) => sum + parseFloat(gasto.valor), 0);
+      .reduce((sum, registro) => sum + registro.valor, 0);
 
     return {
+      totalGeral,
       totalGastos,
+      totalManutencoesValor,
       gastosUltimoMes,
       totalManutencoes: checklists.length,
       totalPneus: pneus.length,
     };
-  }, [gastos, checklists, pneus]);
+  }, [gastos, checklists, pneus, todosRegistros]);
 
   // Ícones
   const icons = {
@@ -465,11 +514,11 @@ const CaminhaoDetail = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard
             icon={icons.money}
-            value={estatisticas.totalGastos.toLocaleString("pt-BR", {
+            value={estatisticas.totalGeral.toLocaleString("pt-BR", {
               style: "currency",
               currency: "BRL",
             })}
-            label="Total em Gastos"
+            label="Total Geral em Gastos"
             color="blue"
           />
           <StatCard
@@ -616,9 +665,19 @@ const CaminhaoDetail = () => {
               <div className="space-y-3">
                 {checklists.slice(0, 5).map((checklist) => (
                   <div key={checklist.id} className="p-3 bg-gray-50 rounded-lg">
-                    <p className="font-medium text-gray-900">
-                      {checklist.itens_checklist?.nome_item}
-                    </p>
+                    <div className="flex justify-between items-start mb-1">
+                      <p className="font-medium text-gray-900">
+                        {checklist.itens_checklist?.nome_item}
+                      </p>
+                      {checklist.valor && (
+                        <p className="font-medium text-gray-900">
+                          R${" "}
+                          {parseFloat(checklist.valor).toLocaleString("pt-BR", {
+                            minimumFractionDigits: 2,
+                          })}
+                        </p>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-500 mb-1">
                       {new Date(checklist.data_manutencao).toLocaleDateString(
                         "pt-BR"
@@ -627,6 +686,11 @@ const CaminhaoDetail = () => {
                     {checklist.observacao && (
                       <p className="text-sm text-gray-600 truncate">
                         {checklist.observacao}
+                      </p>
+                    )}
+                    {checklist.oficina && checklist.oficina !== "N/A" && (
+                      <p className="text-sm text-gray-500">
+                        Oficina: {checklist.oficina}
                       </p>
                     )}
                     <Link

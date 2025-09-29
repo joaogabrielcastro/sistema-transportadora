@@ -105,6 +105,7 @@ const CadastroCaminhao = () => {
     km_atual: "",
     numero_carreta: "",
     numero_cavalo: "",
+    motorista: "", // Novo campo
   });
 
   const [errors, setErrors] = useState({});
@@ -170,6 +171,15 @@ const CadastroCaminhao = () => {
       newErrors.numero_cavalo = "Número do cavalo deve ser 101 ou maior";
     }
 
+    // Validação motorista
+    if (!form.motorista.trim()) {
+      newErrors.motorista = "Nome do motorista é obrigatório";
+    } else if (form.motorista.length < 3) {
+      newErrors.motorista = "Nome do motorista deve ter pelo menos 3 caracteres";
+    } else if (form.motorista.length > 100) {
+      newErrors.motorista = "Nome do motorista não pode ter mais de 100 caracteres";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -196,6 +206,9 @@ const CadastroCaminhao = () => {
     ) {
       // Remove caracteres não numéricos, exceto para campos vazios
       formattedValue = value.replace(/[^0-9]/g, "");
+    } else if (field === "motorista") {
+      // Permite apenas letras, espaços e acentos para nome
+      formattedValue = value.replace(/[^a-zA-ZÀ-ÿ\s]/g, "");
     }
 
     setForm((prev) => ({
@@ -231,6 +244,7 @@ const CadastroCaminhao = () => {
           ? parseInt(form.numero_carreta)
           : null,
         numero_cavalo: form.numero_cavalo ? parseInt(form.numero_cavalo) : null,
+        motorista: form.motorista.trim(), // Novo campo
       };
 
       await axios.post(`${API_URL}/api/caminhoes`, payload);
@@ -242,6 +256,7 @@ const CadastroCaminhao = () => {
         km_atual: "",
         numero_carreta: "",
         numero_cavalo: "",
+        motorista: "", // Reset do novo campo
       });
       setErrors({});
 
@@ -312,6 +327,17 @@ const CadastroCaminhao = () => {
               error={errors.placa}
               helpText="Digite a placa no formato mercosul (ABC1D23)"
             />
+
+            <FormField
+              label="Nome do Motorista"
+              value={form.motorista}
+              onChange={(e) => handleInputChange("motorista", e.target.value)}
+              required
+              placeholder="Ex: João Silva"
+              error={errors.motorista}
+              helpText="Nome completo do motorista responsável"
+            />
+
             <FormField
               label="Quantidade de Pneus"
               type="number"
@@ -324,6 +350,7 @@ const CadastroCaminhao = () => {
               error={errors.qtd_pneus}
               helpText="Número total de pneus do veículo"
             />
+
             <FormField
               label="Quilometragem Atual (KM)"
               type="number"
@@ -363,6 +390,7 @@ const CadastroCaminhao = () => {
                 error={errors.numero_cavalo}
               />
             </div>
+
             {/* Botões de Ação */}
             <div className="flex flex-col sm:flex-row gap-4 mt-8">
               <button

@@ -1,9 +1,47 @@
 // src/pages/EditPneu.jsx
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL;
+
+// Componentes Reutilizáveis
+const LoadingSpinner = () => (
+  <div className="flex justify-center items-center py-20">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+  </div>
+);
+
+const ErrorMessage = ({ message, onRetry }) => (
+  <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6">
+    <div className="flex justify-between items-center">
+      <p className="font-medium">{message}</p>
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="ml-4 bg-red-500 text-white px-4 py-2 rounded text-sm hover:bg-red-600 transition-colors"
+        >
+          Tentar Novamente
+        </button>
+      )}
+    </div>
+  </div>
+);
+
+const SuccessMessage = ({ message }) => (
+  <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-lg mb-6">
+    <div className="flex items-center">
+      <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+        <path
+          fillRule="evenodd"
+          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+          clipRule="evenodd"
+        />
+      </svg>
+      <span className="font-medium">{message}</span>
+    </div>
+  </div>
+);
 
 const EditPneu = () => {
   const { id } = useParams();
@@ -23,10 +61,15 @@ const EditPneu = () => {
   const [posicoes, setPosicoes] = useState([]);
   const [statusList, setStatusList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      
       try {
         const [pneuRes, caminhoesRes, posicoesRes, statusRes] = await Promise.all([
           axios.get(`${API_URL}/api/pneus/${id}`),
@@ -34,23 +77,29 @@ const EditPneu = () => {
           axios.get(`${API_URL}/api/posicoes-pneus`),
           axios.get(`${API_URL}/api/status-pneus`),
         ]);
+
+        const pneuData = pneuRes.data;
+        
         setFormData({
-          caminhao_id: pneuRes.data.caminhao_id,
-          posicao_id: pneuRes.data.posicao_id,
-          status_id: pneuRes.data.status_id,
-          vida_util_km: pneuRes.data.vida_util_km,
-          marca: pneuRes.data.marca,
-          modelo: pneuRes.data.modelo,
-          data_instalacao: pneuRes.data.data_instalacao,
-          km_instalacao: pneuRes.data.km_instalacao,
-          observacao: pneuRes.data.observacao,
+          caminhao_id: pneuData.caminhao_id || '',
+          posicao_id: pneuData.posicao_id || '',
+          status_id: pneuData.status_id || '',
+          vida_util_km: pneuData.vida_util_km || '',
+          marca: pneuData.marca || '',
+          modelo: pneuData.modelo || '',
+          data_instalacao: pneuData.data_instalacao ? 
+            new Date(pneuData.data_instalacao).toISOString().split('T')[0] : '',
+          km_instalacao: pneuData.km_instalacao || '',
+          observacao: pneuData.observacao || '',
         });
+
         setCaminhoes(caminhoesRes.data);
         setPosicoes(posicoesRes.data);
         setStatusList(statusRes.data);
       } catch (err) {
-        setError('Erro ao carregar dados para edição.');
-        console.error(err);
+        console.error('Erro completo:', err);
+        console.error('Resposta do servidor:', err.response?.data);
+        setError('Erro ao carregar dados para edição. Verifique a conexão com o servidor.');
       } finally {
         setLoading(false);
       }
@@ -60,124 +109,274 @@ const EditPneu = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       [name]: value,
-    });
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    setSuccessMessage('');
+
     try {
-      await axios.put(`${API_URL}/api/pneus/${id}`, formData);
-      alert('Pneu atualizado com sucesso!');
-      navigate('/pneus'); // Redireciona de volta para a lista
+      const payload = {
+        caminhao_id: parseInt(formData.caminhao_id),
+        posicao_id: parseInt(formData.posicao_id),
+        status_id: parseInt(formData.status_id),
+        vida_util_km: formData.vida_util_km ? parseInt(formData.vida_util_km) : null,
+        marca: formData.marca,
+        modelo: formData.modelo,
+        data_instalacao: formData.data_instalacao,
+        km_instalacao: formData.km_instalacao ? parseInt(formData.km_instalacao) : null,
+        observacao: formData.observacao,
+      };
+
+      console.log('Enviando dados atualizados do pneu:', payload);
+
+      await axios.put(`${API_URL}/api/pneus/${id}`, payload);
+      
+      setSuccessMessage('Pneu atualizado com sucesso!');
+      
+      // Redireciona após 2 segundos
+      setTimeout(() => {
+        navigate('/pneus');
+      }, 2000);
+
     } catch (err) {
-      setError('Erro ao atualizar o pneu.');
-      console.error(err);
+      console.error('Erro completo:', err);
+      console.error('Resposta do servidor:', err.response?.data);
+      setError(
+        err.response?.data?.error || 
+        err.response?.data?.message || 
+        'Erro ao atualizar o pneu. Verifique os dados e tente novamente.'
+      );
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  if (loading) return <div className="text-center mt-10">Carregando...</div>;
-  if (error) return <div className="text-center mt-10 text-accent">{error}</div>;
+  const caminhaoSelecionado = caminhoes.find(c => c.id === parseInt(formData.caminhao_id));
+
+  if (loading) return <LoadingSpinner />;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-neutral">
-      <div className="card w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6 text-center">Editar Pneu</h1>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="label">Caminhão</label>
-            <select name="caminhao_id" value={formData.caminhao_id} onChange={handleChange} className="input" disabled>
-              {caminhoes.map((c) => (
-                <option key={c.id} value={c.id}>{c.placa}</option>
-              ))}
-            </select>
-          </div>
-          <div className="mb-4">
-            <label className="label">Posição</label>
-            <select name="posicao_id" value={formData.posicao_id} onChange={handleChange} className="input" required>
-              {posicoes.map((p) => (
-                <option key={p.id} value={p.id}>{p.nome_posicao}</option>
-              ))}
-            </select>
-          </div>
-          <div className="mb-4">
-            <label className="label">Status</label>
-            <select name="status_id" value={formData.status_id} onChange={handleChange} className="input" required>
-              {statusList.map((s) => (
-                <option key={s.id} value={s.id}>{s.nome_status}</option>
-              ))}
-            </select>
-          </div>
-          <div className="mb-4">
-            <label className="label">Vida Útil (KM)</label>
-            <input
-              type="number"
-              name="vida_util_km"
-              value={formData.vida_util_km}
-              onChange={handleChange}
-              className="input"
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="label">Marca</label>
-            <input
-              type="text"
-              name="marca"
-              value={formData.marca}
-              onChange={handleChange}
-              className="input"
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="label">Modelo</label>
-            <input
-              type="text"
-              name="modelo"
-              value={formData.modelo}
-              onChange={handleChange}
-              className="input"
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="label">Data de Instalação</label>
-            <input
-              type="date"
-              name="data_instalacao"
-              value={formData.data_instalacao}
-              onChange={handleChange}
-              className="input"
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="label">KM na Instalação</label>
-            <input
-              type="number"
-              name="km_instalacao"
-              value={formData.km_instalacao}
-              onChange={handleChange}
-              className="input"
-              required
-            />
-          </div>
-          <div className="mb-6">
-            <label className="label">Observação</label>
-            <textarea
-              name="observacao"
-              value={formData.observacao}
-              onChange={handleChange}
-              className="input"
-            ></textarea>
-          </div>
-          <button type="submit" className="w-full btn-primary">
-            Salvar Alterações
-          </button>
-        </form>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4 md:p-8">
+      <div className="max-w-2xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center mb-8">
+          <Link 
+            to="/pneus" 
+            className="flex items-center text-blue-600 hover:text-blue-800 mr-4"
+          >
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Voltar para Pneus
+          </Link>
+          <h1 className="text-3xl font-bold text-gray-800">Editar Pneu</h1>
+        </div>
+
+        {/* Mensagens de Feedback */}
+        {error && <ErrorMessage message={error} />}
+        {successMessage && <SuccessMessage message={successMessage} />}
+
+        {/* Formulário */}
+        <div className="bg-white rounded-xl shadow-md p-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Caminhão */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Caminhão
+                </label>
+                <select 
+                  name="caminhao_id" 
+                  value={formData.caminhao_id} 
+                  onChange={handleChange} 
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  disabled
+                >
+                  <option value="">Selecione o Caminhão</option>
+                  {caminhoes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.placa}
+                    </option>
+                  ))}
+                </select>
+                {caminhaoSelecionado && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    KM atual: {caminhaoSelecionado.km_atual?.toLocaleString('pt-BR')}
+                  </p>
+                )}
+              </div>
+
+              {/* Posição */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Posição *
+                </label>
+                <select 
+                  name="posicao_id" 
+                  value={formData.posicao_id} 
+                  onChange={handleChange} 
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  required
+                >
+                  <option value="">Selecione a Posição</option>
+                  {posicoes.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome_posicao}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status *
+                </label>
+                <select 
+                  name="status_id" 
+                  value={formData.status_id} 
+                  onChange={handleChange} 
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  required
+                >
+                  <option value="">Selecione o Status</option>
+                  {statusList.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.nome_status}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Vida Útil */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Vida Útil (KM)
+                </label>
+                <input
+                  type="number"
+                  name="vida_util_km"
+                  value={formData.vida_util_km}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  min="0"
+                  placeholder="Ex: 80000"
+                />
+              </div>
+
+              {/* Marca */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Marca *
+                </label>
+                <input
+                  type="text"
+                  name="marca"
+                  value={formData.marca}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  required
+                  placeholder="Ex: Michelin, Goodyear"
+                />
+              </div>
+
+              {/* Modelo */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Modelo *
+                </label>
+                <input
+                  type="text"
+                  name="modelo"
+                  value={formData.modelo}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  required
+                  placeholder="Ex: XZY-123"
+                />
+              </div>
+
+              {/* Data de Instalação */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Data de Instalação *
+                </label>
+                <input
+                  type="date"
+                  name="data_instalacao"
+                  value={formData.data_instalacao}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  required
+                  max={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+
+              {/* KM na Instalação */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  KM na Instalação *
+                </label>
+                <input
+                  type="number"
+                  name="km_instalacao"
+                  value={formData.km_instalacao}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  min="0"
+                  required
+                  placeholder="KM do veículo na instalação"
+                />
+                {caminhaoSelecionado && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    KM atual do caminhão: {caminhaoSelecionado.km_atual?.toLocaleString('pt-BR')}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Observação */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Observação
+              </label>
+              <textarea
+                name="observacao"
+                value={formData.observacao}
+                onChange={handleChange}
+                rows={4}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                placeholder="Informações adicionais sobre o pneu..."
+              />
+            </div>
+
+            {/* Botões */}
+            <div className="flex gap-4 pt-4">
+              <button
+                type="button"
+                onClick={() => navigate('/pneus')}
+                className="flex-1 bg-gray-500 text-white py-3 px-4 rounded-lg hover:bg-gray-600 transition-colors font-medium"
+                disabled={submitting}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              >
+                {submitting ? 'Salvando...' : 'Salvar Alterações'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

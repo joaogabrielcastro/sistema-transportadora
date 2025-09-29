@@ -9,5 +9,6 @@ router.get('/', caminhoesController.getAllCaminhoes);
 router.get('/:placa', caminhoesController.getByPlaca);
 router.put('/:placa', caminhoesController.updateCaminhao);
 router.delete('/:placa', caminhoesController.deleteCaminhao);
+router.delete('/:placa/cascade', caminhoesController.deleteCaminhaoWithCascade);
 
 export default router;

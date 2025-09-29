@@ -56,6 +56,27 @@ export const caminhoesController = {
       await caminhoesModel.delete(req.params.placa);
       res.status(204).send(); // No Content
     } catch (error) {
+      console.error("Erro ao deletar caminhão:", error);
+      
+      // Se o erro é sobre registros vinculados, retornar 409 (Conflict)
+      if (error.message.includes("registros vinculados")) {
+        return res.status(409).json({ 
+          error: error.message,
+          type: "RELATED_RECORDS_EXIST"
+        });
+      }
+      
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  // Deletar caminhão com cascata (remove todos os registros relacionados)
+  deleteCaminhaoWithCascade: async (req, res) => {
+    try {
+      await caminhoesModel.deleteWithCascade(req.params.placa);
+      res.status(204).send(); // No Content
+    } catch (error) {
+      console.error("Erro ao deletar caminhão com cascata:", error);
       res.status(500).json({ error: error.message });
     }
   },

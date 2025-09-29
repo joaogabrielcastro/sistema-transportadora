@@ -16,6 +16,7 @@ import {
   Filler,
 } from "chart.js";
 import { Bar, Line } from "react-chartjs-2";
+import ConfirmModal from "../components/ConfirmModal"; // Importar o modal
 
 // Configuração do ChartJS
 ChartJS.register(
@@ -56,6 +57,43 @@ const ErrorMessage = ({ message, onRetry }) => (
   </div>
 );
 
+const SuccessMessage = ({ message, onClose }) => (
+  <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded-lg">
+    <div className="flex justify-between items-center">
+      <div className="flex items-center">
+        <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+          <path
+            fillRule="evenodd"
+            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+            clipRule="evenodd"
+          />
+        </svg>
+        <span className="font-medium">{message}</span>
+      </div>
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="text-green-700 hover:text-green-900 ml-4"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      )}
+    </div>
+  </div>
+);
+
 const EmptyState = ({ icon, title, description }) => (
   <div className="bg-white rounded-xl shadow-md p-8 text-center">
     <div className="text-4xl mb-3">{icon}</div>
@@ -82,6 +120,16 @@ const StatCard = ({ icon, value, label, color = "blue" }) => {
       text: "text-purple-800",
       border: "border-purple-500",
     },
+    orange: {
+      bg: "bg-orange-100",
+      text: "text-orange-800",
+      border: "border-orange-500",
+    },
+    red: {
+      bg: "bg-red-100",
+      text: "text-red-800",
+      border: "border-red-500",
+    },
   };
 
   const currentColor = colorClasses[color];
@@ -106,15 +154,27 @@ const Home = () => {
   const [caminhoes, setCaminhoes] = useState([]);
   const [caminhaoBuscado, setCaminhaoBuscado] = useState(null);
   const [gastos, setGastos] = useState([]);
+  const [checklists, setChecklists] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState("");
   const [stats, setStats] = useState({
     totalCaminhoes: 0,
     totalGastos: 0,
+    totalManutencoes: 0,
+    totalGastosManutencoes: 0,
     mediaGastos: 0,
   });
   const [filtro, setFiltro] = useState("placa");
   const [termoBusca, setTermoBusca] = useState("");
+  
+  // Estados para o modal de confirmação
+  // Estados para modais
+  const [modalOpen, setModalOpen] = useState(false);
+  const [caminhaoParaExcluir, setCaminhaoParaExcluir] = useState(null);
+  const [excluindo, setExcluindo] = useState(false);
+  const [showCascadeModal, setShowCascadeModal] = useState(false);
+  const [relatedRecordsInfo, setRelatedRecordsInfo] = useState("");
 
   // Ícones reutilizáveis
   const icons = {
@@ -166,6 +226,28 @@ const Home = () => {
         />
       </svg>
     ),
+    tools: (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-6 w-6 text-navy-blue"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+        />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+        />
+      </svg>
+    ),
   };
 
   // Busca todos os dados
@@ -174,24 +256,39 @@ const Home = () => {
     setError(null);
 
     try {
-      const [caminhoesRes, gastosRes] = await Promise.all([
+      const [caminhoesRes, gastosRes, checklistsRes] = await Promise.all([
         axios.get(`${API_URL}/api/caminhoes`),
         axios.get(`${API_URL}/api/gastos`),
+        axios.get(`${API_URL}/api/checklist`),
       ]);
 
       setCaminhoes(caminhoesRes.data);
+      setGastos(gastosRes.data);
+      setChecklists(checklistsRes.data);
 
-      const totalGastos = gastosRes.data.reduce(
-        (total, gasto) => total + parseFloat(gasto.valor),
+      // Calcular totais de gastos
+      const totalGastosFinanceiros = gastosRes.data.reduce(
+        (total, gasto) => total + parseFloat(gasto.valor || 0),
         0
       );
-      const mediaGastos =
-        gastosRes.data.length > 0 ? totalGastos / gastosRes.data.length : 0;
+
+      const totalGastosManutencoes = checklistsRes.data.reduce(
+        (total, checklist) => total + parseFloat(checklist.valor || 0),
+        0
+      );
+
+      const totalGeral = totalGastosFinanceiros + totalGastosManutencoes;
+
+      // Calcular média de gastos
+      const totalRegistros = gastosRes.data.length + checklistsRes.data.length;
+      const mediaGastos = totalRegistros > 0 ? totalGeral / totalRegistros : 0;
 
       setStats({
         totalCaminhoes: caminhoesRes.data.length,
-        totalGastos,
-        mediaGastos,
+        totalGastos: totalGeral,
+        totalManutencoes: checklistsRes.data.length,
+        totalGastosManutencoes: totalGastosManutencoes,
+        mediaGastos: mediaGastos,
       });
     } catch (err) {
       setError("Erro ao carregar dados iniciais.");
@@ -223,6 +320,8 @@ const Home = () => {
           return String(caminhao.numero_cavalo || "")
             .toLowerCase()
             .includes(termo);
+        case "motorista":
+          return caminhao.motorista?.toLowerCase().includes(termo);
         default:
           return true;
       }
@@ -236,6 +335,7 @@ const Home = () => {
     if (!placa.trim()) {
       setCaminhaoBuscado(null);
       setGastos([]);
+      setChecklists([]);
       return;
     }
 
@@ -243,33 +343,142 @@ const Home = () => {
     setError(null);
 
     try {
-      const [caminhaoResponse, gastosResponse] = await Promise.all([
+      const [caminhaoResponse, gastosResponse, checklistsResponse] = await Promise.all([
         axios.get(`${API_URL}/api/caminhoes/${placa.trim()}`),
         axios.get(`${API_URL}/api/gastos/caminhao/${placa.trim()}`),
+        axios.get(`${API_URL}/api/checklist/caminhao/${placa.trim()}`),
       ]);
 
       setCaminhaoBuscado(caminhaoResponse.data);
       setGastos(gastosResponse.data);
+      setChecklists(checklistsResponse.data);
     } catch (err) {
       setError("Caminhão não encontrado ou erro na busca.");
       console.error("Erro na busca:", err);
       setCaminhaoBuscado(null);
       setGastos([]);
+      setChecklists([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Dados dos gráficos memoizados
+  // Função para abrir modal de confirmação de exclusão
+  const handleOpenDeleteModal = (caminhao) => {
+    setCaminhaoParaExcluir(caminhao);
+    setModalOpen(true);
+  };
+
+  // Função para fechar modal
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setCaminhaoParaExcluir(null);
+  };
+
+  // Função para excluir caminhão
+  const handleDeleteCaminhao = async () => {
+    if (!caminhaoParaExcluir) return;
+
+    setExcluindo(true);
+    try {
+      await axios.delete(`${API_URL}/api/caminhoes/${caminhaoParaExcluir.placa}`);
+      
+      setSuccessMessage(`Caminhão ${caminhaoParaExcluir.placa} excluído com sucesso!`);
+      
+      // Atualizar a lista de caminhões
+      setCaminhoes(prev => prev.filter(c => c.placa !== caminhaoParaExcluir.placa));
+      
+      // Fechar modal
+      handleCloseModal();
+      
+      // Recarregar estatísticas
+      fetchAllData();
+
+    } catch (err) {
+      console.error("Erro ao excluir caminhão:", err);
+      
+      // Verificar se é erro de registros relacionados
+      if (err.response?.status === 409 && err.response?.data?.type === "RELATED_RECORDS_EXIST") {
+        setRelatedRecordsInfo(err.response.data.error);
+        setShowCascadeModal(true);
+        setModalOpen(false); // Fechar o modal de confirmação simples
+      } else {
+        setError("Erro ao excluir caminhão. Tente novamente.");
+      }
+    } finally {
+      setExcluindo(false);
+    }
+  };
+
+  // Função para excluir caminhão com cascata (incluindo registros relacionados)
+  const handleDeleteCaminhaoWithCascade = async () => {
+    if (!caminhaoParaExcluir) return;
+
+    setExcluindo(true);
+    try {
+      await axios.delete(`${API_URL}/api/caminhoes/${caminhaoParaExcluir.placa}/cascade`);
+      
+      setSuccessMessage(`Caminhão ${caminhaoParaExcluir.placa} e todos os registros relacionados foram excluídos com sucesso!`);
+      
+      // Atualizar a lista de caminhões
+      setCaminhoes(prev => prev.filter(c => c.placa !== caminhaoParaExcluir.placa));
+      
+      // Fechar modais
+      setShowCascadeModal(false);
+      setCaminhaoParaExcluir(null);
+      
+      // Recarregar estatísticas
+      fetchAllData();
+
+    } catch (err) {
+      console.error("Erro ao excluir caminhão com cascata:", err);
+      setError("Erro ao excluir caminhão e registros relacionados. Tente novamente.");
+    } finally {
+      setExcluindo(false);
+    }
+  };
+
+  const handleCloseCascadeModal = () => {
+    setShowCascadeModal(false);
+    setRelatedRecordsInfo("");
+    setCaminhaoParaExcluir(null);
+  };
+
+  // Combinar gastos e manutenções para os gráficos
+  const todosRegistros = useMemo(() => {
+    const gastosFormatados = gastos.map(g => ({
+      ...g,
+      tipo: 'gasto',
+      valor: parseFloat(g.valor || 0),
+      data: g.data_gasto,
+      descricao: g.tipos_gastos?.nome_tipo
+    }));
+
+    const manutencoesFormatadas = checklists.map(c => ({
+      ...c,
+      tipo: 'manutencao',
+      valor: c.valor ? parseFloat(c.valor) : 0,
+      data: c.data_manutencao,
+      descricao: c.itens_checklist?.nome_item
+    }));
+
+    return [...gastosFormatados, ...manutencoesFormatadas].sort((a, b) => 
+      new Date(b.data) - new Date(a.data)
+    );
+  }, [gastos, checklists]);
+
+  // Dados dos gráficos memoizados - usando todos os registros
   const gastosChartData = useMemo(() => {
     const monthlyData = {};
-    gastos.forEach((gasto) => {
-      const date = new Date(gasto.data_gasto);
-      const month = date.toLocaleString("pt-BR", {
-        month: "short",
-        year: "numeric",
-      });
-      monthlyData[month] = (monthlyData[month] || 0) + parseFloat(gasto.valor);
+    todosRegistros.forEach((registro) => {
+      if (registro.valor > 0) {
+        const date = new Date(registro.data);
+        const month = date.toLocaleString("pt-BR", {
+          month: "short",
+          year: "numeric",
+        });
+        monthlyData[month] = (monthlyData[month] || 0) + registro.valor;
+      }
     });
 
     return {
@@ -285,22 +494,22 @@ const Home = () => {
         },
       ],
     };
-  }, [gastos]);
+  }, [todosRegistros]);
 
   const gastosLineChartData = useMemo(() => {
-    const sortedGastos = [...gastos].sort(
-      (a, b) => new Date(a.data_gasto) - new Date(b.data_gasto)
-    );
+    const sortedRegistros = [...todosRegistros]
+      .filter(r => r.valor > 0)
+      .sort((a, b) => new Date(a.data) - new Date(b.data));
 
-    const dates = sortedGastos.map((g) =>
-      new Date(g.data_gasto).toLocaleDateString("pt-BR")
+    const dates = sortedRegistros.map((r) =>
+      new Date(r.data).toLocaleDateString("pt-BR")
     );
 
     const cumulativeData = [];
     let cumulativeTotal = 0;
 
-    sortedGastos.forEach((gasto) => {
-      cumulativeTotal += parseFloat(gasto.valor);
+    sortedRegistros.forEach((registro) => {
+      cumulativeTotal += registro.valor;
       cumulativeData.push(cumulativeTotal);
     });
 
@@ -323,7 +532,7 @@ const Home = () => {
         },
       ],
     };
-  }, [gastos]);
+  }, [todosRegistros]);
 
   // Opções dos gráficos
   const chartOptions = {
@@ -392,11 +601,19 @@ const Home = () => {
         {/* Error State */}
         {error && <ErrorMessage message={error} onRetry={fetchAllData} />}
 
+        {/* Success Message */}
+        {successMessage && (
+          <SuccessMessage 
+            message={successMessage} 
+            onClose={() => setSuccessMessage("")} 
+          />
+        )}
+
         {/* Conteúdo Principal */}
         {!loading && !error && (
           <>
             {/* Cards de Estatísticas */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <StatCard
                 icon={icons.truck}
                 value={stats.totalCaminhoes}
@@ -412,12 +629,18 @@ const Home = () => {
                 color="green"
               />
               <StatCard
+                icon={icons.tools}
+                value={stats.totalManutencoes}
+                label="Manutenções realizadas"
+                color="purple"
+              />
+              <StatCard
                 icon={icons.chart}
                 value={`R$ ${stats.mediaGastos.toLocaleString("pt-BR", {
                   minimumFractionDigits: 2,
                 })}`}
                 label="Média por gasto"
-                color="purple"
+                color="orange"
               />
             </div>
 
@@ -437,6 +660,7 @@ const Home = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-navy-blue focus:border-navy-blue transition-colors"
                   >
                     <option value="placa">Placa</option>
+                    <option value="motorista">Motorista</option>
                     <option value="carreta">Nº Carreta</option>
                     <option value="cavalo">Nº Cavalo</option>
                   </select>
@@ -466,18 +690,23 @@ const Home = () => {
                     </h2>
                     <div className="flex flex-wrap gap-2 mt-2">
                       <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                        KM: {caminhaoBuscado.km_atual.toLocaleString("pt-BR")}
+                        KM: {caminhaoBuscado.km_atual?.toLocaleString("pt-BR") || 0}
                       </span>
                       <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
                         Pneus: {caminhaoBuscado.qtd_pneus}
                       </span>
-                      {caminhaoBuscado.numero_carreta && (
+                      {caminhaoBuscado.motorista && (
                         <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
+                          Motorista: {caminhaoBuscado.motorista}
+                        </span>
+                      )}
+                      {caminhaoBuscado.numero_carreta && (
+                        <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-medium">
                           Carreta: {caminhaoBuscado.numero_carreta}
                         </span>
                       )}
                       {caminhaoBuscado.numero_cavalo && (
-                        <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-medium">
+                        <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium">
                           Cavalo: {caminhaoBuscado.numero_cavalo}
                         </span>
                       )}
@@ -498,6 +727,18 @@ const Home = () => {
                     </Link>
                   </div>
                 </div>
+
+                {/* Gráficos do caminhão buscado */}
+                {todosRegistros.length > 0 && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                    <div className="h-80">
+                      <Bar options={chartOptions} data={gastosChartData} />
+                    </div>
+                    <div className="h-80">
+                      <Line options={lineChartOptions} data={gastosLineChartData} />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -527,6 +768,7 @@ const Home = () => {
                       <tr>
                         {[
                           "Placa",
+                          "Motorista",
                           "KM Atual",
                           "Qtd. Pneus",
                           "Carreta",
@@ -551,8 +793,19 @@ const Home = () => {
                           <td className="px-6 py-4 font-medium text-gray-900">
                             {caminhao.placa}
                           </td>
+                          <td className="px-6 py-4">
+                            {caminhao.motorista ? (
+                              <span className="px-3 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                                {caminhao.motorista}
+                              </span>
+                            ) : (
+                              <span className="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
+                                Não definido
+                              </span>
+                            )}
+                          </td>
                           <td className="px-6 py-4 text-gray-600">
-                            {caminhao.km_atual.toLocaleString("pt-BR")}
+                            {caminhao.km_atual?.toLocaleString("pt-BR") || 0}
                           </td>
                           <td className="px-6 py-4">
                             <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
@@ -582,6 +835,12 @@ const Home = () => {
                             >
                               Detalhes
                             </Link>
+                            <button
+                              onClick={() => handleOpenDeleteModal(caminhao)}
+                              className="text-red-600 hover:text-red-900 text-sm font-medium"
+                            >
+                              Excluir
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -602,6 +861,40 @@ const Home = () => {
             </div>
           </>
         )}
+
+        {/* Modal de Confirmação de Exclusão */}
+        <ConfirmModal
+          isOpen={modalOpen}
+          onClose={handleCloseModal}
+          onConfirm={handleDeleteCaminhao}
+          title="Excluir Caminhão"
+          message={`Tem certeza que deseja excluir o caminhão ${caminhaoParaExcluir?.placa}? Esta ação não pode ser desfeita.`}
+          confirmText={excluindo ? "Excluindo..." : "Excluir"}
+          cancelText="Cancelar"
+        />
+
+        {/* Modal de Confirmação de Exclusão com Cascata */}
+        <ConfirmModal
+          isOpen={showCascadeModal}
+          onClose={handleCloseCascadeModal}
+          onConfirm={handleDeleteCaminhaoWithCascade}
+          title="Registros Relacionados Encontrados"
+          message={
+            <div>
+              <p className="mb-3">{relatedRecordsInfo}</p>
+              <p className="mb-3 font-medium text-orange-600">
+                ⚠️ Você pode excluir o caminhão junto com TODOS os registros relacionados, 
+                mas essa ação é <strong>irreversível</strong>.
+              </p>
+              <p className="text-sm text-gray-600">
+                Deseja continuar com a exclusão completa?
+              </p>
+            </div>
+          }
+          confirmText={excluindo ? "Excluindo tudo..." : "Excluir Tudo"}
+          cancelText="Cancelar"
+          confirmButtonStyle="bg-red-600 hover:bg-red-700"
+        />
       </div>
     </div>
   );

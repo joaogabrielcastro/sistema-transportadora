@@ -16,7 +16,7 @@ import {
   Filler,
 } from "chart.js";
 import { Bar, Line } from "react-chartjs-2";
-import ConfirmModal from "../components/ConfirmModal"; // Importar o modal
+import ConfirmModal from "../components/ConfirmModal";
 
 // Configuração do ChartJS
 ChartJS.register(
@@ -167,14 +167,11 @@ const Home = () => {
   });
   const [filtro, setFiltro] = useState("placa");
   const [termoBusca, setTermoBusca] = useState("");
-  
+
   // Estados para o modal de confirmação
-  // Estados para modais
   const [modalOpen, setModalOpen] = useState(false);
   const [caminhaoParaExcluir, setCaminhaoParaExcluir] = useState(null);
   const [excluindo, setExcluindo] = useState(false);
-  const [showCascadeModal, setShowCascadeModal] = useState(false);
-  const [relatedRecordsInfo, setRelatedRecordsInfo] = useState("");
 
   // Ícones reutilizáveis
   const icons = {
@@ -343,11 +340,12 @@ const Home = () => {
     setError(null);
 
     try {
-      const [caminhaoResponse, gastosResponse, checklistsResponse] = await Promise.all([
-        axios.get(`${API_URL}/api/caminhoes/${placa.trim()}`),
-        axios.get(`${API_URL}/api/gastos/caminhao/${placa.trim()}`),
-        axios.get(`${API_URL}/api/checklist/caminhao/${placa.trim()}`),
-      ]);
+      const [caminhaoResponse, gastosResponse, checklistsResponse] =
+        await Promise.all([
+          axios.get(`${API_URL}/api/caminhoes/${placa.trim()}`),
+          axios.get(`${API_URL}/api/gastos/caminhao/${placa.trim()}`),
+          axios.get(`${API_URL}/api/checklist/caminhao/${placa.trim()}`),
+        ]);
 
       setCaminhaoBuscado(caminhaoResponse.data);
       setGastos(gastosResponse.data);
@@ -360,6 +358,33 @@ const Home = () => {
       setChecklists([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Função para verificar dependências
+  const verificarDependencias = async (placa) => {
+    try {
+      const [gastosRes, checklistsRes, pneusRes] = await Promise.all([
+        axios.get(`${API_URL}/api/gastos/caminhao/${placa}`),
+        axios.get(`${API_URL}/api/checklist/caminhao/${placa}`),
+        axios.get(`${API_URL}/api/pneus/caminhao/${placa}`),
+      ]);
+
+      const temGastos = gastosRes.data.length > 0;
+      const temManutencoes = checklistsRes.data.length > 0;
+      const temPneus = pneusRes.data.length > 0;
+
+      return {
+        temDependencias: temGastos || temManutencoes || temPneus,
+        detalhes: {
+          gastos: temGastos,
+          manutencoes: temManutencoes,
+          pneus: temPneus,
+        },
+      };
+    } catch (err) {
+      console.error("Erro ao verificar dependências:", err);
+      return { temDependencias: true, erro: true };
     }
   };
 
@@ -381,89 +406,65 @@ const Home = () => {
 
     setExcluindo(true);
     try {
-      await axios.delete(`${API_URL}/api/caminhoes/${caminhaoParaExcluir.placa}`);
-      
-      setSuccessMessage(`Caminhão ${caminhaoParaExcluir.placa} excluído com sucesso!`);
-      
+      await axios.delete(
+        `${API_URL}/api/caminhoes/${caminhaoParaExcluir.placa}`
+      );
+
+      setSuccessMessage(
+        `Caminhão ${caminhaoParaExcluir.placa} excluído com sucesso!`
+      );
+
       // Atualizar a lista de caminhões
-      setCaminhoes(prev => prev.filter(c => c.placa !== caminhaoParaExcluir.placa));
-      
+      setCaminhoes((prev) =>
+        prev.filter((c) => c.placa !== caminhaoParaExcluir.placa)
+      );
+
       // Fechar modal
       handleCloseModal();
-      
+
       // Recarregar estatísticas
       fetchAllData();
-
     } catch (err) {
-      console.error("Erro ao excluir caminhão:", err);
-      
-      // Verificar se é erro de registros relacionados
-      if (err.response?.status === 409 && err.response?.data?.type === "RELATED_RECORDS_EXIST") {
-        setRelatedRecordsInfo(err.response.data.error);
-        setShowCascadeModal(true);
-        setModalOpen(false); // Fechar o modal de confirmação simples
+      console.error("Erro completo ao excluir caminhão:", err);
+
+      let errorMessage = "Erro ao excluir caminhão. ";
+
+      if (err.response?.status === 500) {
+        errorMessage +=
+          "Existem registros vinculados (gastos, manutenções ou pneus). Delete primeiro os registros associados.";
+      } else if (err.response?.status === 404) {
+        errorMessage += "Caminhão não encontrado.";
       } else {
-        setError("Erro ao excluir caminhão. Tente novamente.");
+        errorMessage += "Tente novamente mais tarde.";
       }
+
+      setError(errorMessage);
     } finally {
       setExcluindo(false);
+      handleCloseModal();
     }
-  };
-
-  // Função para excluir caminhão com cascata (incluindo registros relacionados)
-  const handleDeleteCaminhaoWithCascade = async () => {
-    if (!caminhaoParaExcluir) return;
-
-    setExcluindo(true);
-    try {
-      await axios.delete(`${API_URL}/api/caminhoes/${caminhaoParaExcluir.placa}/cascade`);
-      
-      setSuccessMessage(`Caminhão ${caminhaoParaExcluir.placa} e todos os registros relacionados foram excluídos com sucesso!`);
-      
-      // Atualizar a lista de caminhões
-      setCaminhoes(prev => prev.filter(c => c.placa !== caminhaoParaExcluir.placa));
-      
-      // Fechar modais
-      setShowCascadeModal(false);
-      setCaminhaoParaExcluir(null);
-      
-      // Recarregar estatísticas
-      fetchAllData();
-
-    } catch (err) {
-      console.error("Erro ao excluir caminhão com cascata:", err);
-      setError("Erro ao excluir caminhão e registros relacionados. Tente novamente.");
-    } finally {
-      setExcluindo(false);
-    }
-  };
-
-  const handleCloseCascadeModal = () => {
-    setShowCascadeModal(false);
-    setRelatedRecordsInfo("");
-    setCaminhaoParaExcluir(null);
   };
 
   // Combinar gastos e manutenções para os gráficos
   const todosRegistros = useMemo(() => {
-    const gastosFormatados = gastos.map(g => ({
+    const gastosFormatados = gastos.map((g) => ({
       ...g,
-      tipo: 'gasto',
+      tipo: "gasto",
       valor: parseFloat(g.valor || 0),
       data: g.data_gasto,
-      descricao: g.tipos_gastos?.nome_tipo
+      descricao: g.tipos_gastos?.nome_tipo,
     }));
 
-    const manutencoesFormatadas = checklists.map(c => ({
+    const manutencoesFormatadas = checklists.map((c) => ({
       ...c,
-      tipo: 'manutencao',
+      tipo: "manutencao",
       valor: c.valor ? parseFloat(c.valor) : 0,
       data: c.data_manutencao,
-      descricao: c.itens_checklist?.nome_item
+      descricao: c.itens_checklist?.nome_item,
     }));
 
-    return [...gastosFormatados, ...manutencoesFormatadas].sort((a, b) => 
-      new Date(b.data) - new Date(a.data)
+    return [...gastosFormatados, ...manutencoesFormatadas].sort(
+      (a, b) => new Date(b.data) - new Date(a.data)
     );
   }, [gastos, checklists]);
 
@@ -498,7 +499,7 @@ const Home = () => {
 
   const gastosLineChartData = useMemo(() => {
     const sortedRegistros = [...todosRegistros]
-      .filter(r => r.valor > 0)
+      .filter((r) => r.valor > 0)
       .sort((a, b) => new Date(a.data) - new Date(b.data));
 
     const dates = sortedRegistros.map((r) =>
@@ -603,9 +604,9 @@ const Home = () => {
 
         {/* Success Message */}
         {successMessage && (
-          <SuccessMessage 
-            message={successMessage} 
-            onClose={() => setSuccessMessage("")} 
+          <SuccessMessage
+            message={successMessage}
+            onClose={() => setSuccessMessage("")}
           />
         )}
 
@@ -690,7 +691,8 @@ const Home = () => {
                     </h2>
                     <div className="flex flex-wrap gap-2 mt-2">
                       <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                        KM: {caminhaoBuscado.km_atual?.toLocaleString("pt-BR") || 0}
+                        KM:{" "}
+                        {caminhaoBuscado.km_atual?.toLocaleString("pt-BR") || 0}
                       </span>
                       <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
                         Pneus: {caminhaoBuscado.qtd_pneus}
@@ -735,7 +737,10 @@ const Home = () => {
                       <Bar options={chartOptions} data={gastosChartData} />
                     </div>
                     <div className="h-80">
-                      <Line options={lineChartOptions} data={gastosLineChartData} />
+                      <Line
+                        options={lineChartOptions}
+                        data={gastosLineChartData}
+                      />
                     </div>
                   </div>
                 )}
@@ -822,25 +827,27 @@ const Home = () => {
                               {caminhao.numero_cavalo || "-"}
                             </span>
                           </td>
-                          <td className="px-6 py-4 space-x-2">
-                            <Link
-                              to={`/caminhao/editar/${caminhao.placa}`}
-                              className="text-yellow-600 hover:text-yellow-900 text-sm font-medium"
-                            >
-                              Editar
-                            </Link>
-                            <Link
-                              to={`/caminhao/${caminhao.placa}`}
-                              className="text-navy-blue hover:text-blue-800 text-sm font-medium"
-                            >
-                              Detalhes
-                            </Link>
-                            <button
-                              onClick={() => handleOpenDeleteModal(caminhao)}
-                              className="text-red-600 hover:text-red-900 text-sm font-medium"
-                            >
-                              Excluir
-                            </button>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex gap-2">
+                              <Link
+                                to={`/caminhao/editar/${caminhao.placa}`}
+                                className="px-3 py-1 rounded-md bg-yellow-100 text-yellow-700 hover:bg-yellow-200 text-sm font-medium"
+                              >
+                                Editar
+                              </Link>
+                              <Link
+                                to={`/caminhao/${caminhao.placa}`}
+                                className="px-3 py-1 rounded-md bg-blue-100 text-blue-700 hover:bg-blue-200 text-sm font-medium"
+                              >
+                                Detalhes
+                              </Link>
+                              <button
+                                onClick={() => handleDelete(caminhao.placa)}
+                                className="px-3 py-1 rounded-md bg-red-100 text-red-700 hover:bg-red-200 text-sm font-medium"
+                              >
+                                Excluir
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -871,29 +878,7 @@ const Home = () => {
           message={`Tem certeza que deseja excluir o caminhão ${caminhaoParaExcluir?.placa}? Esta ação não pode ser desfeita.`}
           confirmText={excluindo ? "Excluindo..." : "Excluir"}
           cancelText="Cancelar"
-        />
-
-        {/* Modal de Confirmação de Exclusão com Cascata */}
-        <ConfirmModal
-          isOpen={showCascadeModal}
-          onClose={handleCloseCascadeModal}
-          onConfirm={handleDeleteCaminhaoWithCascade}
-          title="Registros Relacionados Encontrados"
-          message={
-            <div>
-              <p className="mb-3">{relatedRecordsInfo}</p>
-              <p className="mb-3 font-medium text-orange-600">
-                ⚠️ Você pode excluir o caminhão junto com TODOS os registros relacionados, 
-                mas essa ação é <strong>irreversível</strong>.
-              </p>
-              <p className="text-sm text-gray-600">
-                Deseja continuar com a exclusão completa?
-              </p>
-            </div>
-          }
-          confirmText={excluindo ? "Excluindo tudo..." : "Excluir Tudo"}
-          cancelText="Cancelar"
-          confirmButtonStyle="bg-red-600 hover:bg-red-700"
+          warning={true}
         />
       </div>
     </div>

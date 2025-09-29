@@ -57,15 +57,15 @@ export const caminhoesController = {
       res.status(204).send(); // No Content
     } catch (error) {
       console.error("Erro ao deletar caminhão:", error);
-      
+
       // Se o erro é sobre registros vinculados, retornar 409 (Conflict)
       if (error.message.includes("registros vinculados")) {
-        return res.status(409).json({ 
+        return res.status(409).json({
           error: error.message,
-          type: "RELATED_RECORDS_EXIST"
+          type: "RELATED_RECORDS_EXIST",
         });
       }
-      
+
       res.status(500).json({ error: error.message });
     }
   },

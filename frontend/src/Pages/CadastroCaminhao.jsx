@@ -98,15 +98,69 @@ const FormField = ({
   </div>
 );
 
+// NOVO COMPONENTE para campo de carreta (AGORA DEPOIS do FormField)
+const CarretaField = ({
+  label,
+  value,
+  onChange,
+  onRemove,
+  showRemove,
+  error,
+  placeholder = "Número da carreta",
+}) => (
+  <div className="mb-4">
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      {label}
+    </label>
+    <div className="flex gap-2">
+      <input
+        type="text"
+        value={value}
+        onChange={onChange}
+        className={`flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:border-blue-500 transition-colors ${
+          error
+            ? "border-red-300 focus:ring-red-500"
+            : "border-gray-300 focus:ring-blue-500"
+        }`}
+        placeholder={placeholder}
+      />
+      {showRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
+          </svg>
+        </button>
+      )}
+    </div>
+    {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
+  </div>
+);
+
 const CadastroCaminhao = () => {
   const [form, setForm] = useState({
     placa: "",
     qtd_pneus: "",
     km_atual: "",
-    numero_carreta: "",
     numero_cavalo: "",
-    motorista: "", // Novo campo
+    motorista: "",
   });
+
+  // NOVO ESTADO para carretas
+  const [carretas, setCarretas] = useState([""]); // Começa com 1 campo vazio
 
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -116,7 +170,6 @@ const CadastroCaminhao = () => {
 
   const API_URL = import.meta.env.VITE_API_URL;
 
-  // Limpar mensagens após tempo
   useEffect(() => {
     if (success || error) {
       const timer = setTimeout(() => {
@@ -127,66 +180,64 @@ const CadastroCaminhao = () => {
     }
   }, [success, error]);
 
-  // Validar placa no formato brasileiro
   const validatePlaca = (placa) => {
     const placaRegex = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/i;
     return placaRegex.test(placa.replace(/-/g, ""));
   };
 
-  // Validar formulário
+  // NOVA VALIDAÇÃO para carretas
   const validateForm = () => {
     const newErrors = {};
 
-    // Validação da placa
     if (!form.placa.trim()) {
       newErrors.placa = "Placa é obrigatória";
     } else if (!validatePlaca(form.placa)) {
       newErrors.placa = "Formato de placa inválido (ex: ABC1D23 ou ABC-1D23)";
     }
 
-    // Validação quantidade de pneus
     if (!form.qtd_pneus || parseInt(form.qtd_pneus) <= 0) {
       newErrors.qtd_pneus = "Quantidade de pneus deve ser maior que zero";
-    } else if (parseInt(form.qtd_pneus) > 20) {
-      newErrors.qtd_pneus = "Quantidade de pneus não pode ser maior que 20";
     }
 
-    // Validação KM atual
     if (!form.km_atual || parseInt(form.km_atual) < 0) {
       newErrors.km_atual = "KM atual deve ser um número positivo";
     } else if (parseInt(form.km_atual) > 5000000) {
       newErrors.km_atual = "KM atual não pode ser maior que 5.000.000";
     }
 
-    // Validação número da carreta
-    if (
-      form.numero_carreta &&
-      (parseInt(form.numero_carreta) < 0 || parseInt(form.numero_carreta) > 100)
-    ) {
-      newErrors.numero_carreta = "Número da carreta deve estar entre 0 e 100";
+    // Validação das carretas
+    const carretasPreenchidas = carretas.filter(
+      (carreta) => carreta.trim() !== ""
+    );
+    if (carretasPreenchidas.length > 0) {
+      carretasPreenchidas.forEach((carreta, index) => {
+        if (!/^[0-9]+$/.test(carreta)) {
+          newErrors[`carreta_${index}`] = "Apenas números são permitidos";
+        } else if (parseInt(carreta) < 0 || parseInt(carreta) > 100) {
+          newErrors[`carreta_${index}`] = "Número deve estar entre 0 e 100";
+        }
+      });
     }
 
-    // Validação número do cavalo
     if (form.numero_cavalo && parseInt(form.numero_cavalo) < 101) {
       newErrors.numero_cavalo = "Número do cavalo deve ser 101 ou maior";
     }
 
-    // Validação motorista
     if (!form.motorista.trim()) {
       newErrors.motorista = "Nome do motorista é obrigatório";
     } else if (form.motorista.length < 3) {
-      newErrors.motorista = "Nome do motorista deve ter pelo menos 3 caracteres";
+      newErrors.motorista =
+        "Nome do motorista deve ter pelo menos 3 caracteres";
     } else if (form.motorista.length > 100) {
-      newErrors.motorista = "Nome do motorista não pode ter mais de 100 caracteres";
+      newErrors.motorista =
+        "Nome do motorista não pode ter mais de 100 caracteres";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Formatadores de input
   const formatPlaca = (value) => {
-    // Limpa, coloca em maiúsculas e limita a 7 caracteres
     const cleaned = value
       .replace(/[^a-zA-Z0-9]/g, "")
       .toUpperCase()
@@ -199,15 +250,9 @@ const CadastroCaminhao = () => {
 
     if (field === "placa") {
       formattedValue = formatPlaca(value);
-    } else if (
-      ["qtd_pneus", "km_atual", "numero_carreta", "numero_cavalo"].includes(
-        field
-      )
-    ) {
-      // Remove caracteres não numéricos, exceto para campos vazios
+    } else if (["qtd_pneus", "km_atual", "numero_cavalo"].includes(field)) {
       formattedValue = value.replace(/[^0-9]/g, "");
     } else if (field === "motorista") {
-      // Permite apenas letras, espaços e acentos para nome
       formattedValue = value.replace(/[^a-zA-ZÀ-ÿ\s]/g, "");
     }
 
@@ -216,12 +261,48 @@ const CadastroCaminhao = () => {
       [field]: formattedValue,
     }));
 
-    // Limpar erro do campo quando usuário começar a digitar
     if (errors[field]) {
       setErrors((prev) => ({
         ...prev,
         [field]: "",
       }));
+    }
+  };
+
+  // NOVAS FUNÇÕES para gerenciar carretas
+  const handleCarretaChange = (index, value) => {
+    const newCarretas = [...carretas];
+    // Permite apenas números
+    newCarretas[index] = value.replace(/[^0-9]/g, "");
+    setCarretas(newCarretas);
+
+    // Limpa erro específico da carreta
+    if (errors[`carreta_${index}`]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[`carreta_${index}`];
+        return newErrors;
+      });
+    }
+  };
+
+  const addCarreta = () => {
+    if (carretas.length < 2) {
+      setCarretas([...carretas, ""]);
+    }
+  };
+
+  const removeCarreta = (index) => {
+    if (carretas.length > 1) {
+      const newCarretas = carretas.filter((_, i) => i !== index);
+      setCarretas(newCarretas);
+
+      // Limpa erro da carreta removida
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[`carreta_${index}`];
+        return newErrors;
+      });
     }
   };
 
@@ -236,40 +317,51 @@ const CadastroCaminhao = () => {
     }
 
     try {
+      const carretasPreenchidas = carretas.filter(
+        (carreta) => carreta.trim() !== ""
+      );
+
       const payload = {
         placa: form.placa.replace(/-/g, ""),
         qtd_pneus: parseInt(form.qtd_pneus),
         km_atual: parseInt(form.km_atual),
-        numero_carreta: form.numero_carreta
-          ? parseInt(form.numero_carreta)
-          : null,
         numero_cavalo: form.numero_cavalo ? parseInt(form.numero_cavalo) : null,
-        motorista: form.motorista.trim(), // Novo campo
+        motorista: form.motorista.trim(),
+        // CONVERTE PARA NÚMERO - AGORA QUE AS COLUNAS SÃO INT
+        numero_carreta_1: carretasPreenchidas[0]
+          ? parseInt(carretasPreenchidas[0])
+          : null,
+        numero_carreta_2: carretasPreenchidas[1]
+          ? parseInt(carretasPreenchidas[1])
+          : null,
       };
 
-      await axios.post(`${API_URL}/api/caminhoes`, payload);
+      console.log("📤 PAYLOAD FINAL:", payload);
+
+      const response = await axios.post(`${API_URL}/api/caminhoes`, payload);
+      console.log("✅ CADASTRO REALIZADO:", response.data);
 
       setSuccess("Caminhão cadastrado com sucesso!");
       setForm({
         placa: "",
         qtd_pneus: "",
         km_atual: "",
-        numero_carreta: "",
         numero_cavalo: "",
-        motorista: "", // Reset do novo campo
+        motorista: "",
       });
+      setCarretas([""]);
       setErrors({});
 
-      // Redirecionar após 2 segundos
       setTimeout(() => {
         navigate("/");
       }, 2000);
     } catch (err) {
+      console.log("🔴 ERRO:", err.response?.data);
       const errorMessage =
+        err.response?.data?.error ||
         err.response?.data?.message ||
-        "Erro ao cadastrar caminhão. Verifique os dados e tente novamente.";
+        "Erro ao cadastrar caminhão";
       setError(errorMessage);
-      console.error("Erro ao cadastrar caminhão:", err);
     } finally {
       setLoading(false);
     }
@@ -282,9 +374,7 @@ const CadastroCaminhao = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md mx-auto">
-        {/* Card Principal */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          {/* Header */}
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg
@@ -308,14 +398,12 @@ const CadastroCaminhao = () => {
             <p className="text-gray-600">Adicione um novo veículo à frota</p>
           </div>
 
-          {/* Mensagens de Feedback */}
           {success && (
             <SuccessMessage message={success} onClose={() => setSuccess("")} />
           )}
 
           {error && <ErrorMessage message={error} onRetry={handleSubmit} />}
 
-          {/* Formulário */}
           <form onSubmit={handleSubmit}>
             <FormField
               label="Placa do Veículo"
@@ -345,7 +433,6 @@ const CadastroCaminhao = () => {
               onChange={(e) => handleInputChange("qtd_pneus", e.target.value)}
               required
               min="1"
-              max="20"
               placeholder="Ex: 6"
               error={errors.qtd_pneus}
               helpText="Número total de pneus do veículo"
@@ -364,34 +451,65 @@ const CadastroCaminhao = () => {
               helpText="Quilometragem atual do hodômetro"
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                label="Número da Carreta"
-                type="number"
-                value={form.numero_carreta}
-                onChange={(e) =>
-                  handleInputChange("numero_carreta", e.target.value)
-                }
-                min="0"
-                max="100"
-                placeholder="0-100"
-                error={errors.numero_carreta}
-              />
+            {/* SEÇÃO DE CARRETAS */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Carretas
+              </label>
 
-              <FormField
-                label="Número do Cavalo"
-                type="number"
-                value={form.numero_cavalo}
-                onChange={(e) =>
-                  handleInputChange("numero_cavalo", e.target.value)
-                }
-                min="101"
-                placeholder="101+"
-                error={errors.numero_cavalo}
-              />
+              {carretas.map((carreta, index) => (
+                <CarretaField
+                  key={index}
+                  label={`Carreta ${index + 1}`}
+                  value={carreta}
+                  onChange={(e) => handleCarretaChange(index, e.target.value)}
+                  onRemove={() => removeCarreta(index)}
+                  showRemove={carretas.length > 1}
+                  error={errors[`carreta_${index}`]}
+                  placeholder="Número da carreta"
+                />
+              ))}
+
+              {carretas.length < 2 && (
+                <button
+                  type="button"
+                  onClick={addCarreta}
+                  className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors mt-2"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
+                  </svg>
+                  Adicionar outra carreta
+                </button>
+              )}
+
+              <p className="text-sm text-gray-500 mt-1">
+                Máximo 2 carretas. Deixe em branco se não houver carreta.
+              </p>
             </div>
 
-            {/* Botões de Ação */}
+            <FormField
+              label="Número do Cavalo"
+              type="number"
+              value={form.numero_cavalo}
+              onChange={(e) =>
+                handleInputChange("numero_cavalo", e.target.value)
+              }
+              min="101"
+              placeholder="101+"
+              error={errors.numero_cavalo}
+            />
+
             <div className="flex flex-col sm:flex-row gap-4 mt-8">
               <button
                 type="button"

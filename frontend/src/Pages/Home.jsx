@@ -299,7 +299,7 @@ const Home = () => {
     fetchAllData();
   }, [fetchAllData]);
 
-  // Filtro memoizado
+  // Filtro memoizado - ATUALIZADO para buscar em ambas as carretas
   const caminhoesFiltrados = useMemo(() => {
     if (!termoBusca.trim()) return caminhoes;
 
@@ -310,9 +310,11 @@ const Home = () => {
         case "placa":
           return caminhao.placa?.toLowerCase().includes(termo);
         case "carreta":
-          return String(caminhao.numero_carreta || "")
-            .toLowerCase()
-            .includes(termo);
+          // AGORA BUSCA EM AMBAS AS CARRETAS
+          return (
+            String(caminhao.numero_carreta_1 || "").toLowerCase().includes(termo) ||
+            String(caminhao.numero_carreta_2 || "").toLowerCase().includes(termo)
+          );
         case "cavalo":
           return String(caminhao.numero_cavalo || "")
             .toLowerCase()
@@ -702,9 +704,16 @@ const Home = () => {
                           Motorista: {caminhaoBuscado.motorista}
                         </span>
                       )}
-                      {caminhaoBuscado.numero_carreta && (
+                      {/* CARBETA 1 */}
+                      {caminhaoBuscado.numero_carreta_1 && (
                         <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-medium">
-                          Carreta: {caminhaoBuscado.numero_carreta}
+                          Carreta 1: {caminhaoBuscado.numero_carreta_1}
+                        </span>
+                      )}
+                      {/* CARBETA 2 - NOVA */}
+                      {caminhaoBuscado.numero_carreta_2 && (
+                        <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium">
+                          Carreta 2: {caminhaoBuscado.numero_carreta_2}
                         </span>
                       )}
                       {caminhaoBuscado.numero_cavalo && (
@@ -776,7 +785,8 @@ const Home = () => {
                           "Motorista",
                           "KM Atual",
                           "Qtd. Pneus",
-                          "Carreta",
+                          "Carreta 1", // MUDADO: De "Carreta" para "Carreta 1"
+                          "Carreta 2", // NOVA COLUNA
                           "Cavalo",
                           "Ações",
                         ].map((header) => (
@@ -817,9 +827,16 @@ const Home = () => {
                               {caminhao.qtd_pneus}
                             </span>
                           </td>
+                          {/* CARBETA 1 */}
                           <td className="px-6 py-4">
                             <span className="px-3 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
-                              {caminhao.numero_carreta || "-"}
+                              {caminhao.numero_carreta_1 || "-"}
+                            </span>
+                          </td>
+                          {/* CARBETA 2 - NOVA COLUNA */}
+                          <td className="px-6 py-4">
+                            <span className="px-3 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full">
+                              {caminhao.numero_carreta_2 || "-"}
                             </span>
                           </td>
                           <td className="px-6 py-4">
@@ -842,7 +859,7 @@ const Home = () => {
                                 Detalhes
                               </Link>
                               <button
-                                onClick={() => handleDelete(caminhao.placa)}
+                                onClick={() => handleOpenDeleteModal(caminhao)}
                                 className="px-3 py-1 rounded-md bg-red-100 text-red-700 hover:bg-red-200 text-sm font-medium"
                               >
                                 Excluir

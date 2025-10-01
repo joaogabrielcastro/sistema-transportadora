@@ -43,6 +43,48 @@ const SuccessMessage = ({ message }) => (
   </div>
 );
 
+// NOVO COMPONENTE para campo de carreta
+const CarretaField = ({ 
+  label, 
+  value, 
+  onChange, 
+  onRemove, 
+  showRemove, 
+  error,
+  placeholder = "Número da carreta"
+}) => (
+  <div className="mb-4">
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      {label}
+    </label>
+    <div className="flex gap-2">
+      <input
+        type="text"
+        value={value}
+        onChange={onChange}
+        className={`flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:border-blue-500 transition-colors ${
+          error
+            ? "border-red-300 focus:ring-red-500"
+            : "border-gray-300 focus:ring-blue-500"
+        }`}
+        placeholder={placeholder}
+      />
+      {showRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
+      )}
+    </div>
+    {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
+  </div>
+);
+
 const EditCaminhao = () => {
   const { placa } = useParams();
   const navigate = useNavigate();
@@ -50,10 +92,14 @@ const EditCaminhao = () => {
     placa: '',
     qtd_pneus: '',
     km_atual: '',
-    numero_carreta: '',
     numero_cavalo: '',
-    motorista: '' // Novo campo
+    motorista: ''
   });
+  
+  // NOVO ESTADO para carretas
+  const [carretas, setCarretas] = useState([""]);
+  const [carretasErrors, setCarretasErrors] = useState({});
+  
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -72,10 +118,18 @@ const EditCaminhao = () => {
           placa: caminhao.placa || '',
           qtd_pneus: caminhao.qtd_pneus || '',
           km_atual: caminhao.km_atual || '',
-          numero_carreta: caminhao.numero_carreta || '',
           numero_cavalo: caminhao.numero_cavalo || '',
-          motorista: caminhao.motorista || '' // Novo campo
+          motorista: caminhao.motorista || ''
         });
+
+        // INICIALIZA AS CARRETAS - pega ambas as carretas do banco
+        const carretasArray = [];
+        if (caminhao.numero_carreta_1) carretasArray.push(String(caminhao.numero_carreta_1));
+        if (caminhao.numero_carreta_2) carretasArray.push(String(caminhao.numero_carreta_2));
+        
+        // Se não tiver nenhuma carreta, começa com um campo vazio
+        setCarretas(carretasArray.length > 0 ? carretasArray : [""]);
+        
       } catch (err) {
         console.error('Erro completo:', err);
         console.error('Resposta do servidor:', err.response?.data);
@@ -104,19 +158,85 @@ const EditCaminhao = () => {
     }));
   };
 
+  // NOVAS FUNÇÕES para gerenciar carretas
+  const handleCarretaChange = (index, value) => {
+    const newCarretas = [...carretas];
+    // Permite apenas números
+    newCarretas[index] = value.replace(/[^0-9]/g, "");
+    setCarretas(newCarretas);
+
+    // Limpa erro específico da carreta
+    if (carretasErrors[`carreta_${index}`]) {
+      setCarretasErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[`carreta_${index}`];
+        return newErrors;
+      });
+    }
+  };
+
+  const addCarreta = () => {
+    if (carretas.length < 2) {
+      setCarretas([...carretas, ""]);
+    }
+  };
+
+  const removeCarreta = (index) => {
+    if (carretas.length > 1) {
+      const newCarretas = carretas.filter((_, i) => i !== index);
+      setCarretas(newCarretas);
+      
+      // Limpa erro da carreta removida
+      setCarretasErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[`carreta_${index}`];
+        return newErrors;
+      });
+    }
+  };
+
+  // VALIDAÇÃO DAS CARRETAS
+  const validateCarretas = () => {
+    const newErrors = {};
+    const carretasPreenchidas = carretas.filter(carreta => carreta.trim() !== "");
+    
+    if (carretasPreenchidas.length > 0) {
+      carretasPreenchidas.forEach((carreta, index) => {
+        if (!/^[0-9]+$/.test(carreta)) {
+          newErrors[`carreta_${index}`] = "Apenas números são permitidos";
+        } else if (parseInt(carreta) < 0 || parseInt(carreta) > 100) {
+          newErrors[`carreta_${index}`] = "Número deve estar entre 0 e 100";
+        }
+      });
+    }
+    
+    setCarretasErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
     setSuccessMessage('');
 
+    // Valida as carretas antes de enviar
+    if (!validateCarretas()) {
+      setSubmitting(false);
+      return;
+    }
+
     try {
+      const carretasPreenchidas = carretas.filter(carreta => carreta.trim() !== "");
+      
       const payload = {
         qtd_pneus: formData.qtd_pneus ? parseInt(formData.qtd_pneus) : null,
         km_atual: formData.km_atual ? parseInt(formData.km_atual) : null,
-        numero_carreta: formData.numero_carreta ? parseInt(formData.numero_carreta) : null,
         numero_cavalo: formData.numero_cavalo ? parseInt(formData.numero_cavalo) : null,
-        motorista: formData.motorista.trim() || null // Novo campo
+        motorista: formData.motorista.trim() || null,
+        // ENVIA AMBAS AS CARRETAS COM OS NOMES CORRETOS
+        numero_carreta_1: carretasPreenchidas[0] ? parseInt(carretasPreenchidas[0]) : null,
+        numero_carreta_2: carretasPreenchidas[1] ? parseInt(carretasPreenchidas[1]) : null,
       };
 
       console.log('Enviando dados atualizados do caminhão:', payload);
@@ -221,7 +341,6 @@ const EditCaminhao = () => {
                   onChange={handleChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   min="0"
-                  max="20"
                   required
                   placeholder="Ex: 6, 8, 10"
                 />
@@ -250,26 +369,6 @@ const EditCaminhao = () => {
                 </p>
               </div>
 
-              {/* Número da Carreta */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Número da Carreta
-                </label>
-                <input
-                  type="number"
-                  name="numero_carreta"
-                  value={formData.numero_carreta}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  min="0"
-                  max="100"
-                  placeholder="0-100 (opcional)"
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  Número de identificação da carreta
-                </p>
-              </div>
-
               {/* Número do Cavalo */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -290,6 +389,43 @@ const EditCaminhao = () => {
               </div>
             </div>
 
+            {/* SEÇÃO DE CARRETAS - NOVA */}
+            <div className="border-t pt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-4">
+                Carretas
+              </label>
+              
+              {carretas.map((carreta, index) => (
+                <CarretaField
+                  key={index}
+                  label={`Carreta ${index + 1}`}
+                  value={carreta}
+                  onChange={(e) => handleCarretaChange(index, e.target.value)}
+                  onRemove={() => removeCarreta(index)}
+                  showRemove={carretas.length > 1}
+                  error={carretasErrors[`carreta_${index}`]}
+                  placeholder="Número da carreta"
+                />
+              ))}
+              
+              {carretas.length < 2 && (
+                <button
+                  type="button"
+                  onClick={addCarreta}
+                  className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors mt-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Adicionar outra carreta
+                </button>
+              )}
+              
+              <p className="text-sm text-gray-500 mt-1">
+                Máximo 2 carretas. Deixe em branco se não houver carreta.
+              </p>
+            </div>
+
             {/* Informações Adicionais */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h3 className="text-sm font-medium text-blue-800 mb-2">Informações Importantes</h3>
@@ -298,6 +434,7 @@ const EditCaminhao = () => {
                 <li>• Atualize o KM atual sempre que houver manutenções ou abastecimentos</li>
                 <li>• A quantidade de pneus deve refletir a configuração real do veículo</li>
                 <li>• O motorista é opcional, mas recomendado para melhor controle</li>
+                <li>• É possível cadastrar até 2 carretas por caminhão</li>
               </ul>
             </div>
 

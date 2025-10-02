@@ -325,13 +325,18 @@ const HistoricoRegistros = ({
       (r) => r.tipo_registro === "Gasto" && r.valor !== "N/A"
     );
     const totalGastos = gastos.reduce((sum, g) => sum + parseFloat(g.valor), 0);
-    const totalManutencoes = registrosFormatados.filter(
-      (r) => r.tipo_registro === "Manutenção"
-    ).length;
+    const manutencoes = registrosFormatados.filter(
+      (r) => r.tipo_registro === "Manutenção" && r.valor !== "N/A"
+    );
 
+    // 2. Soma os valores desses registros de manutenção
+    const totalValorManutencoes = manutencoes.reduce(
+      (sum, m) => sum + parseFloat(m.valor),
+      0
+    );
     return {
       totalGastos,
-      totalManutencoes,
+      totalValorManutencoes,
       totalRegistros: registrosFormatados.length,
     };
   }, [registrosFormatados]);
@@ -351,14 +356,18 @@ const HistoricoRegistros = ({
               {estatisticas.totalRegistros} registros
             </span>
             <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-              {estatisticas.totalManutencoes} manutenções
+              {estatisticas.totalValorManutencoes.toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              })}{" "}
+              em Manutenções
             </span>
             <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
               {estatisticas.totalGastos.toLocaleString("pt-BR", {
                 style: "currency",
                 currency: "BRL",
               })}{" "}
-              totalManutencoes
+              em Gastos
             </span>
           </div>
         </div>

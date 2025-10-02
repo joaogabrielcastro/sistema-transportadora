@@ -24,6 +24,7 @@ export const caminhoesController = {
     }
   },
 
+  // Buscar caminhão por placa
   getByPlaca: async (req, res) => {
     try {
       const caminhao = await caminhoesModel.getByPlaca(req.params.placa);
@@ -50,6 +51,24 @@ export const caminhoesController = {
     }
   },
 
+  // Verificar dependências antes de excluir
+  checkDependencies: async (req, res) => {
+    try {
+      const { placa } = req.params;
+      
+      const dependencias = await caminhoesModel.checkDependencies(placa);
+      
+      res.status(200).json({
+        temDependencias: dependencias.total > 0,
+        detalhes: dependencias.detalhes,
+        total: dependencias.total
+      });
+    } catch (error) {
+      console.error("Erro ao verificar dependências:", error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+
   // Deletar caminhão
   deleteCaminhao: async (req, res) => {
     try {
@@ -63,6 +82,8 @@ export const caminhoesController = {
         return res.status(409).json({
           error: error.message,
           type: "RELATED_RECORDS_EXIST",
+          code: "DEPENDENCIES_EXIST",
+          message: "Não é possível excluir: existem registros vinculados a este caminhão"
         });
       }
 
@@ -80,4 +101,19 @@ export const caminhoesController = {
       res.status(500).json({ error: error.message });
     }
   },
+
+  createCaminhao: async (req, res) => {
+    try {
+      console.log('🎯 ROTA CREATE CAMINHÃO CHAMADA!');
+      console.log('📥 Dados recebidos:', req.body);
+      
+      const novoCaminhao = await caminhoesModel.create(req.body);
+      res.status(201).json(novoCaminhao);
+    } catch (error) {
+      console.error("❌ Erro ao criar caminhão:", error);
+      res.status(400).json({ error: error.message });
+    }
+  },
+  
 };
+

@@ -175,24 +175,24 @@ const CaminhaoDetail = () => {
 
   // Combinar gastos e manutenções para os gráficos
   const todosRegistros = useMemo(() => {
-    const gastosFormatados = gastos.map(g => ({
+    const gastosFormatados = gastos.map((g) => ({
       ...g,
-      tipo: 'gasto',
+      tipo: "gasto",
       valor: parseFloat(g.valor),
       data: g.data_gasto,
-      descricao: g.tipos_gastos?.nome_tipo
+      descricao: g.tipos_gastos?.nome_tipo,
     }));
 
-    const manutencoesFormatadas = checklists.map(c => ({
+    const manutencoesFormatadas = checklists.map((c) => ({
       ...c,
-      tipo: 'manutencao',
+      tipo: "manutencao",
       valor: c.valor ? parseFloat(c.valor) : 0,
       data: c.data_manutencao,
-      descricao: c.itens_checklist?.nome_item
+      descricao: c.itens_checklist?.nome_item,
     }));
 
-    return [...gastosFormatados, ...manutencoesFormatadas].sort((a, b) => 
-      new Date(b.data) - new Date(a.data)
+    return [...gastosFormatados, ...manutencoesFormatadas].sort(
+      (a, b) => new Date(b.data) - new Date(a.data)
     );
   }, [gastos, checklists]);
 
@@ -226,9 +226,9 @@ const CaminhaoDetail = () => {
   }, [todosRegistros]);
 
   const gastosLineChartData = useMemo(() => {
-    const sortedRegistros = [...todosRegistros].filter(r => r.valor > 0).sort(
-      (a, b) => new Date(a.data) - new Date(b.data)
-    );
+    const sortedRegistros = [...todosRegistros]
+      .filter((r) => r.valor > 0)
+      .sort((a, b) => new Date(a.data) - new Date(b.data));
 
     const dates = sortedRegistros.map((r) => {
       const date = new Date(r.data);
@@ -266,11 +266,11 @@ const CaminhaoDetail = () => {
 
   const gastosPorTipoData = useMemo(() => {
     const tipoData = {};
-    
+
     // Processar gastos
     gastos.forEach((gasto) => {
       if (gasto.valor) {
-        const tipo = `Gasto: ${gasto.tipos_gastos?.nome_tipo || 'Outros'}`;
+        const tipo = `Gasto: ${gasto.tipos_gastos?.nome_tipo || "Outros"}`;
         tipoData[tipo] = (tipoData[tipo] || 0) + parseFloat(gasto.valor);
       }
     });
@@ -278,7 +278,9 @@ const CaminhaoDetail = () => {
     // Processar manutenções
     checklists.forEach((checklist) => {
       if (checklist.valor) {
-        const tipo = `Manutenção: ${checklist.itens_checklist?.nome_item || 'Outros'}`;
+        const tipo = `Manutenção: ${
+          checklist.itens_checklist?.nome_item || "Outros"
+        }`;
         tipoData[tipo] = (tipoData[tipo] || 0) + parseFloat(checklist.valor);
       }
     });
@@ -300,7 +302,9 @@ const CaminhaoDetail = () => {
         {
           data: Object.values(tipoData),
           backgroundColor: cores.slice(0, Object.keys(tipoData).length),
-          borderColor: cores.slice(0, Object.keys(tipoData).length).map((color) => color.replace("0.8", "1")),
+          borderColor: cores
+            .slice(0, Object.keys(tipoData).length)
+            .map((color) => color.replace("0.8", "1")),
           borderWidth: 2,
         },
       ],
@@ -372,7 +376,7 @@ const CaminhaoDetail = () => {
       (sum, gasto) => sum + parseFloat(gasto.valor || 0),
       0
     );
-    
+
     const totalManutencoesValor = checklists.reduce(
       (sum, checklist) => sum + parseFloat(checklist.valor || 0),
       0

@@ -172,6 +172,7 @@ const Home = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [caminhaoParaExcluir, setCaminhaoParaExcluir] = useState(null);
   const [excluindo, setExcluindo] = useState(false);
+  const [dependenciasInfo, setDependenciasInfo] = useState(null);
 
   // Ícones reutilizáveis
   const icons = {
@@ -363,46 +364,64 @@ const Home = () => {
     }
   };
 
-  // Função para verificar dependências
-  const verificarDependencias = async (placa) => {
+  // Função para verificar dependências ANTES de excluir
+  const handleOpenDeleteModal = async (caminhao) => {
+    setLoading(true);
     try {
-      const [gastosRes, checklistsRes, pneusRes] = await Promise.all([
-        axios.get(`${API_URL}/api/gastos/caminhao/${placa}`),
-        axios.get(`${API_URL}/api/checklist/caminhao/${placa}`),
-        axios.get(`${API_URL}/api/pneus/caminhao/${placa}`),
-      ]);
-
-      const temGastos = gastosRes.data.length > 0;
-      const temManutencoes = checklistsRes.data.length > 0;
-      const temPneus = pneusRes.data.length > 0;
-
-      return {
-        temDependencias: temGastos || temManutencoes || temPneus,
-        detalhes: {
-          gastos: temGastos,
-          manutencoes: temManutencoes,
-          pneus: temPneus,
-        },
-      };
+      // Verificar dependências antes de mostrar o modal
+      const dependenciasResponse = await axios.get(
+        `${API_URL}/api/caminhoes/${caminhao.placa}/check-dependencies`
+      );
+      
+      const { temDependencias, detalhes } = dependenciasResponse.data;
+      
+      if (temDependencias) {
+        // Mostrar mensagem de erro com detalhes das dependências
+        let mensagemDependencias = `Não é possível excluir o caminhão ${caminhao.placa}. Existem registros vinculados:\n`;
+        
+        if (detalhes.total_gastos > 0) {
+          mensagemDependencias += `• ${detalhes.total_gastos} gastos\n`;
+        }
+        if (detalhes.total_checklists > 0) {
+          mensagemDependencias += `• ${detalhes.total_checklists} manutenções\n`;
+        }
+        if (detalhes.total_pneus > 0) {
+          mensagemDependencias += `• ${detalhes.total_pneus} pneus\n`;
+        }
+        if (detalhes.total_viagens > 0) {
+          mensagemDependencias += `• ${detalhes.total_viagens} viagens\n`;
+        }
+        
+        mensagemDependencias += "\nDelete primeiro esses registros antes de excluir o caminhão.";
+        
+        setError(mensagemDependencias);
+        return;
+      }
+      
+      // Se não há dependências, mostrar modal normal de confirmação
+      setCaminhaoParaExcluir(caminhao);
+      setDependenciasInfo(null);
+      setModalOpen(true);
+      
     } catch (err) {
       console.error("Erro ao verificar dependências:", err);
-      return { temDependencias: true, erro: true };
+      // Em caso de erro na verificação, mostrar modal normal
+      setCaminhaoParaExcluir(caminhao);
+      setDependenciasInfo(null);
+      setModalOpen(true);
+    } finally {
+      setLoading(false);
     }
-  };
-
-  // Função para abrir modal de confirmação de exclusão
-  const handleOpenDeleteModal = (caminhao) => {
-    setCaminhaoParaExcluir(caminhao);
-    setModalOpen(true);
   };
 
   // Função para fechar modal
   const handleCloseModal = () => {
     setModalOpen(false);
     setCaminhaoParaExcluir(null);
+    setDependenciasInfo(null);
   };
 
-  // Função para excluir caminhão
+  // Função para excluir caminhão - ATUALIZADA COM TRATAMENTO 409
   const handleDeleteCaminhao = async () => {
     if (!caminhaoParaExcluir) return;
 
@@ -430,12 +449,22 @@ const Home = () => {
       console.error("Erro completo ao excluir caminhão:", err);
 
       let errorMessage = "Erro ao excluir caminhão. ";
-
-      if (err.response?.status === 500) {
-        errorMessage +=
-          "Existem registros vinculados (gastos, manutenções ou pneus). Delete primeiro os registros associados.";
+      
+      // TRATAMENTO ESPECÍFICO PARA ERRO 409
+      if (err.response?.status === 409) {
+        errorMessage = `Não é possível excluir o caminhão ${caminhaoParaExcluir.placa}. `;
+        
+        if (err.response.data?.code === "DEPENDENCIES_EXIST") {
+          errorMessage += "Existem registros vinculados (gastos, manutenções, pneus ou viagens). ";
+          errorMessage += "Delete primeiro os registros associados ou entre em contato com o administrador.";
+        } else {
+          errorMessage += "Existem registros vinculados a este caminhão.";
+        }
+        
       } else if (err.response?.status === 404) {
         errorMessage += "Caminhão não encontrado.";
+      } else if (err.response?.status === 500) {
+        errorMessage += "Erro interno do servidor. Tente novamente mais tarde.";
       } else {
         errorMessage += "Tente novamente mais tarde.";
       }
@@ -591,7 +620,7 @@ const Home = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl md:text-5xl font-bold text-navy-blue mb-2">
-            Broto Transportadora
+            ABroto Transportadora
           </h1>
           <p className="text-gray-600 text-lg md:text-xl">
             Sistema de gestão de frotas e manutenção
@@ -785,8 +814,8 @@ const Home = () => {
                           "Motorista",
                           "KM Atual",
                           "Qtd. Pneus",
-                          "Carreta 1", // MUDADO: De "Carreta" para "Carreta 1"
-                          "Carreta 2", // NOVA COLUNA
+                          "Carreta 1",
+                          "Carreta 2",
                           "Cavalo",
                           "Ações",
                         ].map((header) => (
@@ -896,6 +925,7 @@ const Home = () => {
           confirmText={excluindo ? "Excluindo..." : "Excluir"}
           cancelText="Cancelar"
           warning={true}
+          dependencias={dependenciasInfo}
         />
       </div>
     </div>

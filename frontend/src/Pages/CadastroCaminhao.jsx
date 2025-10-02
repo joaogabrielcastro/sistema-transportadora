@@ -98,7 +98,6 @@ const FormField = ({
   </div>
 );
 
-// NOVO COMPONENTE para campo de carreta (AGORA DEPOIS do FormField)
 const CarretaField = ({
   label,
   value,
@@ -106,7 +105,7 @@ const CarretaField = ({
   onRemove,
   showRemove,
   error,
-  placeholder = "Número da carreta",
+  placeholder = "0-99",
 }) => (
   <div className="mb-4">
     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -123,6 +122,7 @@ const CarretaField = ({
             : "border-gray-300 focus:ring-blue-500"
         }`}
         placeholder={placeholder}
+        maxLength={2}
       />
       {showRemove && (
         <button
@@ -159,9 +159,7 @@ const CadastroCaminhao = () => {
     motorista: "",
   });
 
-  // NOVO ESTADO para carretas
-  const [carretas, setCarretas] = useState([""]); // Começa com 1 campo vazio
-
+  const [carretas, setCarretas] = useState([""]);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
@@ -185,7 +183,6 @@ const CadastroCaminhao = () => {
     return placaRegex.test(placa.replace(/-/g, ""));
   };
 
-  // NOVA VALIDAÇÃO para carretas
   const validateForm = () => {
     const newErrors = {};
 
@@ -213,14 +210,14 @@ const CadastroCaminhao = () => {
       carretasPreenchidas.forEach((carreta, index) => {
         if (!/^[0-9]+$/.test(carreta)) {
           newErrors[`carreta_${index}`] = "Apenas números são permitidos";
-        } else if (parseInt(carreta) < 0 || parseInt(carreta) > 100) {
-          newErrors[`carreta_${index}`] = "Número deve estar entre 0 e 100";
+        } else if (parseInt(carreta) < 0 || parseInt(carreta) > 99) {
+          newErrors[`carreta_${index}`] = "Número deve estar entre 0 e 99";
         }
       });
     }
 
-    if (form.numero_cavalo && parseInt(form.numero_cavalo) < 101) {
-      newErrors.numero_cavalo = "Número do cavalo deve ser 101 ou maior";
+    if (form.numero_cavalo && parseInt(form.numero_cavalo) < 100) {
+      newErrors.numero_cavalo = "Número do cavalo deve ser 100 ou maior";
     }
 
     if (!form.motorista.trim()) {
@@ -242,6 +239,14 @@ const CadastroCaminhao = () => {
       .replace(/[^a-zA-Z0-9]/g, "")
       .toUpperCase()
       .slice(0, 7);
+
+    // Formata como Mercosul: ABC1D23
+    if (cleaned.length === 7) {
+      return cleaned.replace(
+        /([A-Z]{3})([0-9])([A-Z0-9])([0-9]{2})/,
+        "$1$2$3$4"
+      );
+    }
     return cleaned;
   };
 
@@ -269,11 +274,10 @@ const CadastroCaminhao = () => {
     }
   };
 
-  // NOVAS FUNÇÕES para gerenciar carretas
   const handleCarretaChange = (index, value) => {
     const newCarretas = [...carretas];
-    // Permite apenas números
-    newCarretas[index] = value.replace(/[^0-9]/g, "");
+    // Permite apenas números e limita a 2 dígitos
+    newCarretas[index] = value.replace(/[^0-9]/g, "").slice(0, 2);
     setCarretas(newCarretas);
 
     // Limpa erro específico da carreta
@@ -327,7 +331,6 @@ const CadastroCaminhao = () => {
         km_atual: parseInt(form.km_atual),
         numero_cavalo: form.numero_cavalo ? parseInt(form.numero_cavalo) : null,
         motorista: form.motorista.trim(),
-        // CONVERTE PARA NÚMERO - AGORA QUE AS COLUNAS SÃO INT
         numero_carreta_1: carretasPreenchidas[0]
           ? parseInt(carretasPreenchidas[0])
           : null,
@@ -336,7 +339,7 @@ const CadastroCaminhao = () => {
           : null,
       };
 
-      console.log("📤 PAYLOAD FINAL:", payload);
+      console.log("📤 PAYLOAD ENVIADO:", payload);
 
       const response = await axios.post(`${API_URL}/api/caminhoes`, payload);
       console.log("✅ CADASTRO REALIZADO:", response.data);
@@ -410,8 +413,8 @@ const CadastroCaminhao = () => {
               value={form.placa}
               onChange={(e) => handleInputChange("placa", e.target.value)}
               required
-              placeholder="Ex: ABC-1D23"
-              maxLength={8}
+              placeholder="Ex: ABC1D23"
+              maxLength={7}
               error={errors.placa}
               helpText="Digite a placa no formato mercosul (ABC1D23)"
             />
@@ -433,6 +436,7 @@ const CadastroCaminhao = () => {
               onChange={(e) => handleInputChange("qtd_pneus", e.target.value)}
               required
               min="1"
+              max="100"
               placeholder="Ex: 6"
               error={errors.qtd_pneus}
               helpText="Número total de pneus do veículo"
@@ -466,7 +470,7 @@ const CadastroCaminhao = () => {
                   onRemove={() => removeCarreta(index)}
                   showRemove={carretas.length > 1}
                   error={errors[`carreta_${index}`]}
-                  placeholder="Número da carreta"
+                  placeholder="0-99"
                 />
               ))}
 
@@ -492,10 +496,6 @@ const CadastroCaminhao = () => {
                   Adicionar outra carreta
                 </button>
               )}
-
-              <p className="text-sm text-gray-500 mt-1">
-                Máximo 2 carretas. Deixe em branco se não houver carreta.
-              </p>
             </div>
 
             <FormField
@@ -505,9 +505,11 @@ const CadastroCaminhao = () => {
               onChange={(e) =>
                 handleInputChange("numero_cavalo", e.target.value)
               }
-              min="101"
-              placeholder="101+"
+              min="100"
+              max="999"
+              placeholder="100+"
               error={errors.numero_cavalo}
+              helpText="Número único do cavalo mecânico"
             />
 
             <div className="flex flex-col sm:flex-row gap-4 mt-8">

@@ -28,46 +28,150 @@ const ErrorMessage = ({ message, onRetry }) => (
   </div>
 );
 
+const SuccessMessage = ({ message }) => (
+  <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-lg mb-6">
+    <div className="flex items-center">
+      <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+        <path
+          fillRule="evenodd"
+          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+          clipRule="evenodd"
+        />
+      </svg>
+      <span className="font-medium">{message}</span>
+    </div>
+  </div>
+);
+
 const StatusBadge = ({ status, type = "status" }) => {
   const getStatusConfig = (statusName) => {
     const configs = {
       status: {
-        "em uso": { bg: "bg-green-100", text: "text-green-800", border: "border-green-200" },
-        "estoque": { bg: "bg-blue-100", text: "text-blue-800", border: "border-blue-200" },
-        "reforma": { bg: "bg-yellow-100", text: "text-yellow-800", border: "border-yellow-200" },
-        "descarte": { bg: "bg-red-100", text: "text-red-800", border: "border-red-200" },
-        "default": { bg: "bg-gray-100", text: "text-gray-800", border: "border-gray-200" }
+        // STATUS EM USO (Verde)
+        "em uso": {
+          bg: "bg-green-100",
+          text: "text-green-800",
+          border: "border-green-200",
+        },
+        "recapado em uso": {
+          bg: "bg-green-100",
+          text: "text-green-800",
+          border: "border-green-200",
+        },
+
+        // STATUS ESTOQUE (Azul)
+        "novo no estoque": {
+          bg: "bg-blue-100",
+          text: "text-blue-800",
+          border: "border-blue-200",
+        },
+        "reservado para veículo": {
+          bg: "bg-blue-100",
+          text: "text-blue-800",
+          border: "border-blue-200",
+        },
+        "instalação agendada": {
+          bg: "bg-blue-100",
+          text: "text-blue-800",
+          border: "border-blue-200",
+        },
+        "aprovado para uso": {
+          bg: "bg-blue-100",
+          text: "text-blue-800",
+          border: "border-blue-200",
+        },
+        "recapado no estoque": {
+          bg: "bg-blue-100",
+          text: "text-blue-800",
+          border: "border-blue-200",
+        },
+
+        // STATUS MANUTENÇÃO (Amarelo/Laranja)
+        "em manutenção": {
+          bg: "bg-yellow-100",
+          text: "text-yellow-800",
+          border: "border-yellow-200",
+        },
+        "aguardando inspeção": {
+          bg: "bg-yellow-100",
+          text: "text-yellow-800",
+          border: "border-yellow-200",
+        },
+        "reprovado - enviar para recapagem": {
+          bg: "bg-orange-100",
+          text: "text-orange-800",
+          border: "border-orange-200",
+        },
+        "enviado para recapagem": {
+          bg: "bg-orange-100",
+          text: "text-orange-800",
+          border: "border-orange-200",
+        },
+
+        // STATUS DESCARTE (Vermelho)
+        "enviado para descarte": {
+          bg: "bg-red-100",
+          text: "text-red-800",
+          border: "border-red-200",
+        },
+        sucata: {
+          bg: "bg-red-100",
+          text: "text-red-800",
+          border: "border-red-200",
+        },
+        "perdido/roubado": {
+          bg: "bg-red-100",
+          text: "text-red-800",
+          border: "border-red-200",
+        },
+
+        default: {
+          bg: "bg-gray-100",
+          text: "text-gray-800",
+          border: "border-gray-200",
+        },
       },
       position: {
-        "default": { bg: "bg-purple-100", text: "text-purple-800", border: "border-purple-200" }
-      }
+        default: {
+          bg: "bg-purple-100",
+          text: "text-purple-800",
+          border: "border-purple-200",
+        },
+      },
     };
 
     const configType = configs[type];
-    return configType[statusName?.toLowerCase()] || configType.default;
+    const statusLower = statusName?.toLowerCase();
+
+    // Encontra a configuração exata ou usa default
+    return configType[statusLower] || configType.default;
   };
 
   const config = getStatusConfig(status);
-  
+
   return (
-    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${config.bg} ${config.text} border ${config.border}`}>
+    <span
+      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${config.bg} ${config.text} border ${config.border}`}
+    >
       {status}
     </span>
   );
 };
 
-const PneuForm = ({ 
-  form, 
-  caminhoes, 
-  posicoes, 
-  statusList, 
-  onChange, 
-  onCaminhaoChange, 
-  onSubmit, 
-  loading 
+const PneuForm = ({
+  form,
+  caminhoes,
+  posicoes,
+  statusList,
+  onChange,
+  onCaminhaoChange,
+  onSubmit,
+  loading,
 }) => (
   <div className="bg-white rounded-xl shadow-md p-6 mb-8">
-    <h2 className="text-xl font-bold text-gray-800 mb-4">Adicionar Novo Pneu</h2>
+    <h2 className="text-xl font-bold text-gray-800 mb-4">
+      Adicionar Novo Pneu
+    </h2>
     <form onSubmit={onSubmit} className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Caminhão */}
@@ -85,7 +189,7 @@ const PneuForm = ({
             <option value="">Selecione o Caminhão</option>
             {caminhoes.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.placa} - KM: {c.km_atual?.toLocaleString('pt-BR')}
+                {c.placa} - KM: {c.km_atual?.toLocaleString("pt-BR")}
               </option>
             ))}
           </select>
@@ -238,46 +342,171 @@ const PneuForm = ({
   </div>
 );
 
-const PneusTable = ({ pneus, caminhoes, onDelete, loading }) => {
+const PneusTable = ({
+  pneus,
+  caminhoes,
+  onDelete,
+  loading,
+  filtroPlaca,
+  onFiltroChange,
+}) => {
+  // Cálculos para cada pneu
   const pneusComCalculos = useMemo(() => {
-    return pneus.map(pneu => {
-      const caminhao = caminhoes.find(c => c.id === pneu.caminhao_id);
-      const kmRodado = caminhao?.km_atual && pneu.km_instalacao 
-        ? caminhao.km_atual - pneu.km_instalacao 
-        : null;
-      
-      const vidaUtilRestante = pneu.vida_util_km && kmRodado 
-        ? pneu.vida_util_km - kmRodado 
-        : null;
+    return pneus.map((pneu) => {
+      const caminhao = caminhoes.find((c) => c.id === pneu.caminhao_id);
+      const kmRodado =
+        caminhao?.km_atual && pneu.km_instalacao
+          ? caminhao.km_atual - pneu.km_instalacao
+          : null;
+
+      const vidaUtilRestante =
+        pneu.vida_util_km && kmRodado ? pneu.vida_util_km - kmRodado : null;
 
       return {
         ...pneu,
         caminhao,
         kmRodado,
         vidaUtilRestante,
-        percentualVidaUtil: vidaUtilRestante && pneu.vida_util_km 
-          ? Math.max(0, (vidaUtilRestante / pneu.vida_util_km) * 100) 
-          : null
+        percentualVidaUtil:
+          vidaUtilRestante && pneu.vida_util_km
+            ? Math.max(0, (vidaUtilRestante / pneu.vida_util_km) * 100)
+            : null,
       };
     });
   }, [pneus, caminhoes]);
+
+  // Filtro por placa
+  const pneusFiltrados = useMemo(() => {
+    if (!filtroPlaca.trim()) return pneusComCalculos;
+
+    return pneusComCalculos.filter((pneu) =>
+      pneu.caminhao?.placa?.toLowerCase().includes(filtroPlaca.toLowerCase())
+    );
+  }, [pneusComCalculos, filtroPlaca]);
+
+  // ESTATÍSTICAS ATUALIZADAS COM TODOS OS STATUS
+  const estatisticas = useMemo(() => {
+    // Agrupar por categorias para melhor visualização
+    const emUso = pneusComCalculos.filter(
+      (p) =>
+        p.status_pneus?.nome_status === "Em uso" ||
+        p.status_pneus?.nome_status === "Recapado em uso"
+    ).length;
+
+    const estoque = pneusComCalculos.filter(
+      (p) =>
+        p.status_pneus?.nome_status === "Novo no estoque" ||
+        p.status_pneus?.nome_status === "Reservado para veículo" ||
+        p.status_pneus?.nome_status === "Instalação agendada" ||
+        p.status_pneus?.nome_status === "Aprovado para uso" ||
+        p.status_pneus?.nome_status === "Recapado no estoque"
+    ).length;
+
+    const manutencao = pneusComCalculos.filter(
+      (p) =>
+        p.status_pneus?.nome_status === "Em manutenção" ||
+        p.status_pneus?.nome_status === "Aguardando inspeção" ||
+        p.status_pneus?.nome_status === "Reprovado - enviar para recapagem" ||
+        p.status_pneus?.nome_status === "Enviado para recapagem"
+    ).length;
+
+    const descarte = pneusComCalculos.filter(
+      (p) =>
+        p.status_pneus?.nome_status === "Enviado para descarte" ||
+        p.status_pneus?.nome_status === "Sucata" ||
+        p.status_pneus?.nome_status === "Perdido/Roubado"
+    ).length;
+
+    // Contagem detalhada por status individual
+    const contagemDetalhada = {};
+    pneusComCalculos.forEach((pneu) => {
+      const status = pneu.status_pneus?.nome_status;
+      if (status) {
+        contagemDetalhada[status] = (contagemDetalhada[status] || 0) + 1;
+      }
+    });
+
+    return {
+      total: pneusComCalculos.length,
+      emUso,
+      estoque,
+      manutencao,
+      descarte,
+      detalhes: contagemDetalhada,
+    };
+  }, [pneusComCalculos]);
 
   if (loading) return <LoadingSpinner />;
 
   return (
     <div className="bg-white rounded-xl shadow-md p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold text-gray-800">Pneus Cadastrados</h2>
-        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-          {pneus.length} pneus
-        </span>
+      {/* Header com Estatísticas e Filtro */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-gray-800">Pneus Cadastrados</h2>
+          <div className="flex flex-wrap gap-2 mt-2">
+            <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+              {estatisticas.total} pneus
+            </span>
+            <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+              {estatisticas.emUso} em uso
+            </span>
+            <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-medium">
+              {estatisticas.estoque} estoque
+            </span>
+            <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
+              {estatisticas.manutencao} manutenção
+            </span>
+            <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium">
+              {estatisticas.descarte} descarte
+            </span>
+          </div>
+
+          {/* Detalhamento dos status (opcional - pode ser colapsável) */}
+          <div className="mt-3 text-xs text-gray-600">
+            <details>
+              <summary className="cursor-pointer hover:text-gray-800">
+                Ver detalhes por status
+              </summary>
+              <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2">
+                {Object.entries(estatisticas.detalhes).map(
+                  ([status, quantidade]) => (
+                    <div key={status} className="flex justify-between">
+                      <span>{status}:</span>
+                      <span className="font-medium">{quantidade}</span>
+                    </div>
+                  )
+                )}
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <div className="w-full lg:w-64">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Filtrar por placa:
+          </label>
+          <input
+            type="text"
+            placeholder="Digite a placa..."
+            value={filtroPlaca}
+            onChange={onFiltroChange}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+          />
+        </div>
       </div>
 
-      {pneus.length === 0 ? (
+      {pneusFiltrados.length === 0 ? (
         <div className="text-center py-12">
           <div className="text-6xl mb-4">🚛</div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum pneu cadastrado</h3>
-          <p className="text-gray-600">Comece cadastrando o primeiro pneu no formulário acima.</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            {filtroPlaca ? "Nenhum pneu encontrado" : "Nenhum pneu cadastrado"}
+          </h3>
+          <p className="text-gray-600">
+            {filtroPlaca
+              ? `Não foram encontrados pneus para a placa "${filtroPlaca}"`
+              : "Comece cadastrando o primeiro pneu no formulário acima."}
+          </p>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -305,14 +534,19 @@ const PneusTable = ({ pneus, caminhoes, onDelete, loading }) => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {pneusComCalculos.map((pneu) => (
-                <tr key={pneu.id} className="hover:bg-gray-50 transition-colors">
+              {pneusFiltrados.map((pneu) => (
+                <tr
+                  key={pneu.id}
+                  className="hover:bg-gray-50 transition-colors"
+                >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="font-medium text-gray-900">
                       {pneu.caminhao?.placa || "N/A"}
                     </div>
                     <div className="text-sm text-gray-500">
-                      KM: {pneu.caminhao?.km_atual?.toLocaleString('pt-BR') || "N/A"}
+                      KM:{" "}
+                      {pneu.caminhao?.km_atual?.toLocaleString("pt-BR") ||
+                        "N/A"}
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -320,14 +554,22 @@ const PneusTable = ({ pneus, caminhoes, onDelete, loading }) => {
                       {pneu.marca} {pneu.modelo}
                     </div>
                     <div className="text-sm text-gray-500">
-                      Instalado: {new Date(pneu.data_instalacao).toLocaleDateString('pt-BR')}
+                      Instalado:{" "}
+                      {new Date(pneu.data_instalacao).toLocaleDateString(
+                        "pt-BR"
+                      )}
                     </div>
+                    {pneu.observacao && (
+                      <div className="text-sm text-gray-500 mt-1">
+                        {pneu.observacao}
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <div className="space-y-2">
-                      <StatusBadge 
-                        status={pneu.posicoes_pneus?.nome_posicao} 
-                        type="position" 
+                      <StatusBadge
+                        status={pneu.posicoes_pneus?.nome_posicao}
+                        type="position"
                       />
                       <StatusBadge status={pneu.status_pneus?.nome_status} />
                     </div>
@@ -335,7 +577,7 @@ const PneusTable = ({ pneus, caminhoes, onDelete, loading }) => {
                   <td className="px-6 py-4">
                     {pneu.kmRodado !== null ? (
                       <div className="text-sm text-gray-900">
-                        {pneu.kmRodado.toLocaleString('pt-BR')} km
+                        {pneu.kmRodado.toLocaleString("pt-BR")} km
                       </div>
                     ) : (
                       <span className="text-gray-400">N/A</span>
@@ -343,14 +585,24 @@ const PneusTable = ({ pneus, caminhoes, onDelete, loading }) => {
                   </td>
                   <td className="px-6 py-4">
                     {pneu.percentualVidaUtil !== null ? (
-                      <div className="w-full bg-gray-200 rounded-full h-2.5">
-                        <div 
-                          className={`h-2.5 rounded-full ${
-                            pneu.percentualVidaUtil > 50 ? 'bg-green-500' :
-                            pneu.percentualVidaUtil > 20 ? 'bg-yellow-500' : 'bg-red-500'
-                          }`}
-                          style={{ width: `${Math.min(100, pneu.percentualVidaUtil)}%` }}
-                        ></div>
+                      <div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                          <div
+                            className={`h-2.5 rounded-full ${
+                              pneu.percentualVidaUtil > 50
+                                ? "bg-green-500"
+                                : pneu.percentualVidaUtil > 20
+                                ? "bg-yellow-500"
+                                : "bg-red-500"
+                            }`}
+                            style={{
+                              width: `${Math.min(
+                                100,
+                                pneu.percentualVidaUtil
+                              )}%`,
+                            }}
+                          ></div>
+                        </div>
                         <div className="text-xs text-gray-500 mt-1">
                           {Math.round(pneu.percentualVidaUtil)}% restante
                         </div>
@@ -400,22 +652,27 @@ const Pneus = () => {
     observacao: "",
   });
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  // Estado para filtro de placa
+  const [filtroPlaca, setFiltroPlaca] = useState("");
 
   // Fetch data
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      const [caminhoesRes, posicoesRes, statusRes, pneusRes] = await Promise.all([
-        axios.get(`${API_URL}/api/caminhoes`),
-        axios.get(`${API_URL}/api/posicoes-pneus`),
-        axios.get(`${API_URL}/api/status-pneus`),
-        axios.get(`${API_URL}/api/pneus`),
-      ]);
-      
+      const [caminhoesRes, posicoesRes, statusRes, pneusRes] =
+        await Promise.all([
+          axios.get(`${API_URL}/api/caminhoes`),
+          axios.get(`${API_URL}/api/posicoes-pneus`),
+          axios.get(`${API_URL}/api/status-pneus`),
+          axios.get(`${API_URL}/api/pneus`),
+        ]);
+
       setCaminhoes(caminhoesRes.data);
       setPosicoes(posicoesRes.data);
       setStatusList(statusRes.data);
@@ -434,20 +691,20 @@ const Pneus = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
   const handleCaminhaoChange = (e) => {
     const caminhaoId = parseInt(e.target.value);
-    const caminhaoSelecionado = caminhoes.find(c => c.id === caminhaoId);
+    const caminhaoSelecionado = caminhoes.find((c) => c.id === caminhaoId);
 
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
       caminhao_id: caminhaoId,
-      km_instalacao: caminhaoSelecionado?.km_atual || ""
+      km_instalacao: caminhaoSelecionado?.km_atual || "",
     }));
   };
 
@@ -455,6 +712,7 @@ const Pneus = () => {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
+    setSuccessMessage("");
 
     try {
       const dataToSend = {
@@ -470,10 +728,10 @@ const Pneus = () => {
       };
 
       await axios.post(`${API_URL}/api/pneus`, dataToSend);
-      
+
       // Recarregar dados
       await fetchData();
-      
+
       // Reset form
       setForm({
         caminhao_id: "",
@@ -487,6 +745,7 @@ const Pneus = () => {
         observacao: "",
       });
 
+      setSuccessMessage("Pneu cadastrado com sucesso!");
     } catch (err) {
       setError(err.response?.data?.message || "Erro ao cadastrar pneu.");
       console.error("Erro ao cadastrar pneu:", err);
@@ -500,11 +759,16 @@ const Pneus = () => {
 
     try {
       await axios.delete(`${API_URL}/api/pneus/${id}`);
-      setPneus(prev => prev.filter(p => p.id !== id));
+      setPneus((prev) => prev.filter((p) => p.id !== id));
+      setSuccessMessage("Pneu excluído com sucesso!");
     } catch (err) {
       setError("Erro ao excluir pneu.");
       console.error("Erro ao excluir pneu:", err);
     }
+  };
+
+  const handleFiltroChange = (e) => {
+    setFiltroPlaca(e.target.value);
   };
 
   if (loading) return <LoadingSpinner />;
@@ -522,13 +786,9 @@ const Pneus = () => {
           </p>
         </div>
 
-        {/* Error Message */}
-        {error && (
-          <ErrorMessage 
-            message={error} 
-            onRetry={fetchData}
-          />
-        )}
+        {/* Mensagens de Feedback */}
+        {error && <ErrorMessage message={error} onRetry={fetchData} />}
+        {successMessage && <SuccessMessage message={successMessage} />}
 
         {/* Formulário */}
         <PneuForm
@@ -548,6 +808,8 @@ const Pneus = () => {
           caminhoes={caminhoes}
           onDelete={handleDelete}
           loading={loading}
+          filtroPlaca={filtroPlaca}
+          onFiltroChange={handleFiltroChange}
         />
       </div>
     </div>

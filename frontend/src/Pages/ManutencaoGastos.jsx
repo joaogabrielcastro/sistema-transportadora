@@ -357,7 +357,8 @@ const HistoricoRegistros = ({
               {estatisticas.totalGastos.toLocaleString("pt-BR", {
                 style: "currency",
                 currency: "BRL",
-              })}
+              })}{" "}
+              totalManutencoes
             </span>
           </div>
         </div>
@@ -627,12 +628,13 @@ const ManutencaoGastos = () => {
         const payload = {
           caminhao_id: caminhaoId,
           tipo_gasto_id: parseInt(form.tipo_id),
-          valor: parseFloat(form.valor),
+
+          valor: parseFloat(String(form.valor).replace(",", ".")),
           data_gasto: form.data,
           descricao: form.observacao,
           km_registro: newKm,
           quantidade_combustivel: form.quantidade_combustivel
-            ? parseFloat(form.quantidade_combustivel)
+            ? parseFloat(String(form.quantidade_combustivel).replace(",", "."))
             : null,
         };
         await axios.post(`${API_URL}/api/gastos`, payload);
@@ -642,7 +644,7 @@ const ManutencaoGastos = () => {
           item_id: parseInt(form.tipo_id),
           data_manutencao: form.data,
           observacao: form.observacao,
-          valor: parseFloat(form.valor),
+          valor: parseFloat(String(form.valor).replace(",", ".")),
           oficina: form.oficina,
           km_registro: newKm,
         };

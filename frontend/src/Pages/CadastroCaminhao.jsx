@@ -3,7 +3,6 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 
-// Componentes Reutilizáveis
 const SuccessMessage = ({ message, onClose }) => (
   <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-lg mb-6">
     <div className="flex justify-between items-center">
@@ -216,10 +215,18 @@ const CadastroCaminhao = () => {
       });
     }
 
-    if (form.numero_cavalo && parseInt(form.numero_cavalo) < 100) {
-      newErrors.numero_cavalo = "Número do cavalo deve ser 100 ou maior";
+    if (!form.numero_cavalo || form.numero_cavalo.trim() === "") {
+      newErrors.numero_cavalo = "Número do cavalo é obrigatório";
+    } else {
+      const numeroCavalo = parseInt(form.numero_cavalo);
+      if (isNaN(numeroCavalo) || numeroCavalo < 100) {
+        // Volte para 100
+        newErrors.numero_cavalo = "Número do cavalo deve ser 100 ou maior";
+      } else if (numeroCavalo > 9999) {
+        newErrors.numero_cavalo =
+          "Número do cavalo não pode ser maior que 9999";
+      }
     }
-
     if (!form.motorista.trim()) {
       newErrors.motorista = "Nome do motorista é obrigatório";
     } else if (form.motorista.length < 3) {
@@ -329,7 +336,7 @@ const CadastroCaminhao = () => {
         placa: form.placa.replace(/-/g, ""),
         qtd_pneus: parseInt(form.qtd_pneus),
         km_atual: parseInt(form.km_atual),
-        numero_cavalo: form.numero_cavalo ? parseInt(form.numero_cavalo) : null,
+        numero_cavalo: parseInt(form.numero_cavalo),
         motorista: form.motorista.trim(),
         numero_carreta_1: carretasPreenchidas[0]
           ? parseInt(carretasPreenchidas[0])
@@ -505,11 +512,12 @@ const CadastroCaminhao = () => {
               onChange={(e) =>
                 handleInputChange("numero_cavalo", e.target.value)
               }
-              min="100"
-              max="999"
+              required
+              min="100" // Volte para 100
+              max="9999"
               placeholder="100+"
               error={errors.numero_cavalo}
-              helpText="Número único do cavalo mecânico"
+              helpText="Número único do cavalo mecânico (obrigatório, 100 ou maior)"
             />
 
             <div className="flex flex-col sm:flex-row gap-4 mt-8">

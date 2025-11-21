@@ -1,0 +1,23 @@
+{
+  "name": "sistema-transportadora",
+  "version": "1.0.0",
+  "description": "Sistema completo de gestão de frotas desenvolvido especificamente para a transportadora ABroto. A aplicação oferece controle total sobre caminhões, gastos operacionais, manutenções preventivas/corretivas e gerenciamento detalhado de pneus, com dashboards analíticos e relatórios em tempo real.",
+  "main": "test-backend.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joaogabrielcastro/sistema-transportadora.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/joaogabrielcastro/sistema-transportadora/issues"
+  },
+  "homepage": "https://github.com/joaogabrielcastro/sistema-transportadora#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@types/node": "^24.10.1"
+  }
+}

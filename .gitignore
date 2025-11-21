@@ -1,0 +1,29 @@
+# Dependencies
+/node_modules
+
+# Build artifacts
+/dist
+/dev-dist
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE specific
+.vscode/
+.idea/
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

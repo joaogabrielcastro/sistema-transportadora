@@ -8,7 +8,7 @@ export const api = axios.create({
     import.meta.env.VITE_API_URL ||
     "https://sistema-transportadora.onrender.com"
   }/api`,
-  timeout: 10000,
+  timeout: 30000, // 30 segundos para dar tempo do backend acordar do hibernação
   headers: {
     "Content-Type": "application/json",
   },
@@ -19,6 +19,12 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     console.error("API Error:", error);
+
+    if (error.code === "ECONNABORTED") {
+      throw new Error(
+        "Servidor demorando para responder. O backend pode estar iniciando (isso pode levar até 1 minuto). Tente novamente em alguns segundos."
+      );
+    }
 
     if (error.code === "ECONNREFUSED") {
       throw new Error(
@@ -31,7 +37,7 @@ api.interceptors.response.use(
       throw error;
     }
 
-    throw new Error("Erro de conexão");
+    throw new Error("Erro de conexão com o servidor");
   }
 );
 

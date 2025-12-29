@@ -269,10 +269,10 @@ const CaminhaoDetail = () => {
     scales: {
       y: {
         beginAtZero: true,
-        ticks: { 
+        ticks: {
           callback: (value) => {
             return "R$ " + Number(value || 0).toLocaleString("pt-BR");
-          }
+          },
         },
         grid: { color: "rgba(0, 0, 0, 0.05)" },
       },

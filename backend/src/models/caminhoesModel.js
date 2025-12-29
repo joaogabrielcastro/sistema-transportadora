@@ -13,27 +13,27 @@ export const caminhoesModel = {
     let conditions = [];
 
     // Apenas adicionar condições se o valor não for null ou undefined
-    if (numero_carreta_1 != null && numero_carreta_1 !== '')
+    if (numero_carreta_1 != null && numero_carreta_1 !== "")
       conditions.push(
         `numero_carreta_1.eq.${numero_carreta_1}`,
         `numero_carreta_2.eq.${numero_carreta_1}`
       );
-    if (placa_carreta_1 != null && placa_carreta_1 !== '')
+    if (placa_carreta_1 != null && placa_carreta_1 !== "")
       conditions.push(
         `placa_carreta_1.eq.${placa_carreta_1}`,
         `placa_carreta_2.eq.${placa_carreta_1}`
       );
-    if (numero_carreta_2 != null && numero_carreta_2 !== '')
+    if (numero_carreta_2 != null && numero_carreta_2 !== "")
       conditions.push(
         `numero_carreta_1.eq.${numero_carreta_2}`,
         `numero_carreta_2.eq.${numero_carreta_2}`
       );
-    if (placa_carreta_2 != null && placa_carreta_2 !== '')
+    if (placa_carreta_2 != null && placa_carreta_2 !== "")
       conditions.push(
         `placa_carreta_1.eq.${placa_carreta_2}`,
         `placa_carreta_2.eq.${placa_carreta_2}`
       );
-    if (numero_cavalo != null && numero_cavalo !== '') 
+    if (numero_cavalo != null && numero_cavalo !== "")
       conditions.push(`numero_cavalo.eq.${numero_cavalo}`);
 
     if (conditions.length === 0) return [];

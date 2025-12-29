@@ -1,5 +1,10 @@
 import React from "react";
-import { useFormValidation, FieldError, validators, composeValidators } from "../hooks/useFormValidation.jsx";
+import {
+  useFormValidation,
+  FieldError,
+  validators,
+  composeValidators,
+} from "../hooks/useFormValidation.jsx";
 import { Button, Input, Label } from "./ui";
 
 /**
@@ -49,22 +54,16 @@ const validateForm = (values) => {
 };
 
 const ExampleFormWithValidation = ({ onSubmit }) => {
-  const {
-    values,
-    errors,
-    touched,
-    isSubmitting,
-    handleSubmit,
-    getFieldProps,
-  } = useFormValidation(
-    {
-      placa: "",
-      modelo: "",
-      ano: "",
-      km: "",
-    },
-    validateForm
-  );
+  const { values, errors, touched, isSubmitting, handleSubmit, getFieldProps } =
+    useFormValidation(
+      {
+        placa: "",
+        modelo: "",
+        ano: "",
+        km: "",
+      },
+      validateForm
+    );
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">

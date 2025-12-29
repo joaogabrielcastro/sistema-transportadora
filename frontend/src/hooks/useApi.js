@@ -25,7 +25,7 @@ const retryRequest = async (fn, retries = 3, delay = 1000) => {
     return await fn();
   } catch (error) {
     if (retries === 0) throw error;
-    
+
     // Não fazer retry em erros de validação (4xx exceto 408, 429)
     if (error.response?.status >= 400 && error.response?.status < 500) {
       if (error.response.status !== 408 && error.response.status !== 429) {
@@ -34,7 +34,7 @@ const retryRequest = async (fn, retries = 3, delay = 1000) => {
     }
 
     logger.warn(`Retrying request... (${retries} attempts left)`);
-    await new Promise(resolve => setTimeout(resolve, delay));
+    await new Promise((resolve) => setTimeout(resolve, delay));
     return retryRequest(fn, retries - 1, delay * 2);
   }
 };
@@ -77,9 +77,10 @@ export const useApi = () => {
       setError(null);
 
       // Gerar chave de cache para requisições GET
-      const cacheKey = config.method === "GET" 
-        ? `${config.url}_${JSON.stringify(config.params || {})}`
-        : null;
+      const cacheKey =
+        config.method === "GET"
+          ? `${config.url}_${JSON.stringify(config.params || {})}`
+          : null;
 
       // Verificar cache para GET
       if (cacheKey && cache.has(cacheKey)) {

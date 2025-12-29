@@ -28,11 +28,11 @@ const DetalhesModal = ({ registro, onClose }) => {
   if (!registro) return null;
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
-      <div 
+      <div
         className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
@@ -45,43 +45,75 @@ const DetalhesModal = ({ registro, onClose }) => {
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
-        
+
         <div className="px-6 py-4 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">Caminhão</label>
-              <p className="text-base font-semibold text-gray-900">{registro.placa || "N/A"}</p>
+              <label className="block text-sm font-medium text-gray-500 mb-1">
+                Caminhão
+              </label>
+              <p className="text-base font-semibold text-gray-900">
+                {registro.placa || "N/A"}
+              </p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">Data</label>
-              <p className="text-base font-semibold text-gray-900">{registro.dataFormatada}</p>
+              <label className="block text-sm font-medium text-gray-500 mb-1">
+                Data
+              </label>
+              <p className="text-base font-semibold text-gray-900">
+                {registro.dataFormatada}
+              </p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">Valor</label>
-              <p className="text-lg font-bold text-blue-600">{registro.valorFormatado}</p>
+              <label className="block text-sm font-medium text-gray-500 mb-1">
+                Valor
+              </label>
+              <p className="text-lg font-bold text-blue-600">
+                {registro.valorFormatado}
+              </p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">KM Registrado</label>
-              <p className="text-base font-semibold text-gray-900">{registro.kmFormatado}</p>
+              <label className="block text-sm font-medium text-gray-500 mb-1">
+                KM Registrado
+              </label>
+              <p className="text-base font-semibold text-gray-900">
+                {registro.kmFormatado}
+              </p>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-500 mb-1">Tipo/Descrição</label>
-            <p className="text-base font-semibold text-gray-900">{registro.nome_tipo || "N/A"}</p>
+            <label className="block text-sm font-medium text-gray-500 mb-1">
+              Tipo/Descrição
+            </label>
+            <p className="text-base font-semibold text-gray-900">
+              {registro.nome_tipo || "N/A"}
+            </p>
           </div>
 
           {registro.observacao && (
             <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">Observações</label>
+              <label className="block text-sm font-medium text-gray-500 mb-1">
+                Observações
+              </label>
               <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                 <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
                   {registro.observacao}
@@ -92,15 +124,23 @@ const DetalhesModal = ({ registro, onClose }) => {
 
           {registro.oficina && registro.oficina !== "N/A" && (
             <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">Oficina</label>
-              <p className="text-base font-semibold text-gray-900">{registro.oficina}</p>
+              <label className="block text-sm font-medium text-gray-500 mb-1">
+                Oficina
+              </label>
+              <p className="text-base font-semibold text-gray-900">
+                {registro.oficina}
+              </p>
             </div>
           )}
 
           {registro.quantidade_combustivel && (
             <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">Quantidade de Combustível</label>
-              <p className="text-base font-semibold text-gray-900">{registro.quantidade_combustivel} L</p>
+              <label className="block text-sm font-medium text-gray-500 mb-1">
+                Quantidade de Combustível
+              </label>
+              <p className="text-base font-semibold text-gray-900">
+                {registro.quantidade_combustivel} L
+              </p>
             </div>
           )}
         </div>
@@ -441,7 +481,10 @@ const HistoricoRegistros = ({
                       {registro.nome_tipo || "N/A"}
                     </div>
                     {registro.observacao && (
-                      <div className="text-xs text-gray-500 mt-0.5 truncate max-w-xs" title={registro.observacao}>
+                      <div
+                        className="text-xs text-gray-500 mt-0.5 truncate max-w-xs"
+                        title={registro.observacao}
+                      >
                         {registro.observacao}
                       </div>
                     )}

@@ -79,9 +79,7 @@ class ErrorBoundary extends React.Component {
               <Button variant="outline" onClick={() => window.history.back()}>
                 Voltar
               </Button>
-              <Button onClick={this.handleReset}>
-                Ir para Página Inicial
-              </Button>
+              <Button onClick={this.handleReset}>Ir para Página Inicial</Button>
             </div>
 
             <p className="text-sm text-gray-500 text-center mt-6">

@@ -13,7 +13,10 @@ export const caminhoesController = {
     try {
       console.log("📥 Recebendo dados:", JSON.stringify(req.body, null, 2));
       const caminhaoValidado = caminhaoSchema.parse(req.body);
-      console.log("✅ Validação passou:", JSON.stringify(caminhaoValidado, null, 2));
+      console.log(
+        "✅ Validação passou:",
+        JSON.stringify(caminhaoValidado, null, 2)
+      );
       const novoCaminhao = await CaminhaoService.criarCaminhao(
         caminhaoValidado
       );

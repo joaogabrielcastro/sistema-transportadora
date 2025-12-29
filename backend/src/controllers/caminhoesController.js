@@ -11,7 +11,9 @@ export const caminhoesController = {
   // Criar um caminhão
   createCaminhao: async (req, res, next) => {
     try {
+      console.log("📥 Recebendo dados:", JSON.stringify(req.body, null, 2));
       const caminhaoValidado = caminhaoSchema.parse(req.body);
+      console.log("✅ Validação passou:", JSON.stringify(caminhaoValidado, null, 2));
       const novoCaminhao = await CaminhaoService.criarCaminhao(
         caminhaoValidado
       );
@@ -22,6 +24,7 @@ export const caminhoesController = {
         message: "Caminhão criado com sucesso",
       });
     } catch (error) {
+      console.error("❌ Erro no controller:", error);
       next(error);
     }
   },

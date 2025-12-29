@@ -19,11 +19,3 @@ pnpm-debug.log*
 # IDE specific
 .vscode/
 .idea/
-
-# Playwright
-node_modules/
-/test-results/
-/playwright-report/
-/blob-report/
-/playwright/.cache/
-/playwright/.auth/

@@ -24,6 +24,97 @@ const StatusBadge = ({ tipo }) => {
   );
 };
 
+const DetalhesModal = ({ registro, onClose }) => {
+  if (!registro) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+          <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <StatusBadge tipo={registro.tipo_registro} />
+            Detalhes do Registro
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <div className="px-6 py-4 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Caminhão</label>
+              <p className="text-base font-semibold text-gray-900">{registro.placa || "N/A"}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Data</label>
+              <p className="text-base font-semibold text-gray-900">{registro.dataFormatada}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Valor</label>
+              <p className="text-lg font-bold text-blue-600">{registro.valorFormatado}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">KM Registrado</label>
+              <p className="text-base font-semibold text-gray-900">{registro.kmFormatado}</p>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-500 mb-1">Tipo/Descrição</label>
+            <p className="text-base font-semibold text-gray-900">{registro.nome_tipo || "N/A"}</p>
+          </div>
+
+          {registro.observacao && (
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Observações</label>
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
+                  {registro.observacao}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {registro.oficina && registro.oficina !== "N/A" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Oficina</label>
+              <p className="text-base font-semibold text-gray-900">{registro.oficina}</p>
+            </div>
+          )}
+
+          {registro.quantidade_combustivel && (
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Quantidade de Combustível</label>
+              <p className="text-base font-semibold text-gray-900">{registro.quantidade_combustivel} L</p>
+            </div>
+          )}
+        </div>
+
+        <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4">
+          <Button onClick={onClose} className="w-full">
+            Fechar
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const RegistroForm = ({
   form,
   caminhoes,
@@ -181,6 +272,7 @@ const RegistroForm = ({
 const HistoricoRegistros = ({
   registros,
   onDelete,
+  onVerDetalhes,
   filtroPlaca,
   onFiltroChange,
   loading,
@@ -349,7 +441,7 @@ const HistoricoRegistros = ({
                       {registro.nome_tipo || "N/A"}
                     </div>
                     {registro.observacao && (
-                      <div className="text-xs text-gray-500 mt-0.5 truncate max-w-xs">
+                      <div className="text-xs text-gray-500 mt-0.5 truncate max-w-xs" title={registro.observacao}>
                         {registro.observacao}
                       </div>
                     )}
@@ -371,14 +463,23 @@ const HistoricoRegistros = ({
                     {registro.kmFormatado}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() =>
-                        onDelete(registro.tipo_registro, registro.id)
-                      }
-                      className="text-red-600 hover:text-red-900 transition-colors text-xs font-medium uppercase tracking-wide"
-                    >
-                      Excluir
-                    </button>
+                    <div className="flex justify-end gap-3">
+                      <button
+                        onClick={() => onVerDetalhes(registro)}
+                        className="text-blue-600 hover:text-blue-900 transition-colors text-xs font-medium uppercase tracking-wide"
+                        title="Ver detalhes completos"
+                      >
+                        Ver Detalhes
+                      </button>
+                      <button
+                        onClick={() =>
+                          onDelete(registro.tipo_registro, registro.id)
+                        }
+                        className="text-red-600 hover:text-red-900 transition-colors text-xs font-medium uppercase tracking-wide"
+                      >
+                        Excluir
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -397,6 +498,7 @@ const ManutencaoGastos = () => {
   const [tiposGastos, setTiposGastos] = useState([]);
   const [registros, setRegistros] = useState([]);
   const [filtroPlaca, setFiltroPlaca] = useState("");
+  const [registroSelecionado, setRegistroSelecionado] = useState(null);
   const [form, setForm] = useState({
     tipo: "gasto",
     caminhao_id: "",
@@ -671,11 +773,20 @@ const ManutencaoGastos = () => {
         <HistoricoRegistros
           registros={registros}
           onDelete={handleDelete}
+          onVerDetalhes={(registro) => setRegistroSelecionado(registro)}
           filtroPlaca={filtroPlaca}
           onFiltroChange={(e) => setFiltroPlaca(e.target.value)}
           loading={loading}
         />
       </div>
+
+      {/* Modal de Detalhes */}
+      {registroSelecionado && (
+        <DetalhesModal
+          registro={registroSelecionado}
+          onClose={() => setRegistroSelecionado(null)}
+        />
+      )}
     </div>
   );
 };

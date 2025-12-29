@@ -1,6 +1,11 @@
 // frontend/src/hooks/useApi.js
 import { useState, useCallback } from "react";
 import axios from "axios";
+import logger from "../utils/logger";
+
+// Cache simples em memória
+const cache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
 // Configuração da API
 export const api = axios.create({
@@ -14,11 +19,31 @@ export const api = axios.create({
   },
 });
 
+// Função de retry com exponential backoff
+const retryRequest = async (fn, retries = 3, delay = 1000) => {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries === 0) throw error;
+    
+    // Não fazer retry em erros de validação (4xx exceto 408, 429)
+    if (error.response?.status >= 400 && error.response?.status < 500) {
+      if (error.response.status !== 408 && error.response.status !== 429) {
+        throw error;
+      }
+    }
+
+    logger.warn(`Retrying request... (${retries} attempts left)`);
+    await new Promise(resolve => setTimeout(resolve, delay));
+    return retryRequest(fn, retries - 1, delay * 2);
+  }
+};
+
 // Interceptador para respostas
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error("API Error:", error);
+    logger.error("API Error:", error);
 
     if (error.code === "ECONNABORTED") {
       throw new Error(
@@ -51,7 +76,32 @@ export const useApi = () => {
       setLoading(true);
       setError(null);
 
-      const response = await api(config);
+      // Gerar chave de cache para requisições GET
+      const cacheKey = config.method === "GET" 
+        ? `${config.url}_${JSON.stringify(config.params || {})}`
+        : null;
+
+      // Verificar cache para GET
+      if (cacheKey && cache.has(cacheKey)) {
+        const cached = cache.get(cacheKey);
+        if (Date.now() - cached.timestamp < CACHE_TTL) {
+          logger.info("Cache hit:", cacheKey);
+          return cached.data;
+        } else {
+          cache.delete(cacheKey);
+        }
+      }
+
+      // Fazer requisição com retry
+      const response = await retryRequest(() => api(config));
+
+      // Armazenar no cache se for GET
+      if (cacheKey) {
+        cache.set(cacheKey, {
+          data: response.data,
+          timestamp: Date.now(),
+        });
+      }
 
       // Verificar se a resposta tem a estrutura esperada
       if (response.data && typeof response.data === "object") {
@@ -128,6 +178,14 @@ export const useApi = () => {
     setError(null);
   }, []);
 
+  const clearCache = useCallback((key) => {
+    if (key) {
+      cache.delete(key);
+    } else {
+      cache.clear();
+    }
+  }, []);
+
   return {
     loading,
     error,
@@ -136,6 +194,7 @@ export const useApi = () => {
     put,
     delete: del,
     clearError,
+    clearCache,
     request,
   };
 };

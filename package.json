@@ -5,8 +5,7 @@
   "main": "test-backend.js",
   "scripts": {
     "backend": "cd backend && npm start",
-    "frontend": "cd frontend && npm run dev",
-    "test": "playwright test"
+    "frontend": "cd frontend && npm run dev"
   },
   "repository": {
     "type": "git",
@@ -19,9 +18,5 @@
   "bugs": {
     "url": "https://github.com/joaogabrielcastro/sistema-transportadora/issues"
   },
-  "homepage": "https://github.com/joaogabrielcastro/sistema-transportadora#readme",
-  "devDependencies": {
-    "@playwright/test": "^1.56.1",
-    "@types/node": "^24.10.1"
-  }
+  "homepage": "https://github.com/joaogabrielcastro/sistema-transportadora#readme"
 }

@@ -484,7 +484,7 @@ const PneusTable = ({
 };
 
 const Pneus = () => {
-  const { get, post, del } = useApi();
+  const { get, post, delete: del } = useApi();
   const [caminhoes, setCaminhoes] = useState([]);
   const [posicoes, setPosicoes] = useState([]);
   const [statusList, setStatusList] = useState([]);

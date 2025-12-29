@@ -199,7 +199,7 @@ const HistoricoRegistros = ({
         ? new Date(registro.data).toLocaleDateString("pt-BR")
         : "N/A",
       kmFormatado:
-        registro.km_registro !== "N/A"
+        registro.km_registro !== "N/A" && !isNaN(parseInt(registro.km_registro))
           ? parseInt(registro.km_registro).toLocaleString("pt-BR")
           : "N/A",
     }));
@@ -391,7 +391,7 @@ const HistoricoRegistros = ({
 };
 
 const ManutencaoGastos = () => {
-  const { get, post, put, del } = useApi();
+  const { get, post, put, delete: del } = useApi();
   const [caminhoes, setCaminhoes] = useState([]);
   const [itensChecklist, setItensChecklist] = useState([]);
   const [tiposGastos, setTiposGastos] = useState([]);

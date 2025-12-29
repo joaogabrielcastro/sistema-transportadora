@@ -257,17 +257,23 @@ const CaminhaoDetail = () => {
       legend: { position: "top", labels: { usePointStyle: true, padding: 20 } },
       tooltip: {
         callbacks: {
-          label: (context) =>
-            `R$ ${context.raw.toLocaleString("pt-BR", {
+          label: (context) => {
+            const value = context.raw || 0;
+            return `R$ ${Number(value).toLocaleString("pt-BR", {
               minimumFractionDigits: 2,
-            })}`,
+            })}`;
+          },
         },
       },
     },
     scales: {
       y: {
         beginAtZero: true,
-        ticks: { callback: (value) => "R$ " + value.toLocaleString("pt-BR") },
+        ticks: { 
+          callback: (value) => {
+            return "R$ " + Number(value || 0).toLocaleString("pt-BR");
+          }
+        },
         grid: { color: "rgba(0, 0, 0, 0.05)" },
       },
       x: { grid: { display: false } },
@@ -457,7 +463,7 @@ const CaminhaoDetail = () => {
                 { label: "Ano", value: caminhao.ano || "N/A" },
                 {
                   label: "KM Atual",
-                  value: `${caminhao.km_atual.toLocaleString()} km`,
+                  value: `${(caminhao.km_atual || 0).toLocaleString()} km`,
                 },
                 { label: "Qtd. Pneus", value: caminhao.qtd_pneus },
                 { label: "Nº Cavalo", value: caminhao.numero_cavalo || "N/A" },
@@ -559,7 +565,7 @@ const CaminhaoDetail = () => {
                   </div>
                   <span className="font-semibold text-gray-900">
                     R${" "}
-                    {parseFloat(gasto.valor).toLocaleString("pt-BR", {
+                    {parseFloat(gasto.valor || 0).toLocaleString("pt-BR", {
                       minimumFractionDigits: 2,
                     })}
                   </span>

@@ -20,6 +20,9 @@ const EditCaminhao = () => {
     km_atual: "",
     numero_cavalo: "",
     motorista: "",
+    marca: "",
+    modelo: "",
+    ano: "",
     placa_carreta_1: "",
     placa_carreta_2: "",
   });
@@ -46,6 +49,9 @@ const EditCaminhao = () => {
           km_atual: data.km_atual || "",
           numero_cavalo: data.numero_cavalo || "",
           motorista: data.motorista || "",
+          marca: data.marca || "",
+          modelo: data.modelo || "",
+          ano: data.ano || "",
           placa_carreta_1: data.placa_carreta_1 || "",
           placa_carreta_2: data.placa_carreta_2 || "",
         });
@@ -131,7 +137,7 @@ const EditCaminhao = () => {
 
     if (field.startsWith("placa")) {
       formattedValue = formatPlaca(value);
-    } else if (["qtd_pneus", "km_atual", "numero_cavalo"].includes(field)) {
+    } else if (["qtd_pneus", "km_atual", "numero_cavalo", "ano"].includes(field)) {
       formattedValue = value.replace(/[^0-9]/g, "");
     } else if (field === "motorista") {
       formattedValue = value.replace(/[^a-zA-ZÀ-ÿ\s]/g, "");
@@ -193,6 +199,9 @@ const EditCaminhao = () => {
         km_atual: form.km_atual ? parseInt(form.km_atual) : null,
         numero_cavalo: form.numero_cavalo ? parseInt(form.numero_cavalo) : null,
         motorista: form.motorista.trim() || null,
+        marca: form.marca.trim() || null,
+        modelo: form.modelo.trim() || null,
+        ano: form.ano ? parseInt(form.ano) : null,
         numero_carreta_1: carretasPreenchidas[0]
           ? parseInt(carretasPreenchidas[0])
           : null,
@@ -268,6 +277,38 @@ const EditCaminhao = () => {
               placeholder="Nome completo"
               error={errors.motorista}
             />
+
+            {/* Dados do Veículo */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <FormField
+                label="Marca"
+                name="marca"
+                value={form.marca}
+                onChange={(e) => handleInputChange("marca", e.target.value)}
+                placeholder="Ex: Scania, Volvo"
+                error={errors.marca}
+              />
+
+              <FormField
+                label="Modelo"
+                name="modelo"
+                value={form.modelo}
+                onChange={(e) => handleInputChange("modelo", e.target.value)}
+                placeholder="Ex: R 450, FH 540"
+                error={errors.modelo}
+              />
+
+              <FormField
+                label="Ano"
+                name="ano"
+                type="number"
+                value={form.ano}
+                onChange={(e) => handleInputChange("ano", e.target.value)}
+                placeholder="Ex: 2020"
+                maxLength={4}
+                error={errors.ano}
+              />
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField

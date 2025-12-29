@@ -452,6 +452,9 @@ const CaminhaoDetail = () => {
               {[
                 { label: "Placa", value: caminhao.placa },
                 { label: "Motorista", value: caminhao.motorista || "N/A" },
+                { label: "Marca", value: caminhao.marca || "N/A" },
+                { label: "Modelo", value: caminhao.modelo || "N/A" },
+                { label: "Ano", value: caminhao.ano || "N/A" },
                 {
                   label: "KM Atual",
                   value: `${caminhao.km_atual.toLocaleString()} km`,

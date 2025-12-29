@@ -19,6 +19,9 @@ const CadastroCaminhao = () => {
     km_atual: "",
     numero_cavalo: "",
     motorista: "",
+    marca: "",
+    modelo: "",
+    ano: "",
     placa_carreta_1: "",
     placa_carreta_2: "",
   });
@@ -121,7 +124,7 @@ const CadastroCaminhao = () => {
 
     if (field.startsWith("placa")) {
       formattedValue = formatPlaca(value);
-    } else if (["qtd_pneus", "km_atual", "numero_cavalo"].includes(field)) {
+    } else if (["qtd_pneus", "km_atual", "numero_cavalo", "ano"].includes(field)) {
       formattedValue = value.replace(/[^0-9]/g, "");
     } else if (field === "motorista") {
       formattedValue = value.replace(/[^a-zA-ZÀ-ÿ\s]/g, "");
@@ -184,6 +187,9 @@ const CadastroCaminhao = () => {
         km_atual: parseInt(form.km_atual),
         numero_cavalo: parseInt(form.numero_cavalo),
         motorista: form.motorista.trim(),
+        marca: form.marca.trim() || null,
+        modelo: form.modelo.trim() || null,
+        ano: form.ano ? parseInt(form.ano) : null,
         numero_carreta_1: carretasPreenchidas[0]
           ? parseInt(carretasPreenchidas[0])
           : null,
@@ -305,6 +311,83 @@ const CadastroCaminhao = () => {
                 </svg>
               }
             />
+
+            {/* Dados do Veículo */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <FormField
+                label="Marca"
+                name="marca"
+                value={form.marca}
+                onChange={(e) => handleInputChange("marca", e.target.value)}
+                placeholder="Ex: Scania, Volvo"
+                error={errors.marca}
+                icon={
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                    />
+                  </svg>
+                }
+              />
+
+              <FormField
+                label="Modelo"
+                name="modelo"
+                value={form.modelo}
+                onChange={(e) => handleInputChange("modelo", e.target.value)}
+                placeholder="Ex: R 450, FH 540"
+                error={errors.modelo}
+                icon={
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                }
+              />
+
+              <FormField
+                label="Ano"
+                name="ano"
+                type="number"
+                value={form.ano}
+                onChange={(e) => handleInputChange("ano", e.target.value)}
+                placeholder="Ex: 2020"
+                maxLength={4}
+                error={errors.ano}
+                icon={
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                }
+              />
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField

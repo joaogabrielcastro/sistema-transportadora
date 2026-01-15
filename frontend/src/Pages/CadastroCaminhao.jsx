@@ -84,9 +84,7 @@ const CadastroCaminhao = () => {
       });
     }
 
-    if (!form.numero_cavalo || form.numero_cavalo.trim() === "") {
-      newErrors.numero_cavalo = "Obrigatório";
-    } else {
+    if (form.numero_cavalo && form.numero_cavalo.trim() !== "") {
       const numeroCavalo = parseInt(form.numero_cavalo);
       if (isNaN(numeroCavalo) || numeroCavalo < 0) {
         newErrors.numero_cavalo = "Deve ser positivo";
@@ -124,7 +122,9 @@ const CadastroCaminhao = () => {
 
     if (field.startsWith("placa")) {
       formattedValue = formatPlaca(value);
-    } else if (["qtd_pneus", "km_atual", "numero_cavalo", "ano"].includes(field)) {
+    } else if (
+      ["qtd_pneus", "km_atual", "numero_cavalo", "ano"].includes(field)
+    ) {
       formattedValue = value.replace(/[^0-9]/g, "");
     } else if (field === "motorista") {
       formattedValue = value.replace(/[^a-zA-ZÀ-ÿ\s]/g, "");
@@ -266,7 +266,6 @@ const CadastroCaminhao = () => {
                 onChange={(e) =>
                   handleInputChange("numero_cavalo", e.target.value)
                 }
-                required
                 placeholder="100+"
                 error={errors.numero_cavalo}
                 icon={

@@ -15,11 +15,10 @@ export const caminhoesController = {
       const caminhaoValidado = caminhaoSchema.parse(req.body);
       console.log(
         "✅ Validação passou:",
-        JSON.stringify(caminhaoValidado, null, 2)
+        JSON.stringify(caminhaoValidado, null, 2),
       );
-      const novoCaminhao = await CaminhaoService.criarCaminhao(
-        caminhaoValidado
-      );
+      const novoCaminhao =
+        await CaminhaoService.criarCaminhao(caminhaoValidado);
 
       res.status(201).json({
         success: true,
@@ -35,13 +34,22 @@ export const caminhoesController = {
   // Listar todos os caminhões com paginação e busca
   getAllCaminhoes: async (req, res, next) => {
     try {
-      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-      const limit = Math.min(
-        100,
-        Math.max(1, parseInt(req.query.limit, 10) || 10)
-      );
       const filtro = req.query.filtro || null;
       const termo = req.query.termo || null;
+
+      // Se nenhum parâmetro de paginação for fornecido, retornar TODOS os caminhões
+      let page;
+      let limit;
+      const pageParam = req.query.page;
+      const limitParam = req.query.limit;
+
+      if (pageParam === undefined && limitParam === undefined) {
+        page = 1;
+        limit = null; // sinaliza sem paginação
+      } else {
+        page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
+      }
 
       const resultado = await CaminhaoService.buscarTodos({
         page,
@@ -49,6 +57,11 @@ export const caminhoesController = {
         filtro,
         termo,
       });
+
+      // Se não houve paginação, retornar apenas os dados (compatível com chamadas que esperam array)
+      if (limit === null) {
+        return res.status(200).json({ success: true, data: resultado.data });
+      }
 
       res.status(200).json({
         success: true,
@@ -112,7 +125,7 @@ export const caminhoesController = {
 
       const caminhaoAtualizado = await CaminhaoService.atualizarCaminhao(
         placa,
-        caminhaoValidado
+        caminhaoValidado,
       );
 
       res.status(200).json({

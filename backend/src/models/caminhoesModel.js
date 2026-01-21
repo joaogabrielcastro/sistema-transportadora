@@ -8,7 +8,7 @@ export const caminhoesModel = {
     placa_carreta_1,
     numero_carreta_2,
     placa_carreta_2,
-    numero_cavalo
+    numero_cavalo,
   ) => {
     let conditions = [];
 
@@ -16,22 +16,22 @@ export const caminhoesModel = {
     if (numero_carreta_1 != null && numero_carreta_1 !== "")
       conditions.push(
         `numero_carreta_1.eq.${numero_carreta_1}`,
-        `numero_carreta_2.eq.${numero_carreta_1}`
+        `numero_carreta_2.eq.${numero_carreta_1}`,
       );
     if (placa_carreta_1 != null && placa_carreta_1 !== "")
       conditions.push(
         `placa_carreta_1.eq.${placa_carreta_1}`,
-        `placa_carreta_2.eq.${placa_carreta_1}`
+        `placa_carreta_2.eq.${placa_carreta_1}`,
       );
     if (numero_carreta_2 != null && numero_carreta_2 !== "")
       conditions.push(
         `numero_carreta_1.eq.${numero_carreta_2}`,
-        `numero_carreta_2.eq.${numero_carreta_2}`
+        `numero_carreta_2.eq.${numero_carreta_2}`,
       );
     if (placa_carreta_2 != null && placa_carreta_2 !== "")
       conditions.push(
         `placa_carreta_1.eq.${placa_carreta_2}`,
-        `placa_carreta_2.eq.${placa_carreta_2}`
+        `placa_carreta_2.eq.${placa_carreta_2}`,
       );
     if (numero_cavalo != null && numero_cavalo !== "")
       conditions.push(`numero_cavalo.eq.${numero_cavalo}`);
@@ -41,7 +41,7 @@ export const caminhoesModel = {
     const { data, error } = await supabase
       .from("caminhoes")
       .select(
-        "placa, numero_carreta_1, placa_carreta_1, numero_carreta_2, placa_carreta_2, numero_cavalo"
+        "placa, numero_carreta_1, placa_carreta_1, numero_carreta_2, placa_carreta_2, numero_cavalo",
       )
       .or(conditions.join(","));
 
@@ -64,7 +64,7 @@ export const caminhoesModel = {
       placa_carreta_1,
       numero_carreta_2,
       placa_carreta_2,
-      numero_cavalo
+      numero_cavalo,
     );
 
     if (existentes.length > 0) {
@@ -74,50 +74,50 @@ export const caminhoesModel = {
         if (numero_carreta_1) {
           if (item.numero_carreta_1 == numero_carreta_1)
             erros.add(
-              `Número de carreta ${numero_carreta_1} já está em uso no caminhão ${item.placa}`
+              `Número de carreta ${numero_carreta_1} já está em uso no caminhão ${item.placa}`,
             );
           if (item.numero_carreta_2 == numero_carreta_1)
             erros.add(
-              `Número de carreta ${numero_carreta_1} já está em uso no caminhão ${item.placa}`
+              `Número de carreta ${numero_carreta_1} já está em uso no caminhão ${item.placa}`,
             );
         }
         // Validações cruzadas para placa_carreta_1
         if (placa_carreta_1) {
           if (item.placa_carreta_1 == placa_carreta_1)
             erros.add(
-              `Placa de carreta ${placa_carreta_1} já está em uso no caminhão ${item.placa}`
+              `Placa de carreta ${placa_carreta_1} já está em uso no caminhão ${item.placa}`,
             );
           if (item.placa_carreta_2 == placa_carreta_1)
             erros.add(
-              `Placa de carreta ${placa_carreta_1} já está em uso no caminhão ${item.placa}`
+              `Placa de carreta ${placa_carreta_1} já está em uso no caminhão ${item.placa}`,
             );
         }
         // Validações cruzadas para numero_carreta_2
         if (numero_carreta_2) {
           if (item.numero_carreta_1 == numero_carreta_2)
             erros.add(
-              `Número de carreta ${numero_carreta_2} já está em uso no caminhão ${item.placa}`
+              `Número de carreta ${numero_carreta_2} já está em uso no caminhão ${item.placa}`,
             );
           if (item.numero_carreta_2 == numero_carreta_2)
             erros.add(
-              `Número de carreta ${numero_carreta_2} já está em uso no caminhão ${item.placa}`
+              `Número de carreta ${numero_carreta_2} já está em uso no caminhão ${item.placa}`,
             );
         }
         // Validações cruzadas para placa_carreta_2
         if (placa_carreta_2) {
           if (item.placa_carreta_1 == placa_carreta_2)
             erros.add(
-              `Placa de carreta ${placa_carreta_2} já está em uso no caminhão ${item.placa}`
+              `Placa de carreta ${placa_carreta_2} já está em uso no caminhão ${item.placa}`,
             );
           if (item.placa_carreta_2 == placa_carreta_2)
             erros.add(
-              `Placa de carreta ${placa_carreta_2} já está em uso no caminhão ${item.placa}`
+              `Placa de carreta ${placa_carreta_2} já está em uso no caminhão ${item.placa}`,
             );
         }
         // Validação para numero_cavalo
         if (numero_cavalo && item.numero_cavalo == numero_cavalo) {
           erros.add(
-            `Cavalo ${numero_cavalo} já está em uso no caminhão ${item.placa}`
+            `Cavalo ${numero_cavalo} já está em uso no caminhão ${item.placa}`,
           );
         }
       });
@@ -154,33 +154,38 @@ export const caminhoesModel = {
     return data[0];
   },
 
-  // Lógica para buscar todos os caminhões com paginação
+  // Lógica para buscar todos os caminhões com paginação (ou sem paginação quando limit === null)
   getAll: async ({ page = 1, limit = 10, filtro = null, termo = null }) => {
-    const from = (page - 1) * limit;
-    const to = from + limit - 1;
+    const noPagination = limit === null || limit === undefined;
 
     let query = supabase.from("caminhoes").select("*", { count: "exact" });
 
-    // NOVO: Lógica de filtro e busca combinada
+    // Lógica de filtro e busca combinada
     if (termo) {
       const termoUpper = termo.toUpperCase();
       if (filtro === "placa") {
         query = query.or(
           `placa.ilike.%${termoUpper}%`,
           `placa_carreta_1.ilike.%${termoUpper}%`,
-          `placa_carreta_2.ilike.%${termoUpper}%`
+          `placa_carreta_2.ilike.%${termoUpper}%`,
         );
       } else if (filtro === "motorista") {
         query = query.ilike("motorista", `%${termo}%`);
       } else {
         // Busca geral se nenhum filtro específico for selecionado
         query = query.or(
-          `placa.ilike.%${termoUpper}%,motorista.ilike.%${termo}%,placa_carreta_1.ilike.%${termoUpper}%,placa_carreta_2.ilike.%${termoUpper}%`
+          `placa.ilike.%${termoUpper}%,motorista.ilike.%${termo}%,placa_carreta_1.ilike.%${termoUpper}%,placa_carreta_2.ilike.%${termoUpper}%`,
         );
       }
     }
 
-    query = query.order("placa").range(from, to);
+    query = query.order("placa");
+
+    if (!noPagination) {
+      const from = (page - 1) * limit;
+      const to = from + limit - 1;
+      query = query.range(from, to);
+    }
 
     const { data, error, count } = await query;
 
@@ -225,7 +230,7 @@ export const caminhoesModel = {
       placa_carreta_1,
       numero_carreta_2,
       placa_carreta_2,
-      numero_cavalo
+      numero_cavalo,
     );
 
     const conflitos = existentes.filter((item) => item.placa !== placa);
@@ -237,50 +242,50 @@ export const caminhoesModel = {
         if (numero_carreta_1) {
           if (item.numero_carreta_1 == numero_carreta_1)
             erros.add(
-              `Número de carreta ${numero_carreta_1} já está em uso no caminhão ${item.placa}`
+              `Número de carreta ${numero_carreta_1} já está em uso no caminhão ${item.placa}`,
             );
           if (item.numero_carreta_2 == numero_carreta_1)
             erros.add(
-              `Número de carreta ${numero_carreta_1} já está em uso no caminhão ${item.placa}`
+              `Número de carreta ${numero_carreta_1} já está em uso no caminhão ${item.placa}`,
             );
         }
         // Validações cruzadas para placa_carreta_1
         if (placa_carreta_1) {
           if (item.placa_carreta_1 == placa_carreta_1)
             erros.add(
-              `Placa de carreta ${placa_carreta_1} já está em uso no caminhão ${item.placa}`
+              `Placa de carreta ${placa_carreta_1} já está em uso no caminhão ${item.placa}`,
             );
           if (item.placa_carreta_2 == placa_carreta_1)
             erros.add(
-              `Placa de carreta ${placa_carreta_1} já está em uso no caminhão ${item.placa}`
+              `Placa de carreta ${placa_carreta_1} já está em uso no caminhão ${item.placa}`,
             );
         }
         // Validações cruzadas para numero_carreta_2
         if (numero_carreta_2) {
           if (item.numero_carreta_1 == numero_carreta_2)
             erros.add(
-              `Número de carreta ${numero_carreta_2} já está em uso no caminhão ${item.placa}`
+              `Número de carreta ${numero_carreta_2} já está em uso no caminhão ${item.placa}`,
             );
           if (item.numero_carreta_2 == numero_carreta_2)
             erros.add(
-              `Número de carreta ${numero_carreta_2} já está em uso no caminhão ${item.placa}`
+              `Número de carreta ${numero_carreta_2} já está em uso no caminhão ${item.placa}`,
             );
         }
         // Validações cruzadas para placa_carreta_2
         if (placa_carreta_2) {
           if (item.placa_carreta_1 == placa_carreta_2)
             erros.add(
-              `Placa de carreta ${placa_carreta_2} já está em uso no caminhão ${item.placa}`
+              `Placa de carreta ${placa_carreta_2} já está em uso no caminhão ${item.placa}`,
             );
           if (item.placa_carreta_2 == placa_carreta_2)
             erros.add(
-              `Placa de carreta ${placa_carreta_2} já está em uso no caminhão ${item.placa}`
+              `Placa de carreta ${placa_carreta_2} já está em uso no caminhão ${item.placa}`,
             );
         }
         // Validação para numero_cavalo
         if (numero_cavalo && item.numero_cavalo == numero_cavalo) {
           erros.add(
-            `Cavalo ${numero_cavalo} já está em uso no caminhão ${item.placa}`
+            `Cavalo ${numero_cavalo} já está em uso no caminhão ${item.placa}`,
           );
         }
       });
@@ -386,7 +391,7 @@ export const caminhoesModel = {
         ) {
           throw new Error(
             "Não é possível excluir o caminhão pois existem registros vinculados (gastos, checklists ou pneus). " +
-              "Exclua primeiro todos os registros relacionados ou use a opção de exclusão em cascata."
+              "Exclua primeiro todos os registros relacionados ou use a opção de exclusão em cascata.",
           );
         }
 

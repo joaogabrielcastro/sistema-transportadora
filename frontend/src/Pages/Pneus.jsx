@@ -303,24 +303,6 @@ const PneusTable = ({
               {estatisticas.descarte} descarte
             </span>
           </div>
-
-          <div className="mt-3 text-xs text-gray-500">
-            <details>
-              <summary className="cursor-pointer hover:text-gray-800 font-medium">
-                Ver detalhes por status
-              </summary>
-              <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2 p-2 bg-gray-50 rounded-lg border border-gray-100">
-                {Object.entries(estatisticas.detalhes).map(
-                  ([status, quantidade]) => (
-                    <div key={status} className="flex justify-between">
-                      <span>{status}:</span>
-                      <span className="font-medium">{quantidade}</span>
-                    </div>
-                  )
-                )}
-              </div>
-            </details>
-          </div>
         </div>
 
         <div className="w-full lg:w-64">

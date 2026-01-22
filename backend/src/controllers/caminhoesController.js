@@ -180,4 +180,18 @@ export const caminhoesController = {
       next(error);
     }
   },
+
+  // Atualizar caminhão por ID (usado pelo frontend quando se tem apenas o id)
+  updateCaminhaoById: async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const caminhaoData = req.body;
+
+      const caminhaoAtualizado = await caminhoesModel.updateById(id, caminhaoData);
+
+      res.status(200).json({ success: true, data: caminhaoAtualizado, message: 'Caminhão atualizado por id com sucesso' });
+    } catch (error) {
+      next(error);
+    }
+  },
 };

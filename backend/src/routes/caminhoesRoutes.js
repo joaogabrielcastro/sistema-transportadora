@@ -8,6 +8,8 @@ router.get("/search", caminhoesController.searchCaminhoes);
 router.post("/", caminhoesController.createCaminhao);
 router.get("/", caminhoesController.getAllCaminhoes);
 router.delete("/:placa/cascade", caminhoesController.deleteCaminhaoWithCascade);
+// Atualizar por ID (útil para chamadas do frontend que possuem apenas o ID)
+router.put("/id/:id", caminhoesController.updateCaminhaoById);
 router.get("/:placa", caminhoesController.getByPlaca);
 router.put("/:placa", caminhoesController.updateCaminhao);
 router.delete("/:placa", caminhoesController.deleteCaminhao);

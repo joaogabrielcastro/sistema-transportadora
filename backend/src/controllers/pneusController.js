@@ -1,16 +1,30 @@
 // backend/src/controllers/pneusController.js
 import { pneusModel } from "../models/pneusModel.js";
 import { caminhoesModel } from "../models/caminhoesModel.js";
-import { pneuSchema, pneuUpdateSchema } from "../schemas/pneuSchema.js";
+import { pneuSchema, pneuUpdateSchema, pneuCreateInStockSchema } from "../schemas/pneuSchema.js";
 import { z } from "zod";
 
 export const pneusController = {
   createPneu: async (req, res) => {
     try {
       const pneuValidado = pneuSchema.parse(req.body);
-      const novoPneu = await pneusModel.create(pneuValidado);
+      let novoPneu;
 
-      // Nova lógica para atualizar o KM do caminhão
+      // Se foi passado stock_pneu_id, atribui diretamente esse pneu do estoque
+      if (req.body.stock_pneu_id) {
+        novoPneu = await pneusModel.assignFromStock(req.body.stock_pneu_id, pneuValidado);
+      } else if (req.body.consume_from_stock) {
+        const assigned = await pneusModel.findAndAssignStock(
+          { marca: pneuValidado.marca, modelo: pneuValidado.modelo },
+          pneuValidado
+        );
+        if (assigned) novoPneu = assigned;
+        else novoPneu = await pneusModel.create(pneuValidado);
+      } else {
+        novoPneu = await pneusModel.create(pneuValidado);
+      }
+
+      // Atualiza KM do caminhão se informado
       if (pneuValidado.km_instalacao) {
         const caminhaoId = pneuValidado.caminhao_id;
         const novoKm = pneuValidado.km_instalacao;
@@ -20,9 +34,7 @@ export const pneusController = {
       res.status(201).json(novoPneu);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res
-          .status(400)
-          .json({ error: "Dados inválidos", details: error.errors });
+        return res.status(400).json({ error: "Dados inválidos", details: error.errors });
       }
       res.status(400).json({ error: error.message });
     }
@@ -69,6 +81,65 @@ export const pneusController = {
       res
         .status(500)
         .json({ error: "Erro interno ao processar a requisição." });
+    }
+  },
+
+  // Criar um pneu apenas para o estoque (sem vínculo a caminhão)
+  createStockPneu: async (req, res) => {
+    try {
+      const pneuValidado = pneuCreateInStockSchema.parse(req.body);
+
+      const payload = {
+        ...pneuValidado,
+        caminhao_id: null,
+        posicao_id: pneuValidado.posicao_id ?? null,
+      };
+
+      const novoPneu = await pneusModel.create(payload);
+      res.status(201).json(novoPneu);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Dados inválidos", details: error.errors });
+      }
+      console.error("Erro ao criar pneu em estoque:", error);
+      res.status(500).json({ error: "Erro interno ao criar pneu em estoque." });
+    }
+  },
+
+  // Listar pneus em estoque
+  getInStockPneus: async (req, res) => {
+    try {
+      const pneus = await pneusModel.getInStock();
+      res.status(200).json(pneus);
+    } catch (error) {
+      console.error("Erro ao listar pneus em estoque:", error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  // Criar pneus em lote diretamente no estoque
+  createBulkStockPneus: async (req, res) => {
+    try {
+      const bulkSchema = z.object({
+        pneus: z.array(pneuCreateInStockSchema),
+      });
+
+      const { pneus } = bulkSchema.parse(req.body);
+
+      if (!pneus || pneus.length === 0) {
+        return res.status(400).json({ error: "A lista de pneus não pode estar vazia." });
+      }
+
+      const payload = pneus.map((p) => ({ ...p, caminhao_id: null, posicao_id: p.posicao_id ?? null }));
+
+      const novos = await pneusModel.createBulk(payload);
+      res.status(201).json(novos);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Dados inválidos", details: error.errors });
+      }
+      console.error("Erro ao criar pneus em lote no estoque:", error);
+      res.status(500).json({ error: "Erro interno ao criar pneus em lote." });
     }
   },
 

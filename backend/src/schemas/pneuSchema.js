@@ -15,3 +15,18 @@ export const pneuSchema = z.object({
 });
 
 export const pneuUpdateSchema = pneuSchema.partial();
+
+// Schema para criar um pneu que ficará apenas em estoque (sem vínculo a caminhão)
+export const pneuCreateInStockSchema = z.object({
+  caminhao_id: z.number().int().positive().optional().nullable(),
+  posicao_id: z.number().int().positive().optional().nullable(),
+  status_id: z.number().int().positive(),
+  data_instalacao: z.string().optional().nullable(),
+  km_instalacao: z.number().nonnegative().optional().nullable(),
+  vida_util_km: z.number().positive().optional().nullable(),
+  marca: z.string(),
+  modelo: z.string(),
+  medida: z.string().optional().nullable(),
+  dot: z.string().optional().nullable(),
+  observacao: z.string().optional().nullable(),
+});

@@ -10,6 +10,8 @@ const Home = lazy(() => import("./Pages/Home.jsx"));
 const CadastroCaminhao = lazy(() => import("./Pages/CadastroCaminhao.jsx"));
 const CaminhaoDetail = lazy(() => import("./Pages/CaminhaoDetail.jsx"));
 const Pneus = lazy(() => import("./Pages/Pneus.jsx"));
+const PneusEstoque = lazy(() => import("./Pages/PneusEstoque.jsx"));
+const PneuAtribuir = lazy(() => import("./Pages/PneuAtribuir.jsx"));
 const EditCaminhao = lazy(() => import("./Pages/EditCaminhao.jsx"));
 const EditPneu = lazy(() => import("./Pages/EditPneu.jsx"));
 const ManutencaoGastos = lazy(() => import("./Pages/ManutencaoGastos.jsx"));
@@ -33,6 +35,8 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/cadastro-caminhao" element={<CadastroCaminhao />} />
             <Route path="/pneus" element={<Pneus />} />
+            <Route path="/pneus/estoque" element={<PneusEstoque />} />
+            <Route path="/pneus/atribuir" element={<PneuAtribuir />} />
             <Route path="/caminhao/:placa" element={<CaminhaoDetail />} />
             <Route path="/caminhao/editar/:placa" element={<EditCaminhao />} />
             <Route path="/pneu/editar/:id" element={<EditPneu />} />

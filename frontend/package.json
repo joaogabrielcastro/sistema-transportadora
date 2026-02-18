@@ -13,12 +13,16 @@
   "dependencies": {
     "axios": "^1.11.0",
     "chart.js": "^4.5.0",
+    "file-saver": "^2.0.5",
+    "jspdf": "^4.1.0",
+    "jspdf-autotable": "^5.0.7",
     "prop-types": "^15.8.1",
     "react": "^19.1.1",
     "react-chartjs-2": "^5.3.0",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.8.0",
     "vite-plugin-pwa": "^1.0.3",
+    "xlsx": "^0.18.5",
     "zod": "^4.1.12"
   },
   "devDependencies": {

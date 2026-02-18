@@ -535,7 +535,7 @@ const HistoricoRegistros = ({
 };
 
 const ManutencaoGastos = () => {
-  const { get, post, put, delete: del } = useApi();
+  const { get, post, put, delete: del, clearCache } = useApi();
   const [caminhoes, setCaminhoes] = useState([]);
   const [itensChecklist, setItensChecklist] = useState([]);
   const [tiposGastos, setTiposGastos] = useState([]);
@@ -709,17 +709,28 @@ const ManutencaoGastos = () => {
         await post("/checklist", payload);
       }
 
-      // Atualizar KM do caminhão se necessário
+      // Atualizar KM do caminhão se necessário (rota por id)
       if (newKm !== null) {
         const caminhao = caminhoes.find((c) => c.id === caminhaoId);
         if (caminhao && newKm > caminhao.km_atual) {
-          await put(`/caminhoes/${caminhaoId}`, {
-            km_atual: newKm,
-          });
+          try {
+            await put(`/caminhoes/id/${caminhaoId}`, {
+              km_atual: newKm,
+            });
+          } catch (kmErr) {
+            // Não bloquear o fluxo principal se a atualização de KM falhar
+            console.warn("Não foi possível atualizar KM do caminhão:", kmErr);
+          }
         }
       }
 
-      // Recarregar dados
+      // Invalidar cache e recarregar dados
+      try {
+        clearCache();
+      } catch (cErr) {
+        console.warn("Erro ao limpar cache:", cErr);
+      }
+
       await fetchData();
 
       // Resetar formulário
@@ -759,6 +770,13 @@ const ManutencaoGastos = () => {
       setRegistros((prev) =>
         prev.filter((r) => !(r.id === id && r.tipo_registro === tipo))
       );
+
+      // Invalidar cache para forçar re-fetch em outras views
+      try {
+        clearCache();
+      } catch (cErr) {
+        console.warn("Erro ao limpar cache:", cErr);
+      }
       setSuccessMessage("Registro excluído com sucesso!");
       setTimeout(() => setSuccessMessage(""), 5000);
     } catch (err) {

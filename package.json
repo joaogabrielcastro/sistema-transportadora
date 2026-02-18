@@ -18,5 +18,11 @@
   "bugs": {
     "url": "https://github.com/joaogabrielcastro/sistema-transportadora/issues"
   },
-  "homepage": "https://github.com/joaogabrielcastro/sistema-transportadora#readme"
+  "homepage": "https://github.com/joaogabrielcastro/sistema-transportadora#readme",
+  "dependencies": {
+    "file-saver": "^2.0.5",
+    "jspdf": "^4.1.0",
+    "jspdf-autotable": "^5.0.7",
+    "xlsx": "^0.18.5"
+  }
 }

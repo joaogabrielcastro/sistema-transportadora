@@ -5,32 +5,23 @@ import {
   checklistSchema,
   checklistUpdateSchema,
 } from "../schemas/checklistSchema.js";
-import { z } from "zod";
+import { catchAsync } from "../utils/catchAsync.js";
 
 export const checklistController = {
-  createChecklist: async (req, res) => {
-    try {
-      const checklistValidado = checklistSchema.parse(req.body);
-      const novoChecklist = await checklistModel.create(checklistValidado);
+  createChecklist: catchAsync(async (req, res) => {
+    const checklistValidado = checklistSchema.parse(req.body);
+    const novoChecklist = await checklistModel.create(checklistValidado);
 
-      // Nova lógica para atualizar o KM do caminhão
-      if (checklistValidado.km_manutencao) {
-        const caminhaoId = checklistValidado.caminhao_id;
-        await caminhoesModel.updateById(caminhaoId, {
-          km_atual: checklistValidado.km_manutencao,
-        });
-      }
-
-      res.status(201).json(novoChecklist);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res
-          .status(400)
-          .json({ error: "Dados inválidos", details: error.errors });
-      }
-      res.status(400).json({ error: error.message });
+    // Nova lógica para atualizar o KM do caminhão
+    if (checklistValidado.km_manutencao) {
+      const caminhaoId = checklistValidado.caminhao_id;
+      await caminhoesModel.updateById(caminhaoId, {
+        km_atual: checklistValidado.km_manutencao,
+      });
     }
-  },
+
+    res.status(201).json(novoChecklist);
+  }),
 
   getAllChecklists: async (req, res) => {
     try {
@@ -84,7 +75,7 @@ export const checklistController = {
       const checklistValidado = checklistUpdateSchema.parse(req.body);
       const checklistAtualizado = await checklistModel.update(
         req.params.id,
-        checklistValidado
+        checklistValidado,
       );
       res.status(200).json(checklistAtualizado);
     } catch (error) {

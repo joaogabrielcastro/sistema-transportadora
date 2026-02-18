@@ -5,7 +5,9 @@ import logger from "../utils/logger";
 
 // Cache simples em memória
 const cache = new Map();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+// REDUZIDO: De 5 min para 0 (Desativado por padrão para evitar dados obsoletos)
+// Para ativar, passe { cache: true } na config da requisição
+const DEFAULT_CACHE_TTL = 0;
 
 // Configuração da API
 export const api = axios.create({
@@ -13,11 +15,17 @@ export const api = axios.create({
     import.meta.env.VITE_API_URL ||
     "https://sistema-transportadora.onrender.com"
   }/api`,
-  timeout: 30000, // 30 segundos para dar tempo do backend acordar do hibernação
+  timeout: 30000,
   headers: {
     "Content-Type": "application/json",
   },
 });
+
+// Limpa o cache quando houver mutações (POST, PUT, DELETE)
+const invalidateCache = () => {
+  logger.info("Cache invalidado devido a uma mutação (POST/PUT/DELETE)");
+  cache.clear();
+};
 
 // Função de retry com exponential backoff
 const retryRequest = async (fn, retries = 3, delay = 1000) => {
@@ -41,19 +49,29 @@ const retryRequest = async (fn, retries = 3, delay = 1000) => {
 
 // Interceptador para respostas
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Se for uma requisição de escrita com sucesso, limpa cache
+    if (
+      ["post", "put", "delete", "patch"].includes(
+        response.config.method?.toLowerCase(),
+      )
+    ) {
+      invalidateCache();
+    }
+    return response;
+  },
   (error) => {
     logger.error("API Error:", error);
 
     if (error.code === "ECONNABORTED") {
       throw new Error(
-        "Servidor demorando para responder. O backend pode estar iniciando (isso pode levar até 1 minuto). Tente novamente em alguns segundos."
+        "Servidor demorando para responder. O backend pode estar iniciando (isso pode levar até 1 minuto). Tente novamente em alguns segundos.",
       );
     }
 
     if (error.code === "ECONNREFUSED") {
       throw new Error(
-        "Servidor não disponível. Verifique se o backend está rodando."
+        "Servidor não disponível. Verifique se o backend está rodando.",
       );
     }
 
@@ -63,7 +81,7 @@ api.interceptors.response.use(
     }
 
     throw new Error("Erro de conexão com o servidor");
-  }
+  },
 );
 
 // Hook principal para requisições API
@@ -76,16 +94,21 @@ export const useApi = () => {
       setLoading(true);
       setError(null);
 
+      const useCache = config.cache === true; // Opt-in
+
       // Gerar chave de cache para requisições GET
       const cacheKey =
-        config.method === "GET"
+        useCache && config.method === "GET"
           ? `${config.url}_${JSON.stringify(config.params || {})}`
           : null;
 
       // Verificar cache para GET
       if (cacheKey && cache.has(cacheKey)) {
         const cached = cache.get(cacheKey);
-        if (Date.now() - cached.timestamp < CACHE_TTL) {
+        // Usa TTL default ou o configurado
+        const ttl = config.ttl || DEFAULT_CACHE_TTL;
+
+        if (Date.now() - cached.timestamp < ttl) {
           logger.info("Cache hit:", cacheKey);
           return cached.data;
         } else {
@@ -96,7 +119,7 @@ export const useApi = () => {
       // Fazer requisição com retry
       const response = await retryRequest(() => api(config));
 
-      // Armazenar no cache se for GET
+      // Armazenar no cache se for GET e cache estiver ativado
       if (cacheKey) {
         cache.set(cacheKey, {
           data: response.data,
@@ -105,6 +128,7 @@ export const useApi = () => {
       }
 
       // Verificar se a resposta tem a estrutura esperada
+
       if (response.data && typeof response.data === "object") {
         if (response.data.success !== undefined) {
           // Nova estrutura com success flag
@@ -151,28 +175,28 @@ export const useApi = () => {
     (url, config = {}) => {
       return request({ method: "GET", url, ...config });
     },
-    [request]
+    [request],
   );
 
   const post = useCallback(
     (url, data, config = {}) => {
       return request({ method: "POST", url, data, ...config });
     },
-    [request]
+    [request],
   );
 
   const put = useCallback(
     (url, data, config = {}) => {
       return request({ method: "PUT", url, data, ...config });
     },
-    [request]
+    [request],
   );
 
   const del = useCallback(
     (url, config = {}) => {
       return request({ method: "DELETE", url, ...config });
     },
-    [request]
+    [request],
   );
 
   const clearError = useCallback(() => {
@@ -238,7 +262,7 @@ export const useApiResource = (baseUrl) => {
         throw err;
       }
     },
-    [baseUrl, get]
+    [baseUrl, get],
   );
 
   const create = useCallback(
@@ -249,7 +273,7 @@ export const useApiResource = (baseUrl) => {
       }
       return response;
     },
-    [baseUrl, post]
+    [baseUrl, post],
   );
 
   const update = useCallback(
@@ -260,7 +284,7 @@ export const useApiResource = (baseUrl) => {
       }
       return response;
     },
-    [baseUrl, put]
+    [baseUrl, put],
   );
 
   const remove = useCallback(
@@ -271,17 +295,17 @@ export const useApiResource = (baseUrl) => {
       }
       return response;
     },
-    [baseUrl, del]
+    [baseUrl, del],
   );
 
   const search = useCallback(
     async (searchTerm) => {
       const response = await get(
-        `${baseUrl}/search?term=${encodeURIComponent(searchTerm)}`
+        `${baseUrl}/search?term=${encodeURIComponent(searchTerm)}`,
       );
       return response;
     },
-    [baseUrl, get]
+    [baseUrl, get],
   );
 
   return {

@@ -3,7 +3,7 @@ import React, { Suspense, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
-import LoadingSpinner from "./components/LoadingSpinner.jsx";
+import { LoadingSpinner } from "./components/ui";
 
 // Lazy loading das páginas
 const Home = lazy(() => import("./Pages/Home.jsx"));
@@ -18,6 +18,7 @@ const ManutencaoGastos = lazy(() => import("./Pages/ManutencaoGastos.jsx"));
 const EditGasto = lazy(() => import("./Pages/EditGasto.jsx"));
 const EditChecklist = lazy(() => import("./Pages/EditChecklist.jsx"));
 const CadastroPneuEmLote = lazy(() => import("./Pages/CadastroPneuEmLote.jsx"));
+const Relatorios = lazy(() => import("./Pages/Relatorios.jsx"));
 
 function App() {
   return (
@@ -27,7 +28,7 @@ function App() {
         <Suspense
           fallback={
             <div className="flex items-center justify-center min-h-screen">
-              <LoadingSpinner size="large" />
+              <LoadingSpinner size="lg" />
             </div>
           }
         >
@@ -47,6 +48,7 @@ function App() {
               path="/pneus/cadastro-em-lote"
               element={<CadastroPneuEmLote />}
             />
+            <Route path="/relatorios" element={<Relatorios />} />
           </Routes>
         </Suspense>
       </Router>

@@ -1,218 +1,108 @@
 // backend/src/controllers/pneusController.js
-import { pneusModel } from "../models/pneusModel.js";
-import { caminhoesModel } from "../models/caminhoesModel.js";
-import { pneuSchema, pneuUpdateSchema, pneuCreateInStockSchema } from "../schemas/pneuSchema.js";
+import { PneuService } from "../services/PneuService.js";
+import {
+  pneuSchema,
+  pneuUpdateSchema,
+  pneuCreateInStockSchema,
+} from "../schemas/pneuSchema.js";
 import { z } from "zod";
 
+// Helper para eliminar try/catch repetitivo em controllers
+const catchAsync = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
+
 export const pneusController = {
-  createPneu: async (req, res) => {
-    try {
-      const pneuValidado = pneuSchema.parse(req.body);
-      let novoPneu;
+  createPneu: catchAsync(async (req, res) => {
+    const { body } = req;
 
-      // Se foi passado stock_pneu_id, atribui diretamente esse pneu do estoque
-      if (req.body.stock_pneu_id) {
-        novoPneu = await pneusModel.assignFromStock(req.body.stock_pneu_id, pneuValidado);
-      } else if (req.body.consume_from_stock) {
-        const assigned = await pneusModel.findAndAssignStock(
-          { marca: pneuValidado.marca, modelo: pneuValidado.modelo },
-          pneuValidado
-        );
-        if (assigned) novoPneu = assigned;
-        else novoPneu = await pneusModel.create(pneuValidado);
-      } else {
-        novoPneu = await pneusModel.create(pneuValidado);
-      }
-
-      // Atualiza KM do caminhão se informado
-      if (pneuValidado.km_instalacao) {
-        const caminhaoId = pneuValidado.caminhao_id;
-        const novoKm = pneuValidado.km_instalacao;
-        await caminhoesModel.updateById(caminhaoId, { km_atual: novoKm });
-      }
-
-      res.status(201).json(novoPneu);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Dados inválidos", details: error.errors });
-      }
-      res.status(400).json({ error: error.message });
+    // Validação Schema Básico
+    // Nota: A lógica de partial vs full schema para atribuição poderia ser movida pra dentro do Service
+    // se passássemos o body bruto, mas pra manter o contrato do controller limpo, validamos aqui.
+    let dados;
+    if (body.stock_pneu_id) {
+      dados = pneuSchema.partial().parse(body);
+    } else {
+      dados = pneuSchema.parse(body);
     }
-  },
 
-  createBulkPneus: async (req, res) => {
-    try {
-      // 1. Definir o schema para a requisição em lote
-      const bulkPneuSchema = z.object({
-        pneus: z.array(pneuSchema),
-      });
+    const novoPneu = await PneuService.createPneu(dados, {
+      stock_pneu_id: body.stock_pneu_id,
+      consume_from_stock: body.consume_from_stock,
+    });
 
-      // 2. Validar o corpo da requisição
-      const { pneus } = bulkPneuSchema.parse(req.body);
+    res.status(201).json(novoPneu);
+  }),
 
-      if (!pneus || pneus.length === 0) {
-        return res
-          .status(400)
-          .json({ error: "A lista de pneus não pode estar vazia." });
-      }
+  createBulkPneus: catchAsync(async (req, res) => {
+    const { pneus } = z.object({ pneus: z.array(pneuSchema) }).parse(req.body);
 
-      // 3. Chamar o model para criar os pneus em lote
-      const novosPneus = await pneusModel.createBulk(pneus);
-
-      // 4. Lógica para atualizar o KM do caminhão com o maior KM do lote
-      const caminhaoId = pneus[0].caminhao_id;
-      const maxKm = Math.max(...pneus.map((p) => p.km_instalacao || 0));
-
-      if (maxKm > 0) {
-        const caminhao = await caminhoesModel.getById(caminhaoId); // Supondo que getById exista
-        if (caminhao && maxKm > caminhao.km_atual) {
-          await caminhoesModel.updateById(caminhaoId, { km_atual: maxKm });
-        }
-      }
-
-      res.status(201).json(novosPneus);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res
-          .status(400)
-          .json({ error: "Dados inválidos.", details: error.errors });
-      }
-      console.error("Erro ao criar pneus em lote:", error);
-      res
-        .status(500)
-        .json({ error: "Erro interno ao processar a requisição." });
+    if (pneus.length === 0) {
+      return res
+        .status(400)
+        .json({ error: "A lista de pneus não pode estar vazia." });
     }
-  },
 
-  // Criar um pneu apenas para o estoque (sem vínculo a caminhão)
-  createStockPneu: async (req, res) => {
-    try {
-      const pneuValidado = pneuCreateInStockSchema.parse(req.body);
+    const novosPneus = await PneuService.createBulkPneus(pneus);
+    res.status(201).json(novosPneus);
+  }),
 
-      const payload = {
-        ...pneuValidado,
-        caminhao_id: null,
-        posicao_id: pneuValidado.posicao_id ?? null,
-      };
-
-      const novoPneu = await pneusModel.create(payload);
-      res.status(201).json(novoPneu);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Dados inválidos", details: error.errors });
-      }
-      console.error("Erro ao criar pneu em estoque:", error);
-      res.status(500).json({ error: "Erro interno ao criar pneu em estoque." });
-    }
-  },
+  // Criar um pneu apenas para o estoque
+  createStockPneu: catchAsync(async (req, res) => {
+    const pneuValidado = pneuCreateInStockSchema.parse(req.body);
+    const novoPneu = await PneuService.createStockPneu(pneuValidado);
+    res.status(201).json(novoPneu);
+  }),
 
   // Listar pneus em estoque
-  getInStockPneus: async (req, res) => {
-    try {
-      const pneus = await pneusModel.getInStock();
-      res.status(200).json(pneus);
-    } catch (error) {
-      console.error("Erro ao listar pneus em estoque:", error);
-      res.status(500).json({ error: error.message });
+  getInStockPneus: catchAsync(async (req, res) => {
+    const pneus = await PneuService.getInStock();
+    res.status(200).json(pneus);
+  }),
+
+  // Criar pneus em lote no estoque
+  createBulkStockPneus: catchAsync(async (req, res) => {
+    const { pneus } = z
+      .object({ pneus: z.array(pneuCreateInStockSchema) })
+      .parse(req.body);
+
+    if (pneus.length === 0) {
+      return res.status(400).json({ error: "Lista vazia." });
     }
-  },
 
-  // Criar pneus em lote diretamente no estoque
-  createBulkStockPneus: async (req, res) => {
-    try {
-      const bulkSchema = z.object({
-        pneus: z.array(pneuCreateInStockSchema),
-      });
+    const novos = await PneuService.createBulkStockPneus(pneus);
+    res.status(201).json(novos);
+  }),
 
-      const { pneus } = bulkSchema.parse(req.body);
+  getAllPneus: catchAsync(async (req, res) => {
+    const { caminhaoId } = req.query;
+    const pneus = await PneuService.getAll({ caminhaoId });
+    res.status(200).json(pneus);
+  }),
 
-      if (!pneus || pneus.length === 0) {
-        return res.status(400).json({ error: "A lista de pneus não pode estar vazia." });
-      }
+  getPneuById: catchAsync(async (req, res) => {
+    const pneu = await PneuService.getById(req.params.id);
+    if (!pneu) return res.status(404).json({ error: "Pneu não encontrado." });
+    res.status(200).json(pneu);
+  }),
 
-      const payload = pneus.map((p) => ({ ...p, caminhao_id: null, posicao_id: p.posicao_id ?? null }));
+  // Mantido para compatibilidade
+  getPneusByCaminhao: catchAsync(async (req, res) => {
+    const pneus = await PneuService.getAll({ caminhaoId: req.params.id });
+    res.status(200).json(pneus);
+  }),
 
-      const novos = await pneusModel.createBulk(payload);
-      res.status(201).json(novos);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Dados inválidos", details: error.errors });
-      }
-      console.error("Erro ao criar pneus em lote no estoque:", error);
-      res.status(500).json({ error: "Erro interno ao criar pneus em lote." });
-    }
-  },
+  updatePneu: catchAsync(async (req, res) => {
+    const pneuValidado = pneuUpdateSchema.parse(req.body);
+    const pneuAtualizado = await PneuService.updatePneu(
+      req.params.id,
+      pneuValidado,
+    );
+    res.status(200).json(pneuAtualizado);
+  }),
 
-  getAllPneus: async (req, res) => {
-    try {
-      const { caminhaoId } = req.query;
-      let pneus;
-      if (caminhaoId) {
-        pneus = await pneusModel.getByCaminhaoId(caminhaoId);
-      } else {
-        pneus = await pneusModel.getAll();
-      }
-      res.status(200).json(pneus);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  },
-
-  getPneuById: async (req, res) => {
-    try {
-      const pneu = await pneusModel.getById(req.params.id);
-      if (!pneu) {
-        return res.status(404).json({ error: "Pneu não encontrado." });
-      }
-      res.status(200).json(pneu);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  },
-
-  getPneusByCaminhao: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const pneus = await pneusModel.getByCaminhaoId(id);
-      res.status(200).json(pneus);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  },
-
-  updatePneu: async (req, res) => {
-    try {
-      const pneuValidado = pneuUpdateSchema.parse(req.body);
-      const pneuAtualizado = await pneusModel.update(
-        req.params.id,
-        pneuValidado
-      );
-
-      // Nova lógica para atualizar o KM do caminhão
-      if (pneuValidado.km_instalacao) {
-        const pneu = await pneusModel.getById(req.params.id);
-        const caminhaoId = pneu.caminhao_id;
-        const novoKm = pneuValidado.km_instalacao;
-        await caminhoesModel.updateById(caminhaoId, { km_atual: novoKm });
-      }
-
-      res.status(200).json(pneuAtualizado);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res
-          .status(400)
-          .json({ error: "Dados inválidos", details: error.errors });
-      }
-      res.status(400).json({ error: error.message });
-    }
-  },
-
-  deletePneu: async (req, res) => {
-    try {
-      await pneusModel.delete(req.params.id);
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  },
+  deletePneu: catchAsync(async (req, res) => {
+    await PneuService.delete(req.params.id);
+    res.status(204).send();
+  }),
 };

@@ -1,34 +1,24 @@
 import { gastosModel } from "../models/gastosModel.js";
 import { caminhoesModel } from "../models/caminhoesModel.js";
 import { gastoSchema, gastoUpdateSchema } from "../schemas/gastoSchema.js";
-import { z } from "zod";
+import { catchAsync } from "../utils/catchAsync.js";
 
 export const gastosController = {
-  createGasto: async (req, res) => {
-    try {
-      const gastoValidado = gastoSchema.parse(req.body);
-      const novoGasto = await gastosModel.create(gastoValidado);
+  createGasto: catchAsync(async (req, res) => {
+    const gastoValidado = gastoSchema.parse(req.body);
+    const novoGasto = await gastosModel.create(gastoValidado);
 
-      // --- LÓGICA DE ATUALIZAÇÃO DO KM CENTRALIZADA ---
-      const novoKm = gastoValidado.km_registro;
-      const caminhaoId = gastoValidado.caminhao_id;
+    // --- LÓGICA DE ATUALIZAÇÃO DO KM CENTRALIZADA ---
+    const novoKm = gastoValidado.km_registro;
+    const caminhaoId = gastoValidado.caminhao_id;
 
-      if (caminhaoId && novoKm) {
-        await caminhoesModel.updateById(caminhaoId, { km_atual: novoKm });
-      }
-      // --- FIM DA LÓGICA DE ATUALIZAÇÃO ---
-
-      res.status(201).json(novoGasto);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res
-          .status(400)
-          .json({ error: "Dados inválidos", details: error.errors });
-      }
-      console.error("ERRO AO CRIAR GASTO:", error);
-      res.status(400).json({ error: error.message });
+    if (caminhaoId && novoKm) {
+      await caminhoesModel.updateById(caminhaoId, { km_atual: novoKm });
     }
-  },
+    // --- FIM DA LÓGICA DE ATUALIZAÇÃO ---
+
+    res.status(201).json(novoGasto);
+  }),
 
   getAllGastos: async (req, res) => {
     try {
@@ -80,7 +70,7 @@ export const gastosController = {
       const gastoValidado = gastoUpdateSchema.parse(req.body);
       const gastoAtualizado = await gastosModel.update(
         req.params.id,
-        gastoValidado
+        gastoValidado,
       );
       res.status(200).json(gastoAtualizado);
     } catch (error) {
@@ -105,7 +95,7 @@ export const gastosController = {
   getConsumoCombustivel: async (req, res) => {
     try {
       const consumoData = await gastosModel.getConsumoCombustivel(
-        req.params.id
+        req.params.id,
       );
       res.status(200).json(consumoData);
     } catch (error) {

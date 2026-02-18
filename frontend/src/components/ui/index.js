@@ -5,3 +5,4 @@ export { default as Alert } from "./Alert.jsx";
 export { default as Card } from "./Card.jsx";
 export { default as LoadingSpinner } from "./LoadingSpinner.jsx";
 export { default as Modal } from "./Modal.jsx";
+export { StatusBadge } from "./StatusBadge.jsx";

@@ -23,7 +23,7 @@ const Navbar = () => {
   const navLinks = [
     {
       path: "/manutencao-gastos",
-      label: "Manutenção e Gastos",
+      label: "Manutenção",
       icon: (
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -36,14 +36,34 @@ const Navbar = () => {
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={2}
-            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+      ),
+    },
+    {
+      path: "/relatorios",
+      label: "Relatórios",
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5 mr-2"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
           />
         </svg>
       ),
     },
     {
       path: "/pneus",
-      label: "Controle de Pneus",
+      label: "Pneus",
       icon: (
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -56,7 +76,7 @@ const Navbar = () => {
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={2}
-            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            d="M13 10V3L4 14h7v7l9-11h-7z"
           />
         </svg>
       ),
@@ -65,8 +85,19 @@ const Navbar = () => {
       path: "/pneus/estoque",
       label: "Estoque de Pneus",
       icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7M16 3v4M8 3v4" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5 mr-2"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+          />
         </svg>
       ),
     },
@@ -141,23 +172,16 @@ const Navbar = () => {
             <Link
               key={link.path}
               to={link.path}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center ${
+              className={`px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 flex items-center ${
                 isActiveLink(link.path)
                   ? "bg-white/10 text-white shadow-sm backdrop-blur-sm border border-white/10"
                   : "text-gray-300 hover:bg-white/5 hover:text-white"
               }`}
             >
               {link.icon}
-              {link.label}
+              <span className="whitespace-nowrap">{link.label}</span>
             </Link>
           ))}
-
-          {/* User Profile Placeholder */}
-          <div className="ml-4 pl-4 border-l border-gray-700 flex items-center">
-            <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-secondary to-secondary-dark flex items-center justify-center text-white font-bold shadow-md cursor-pointer hover:ring-2 hover:ring-secondary-light transition-all">
-              AD
-            </div>
-          </div>
         </div>
 
         {/* Mobile Menu Button */}
@@ -221,15 +245,6 @@ const Navbar = () => {
               {link.label}
             </Link>
           ))}
-          <div className="pt-4 mt-2 border-t border-gray-800 flex items-center px-4">
-            <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-white text-sm font-bold mr-3">
-              AD
-            </div>
-            <div className="flex flex-col">
-              <span className="text-white text-sm font-medium">Admin User</span>
-              <span className="text-gray-500 text-xs">admin@abroto.com</span>
-            </div>
-          </div>
         </div>
       </div>
     </nav>

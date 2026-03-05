@@ -85,8 +85,46 @@ export const pneusModel = {
 
   // Deletar um pneu
   delete: async (id) => {
+    // Primeiro, verificar se o pneu existe e seus detalhes
+    const { data: pneuCheck, error: checkError } = await supabase
+      .from("pneus")
+      .select("id, caminhao_id, marca, modelo")
+      .eq("id", id)
+      .single();
+
+    if (checkError) {
+      console.error("Erro ao verificar pneu antes de deletar:", checkError);
+      throw new Error(`Pneu não encontrado: ${checkError.message}`);
+    }
+
+    if (!pneuCheck) {
+      throw new Error("Pneu não encontrado");
+    }
+
+    console.log("Tentando deletar pneu:", pneuCheck);
+
     const { data, error } = await supabase.from("pneus").delete().eq("id", id);
-    if (error) throw error;
+    
+    if (error) {
+      console.error("Erro detalhado ao deletar pneu:", {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        pneuId: id
+      });
+      
+      // Melhorar mensagem de erro para o usuário
+      if (error.code === "23503") {
+        throw new Error("Não é possível excluir este pneu pois ele possui registros relacionados.");
+      }
+      if (error.code === "PGRST301" || error.message?.includes("permission")) {
+        throw new Error("Sem permissão para excluir este pneu. Verifique as políticas de segurança.");
+      }
+      throw new Error(error.message || "Erro ao excluir pneu");
+    }
+    
+    console.log("Pneu deletado com sucesso:", id);
     return data;
   },
 

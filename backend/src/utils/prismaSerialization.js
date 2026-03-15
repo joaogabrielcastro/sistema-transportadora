@@ -1,4 +1,6 @@
-import { Prisma } from "@prisma/client";
+import prismaClientPkg from "@prisma/client";
+
+const { Prisma } = prismaClientPkg;
 
 const normalizeBigInt = (value) => {
   const numberValue = Number(value);

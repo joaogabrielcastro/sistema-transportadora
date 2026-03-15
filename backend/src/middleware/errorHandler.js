@@ -1,7 +1,9 @@
 // backend/src/middleware/errorHandler.js
 import { logger } from "../utils/logger.js";
-import { Prisma } from "@prisma/client";
+import prismaClientPkg from "@prisma/client";
 import { ZodError } from "zod";
+
+const { Prisma } = prismaClientPkg;
 
 export const errorHandler = (err, req, res, _next) => {
   logger.error("Error occurred", {

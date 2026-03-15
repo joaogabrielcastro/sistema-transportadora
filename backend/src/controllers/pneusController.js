@@ -109,7 +109,15 @@ export const pneusController = {
   }),
 
   deletePneu: catchAsync(async (req, res) => {
-    await PneuService.delete(req.params.id);
-    res.status(204).send();
+    try {
+      await PneuService.delete(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Erro ao deletar pneu:", error);
+      res.status(400).json({ 
+        error: error.message || "Erro ao excluir pneu",
+        details: error.toString()
+      });
+    }
   }),
 };

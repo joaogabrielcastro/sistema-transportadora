@@ -11,9 +11,10 @@ import {
 import { Link } from "react-router-dom";
 
 const PneusEstoque = () => {
-  const { get, post, loading, error } = useApi();
+  const { get, post, delete: del, loading, error } = useApi();
   const [pneus, setPneus] = useState([]);
   const [statusList, setStatusList] = useState([]);
+  const [deletingId, setDeletingId] = useState(null);
   const [pneusBulk, setPneusBulk] = useState([
     {
       id: Date.now(),
@@ -22,6 +23,7 @@ const PneusEstoque = () => {
       status_id: "",
       vida_util_km: "",
       observacao: "",
+      quantidade: 1,
     },
   ]);
   const [success, setSuccess] = useState("");
@@ -36,6 +38,10 @@ const PneusEstoque = () => {
       z.number().int().nonnegative().nullable(),
     ),
     observacao: z.string().optional().nullable(),
+    quantidade: z.preprocess(
+      (v) => Number(v),
+      z.number().int().positive("Quantidade deve ser no mínimo 1").default(1),
+    ),
   });
 
   const fetchEstoque = async () => {
@@ -44,6 +50,33 @@ const PneusEstoque = () => {
       setPneus(res.data || []);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleDeletePneu = async (pneuId) => {
+    const pneu = pneus.find(p => p.id === pneuId);
+    const pneuInfo = pneu ? `${pneu.marca} ${pneu.modelo}` : `ID ${pneuId}`;
+    
+    if (!window.confirm(`Tem certeza que deseja excluir este pneu do estoque?\n\nPneu: ${pneuInfo}\nStatus: ${pneu?.status_pneus?.nome_status || 'N/A'}`)) {
+      return;
+    }
+
+    setDeletingId(pneuId);
+    try {
+      console.log("Tentando deletar pneu:", { id: pneuId, pneu });
+      await del(`/pneus/${pneuId}`);
+      setSuccess(`Pneu ${pneuInfo} excluído com sucesso`);
+      setTimeout(() => setSuccess(""), 3000);
+      fetchEstoque();
+    } catch (err) {
+      console.error("Erro completo ao excluir pneu:", err);
+      console.error("Resposta do servidor:", err.response?.data);
+      console.error("Status HTTP:", err.response?.status);
+      
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message || "Erro desconhecido ao excluir pneu";
+      alert(`Erro ao excluir pneu ${pneuInfo}:\n\n${errorMessage}\n\nVerifique o console do navegador para mais detalhes.`);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -58,6 +91,7 @@ const PneusEstoque = () => {
       status_id: line.status_id,
       vida_util_km: line.vida_util_km === "" ? null : line.vida_util_km,
       observacao: line.observacao || null,
+      quantidade: line.quantidade || 1,
     };
 
     const result = pneuLineSchema.safeParse(input);
@@ -107,6 +141,12 @@ const PneusEstoque = () => {
         {/* Formulário único removido: mantemos apenas o cadastro em lote abaixo */}
 
         <Card title="Cadastro em Lote (estoque)" className="mt-6">
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+            <p className="text-sm text-blue-800">
+              <strong>💡 Dica:</strong> Use o campo "Quantidade" para adicionar vários pneus idênticos de uma vez. 
+              Por exemplo: 70 pneus lisos, 16 borrachudos, etc.
+            </p>
+          </div>
           <form
             onSubmit={async (e) => {
               e.preventDefault();
@@ -122,6 +162,7 @@ const PneusEstoque = () => {
                   vida_util_km:
                     line.vida_util_km === "" ? null : line.vida_util_km,
                   observacao: line.observacao || null,
+                  quantidade: line.quantidade || 1,
                 });
                 if (!parsed.success) {
                   const errs = {};
@@ -132,7 +173,20 @@ const PneusEstoque = () => {
                   });
                   newBulkErrors[line.id] = errs;
                 } else {
-                  toCreate.push(parsed.data);
+                  // Criar múltiplos pneus baseado na quantidade
+                  const quantidade = parsed.data.quantidade || 1;
+                  const pneuData = {
+                    marca: parsed.data.marca,
+                    modelo: parsed.data.modelo,
+                    status_id: parsed.data.status_id,
+                    vida_util_km: parsed.data.vida_util_km,
+                    observacao: parsed.data.observacao,
+                  };
+                  
+                  // Adiciona o mesmo pneu N vezes baseado na quantidade
+                  for (let i = 0; i < quantidade; i++) {
+                    toCreate.push(pneuData);
+                  }
                 }
               }
 
@@ -146,7 +200,7 @@ const PneusEstoque = () => {
 
               try {
                 await post("/pneus/stock/bulk", { pneus: toCreate });
-                setSuccess("Pneus adicionados ao estoque com sucesso");
+                setSuccess(`${toCreate.length} pneus adicionados ao estoque com sucesso`);
                 setTimeout(() => setSuccess(""), 4000);
                 fetchEstoque();
                 // reset form
@@ -158,6 +212,7 @@ const PneusEstoque = () => {
                     status_id: "",
                     vida_util_km: "",
                     observacao: "",
+                    quantidade: 1,
                   },
                 ]);
                 setBulkErrors({});
@@ -169,9 +224,16 @@ const PneusEstoque = () => {
           >
             <div className="space-y-4">
               {pneusBulk.map((line, idx) => (
-                <div key={line.id} className="border p-4 rounded">
+                <div key={line.id} className="border p-4 rounded bg-gray-50">
                   <div className="flex justify-between items-center mb-3">
-                    <strong>Pneu {idx + 1}</strong>
+                    <div className="flex items-center gap-2">
+                      <strong>Tipo de Pneu {idx + 1}</strong>
+                      {line.quantidade > 1 && (
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
+                          {line.quantidade}x
+                        </span>
+                      )}
+                    </div>
                     {pneusBulk.length > 1 && (
                       <button
                         type="button"
@@ -180,7 +242,7 @@ const PneusEstoque = () => {
                             prev.filter((p) => p.id !== line.id),
                           )
                         }
-                        className="text-red-600"
+                        className="text-red-600 hover:text-red-800 text-sm"
                       >
                         Remover
                       </button>
@@ -207,6 +269,23 @@ const PneusEstoque = () => {
                       }
                       required
                       error={bulkErrors[line.id]?.modelo}
+                    />
+                    <FormField
+                      label="Quantidade"
+                      name="quantidade"
+                      type="number"
+                      min="1"
+                      value={line.quantidade || 1}
+                      onChange={(e) =>
+                        handleBulkFieldChange(
+                          line.id,
+                          "quantidade",
+                          e.target.value,
+                        )
+                      }
+                      required
+                      error={bulkErrors[line.id]?.quantidade}
+                      helperText="Quantos pneus iguais adicionar"
                     />
                     <FormField
                       label="Status"
@@ -281,14 +360,15 @@ const PneusEstoque = () => {
                       status_id: "",
                       vida_util_km: "",
                       observacao: "",
+                      quantidade: 1,
                     },
                   ])
                 }
               >
-                Adicionar outro pneu
+                Adicionar outro tipo de pneu
               </Button>
               <Button type="submit">
-                Cadastrar {pneusBulk.length} Pneu(s) no Estoque
+                Cadastrar {pneusBulk.reduce((total, p) => total + (parseInt(p.quantidade) || 1), 0)} Pneu(s) no Estoque
               </Button>
             </div>
           </form>
@@ -367,10 +447,17 @@ const PneusEstoque = () => {
                     <div className="flex items-center gap-3">
                       <Link
                         to={`/pneus/atribuir?pneu_id=${p.id}`}
-                        className="text-sm text-blue-600"
+                        className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                       >
                         Atribuir
                       </Link>
+                      <button
+                        onClick={() => handleDeletePneu(p.id)}
+                        disabled={deletingId === p.id}
+                        className="text-sm text-red-600 hover:text-red-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {deletingId === p.id ? "Excluindo..." : "Excluir"}
+                      </button>
                     </div>
                   </div>
                 ))

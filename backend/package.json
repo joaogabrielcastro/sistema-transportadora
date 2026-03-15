@@ -4,6 +4,8 @@
   "description": "Sistema de Transportadora - Backend API",
   "main": "server.js",
   "scripts": {
+    "postinstall": "prisma generate",
+    "prestart": "prisma generate",
     "start": "node server.js",
     "dev": "node --watch server.js",
     "start:no-deprecation": "node --no-deprecation server.js",
@@ -28,6 +30,7 @@
     "express-rate-limit": "^7.5.1",
     "helmet": "^8.1.0",
     "pg": "^8.20.0",
+    "prisma": "^7.5.0",
     "zod": "^4.1.12"
   },
   "engines": {
@@ -36,7 +39,6 @@
   "devDependencies": {
     "@eslint/js": "^9.32.0",
     "eslint": "^9.32.0",
-    "globals": "^16.3.0",
-    "prisma": "^7.5.0"
+    "globals": "^16.3.0"
   }
 }

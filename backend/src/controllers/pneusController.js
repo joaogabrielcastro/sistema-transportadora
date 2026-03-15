@@ -82,7 +82,10 @@ export const pneusController = {
 
   getPneuById: catchAsync(async (req, res) => {
     const pneu = await PneuService.getById(req.params.id);
-    if (!pneu) return res.status(404).json({ success: false, error: "Pneu não encontrado." });
+    if (!pneu)
+      return res
+        .status(404)
+        .json({ success: false, error: "Pneu não encontrado." });
     res.status(200).json({ success: true, data: pneu });
   }),
 
@@ -94,7 +97,10 @@ export const pneusController = {
 
   updatePneu: catchAsync(async (req, res) => {
     const pneuValidado = pneuUpdateSchema.parse(req.body);
-    const pneuAtualizado = await PneuService.updatePneu(req.params.id, pneuValidado);
+    const pneuAtualizado = await PneuService.updatePneu(
+      req.params.id,
+      pneuValidado,
+    );
     res.status(200).json({
       success: true,
       data: pneuAtualizado,

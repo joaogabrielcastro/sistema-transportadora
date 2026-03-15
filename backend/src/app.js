@@ -39,7 +39,7 @@ app.use(
         callback(new Error("Not allowed by CORS"));
       }
     },
-  })
+  }),
 );
 
 // Middleware para parsing JSON

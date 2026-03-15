@@ -6,7 +6,8 @@ import { GastoService } from "../services/GastoService.js";
 export const gastosController = {
   createGasto: catchAsync(async (req, res) => {
     const gastoValidado = gastoSchema.parse(req.body);
-    const novoGasto = await GastoService.createWithCaminhaoUpdate(gastoValidado);
+    const novoGasto =
+      await GastoService.createWithCaminhaoUpdate(gastoValidado);
 
     res.status(201).json({
       success: true,
@@ -41,7 +42,9 @@ export const gastosController = {
   getGastoById: catchAsync(async (req, res) => {
     const gasto = await gastosModel.getById(req.params.id);
     if (!gasto) {
-      return res.status(404).json({ success: false, error: "Gasto não encontrado." });
+      return res
+        .status(404)
+        .json({ success: false, error: "Gasto não encontrado." });
     }
 
     res.status(200).json({ success: true, data: gasto });
@@ -55,7 +58,10 @@ export const gastosController = {
 
   updateGasto: catchAsync(async (req, res) => {
     const gastoValidado = gastoUpdateSchema.parse(req.body);
-    const gastoAtualizado = await gastosModel.update(req.params.id, gastoValidado);
+    const gastoAtualizado = await gastosModel.update(
+      req.params.id,
+      gastoValidado,
+    );
     res.status(200).json({
       success: true,
       data: gastoAtualizado,

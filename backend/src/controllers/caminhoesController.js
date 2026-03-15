@@ -24,7 +24,7 @@ export const caminhoesController = {
     const filtro = req.query.filtro || null;
     const termo = req.query.termo || null;
 
-      // Se nenhum parâmetro de paginação for fornecido, retornar TODOS os caminhões
+    // Se nenhum parâmetro de paginação for fornecido, retornar TODOS os caminhões
     let page;
     let limit;
     const pageParam = req.query.page;
@@ -45,7 +45,7 @@ export const caminhoesController = {
       termo,
     });
 
-      // Se não houve paginação, retornar apenas os dados (compatível com chamadas que esperam array)
+    // Se não houve paginação, retornar apenas os dados (compatível com chamadas que esperam array)
     if (limit === null) {
       return res.status(200).json({ success: true, data: resultado.data });
     }

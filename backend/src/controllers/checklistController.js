@@ -10,9 +10,8 @@ import { ChecklistService } from "../services/ChecklistService.js";
 export const checklistController = {
   createChecklist: catchAsync(async (req, res) => {
     const checklistValidado = checklistSchema.parse(req.body);
-    const novoChecklist = await ChecklistService.createWithCaminhaoUpdate(
-      checklistValidado,
-    );
+    const novoChecklist =
+      await ChecklistService.createWithCaminhaoUpdate(checklistValidado);
 
     res.status(201).json({
       success: true,

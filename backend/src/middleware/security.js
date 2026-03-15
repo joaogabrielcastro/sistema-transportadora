@@ -37,9 +37,7 @@ export const requireAuth = (req, res, next) => {
   }
 
   const authHeader = req.headers.authorization || "";
-  const token = authHeader.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
 
   if (!token || token !== config.auth.apiToken) {
     return res.status(401).json({

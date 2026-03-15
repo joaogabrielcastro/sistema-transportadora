@@ -30,7 +30,7 @@ ChartJS.register(
   Title,
   PointElement,
   LineElement,
-  Filler
+  Filler,
 );
 
 const Home = () => {
@@ -75,7 +75,11 @@ const Home = () => {
       const overview = overviewResponse.data || {};
 
       setStats({
-        totalCaminhoes: overview.totalCaminhoes || pagination?.totalItems || caminhoes?.length || 0,
+        totalCaminhoes:
+          overview.totalCaminhoes ||
+          pagination?.totalItems ||
+          caminhoes?.length ||
+          0,
         totalGastos: overview.totalGastos || 0,
         totalManutencoes: overview.totalManutencoes || 0,
         mediaGastos: overview.mediaGastos || 0,
@@ -128,7 +132,7 @@ const Home = () => {
   const handleOpenDeleteModal = async (caminhao) => {
     try {
       const dependenciasResponse = await apiGet(
-        `/caminhoes/${caminhao.placa}/check-dependencies`
+        `/caminhoes/${caminhao.placa}/check-dependencies`,
       );
 
       const responseData = dependenciasResponse?.data || {};
@@ -169,7 +173,7 @@ const Home = () => {
     try {
       await removeWithCascade(caminhaoParaExcluir.placa);
       setSuccessMessage(
-        `Caminhão ${caminhaoParaExcluir.placa} excluído com sucesso!`
+        `Caminhão ${caminhaoParaExcluir.placa} excluído com sucesso!`,
       );
       fetchAll({ page: currentPage, limit: 10 });
       loadStats();

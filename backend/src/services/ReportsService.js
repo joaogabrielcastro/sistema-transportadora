@@ -44,13 +44,17 @@ export class ReportsService {
 
     const gastosTotal = Number(gastosAgg._sum.valor || 0);
     const manutencoesTotal = Number(checklistAgg._sum.valor || 0);
-    const totalRegistros = (gastosAgg._count.id || 0) + (checklistAgg._count.id || 0);
+    const totalRegistros =
+      (gastosAgg._count.id || 0) + (checklistAgg._count.id || 0);
 
     return {
       totalCaminhoes,
       totalGastos: gastosTotal + manutencoesTotal,
       totalManutencoes: checklistAgg._count.id || 0,
-      mediaGastos: totalRegistros > 0 ? (gastosTotal + manutencoesTotal) / totalRegistros : 0,
+      mediaGastos:
+        totalRegistros > 0
+          ? (gastosTotal + manutencoesTotal) / totalRegistros
+          : 0,
     };
   }
 
@@ -94,9 +98,12 @@ export class ReportsService {
         const kmMin = item._min.km_registro;
         const kmMax = item._max.km_registro;
         const kmDriven =
-          kmMin !== null && kmMax !== null && kmMax >= kmMin ? kmMax - kmMin : null;
+          kmMin !== null && kmMax !== null && kmMax >= kmMin
+            ? kmMax - kmMin
+            : null;
         const totalCost = Number(item._sum.valor || 0);
-        const costPerKm = kmDriven && kmDriven > 0 ? totalCost / kmDriven : null;
+        const costPerKm =
+          kmDriven && kmDriven > 0 ? totalCost / kmDriven : null;
 
         return {
           caminhaoId: item.caminhao_id,
@@ -129,7 +136,8 @@ export class ReportsService {
       stats: {
         grandTotal: totals.grandTotal,
         totalKm: totals.totalKm,
-        avgCostPerKm: totals.totalKm > 0 ? totals.grandTotal / totals.totalKm : 0,
+        avgCostPerKm:
+          totals.totalKm > 0 ? totals.grandTotal / totals.totalKm : 0,
         truckCount: data.length,
       },
       items: data,

@@ -24,6 +24,9 @@ import reportsRoutes from "./routes/reportsRoutes.js";
 
 const app = express();
 
+// Necessário em ambientes atrás de proxy/reverse-proxy (Coolify/Caddy/Nginx)
+app.set("trust proxy", config.app.trustProxy);
+
 // Middleware de segurança
 app.use(helmet());
 app.use(apiRateLimiter);
@@ -39,6 +42,8 @@ app.use(
         callback(new Error("Not allowed by CORS"));
       }
     },
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    credentials: true,
   }),
 );
 

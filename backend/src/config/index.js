@@ -20,6 +20,29 @@ const parseBoolean = (value, fallback = false) => {
   return ["1", "true", "yes", "on"].includes(String(value).toLowerCase());
 };
 
+const parseTrustProxy = (value, fallback = 1) => {
+  if (value === undefined || value === null || value === "") {
+    return fallback;
+  }
+
+  const normalized = String(value).toLowerCase().trim();
+
+  if (["true", "yes", "on"].includes(normalized)) {
+    return 1;
+  }
+
+  if (["false", "no", "off"].includes(normalized)) {
+    return 0;
+  }
+
+  const asNumber = Number(value);
+  if (!Number.isNaN(asNumber)) {
+    return asNumber;
+  }
+
+  return value;
+};
+
 export const config = {
   database: {
     url: process.env.DATABASE_URL,
@@ -29,10 +52,12 @@ export const config = {
     port: process.env.PORT || 3000,
     env: process.env.NODE_ENV || "development",
     corsOrigins: parseCsv(process.env.CORS_ORIGINS, [
+      "https://abbroto.jwsoftware.com.br",
       "http://localhost:5173",
       "http://localhost:5174",
       "http://localhost:3000",
     ]),
+    trustProxy: parseTrustProxy(process.env.TRUST_PROXY, 1),
   },
   auth: {
     enabled: parseBoolean(process.env.AUTH_ENABLED, false),

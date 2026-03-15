@@ -1,81 +1,92 @@
-// backend/src/models/checklistModel.js
-import { supabase } from "../config/supabase.js";
+import prisma from "../lib/prisma.js";
+import { serializePrisma } from "../utils/prismaSerialization.js";
+
+const checklistInclude = {
+  caminhoes: {
+    select: {
+      placa: true,
+    },
+  },
+  itens_checklist: {
+    select: {
+      nome_item: true,
+    },
+  },
+};
+
+const parseId = (value) => {
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? value : parsed;
+};
 
 export const checklistModel = {
-  // Criar um novo item de checklist
   create: async (checklistData) => {
-    const { data, error } = await supabase
-      .from("checklist")
-      .insert([checklistData])
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+    const data = await prisma.checklist.create({
+      data: checklistData,
+      include: checklistInclude,
+    });
+
+    return serializePrisma(data);
   },
 
-  // Listar todos os itens de checklist com paginação
   getAll: async ({ page = 1, limit = 10, caminhaoId = null }) => {
-    const from = (page - 1) * limit;
-    const to = from + limit - 1;
+    const skip = (page - 1) * limit;
+    const where = caminhaoId ? { caminhao_id: parseId(caminhaoId) } : undefined;
 
-    let query = supabase
-      .from("checklist")
-      .select("*, caminhoes(placa), itens_checklist(nome_item)", {
-        count: "exact",
-      })
-      .order("data_manutencao", { ascending: false })
-      .range(from, to);
+    const [data, count] = await prisma.$transaction([
+      prisma.checklist.findMany({
+        where,
+        include: checklistInclude,
+        orderBy: { data_manutencao: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.checklist.count({ where }),
+    ]);
 
-    if (caminhaoId) {
-      query = query.eq("caminhao_id", caminhaoId);
-    }
-
-    const { data, error, count } = await query;
-
-    if (error) throw error;
-    return { data, count };
+    return { data: serializePrisma(data), count };
   },
 
-  // Buscar item de checklist por ID
   getById: async (id) => {
-    const { data, error } = await supabase
-      .from("checklist")
-      .select("*, caminhoes(placa), itens_checklist(nome_item)")
-      .eq("id", id)
-      .single();
-    if (error) throw error;
-    return data;
+    const data = await prisma.checklist.findUnique({
+      where: { id: parseId(id) },
+      include: checklistInclude,
+    });
+
+    return serializePrisma(data);
   },
 
-  // Listar itens de checklist de um caminhão específico
   getByCaminhaoId: async (caminhaoId) => {
-    const { data, error } = await supabase
-      .from("checklist")
-      .select("*, itens_checklist(nome_item)")
-      .eq("caminhao_id", caminhaoId);
-    if (error) throw error;
-    return data;
+    const data = await prisma.checklist.findMany({
+      where: { caminhao_id: parseId(caminhaoId) },
+      include: {
+        itens_checklist: {
+          select: {
+            nome_item: true,
+          },
+        },
+      },
+      orderBy: { data_manutencao: "desc" },
+    });
+
+    return serializePrisma(data);
   },
 
-  // Atualizar um item de checklist
   update: async (id, checklistData) => {
-    const { data, error } = await supabase
-      .from("checklist")
-      .update(checklistData)
-      .eq("id", id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+    const data = await prisma.checklist.update({
+      where: { id: parseId(id) },
+      data: checklistData,
+      include: checklistInclude,
+    });
+
+    return serializePrisma(data);
   },
 
-  // Deletar um item de checklist
   delete: async (id) => {
-    const { data, error } = await supabase
-      .from("checklist")
-      .delete()
-      .eq("id", id);
-    if (error) throw error;
-    return data;
+    const data = await prisma.checklist.delete({
+      where: { id: parseId(id) },
+    });
+
+    return serializePrisma(data);
   },
 };

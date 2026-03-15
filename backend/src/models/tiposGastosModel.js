@@ -1,12 +1,12 @@
-// backend/src/models/tiposGastosModel.js
-import { supabase } from '../config/supabase.js';
+import prisma from "../lib/prisma.js";
+import { serializePrisma } from "../utils/prismaSerialization.js";
 
 export const tiposGastosModel = {
   getAll: async () => {
-    const { data, error } = await supabase
-      .from('tipos_gastos')
-      .select('*');
-    if (error) throw error;
-    return data;
+    const data = await prisma.tipos_gastos.findMany({
+      orderBy: { nome_tipo: "asc" },
+    });
+
+    return serializePrisma(data);
   },
 };

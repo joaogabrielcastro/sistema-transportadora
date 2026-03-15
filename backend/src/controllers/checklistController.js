@@ -1,99 +1,82 @@
 // backend/src/controllers/checklistController.js
 import { checklistModel } from "../models/checklistModel.js";
-import { caminhoesModel } from "../models/caminhoesModel.js";
 import {
   checklistSchema,
   checklistUpdateSchema,
 } from "../schemas/checklistSchema.js";
 import { catchAsync } from "../utils/catchAsync.js";
+import { ChecklistService } from "../services/ChecklistService.js";
 
 export const checklistController = {
   createChecklist: catchAsync(async (req, res) => {
     const checklistValidado = checklistSchema.parse(req.body);
-    const novoChecklist = await checklistModel.create(checklistValidado);
+    const novoChecklist = await ChecklistService.createWithCaminhaoUpdate(
+      checklistValidado,
+    );
 
-    // Nova lógica para atualizar o KM do caminhão
-    if (checklistValidado.km_manutencao) {
-      const caminhaoId = checklistValidado.caminhao_id;
-      await caminhoesModel.updateById(caminhaoId, {
-        km_atual: checklistValidado.km_manutencao,
-      });
-    }
-
-    res.status(201).json(novoChecklist);
+    res.status(201).json({
+      success: true,
+      data: novoChecklist,
+      message: "Checklist criado com sucesso",
+    });
   }),
 
-  getAllChecklists: async (req, res) => {
-    try {
-      const page = parseInt(req.query.page, 10) || 1;
-      const limit = parseInt(req.query.limit, 10) || 10;
-      const { caminhaoId } = req.query;
+  getAllChecklists: catchAsync(async (req, res) => {
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const { caminhaoId } = req.query;
 
-      const { data, count } = await checklistModel.getAll({
-        page,
-        limit,
-        caminhaoId,
-      });
+    const { data, count } = await checklistModel.getAll({
+      page,
+      limit,
+      caminhaoId,
+    });
 
-      res.status(200).json({
-        data,
+    res.status(200).json({
+      success: true,
+      data,
+      pagination: {
         totalPages: Math.ceil(count / limit),
         currentPage: page,
         totalItems: count,
-      });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  },
+        itemsPerPage: limit,
+      },
+    });
+  }),
 
-  getChecklistById: async (req, res) => {
-    try {
-      const checklist = await checklistModel.getById(req.params.id);
-      if (!checklist) {
-        return res
-          .status(404)
-          .json({ error: "Item de checklist não encontrado." });
-      }
-      res.status(200).json(checklist);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
+  getChecklistById: catchAsync(async (req, res) => {
+    const checklist = await checklistModel.getById(req.params.id);
+    if (!checklist) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Item de checklist não encontrado." });
     }
-  },
 
-  getChecklistsByCaminhao: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const checklists = await checklistModel.getByCaminhaoId(id);
-      res.status(200).json(checklists);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  },
+    res.status(200).json({ success: true, data: checklist });
+  }),
 
-  updateChecklist: async (req, res) => {
-    try {
-      const checklistValidado = checklistUpdateSchema.parse(req.body);
-      const checklistAtualizado = await checklistModel.update(
-        req.params.id,
-        checklistValidado,
-      );
-      res.status(200).json(checklistAtualizado);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res
-          .status(400)
-          .json({ error: "Dados inválidos", details: error.errors });
-      }
-      res.status(400).json({ error: error.message });
-    }
-  },
+  getChecklistsByCaminhao: catchAsync(async (req, res) => {
+    const { id } = req.params;
+    const checklists = await checklistModel.getByCaminhaoId(id);
+    res.status(200).json({ success: true, data: checklists });
+  }),
 
-  deleteChecklist: async (req, res) => {
-    try {
-      await checklistModel.delete(req.params.id);
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  },
+  updateChecklist: catchAsync(async (req, res) => {
+    const checklistValidado = checklistUpdateSchema.parse(req.body);
+    const checklistAtualizado = await checklistModel.update(
+      req.params.id,
+      checklistValidado,
+    );
+
+    res.status(200).json({
+      success: true,
+      data: checklistAtualizado,
+      message: "Checklist atualizado com sucesso",
+    });
+  }),
+
+  deleteChecklist: catchAsync(async (req, res) => {
+    await checklistModel.delete(req.params.id);
+    res.status(204).send();
+  }),
 };

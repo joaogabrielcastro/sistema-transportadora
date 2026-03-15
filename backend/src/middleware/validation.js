@@ -21,6 +21,7 @@ export const validateRequest = (schema) => {
       });
 
       return res.status(400).json({
+        success: false,
         error: "Dados inválidos",
         details: error.errors?.map((err) => ({
           field: err.path.join("."),
@@ -34,6 +35,7 @@ export const validateRequest = (schema) => {
 export const handleValidationError = (error, req, res, next) => {
   if (error instanceof z.ZodError) {
     return res.status(400).json({
+      success: false,
       error: "Dados inválidos",
       details: error.errors.map((err) => ({
         field: err.path.join("."),

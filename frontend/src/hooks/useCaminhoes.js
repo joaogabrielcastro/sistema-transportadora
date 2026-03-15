@@ -1,5 +1,5 @@
 // frontend/src/hooks/useCaminhoes.js
-import { useApiResource, api } from "./useApi";
+import { useApi, useApiResource } from "./useApi";
 
 export const useCaminhoes = () => {
   const {
@@ -15,42 +15,38 @@ export const useCaminhoes = () => {
     clearError,
     setData,
   } = useApiResource("/caminhoes");
+  const { get, delete: del } = useApi();
 
   // Buscar caminhão por placa
   const getByPlaca = async (placa) => {
     try {
-      const response = await api.get(`/caminhoes/${placa}`);
+      const response = await get(`/caminhoes/${placa}`);
       return response.data;
     } catch (err) {
-      throw new Error(err.response?.data?.message || "Erro ao buscar caminhão");
+      throw new Error(err.message || "Erro ao buscar caminhão");
     }
   };
 
   // Verificar dependências antes de deletar
   const checkDependencies = async (placa) => {
     try {
-      const response = await api.get(`/caminhoes/${placa}/check-dependencies`);
+      const response = await get(`/caminhoes/${placa}/check-dependencies`);
       return response.data;
     } catch (err) {
-      throw new Error(
-        err.response?.data?.message || "Erro ao verificar dependências"
-      );
+      throw new Error(err.message || "Erro ao verificar dependências");
     }
   };
 
   // Deletar com cascade
   const removeWithCascade = async (placa) => {
     try {
-      const response = await api.delete(`/caminhoes/${placa}/cascade`);
-      // 204 No Content means success
-      if (response.status === 204 || response.data?.success) {
+      const response = await del(`/caminhoes/${placa}/cascade`);
+      if (response.success) {
         setData((prev) => prev.filter((c) => c.placa !== placa));
       }
-      return response.data;
+      return response;
     } catch (err) {
-      throw new Error(
-        err.response?.data?.message || "Erro ao deletar caminhão"
-      );
+      throw new Error(err.message || "Erro ao deletar caminhão");
     }
   };
 

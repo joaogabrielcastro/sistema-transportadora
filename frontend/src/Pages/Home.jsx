@@ -71,63 +71,14 @@ const Home = () => {
   // Carregamento inicial e atualização de dados
   const loadStats = useCallback(async () => {
     try {
-      const [gastosResponse, checklistsResponse] = await Promise.all([
-        apiGet("/gastos?limit=1000"),
-        apiGet("/checklist?limit=1000"),
-      ]);
-
-      // Extrair dados baseado na estrutura da resposta
-      let gastosData = [];
-      let checklistsData = [];
-
-      // Para gastos
-      if (Array.isArray(gastosResponse)) {
-        gastosData = gastosResponse;
-      } else if (gastosResponse?.success && gastosResponse?.data?.data) {
-        gastosData = gastosResponse.data.data;
-      } else if (gastosResponse?.data?.data) {
-        gastosData = gastosResponse.data.data;
-      } else if (gastosResponse?.data) {
-        gastosData = Array.isArray(gastosResponse.data)
-          ? gastosResponse.data
-          : [];
-      }
-
-      // Para checklists
-      if (Array.isArray(checklistsResponse)) {
-        checklistsData = checklistsResponse;
-      } else if (
-        checklistsResponse?.success &&
-        checklistsResponse?.data?.data
-      ) {
-        checklistsData = checklistsResponse.data.data;
-      } else if (checklistsResponse?.data?.data) {
-        checklistsData = checklistsResponse.data.data;
-      } else if (checklistsResponse?.data) {
-        checklistsData = Array.isArray(checklistsResponse.data)
-          ? checklistsResponse.data
-          : [];
-      }
-
-      const totalGastosFinanceiros = gastosData.reduce(
-        (total, gasto) => total + parseFloat(gasto.valor || 0),
-        0
-      );
-
-      const totalGastosManutencoes = checklistsData.reduce(
-        (total, checklist) => total + parseFloat(checklist.valor || 0),
-        0
-      );
-
-      const totalGeral = totalGastosFinanceiros + totalGastosManutencoes;
-      const totalRegistros = gastosData.length + checklistsData.length;
-      const mediaGastos = totalRegistros > 0 ? totalGeral / totalRegistros : 0;
+      const overviewResponse = await apiGet("/reports/overview");
+      const overview = overviewResponse.data || {};
 
       setStats({
-        totalCaminhoes: pagination?.totalItems || caminhoes?.length || 0,
-        totalGastos: totalGeral,
-        totalManutencoes: checklistsData.length,
-        mediaGastos: mediaGastos,
+        totalCaminhoes: overview.totalCaminhoes || pagination?.totalItems || caminhoes?.length || 0,
+        totalGastos: overview.totalGastos || 0,
+        totalManutencoes: overview.totalManutencoes || 0,
+        mediaGastos: overview.mediaGastos || 0,
       });
     } catch (error) {
       console.error("Erro ao carregar estatísticas:", error);
@@ -164,15 +115,7 @@ const Home = () => {
 
     try {
       const results = await searchCaminhoes(searchTerm.trim());
-      const searchData = Array.isArray(results)
-        ? results
-        : results?.data && Array.isArray(results.data)
-        ? results.data
-        : results?.success && Array.isArray(results.data)
-        ? results.data
-        : [];
-
-      setSearchResults(searchData);
+      setSearchResults(Array.isArray(results?.data) ? results.data : []);
     } catch (err) {
       setErrorMessage("Erro ao buscar caminhões. Tente novamente.");
       setSearchResults([]);
@@ -188,21 +131,17 @@ const Home = () => {
         `/caminhoes/${caminhao.placa}/check-dependencies`
       );
 
-      const responseData = dependenciasResponse?.success
-        ? dependenciasResponse.data
-        : dependenciasResponse;
-      const { temDependencias, detalhes } = responseData || {};
+      const responseData = dependenciasResponse?.data || {};
+      const { temDependencias, detalhes } = responseData;
 
       if (temDependencias) {
         let mensagemDependencias = `Não é possível excluir o caminhão ${caminhao.placa}. Existem registros vinculados:\n`;
-        if (detalhes.total_gastos > 0)
-          mensagemDependencias += `• ${detalhes.total_gastos} gastos\n`;
-        if (detalhes.total_checklists > 0)
-          mensagemDependencias += `• ${detalhes.total_checklists} manutenções\n`;
-        if (detalhes.total_pneus > 0)
-          mensagemDependencias += `• ${detalhes.total_pneus} pneus\n`;
-        if (detalhes.total_viagens > 0)
-          mensagemDependencias += `• ${detalhes.total_viagens} viagens\n`;
+        if (detalhes.gastos > 0)
+          mensagemDependencias += `• ${detalhes.gastos} gastos\n`;
+        if (detalhes.checklists > 0)
+          mensagemDependencias += `• ${detalhes.checklists} manutenções\n`;
+        if (detalhes.pneus > 0)
+          mensagemDependencias += `• ${detalhes.pneus} pneus\n`;
         mensagemDependencias +=
           "\nDelete primeiro esses registros antes de excluir o caminhão.";
         setErrorMessage(mensagemDependencias);

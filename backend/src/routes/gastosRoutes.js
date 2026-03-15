@@ -7,12 +7,10 @@ const router = Router();
 router.post("/", gastosController.createGasto);
 router.get("/", gastosController.getAllGastos);
 router.get("/caminhao/:id", gastosController.getGastosByCaminhao);
-router.get("/:id", gastosController.getGastoById);
-
-router.put("/:id", gastosController.updateGasto);
-router.delete("/:id", gastosController.deleteGasto);
-
 // Nova rota para o consumo de combustível
 router.get("/consumo/:id", gastosController.getConsumoCombustivel);
+router.get("/:id", gastosController.getGastoById);
+router.put("/:id", gastosController.updateGasto);
+router.delete("/:id", gastosController.deleteGasto);
 
 export default router;

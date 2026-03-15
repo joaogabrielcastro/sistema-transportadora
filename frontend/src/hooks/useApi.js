@@ -10,16 +10,39 @@ const cache = new Map();
 const DEFAULT_CACHE_TTL = 0;
 
 // Configuração da API
+const apiBaseUrl =
+  import.meta.env.VITE_API_URL ||
+  `${window.location.protocol}//${window.location.hostname}:3000`;
+
 export const api = axios.create({
-  baseURL: `${
-    import.meta.env.VITE_API_URL ||
-    "https://sistema-transportadora.onrender.com"
-  }/api`,
+  baseURL: `${apiBaseUrl}/api`,
   timeout: 30000,
   headers: {
     "Content-Type": "application/json",
   },
 });
+
+const normalizeApiResponse = (response) => {
+  if (response.status === 204) {
+    return {
+      success: true,
+      data: null,
+      message: "Operação concluída com sucesso",
+    };
+  }
+
+  const payload = response.data;
+
+  if (payload && typeof payload === "object" && "success" in payload) {
+    return payload;
+  }
+
+  return {
+    success: true,
+    data: payload,
+    message: "Operação realizada com sucesso",
+  };
+};
 
 // Limpa o cache quando houver mutações (POST, PUT, DELETE)
 const invalidateCache = () => {
@@ -118,32 +141,17 @@ export const useApi = () => {
 
       // Fazer requisição com retry
       const response = await retryRequest(() => api(config));
+      const normalized = normalizeApiResponse(response);
 
       // Armazenar no cache se for GET e cache estiver ativado
       if (cacheKey) {
         cache.set(cacheKey, {
-          data: response.data,
+          data: normalized,
           timestamp: Date.now(),
         });
       }
 
-      // Verificar se a resposta tem a estrutura esperada
-
-      if (response.data && typeof response.data === "object") {
-        if (response.data.success !== undefined) {
-          // Nova estrutura com success flag
-          return response.data;
-        } else {
-          // Estrutura antiga, adaptar
-          return {
-            success: true,
-            data: response.data,
-            message: "Operação realizada com sucesso",
-          };
-        }
-      }
-
-      return response.data;
+      return normalized;
     } catch (err) {
       let errorMessage = err.message || "Erro desconhecido";
 

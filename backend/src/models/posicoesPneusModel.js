@@ -1,12 +1,12 @@
-// backend/src/models/posicoesPneusModel.js
-import { supabase } from '../config/supabase.js';
+import prisma from "../lib/prisma.js";
+import { serializePrisma } from "../utils/prismaSerialization.js";
 
 export const posicoesPneusModel = {
   getAll: async () => {
-    const { data, error } = await supabase
-      .from('posicoes_pneus')
-      .select('*');
-    if (error) throw error;
-    return data;
+    const data = await prisma.posicoes_pneus.findMany({
+      orderBy: { nome_posicao: "asc" },
+    });
+
+    return serializePrisma(data);
   },
 };

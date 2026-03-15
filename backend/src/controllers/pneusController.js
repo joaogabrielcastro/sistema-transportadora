@@ -6,11 +6,7 @@ import {
   pneuCreateInStockSchema,
 } from "../schemas/pneuSchema.js";
 import { z } from "zod";
-
-// Helper para eliminar try/catch repetitivo em controllers
-const catchAsync = (fn) => (req, res, next) => {
-  Promise.resolve(fn(req, res, next)).catch(next);
-};
+import { catchAsync } from "../utils/catchAsync.js";
 
 export const pneusController = {
   createPneu: catchAsync(async (req, res) => {
@@ -31,7 +27,11 @@ export const pneusController = {
       consume_from_stock: body.consume_from_stock,
     });
 
-    res.status(201).json(novoPneu);
+    res.status(201).json({
+      success: true,
+      data: novoPneu,
+      message: "Pneu criado com sucesso",
+    });
   }),
 
   createBulkPneus: catchAsync(async (req, res) => {
@@ -44,20 +44,20 @@ export const pneusController = {
     }
 
     const novosPneus = await PneuService.createBulkPneus(pneus);
-    res.status(201).json(novosPneus);
+    res.status(201).json({ success: true, data: novosPneus });
   }),
 
   // Criar um pneu apenas para o estoque
   createStockPneu: catchAsync(async (req, res) => {
     const pneuValidado = pneuCreateInStockSchema.parse(req.body);
     const novoPneu = await PneuService.createStockPneu(pneuValidado);
-    res.status(201).json(novoPneu);
+    res.status(201).json({ success: true, data: novoPneu });
   }),
 
   // Listar pneus em estoque
   getInStockPneus: catchAsync(async (req, res) => {
     const pneus = await PneuService.getInStock();
-    res.status(200).json(pneus);
+    res.status(200).json({ success: true, data: pneus });
   }),
 
   // Criar pneus em lote no estoque
@@ -71,34 +71,35 @@ export const pneusController = {
     }
 
     const novos = await PneuService.createBulkStockPneus(pneus);
-    res.status(201).json(novos);
+    res.status(201).json({ success: true, data: novos });
   }),
 
   getAllPneus: catchAsync(async (req, res) => {
     const { caminhaoId } = req.query;
     const pneus = await PneuService.getAll({ caminhaoId });
-    res.status(200).json(pneus);
+    res.status(200).json({ success: true, data: pneus });
   }),
 
   getPneuById: catchAsync(async (req, res) => {
     const pneu = await PneuService.getById(req.params.id);
-    if (!pneu) return res.status(404).json({ error: "Pneu não encontrado." });
-    res.status(200).json(pneu);
+    if (!pneu) return res.status(404).json({ success: false, error: "Pneu não encontrado." });
+    res.status(200).json({ success: true, data: pneu });
   }),
 
   // Mantido para compatibilidade
   getPneusByCaminhao: catchAsync(async (req, res) => {
     const pneus = await PneuService.getAll({ caminhaoId: req.params.id });
-    res.status(200).json(pneus);
+    res.status(200).json({ success: true, data: pneus });
   }),
 
   updatePneu: catchAsync(async (req, res) => {
     const pneuValidado = pneuUpdateSchema.parse(req.body);
-    const pneuAtualizado = await PneuService.updatePneu(
-      req.params.id,
-      pneuValidado,
-    );
-    res.status(200).json(pneuAtualizado);
+    const pneuAtualizado = await PneuService.updatePneu(req.params.id, pneuValidado);
+    res.status(200).json({
+      success: true,
+      data: pneuAtualizado,
+      message: "Pneu atualizado com sucesso",
+    });
   }),
 
   deletePneu: catchAsync(async (req, res) => {

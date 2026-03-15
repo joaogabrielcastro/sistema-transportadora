@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model caminhoes {
+  id               Int         @id @default(autoincrement())
+  placa            String      @unique @db.VarChar(10)
+  qtd_pneus        Int
+  km_atual         Int?        @default(0)
+  criado_em        DateTime?   @default(now()) @db.Timestamptz(6)
+  numero_carreta_1 Int?
+  numero_cavalo    Int?
+  motorista        String?     @db.VarChar(100)
+  numero_carreta_2 Int?
+  placa_carreta_1  String?     @db.VarChar
+  placa_carreta_2  String?     @db.VarChar
+  ano              Int?
+  marca            String?     @db.VarChar(100)
+  modelo           String?     @db.VarChar(100)
+  checklist        checklist[]
+  gastos           gastos[]
+  pneus            pneus[]
+}
+
+model checklist {
+  id              Int              @id @default(autoincrement())
+  caminhao_id     Int?
+  item_id         Int?
+  data_manutencao DateTime         @db.Date
+  observacao      String?
+  oficina         String?
+  valor           Decimal?         @db.Decimal
+  km_registro     BigInt?
+  km_manutencao   Int?
+  caminhoes       caminhoes?       @relation(fields: [caminhao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  itens_checklist itens_checklist? @relation(fields: [item_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model gastos {
+  id                     Int           @id @default(autoincrement())
+  caminhao_id            Int?
+  tipo_gasto_id          Int?
+  valor                  Decimal       @db.Decimal(10, 2)
+  data_gasto             DateTime      @db.Date
+  descricao              String?
+  quantidade_combustivel Decimal?      @db.Decimal(10, 2)
+  km_registro            Int?
+  caminhoes              caminhoes?    @relation(fields: [caminhao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tipos_gastos           tipos_gastos? @relation(fields: [tipo_gasto_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model itens_checklist {
+  id        Int         @id @default(autoincrement())
+  nome_item String      @unique @db.VarChar(255)
+  checklist checklist[]
+}
+
+model pneus {
+  id              Int             @id @default(autoincrement())
+  caminhao_id     Int?
+  posicao_id      Int?
+  status_id       Int?
+  vida_util_km    Int?
+  marca           String?         @db.VarChar(255)
+  modelo          String?         @db.VarChar(255)
+  data_instalacao DateTime?       @db.Date
+  km_instalacao   Int?
+  observacao      String?
+  criado_em       DateTime?       @default(now()) @db.Timestamptz(6)
+  caminhoes       caminhoes?      @relation(fields: [caminhao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  posicoes_pneus  posicoes_pneus? @relation(fields: [posicao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  status_pneus    status_pneus?   @relation(fields: [status_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model posicoes_pneus {
+  id           Int     @id @default(autoincrement())
+  nome_posicao String  @unique @db.VarChar(255)
+  pneus        pneus[]
+}
+
+model status_pneus {
+  id          Int     @id @default(autoincrement())
+  nome_status String  @unique @db.VarChar(255)
+  pneus       pneus[]
+}
+
+model tipos_gastos {
+  id        Int      @id @default(autoincrement())
+  nome_tipo String   @unique @db.VarChar(255)
+  gastos    gastos[]
+}

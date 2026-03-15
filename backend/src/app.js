@@ -4,6 +4,12 @@ import helmet from "helmet";
 import { config } from "./config/index.js";
 import { logger } from "./utils/logger.js";
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
+import {
+  apiRateLimiter,
+  attachRequestContext,
+  auditLog,
+  requireAuth,
+} from "./middleware/security.js";
 
 // Importa todas as rotas
 import caminhoesRoutes from "./routes/caminhoesRoutes.js";
@@ -14,11 +20,14 @@ import gastosRoutes from "./routes/gastosRoutes.js";
 import checklistRoutes from "./routes/checklistRoutes.js";
 import itensChecklistRoutes from "./routes/itensChecklistRoutes.js";
 import tiposGastosRoutes from "./routes/tiposGastosRoutes.js";
+import reportsRoutes from "./routes/reportsRoutes.js";
 
 const app = express();
 
 // Middleware de segurança
 app.use(helmet());
+app.use(apiRateLimiter);
+app.use(attachRequestContext);
 
 // CORS configurado via config
 app.use(
@@ -40,6 +49,7 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 // Middleware de logging estruturado
 app.use((req, res, next) => {
   logger.info("Request received", {
+    requestId: req.context?.requestId,
     method: req.method,
     path: req.path,
     ip: req.ip,
@@ -47,6 +57,9 @@ app.use((req, res, next) => {
   });
   next();
 });
+
+app.use(auditLog);
+app.use("/api", requireAuth);
 
 // Health check endpoint
 app.get("/", (req, res) => {
@@ -75,6 +88,7 @@ app.use("/api/gastos", gastosRoutes);
 app.use("/api/checklist", checklistRoutes);
 app.use("/api/itens-checklist", itensChecklistRoutes);
 app.use("/api/tipos-gastos", tiposGastosRoutes);
+app.use("/api/reports", reportsRoutes);
 
 // Middleware de tratamento de rotas não encontradas
 app.use(notFound);

@@ -8,7 +8,7 @@ import {
   FormField,
 } from "../components/ui";
 import { exportToPDF, exportToExcel } from "../utils/exportUtils";
-import { formatCurrency, formatDate, formatNumber } from "../utils/formatters";
+import { formatCurrency, formatNumber } from "../utils/formatters";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -49,8 +49,7 @@ const Relatorios = () => {
   const fetchCaminhoes = async () => {
     try {
       const res = await get("/caminhoes");
-      const list = Array.isArray(res) ? res : res.data || [];
-      setCaminhoes(list);
+      setCaminhoes(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error("Erro ao carregar caminhões", error);
     }
@@ -59,95 +58,29 @@ const Relatorios = () => {
   const generateReport = async () => {
     setLoading(true);
     try {
-      // Fetch expenses filtered
-      let url = `/gastos?limit=1000`; // In a real scenario, should support date filter in API
-      if (selectedCaminhao) url += `&caminhaoId=${selectedCaminhao}`;
+      const params = new URLSearchParams({
+        startDate: dateRange.start,
+        endDate: dateRange.end,
+      });
 
-      const res = await get(url);
-
-      // Ajuste robusto para extrair os dados independente do formato da resposta
-      let allGastos = [];
-      if (Array.isArray(res)) {
-        allGastos = res;
-      } else if (Array.isArray(res.data)) {
-        allGastos = res.data;
-      } else if (res.data && Array.isArray(res.data.data)) {
-        allGastos = res.data.data;
-      } else if (res.data && res.data.data && Array.isArray(res.data.data)) {
-        // Caso useApi envolva em { success: true, data: { data: [] } }
-        allGastos = res.data.data;
+      if (selectedCaminhao) {
+        params.append("caminhaoId", selectedCaminhao);
       }
 
-      console.log("Gastos carregados para relatório:", allGastos);
+      const res = await get(`/reports/cost-per-km?${params.toString()}`);
+      const payload = res.data || {};
+      const items = Array.isArray(payload.items) ? payload.items : [];
 
-      // Filter by date locally since API might not support it yet
-      const filteredGastos = allGastos.filter((g) => {
-        const d = g.data_gasto.split("T")[0];
-        return d >= dateRange.start && d <= dateRange.end;
-      });
-
-      // Process Data for "Cost per KM"
-      // Group by Truck
-      const truckStats = {};
-
-      filteredGastos.forEach((g) => {
-        if (!g.caminhoes) return;
-        const placa = g.caminhoes.placa;
-
-        if (!truckStats[placa]) {
-          truckStats[placa] = {
-            placa,
-            totalCost: 0,
-            minKm: Infinity,
-            maxKm: -Infinity,
-            expensesCount: 0,
-          };
-        }
-
-        truckStats[placa].totalCost += Number(g.valor);
-        truckStats[placa].expensesCount += 1;
-
-        if (g.km_registro) {
-          if (g.km_registro < truckStats[placa].minKm)
-            truckStats[placa].minKm = g.km_registro;
-          if (g.km_registro > truckStats[placa].maxKm)
-            truckStats[placa].maxKm = g.km_registro;
-        }
-      });
-
-      const processed = Object.values(truckStats).map((stat) => {
-        const kmDriven =
-          stat.maxKm !== -Infinity && stat.minKm !== Infinity
-            ? stat.maxKm - stat.minKm
-            : 0;
-
-        const costPerKm = kmDriven > 0 ? stat.totalCost / kmDriven : 0;
-
-        return {
-          ...stat,
-          kmDriven: kmDriven > 0 ? kmDriven : "N/I", // Não informado
-          costPerKm,
-        };
-      });
-
-      // Calculate Grand Totals
-      const grandTotalCalc = processed.reduce(
-        (acc, curr) => acc + curr.totalCost,
-        0,
-      );
-      const totalKmCalc = processed.reduce(
-        (acc, curr) =>
-          acc + (typeof curr.kmDriven === "number" ? curr.kmDriven : 0),
-        0,
-      );
-      const avgCostPerKmValue =
-        totalKmCalc > 0 ? grandTotalCalc / totalKmCalc : 0;
+      const processed = items.map((item) => ({
+        ...item,
+        kmDriven: typeof item.kmDriven === "number" ? item.kmDriven : "N/I",
+      }));
 
       setStats({
-        grandTotal: grandTotalCalc,
-        totalKm: totalKmCalc,
-        avgCostPerKm: avgCostPerKmValue,
-        truckCount: processed.length,
+        grandTotal: payload.stats?.grandTotal || 0,
+        totalKm: payload.stats?.totalKm || 0,
+        avgCostPerKm: payload.stats?.avgCostPerKm || 0,
+        truckCount: payload.stats?.truckCount || processed.length,
       });
 
       setReportData(processed);

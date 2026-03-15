@@ -1,91 +1,112 @@
-import { supabase } from "../config/supabase.js";
+import prisma from "../lib/prisma.js";
+import { serializePrisma } from "../utils/prismaSerialization.js";
+
+const gastoInclude = {
+  caminhoes: {
+    select: {
+      placa: true,
+    },
+  },
+  tipos_gastos: {
+    select: {
+      nome_tipo: true,
+    },
+  },
+};
+
+const parseId = (value) => {
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? value : parsed;
+};
 
 export const gastosModel = {
   create: async (gastoData) => {
-    const { data, error } = await supabase
-      .from("gastos")
-      .insert([gastoData])
-      .select()
-      .single();
+    const data = await prisma.gastos.create({
+      data: gastoData,
+      include: gastoInclude,
+    });
 
-    if (error) throw error;
-    return data;
+    return serializePrisma(data);
   },
 
   getAll: async ({ page = 1, limit = 10, caminhaoId = null }) => {
-    const from = (page - 1) * limit;
-    const to = from + limit - 1;
+    const skip = (page - 1) * limit;
+    const where = caminhaoId ? { caminhao_id: parseId(caminhaoId) } : undefined;
 
-    let query = supabase
-      .from("gastos")
-      .select("*, caminhoes(placa), tipos_gastos(nome_tipo)", {
-        count: "exact",
-      })
-      .order("data_gasto", { ascending: false })
-      .range(from, to);
+    const [data, count] = await prisma.$transaction([
+      prisma.gastos.findMany({
+        where,
+        include: gastoInclude,
+        orderBy: { data_gasto: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.gastos.count({ where }),
+    ]);
 
-    if (caminhaoId) {
-      query = query.eq("caminhao_id", caminhaoId);
-    }
-
-    const { data, error, count } = await query;
-
-    if (error) throw error;
-    return { data, count };
+    return { data: serializePrisma(data), count };
   },
 
   getById: async (id) => {
-    const { data, error } = await supabase
-      .from("gastos")
-      // Adicionado para ir buscar os dados relacionados
-      .select("*, caminhoes(placa), tipos_gastos(nome_tipo)")
-      .eq("id", id)
-      .maybeSingle();
-    if (error) throw error;
-    return data;
+    const data = await prisma.gastos.findUnique({
+      where: { id: parseId(id) },
+      include: gastoInclude,
+    });
+
+    return serializePrisma(data);
   },
 
   getByCaminhaoId: async (caminhaoId) => {
-    const { data, error } = await supabase
-      .from("gastos")
-      .select("*, tipos_gastos(nome_tipo)") // Também adicionei o join aqui para consistência
-      .eq("caminhao_id", caminhaoId);
-    if (error) throw error;
-    return data;
+    const data = await prisma.gastos.findMany({
+      where: { caminhao_id: parseId(caminhaoId) },
+      include: {
+        tipos_gastos: {
+          select: {
+            nome_tipo: true,
+          },
+        },
+      },
+      orderBy: { data_gasto: "desc" },
+    });
+
+    return serializePrisma(data);
   },
 
   update: async (id, gastoData) => {
-    const { data, error } = await supabase
-      .from("gastos")
-      .update(gastoData)
-      .eq("id", id)
-      .select("*, caminhoes(placa), tipos_gastos(nome_tipo)")
-      .single();
-    if (error) throw error;
-    return data;
+    const data = await prisma.gastos.update({
+      where: { id: parseId(id) },
+      data: gastoData,
+      include: gastoInclude,
+    });
+
+    return serializePrisma(data);
   },
 
   delete: async (id) => {
-    const { data, error } = await supabase.from("gastos").delete().eq("id", id);
-    if (error) throw error;
-    return data;
+    const data = await prisma.gastos.delete({
+      where: { id: parseId(id) },
+    });
+
+    return serializePrisma(data);
   },
 
-  // FUNÇÃO CORRIGIDA
   getConsumoCombustivel: async (id) => {
-    // IMPORTANTE: Confirme que '9' é o ID correto para "Combustível" na sua tabela 'tipos_gastos'
     const ID_TIPO_GASTO_COMBUSTIVEL = 9;
 
-    const { data, error } = await supabase
-      .from("gastos")
-      .select("km_registro, quantidade_combustivel")
-      .eq("caminhao_id", id)
-      .eq("tipo_gasto_id", ID_TIPO_GASTO_COMBUSTIVEL) // Filtra apenas por combustível
-      .not("km_registro", "is", null) // Garante que os registos têm KM
-      .not("quantidade_combustivel", "is", null) // Garante que os registos têm litros
-      .order("km_registro", { ascending: false }); // Ordena pelo KM (mais seguro)
+    const data = await prisma.gastos.findMany({
+      where: {
+        caminhao_id: parseId(id),
+        tipo_gasto_id: ID_TIPO_GASTO_COMBUSTIVEL,
+        km_registro: { not: null },
+        quantidade_combustivel: { not: null },
+      },
+      select: {
+        km_registro: true,
+        quantidade_combustivel: true,
+      },
+      orderBy: { km_registro: "desc" },
+    });
 
-    if (error) throw error;
-    return data;
+    return serializePrisma(data);
   },
 };

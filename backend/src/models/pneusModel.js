@@ -1,143 +1,180 @@
-// backend/src/models/pneusModel.js
-import { supabase } from "../config/supabase.js";
+import prisma from "../lib/prisma.js";
+import { serializePrisma } from "../utils/prismaSerialization.js";
+
+const pneuInclude = {
+  caminhoes: {
+    select: {
+      placa: true,
+    },
+  },
+  posicoes_pneus: {
+    select: {
+      nome_posicao: true,
+    },
+  },
+  status_pneus: {
+    select: {
+      nome_status: true,
+    },
+  },
+};
+
+const normalizePneuData = (pneuData) => {
+  const allowedFields = [
+    "caminhao_id",
+    "posicao_id",
+    "status_id",
+    "vida_util_km",
+    "marca",
+    "modelo",
+    "data_instalacao",
+    "km_instalacao",
+    "observacao",
+  ];
+
+  return Object.fromEntries(
+    Object.entries(pneuData).filter(([key, value]) => {
+      return allowedFields.includes(key) && value !== undefined;
+    }),
+  );
+};
+
+const parseId = (value) => {
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? value : parsed;
+};
 
 export const pneusModel = {
-  // Criar um novo pneu
   create: async (pneuData) => {
-    const { data, error } = await supabase
-      .from("pneus")
-      .insert([pneuData])
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+    const data = await prisma.pneus.create({
+      data: normalizePneuData(pneuData),
+      include: pneuInclude,
+    });
+
+    return serializePrisma(data);
   },
 
-  // Criar múltiplos pneus
   createBulk: async (pneusData) => {
-    const { data, error } = await supabase
-      .from("pneus")
-      .insert(pneusData)
-      .select();
+    const created = await prisma.$transaction(
+      pneusData.map((pneuData) =>
+        prisma.pneus.create({
+          data: normalizePneuData(pneuData),
+          include: pneuInclude,
+        }),
+      ),
+    );
 
-    if (error) {
-      console.error("Erro no Supabase ao inserir em lote:", error);
-      throw error;
-    }
-    return data;
+    return serializePrisma(created);
   },
 
-  // Listar todos os pneus
   getAll: async () => {
-    const { data, error } = await supabase
-      .from("pneus")
-      .select(
-        "*, caminhoes(placa), posicoes_pneus(nome_posicao), status_pneus(nome_status)",
-      );
-    if (error) throw error;
-    return data;
+    const data = await prisma.pneus.findMany({
+      include: pneuInclude,
+      orderBy: { id: "desc" },
+    });
+
+    return serializePrisma(data);
   },
 
-  // Buscar pneu por ID
   getById: async (id) => {
-    const { data, error } = await supabase
-      .from("pneus")
-      .select(
-        "*, caminhoes(placa), posicoes_pneus(nome_posicao), status_pneus(nome_status)",
-      )
-      .eq("id", id)
-      .single();
-    if (error) throw error;
-    return data;
+    const data = await prisma.pneus.findUnique({
+      where: { id: parseId(id) },
+      include: pneuInclude,
+    });
+
+    return serializePrisma(data);
   },
 
-  // Listar pneus em estoque (sem caminhão atribuído)
   getInStock: async () => {
-    const { data, error } = await supabase
-      .from("pneus")
-      .select("*, posicoes_pneus(nome_posicao), status_pneus(nome_status)")
-      .is("caminhao_id", null);
-    if (error) throw error;
-    return data;
+    const data = await prisma.pneus.findMany({
+      where: { caminhao_id: null },
+      include: {
+        posicoes_pneus: {
+          select: {
+            nome_posicao: true,
+          },
+        },
+        status_pneus: {
+          select: {
+            nome_status: true,
+          },
+        },
+      },
+      orderBy: { id: "desc" },
+    });
+
+    return serializePrisma(data);
   },
 
-  // Listar pneus de um caminhão específico (por ID)
   getByCaminhaoId: async (caminhaoId) => {
-    const { data, error } = await supabase
-      .from("pneus")
-      .select("*, posicoes_pneus(nome_posicao), status_pneus(nome_status)")
-      .eq("caminhao_id", caminhaoId);
-    if (error) throw error;
-    return data;
+    const data = await prisma.pneus.findMany({
+      where: { caminhao_id: parseId(caminhaoId) },
+      include: {
+        posicoes_pneus: {
+          select: {
+            nome_posicao: true,
+          },
+        },
+        status_pneus: {
+          select: {
+            nome_status: true,
+          },
+        },
+      },
+      orderBy: { id: "desc" },
+    });
+
+    return serializePrisma(data);
   },
 
-  // Atualizar um pneu
   update: async (id, pneuData) => {
-    const { data, error } = await supabase
-      .from("pneus")
-      .update(pneuData)
-      .eq("id", id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+    const data = await prisma.pneus.update({
+      where: { id: parseId(id) },
+      data: normalizePneuData(pneuData),
+      include: pneuInclude,
+    });
+
+    return serializePrisma(data);
   },
 
-  // Deletar um pneu
   delete: async (id) => {
-    const { data, error } = await supabase.from("pneus").delete().eq("id", id);
-    if (error) throw error;
-    return data;
+    const data = await prisma.pneus.delete({
+      where: { id: parseId(id) },
+    });
+
+    return serializePrisma(data);
   },
 
-  // Atribuir um pneu do estoque a um caminhão
   assignFromStock: async (pneuId, updates) => {
-    // Removemos campos que não devem ser atualizados na atribuição se vierem no objeto
-    const { ...safeUpdates } = updates;
+    const safeUpdates = normalizePneuData(updates);
+
     delete safeUpdates.id;
-    delete safeUpdates.stock_pneu_id; // Garantia
+    delete safeUpdates.stock_pneu_id;
 
-    const { data, error } = await supabase
-      .from("pneus")
-      .update(safeUpdates)
-      .eq("id", pneuId)
-      .select()
-      .single();
+    const data = await prisma.pneus.update({
+      where: { id: parseId(pneuId) },
+      data: safeUpdates,
+      include: pneuInclude,
+    });
 
-    if (error) {
-      console.error(
-        "Erro ao atribuir pneu do estoque (assignFromStock). ID:",
-        pneuId,
-        "Update Data:",
-        safeUpdates,
-        "Error:",
-        error,
-      );
-      throw error;
-    }
-    return data;
+    return serializePrisma(data);
   },
 
-  // Tentar encontrar um pneu compatível no estoque e atribuir
   findAndAssignStock: async (criteria, updates) => {
-    // 1. Encontrar um pneu candidato (FIFO - mais antigo primeiro ou apenas o primeiro)
-    const { data: candidates, error: searchError } = await supabase
-      .from("pneus")
-      .select("id")
-      .is("caminhao_id", null)
-      .eq("marca", criteria.marca) // Case sensitive? Idealmente normalizar
-      .eq("modelo", criteria.modelo)
-      .limit(1);
+    const candidate = await prisma.pneus.findFirst({
+      where: {
+        caminhao_id: null,
+        marca: criteria.marca,
+        modelo: criteria.modelo,
+      },
+      orderBy: [{ criado_em: "asc" }, { id: "asc" }],
+      select: { id: true },
+    });
 
-    if (searchError) throw searchError;
-
-    if (!candidates || candidates.length === 0) {
-      return null; // Nenhum pneu no estoque
+    if (!candidate) {
+      return null;
     }
 
-    const pneuId = candidates[0].id;
-
-    // 2. Atualizar o pneu encontrado
-    return await pneusModel.assignFromStock(pneuId, updates);
+    return pneusModel.assignFromStock(candidate.id, updates);
   },
 };

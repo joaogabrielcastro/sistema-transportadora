@@ -1,12 +1,12 @@
-// backend/src/models/itensChecklistModel.js
-import { supabase } from '../config/supabase.js';
+import prisma from "../lib/prisma.js";
+import { serializePrisma } from "../utils/prismaSerialization.js";
 
 export const itensChecklistModel = {
   getAll: async () => {
-    const { data, error } = await supabase
-      .from('itens_checklist')
-      .select('*');
-    if (error) throw error;
-    return data;
+    const data = await prisma.itens_checklist.findMany({
+      orderBy: { nome_item: "asc" },
+    });
+
+    return serializePrisma(data);
   },
 };

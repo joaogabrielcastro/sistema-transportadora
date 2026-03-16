@@ -7,8 +7,23 @@ import {
 import { catchAsync } from "../utils/catchAsync.js";
 import { ChecklistService } from "../services/ChecklistService.js";
 
+// Função para converter data dd/MM/yyyy para yyyy-MM-dd
+function converterDataManutencao(data) {
+  if (typeof data === "string" && /^\d{2}\/\d{2}\/\d{4}$/.test(data)) {
+    const [dia, mes, ano] = data.split("/");
+    return `${ano}-${mes}-${dia}`;
+  }
+  return data;
+}
+
 export const checklistController = {
   createChecklist: catchAsync(async (req, res) => {
+    // Converter data_manutencao se vier no formato dd/MM/yyyy
+    if (req.body.data_manutencao) {
+      req.body.data_manutencao = converterDataManutencao(
+        req.body.data_manutencao,
+      );
+    }
     const checklistValidado = checklistSchema.parse(req.body);
     const novoChecklist =
       await ChecklistService.createWithCaminhaoUpdate(checklistValidado);
@@ -61,6 +76,12 @@ export const checklistController = {
   }),
 
   updateChecklist: catchAsync(async (req, res) => {
+    // Converter data_manutencao se vier no formato dd/MM/yyyy
+    if (req.body.data_manutencao) {
+      req.body.data_manutencao = converterDataManutencao(
+        req.body.data_manutencao,
+      );
+    }
     const checklistValidado = checklistUpdateSchema.parse(req.body);
     const checklistAtualizado = await checklistModel.update(
       req.params.id,

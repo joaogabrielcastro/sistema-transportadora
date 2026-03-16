@@ -8,13 +8,25 @@ import {
 import { z } from "zod";
 import { catchAsync } from "../utils/catchAsync.js";
 
+// Função para converter data dd/MM/yyyy para yyyy-MM-dd
+function converterDataInstalacao(data) {
+  if (typeof data === "string" && /^\d{2}\/\d{2}\/\d{4}$/.test(data)) {
+    const [dia, mes, ano] = data.split("/");
+    return `${ano}-${mes}-${dia}`;
+  }
+  return data;
+}
+
 export const pneusController = {
   createPneu: catchAsync(async (req, res) => {
     const { body } = req;
 
+    // Converter data_instalacao se vier no formato dd/MM/yyyy
+    if (body.data_instalacao) {
+      body.data_instalacao = converterDataInstalacao(body.data_instalacao);
+    }
+
     // Validação Schema Básico
-    // Nota: A lógica de partial vs full schema para atribuição poderia ser movida pra dentro do Service
-    // se passássemos o body bruto, mas pra manter o contrato do controller limpo, validamos aqui.
     let dados;
     if (body.stock_pneu_id) {
       dados = pneuSchema.partial().parse(body);
@@ -35,6 +47,16 @@ export const pneusController = {
   }),
 
   createBulkPneus: catchAsync(async (req, res) => {
+    // Converter data_instalacao de todos os pneus se vierem no formato dd/MM/yyyy
+    if (Array.isArray(req.body.pneus)) {
+      req.body.pneus = req.body.pneus.map((pneu) => ({
+        ...pneu,
+        data_instalacao: pneu.data_instalacao
+          ? converterDataInstalacao(pneu.data_instalacao)
+          : pneu.data_instalacao,
+      }));
+    }
+
     const { pneus } = z.object({ pneus: z.array(pneuSchema) }).parse(req.body);
 
     if (pneus.length === 0) {
@@ -114,9 +136,9 @@ export const pneusController = {
       res.status(204).send();
     } catch (error) {
       console.error("Erro ao deletar pneu:", error);
-      res.status(400).json({ 
+      res.status(400).json({
         error: error.message || "Erro ao excluir pneu",
-        details: error.toString()
+        details: error.toString(),
       });
     }
   }),

@@ -3,8 +3,25 @@ import { gastoSchema, gastoUpdateSchema } from "../schemas/gastoSchema.js";
 import { catchAsync } from "../utils/catchAsync.js";
 import { GastoService } from "../services/GastoService.js";
 
+// Função genérica para converter todos os campos de data dd/MM/yyyy para yyyy-MM-dd
+function converterDatasBody(body) {
+  const dataRegex = /^\d{2}\/\d{2}\/\d{4}$/;
+  for (const key in body) {
+    if (
+      key.toLowerCase().includes("data") &&
+      typeof body[key] === "string" &&
+      dataRegex.test(body[key])
+    ) {
+      const [dia, mes, ano] = body[key].split("/");
+      body[key] = `${ano}-${mes}-${dia}`;
+    }
+  }
+  return body;
+}
+
 export const gastosController = {
   createGasto: catchAsync(async (req, res) => {
+    converterDatasBody(req.body);
     const gastoValidado = gastoSchema.parse(req.body);
     const novoGasto =
       await GastoService.createWithCaminhaoUpdate(gastoValidado);
@@ -57,6 +74,7 @@ export const gastosController = {
   }),
 
   updateGasto: catchAsync(async (req, res) => {
+    converterDatasBody(req.body);
     const gastoValidado = gastoUpdateSchema.parse(req.body);
     const gastoAtualizado = await gastosModel.update(
       req.params.id,

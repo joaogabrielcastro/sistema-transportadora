@@ -19,7 +19,9 @@ export const errorHandler = (err, req, res, _next) => {
     return res.status(400).json({
       success: false,
       error: "Erro de validação nos dados enviados",
-      details: err.errors.map((e) => `${e.path.join(".")}: ${e.message}`),
+      details: Array.isArray(err.errors)
+        ? err.errors.map((e) => `${e.path.join(".")}: ${e.message}`)
+        : [],
     });
   }
 

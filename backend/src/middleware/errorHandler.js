@@ -15,13 +15,11 @@ export const errorHandler = (err, req, res, _next) => {
   });
 
   // Erro de validação do Zod
-  if (err instanceof ZodError) {
+  if (err instanceof ZodError && Array.isArray(err.errors)) {
     return res.status(400).json({
       success: false,
       error: "Erro de validação nos dados enviados",
-      details: Array.isArray(err.errors)
-        ? err.errors.map((e) => `${e.path.join(".")}: ${e.message}`)
-        : [],
+      details: err.errors.map((e) => `${e.path.join(".")}: ${e.message}`),
     });
   }
 

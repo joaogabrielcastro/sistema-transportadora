@@ -8,17 +8,21 @@ import {
 import { z } from "zod";
 import { catchAsync } from "../utils/catchAsync.js";
 
-// Função genérica para converter todos os campos de data dd/MM/yyyy para yyyy-MM-dd
+// Função genérica para converter todos os campos de data para o formato ISO-8601 DateTime
 function converterDatasBody(body) {
   const dataRegex = /^\d{2}\/\d{2}\/\d{4}$/;
+  const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
   for (const key in body) {
-    if (
-      key.toLowerCase().includes("data") &&
-      typeof body[key] === "string" &&
-      dataRegex.test(body[key])
-    ) {
-      const [dia, mes, ano] = body[key].split("/");
-      body[key] = `${ano}-${mes}-${dia}`;
+    if (key.toLowerCase().includes("data") && typeof body[key] === "string") {
+      // dd/MM/yyyy -> yyyy-MM-ddT00:00:00.000Z
+      if (dataRegex.test(body[key])) {
+        const [dia, mes, ano] = body[key].split("/");
+        body[key] = `${ano}-${mes}-${dia}T00:00:00.000Z`;
+      }
+      // yyyy-MM-dd -> yyyy-MM-ddT00:00:00.000Z
+      else if (isoDateRegex.test(body[key])) {
+        body[key] = `${body[key]}T00:00:00.000Z`;
+      }
     }
   }
   return body;

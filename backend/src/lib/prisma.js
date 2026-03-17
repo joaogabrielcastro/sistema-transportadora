@@ -5,7 +5,7 @@ const { PrismaClient } = prismaClientPkg;
 
 const globalForPrisma = globalThis;
 
-// Deixamos o motor nativo do Prisma assumir o controle total
+// O motor nativo em Rust do Prisma gerencia as conexões automaticamente
 const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({

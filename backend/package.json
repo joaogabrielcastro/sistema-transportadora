@@ -3,15 +3,11 @@
   "version": "1.0.0",
   "description": "Sistema de Transportadora - Backend API",
   "main": "server.js",
-  "scripts": {
-    "postinstall": "prisma generate --schema=./prisma/schema.prisma",
-    "prestart": "prisma generate && npx prisma db push",
+"scripts": {
+    "postinstall": "prisma generate",
+    "prestart": "npx prisma db push",
     "start": "node server.js",
-    "dev": "node --watch server.js",
-    "start:no-deprecation": "node --no-deprecation server.js",
-    "test": "node --test tests/**/*.test.js",
-    "lint": "eslint \"src/**/*.js\" \"tests/**/*.js\"",
-    "validate-config": "node -e \"import('./src/config/index.js').then(() => console.log('Config is valid'))\""
+    "dev": "node --watch server.js"
   },
   "keywords": [
     "transportadora",
@@ -22,14 +18,12 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "express-rate-limit": "^7.5.1",
     "helmet": "^8.1.0",
-    "pg": "^8.20.0",
     "prisma": "^7.5.0",
     "zod": "^4.1.12"
   },

@@ -1,7 +1,7 @@
 generator client {
   provider = "prisma-client-js"
-  // Removi o engineType para ele usar o padrão "library", que é mais estável
-}
+  engineType = "library"
+  }
 
 datasource db {
   provider = "postgresql"

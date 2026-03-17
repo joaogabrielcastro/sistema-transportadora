@@ -4,11 +4,10 @@
   "description": "Sistema de Transportadora - Backend API",
   "main": "server.js",
 "scripts": {
-    "postinstall": "prisma generate",
-    "prestart": "npx prisma db push",
-    "start": "node server.js",
-    "dev": "node --watch server.js"
-  },
+  "postinstall": "prisma generate", 
+  "prestart": "npx prisma db push",
+  "start": "node server.js"
+},
   "keywords": [
     "transportadora",
     "logistics",

@@ -6,7 +6,6 @@ Aplicação fullstack para gestão de frota, manutenção, pneus e gastos operac
 
 - Backend: Node.js, Express, Prisma ORM, PostgreSQL, Zod.
 - Frontend: React, Vite, Tailwind, Axios, Chart.js.
-- Banco: PostgreSQL (via Prisma Client + adapter pg).
 
 ## Principais Melhorias Implementadas
 

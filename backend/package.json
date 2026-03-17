@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "description": "Sistema de Transportadora - Backend API",
   "main": "server.js",
-"scripts": {
-  "postinstall": "prisma generate", 
-  "prestart": "npx prisma db push",
-  "start": "node server.js"
-},
+  "scripts": {
+    "postinstall": "prisma generate",
+    "prestart": "npx prisma db push",
+    "start": "node server.js"
+  },
   "keywords": [
     "transportadora",
     "logistics",
@@ -23,6 +23,7 @@
     "express": "^5.1.0",
     "express-rate-limit": "^7.5.1",
     "helmet": "^8.1.0",
+    "pg": "^8.20.0",
     "prisma": "^7.5.0",
     "zod": "^4.1.12"
   },

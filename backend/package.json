@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "postinstall": "prisma generate --schema=./prisma/schema.prisma",
-    "prestart": "prisma generate",
+    "prestart": "prisma generate && npx prisma db push",
     "start": "node server.js",
     "dev": "node --watch server.js",
     "start:no-deprecation": "node --no-deprecation server.js",

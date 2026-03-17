@@ -30,10 +30,6 @@ const resolveSslConfig = () => {
     return { rejectUnauthorized: true };
   }
 
-  if (connectionString.includes("supabase.co")) {
-    return { rejectUnauthorized: false };
-  }
-
   return false;
 };
 

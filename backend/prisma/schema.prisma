@@ -1,16 +1,16 @@
 generator client {
   provider = "prisma-client-js"
-  engineType = "binary"
+  // Removi o engineType para ele usar o padrão "library", que é mais estável
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This table contains check constraints and requires additional setup for migrations. 
 model caminhoes {
-  id               Int         @id @default(autoincrement())
-  placa            String      @unique @db.VarChar(10)
+  id                Int         @id @default(autoincrement())
+  placa             String      @unique @db.VarChar(10)
   qtd_pneus        Int
   km_atual         Int?        @default(0)
   criado_em        DateTime?   @default(now()) @db.Timestamptz(6)

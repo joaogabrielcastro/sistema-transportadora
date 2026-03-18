@@ -30,6 +30,14 @@ try {
 
 const ssl = false;
 
+// Debug leve para confirmar que estamos removendo sslmode do DATABASE_URL.
+// Não logamos a URL inteira (evita vazar credenciais).
+console.log("[prisma.js] tls fix:", {
+  hasSslmodeOriginal: /sslmode=/i.test(databaseUrl),
+  hasSslmodeClean: /sslmode=/i.test(cleanDatabaseUrl),
+  sslOption: ssl,
+});
+
 const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({

@@ -23,6 +23,10 @@ if (dbSslMode === "disable") {
   ssl = { rejectUnauthorized: true };
 } else if (/sslmode=disable/i.test(databaseUrl)) {
   ssl = false;
+} else if (/sslmode=desable/i.test(databaseUrl)) {
+  // Alguns ambientes acabaram recebendo o typo "desable".
+  // Tratamos como "disable" para evitar handshake TLS quando o Postgres não aceita SSL.
+  ssl = false;
 } else if (/sslmode=require/i.test(databaseUrl)) {
   ssl = { rejectUnauthorized: true };
 }

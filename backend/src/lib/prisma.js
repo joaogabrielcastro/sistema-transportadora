@@ -9,7 +9,10 @@ const { Pool } = pgPkg;
 
 const globalForPrisma = globalThis;
 
-const databaseUrl = process.env.DATABASE_URL || "";
+const databaseUrl = (process.env.DATABASE_URL || "")
+  .trim()
+  // Remove aspas literais que alguns ambientes colocam na var
+  .replace(/^["']|["']$/g, "");
 // Seu Postgres não suporta TLS.
 // Para evitar qualquer comportamento inesperado do `pg`, removemos `sslmode`
 // da connection string e forçamos `ssl: false`.

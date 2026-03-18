@@ -1,4 +1,4 @@
-﻿# Sistema de Gestão para Transportadora
+# Sistema de Gestão para Transportadora
 
 Aplicação fullstack para gestão de frota, manutenção, pneus e gastos operacionais.
 
@@ -27,7 +27,8 @@ Aplicação fullstack para gestão de frota, manutenção, pneus e gastos operac
 ### Backend (`backend/.env`)
 
 - `DATABASE_URL`: string de conexão PostgreSQL.
-- `PORT`: porta da API (default `3000`).
+- `PRISMA_CLIENT_ENGINE_TYPE`: **use `library`** em Docker/Node (evita o Prisma “edge/client” exigir `adapter`/`accelerateUrl`).
+- `PORT`: porta da API (default `3011`).
 - `NODE_ENV`: `development` ou `production`.
 - `CORS_ORIGINS`: lista CSV de origens permitidas.
 - `DB_SSL_MODE`: `require`, `no-verify` ou `disable`.

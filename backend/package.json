@@ -6,6 +6,8 @@
   "scripts": {
     "postinstall": "prisma generate",
     "prestart": "npx prisma db push",
+    "dev": "node --watch server.js",
+    "lint": "eslint .",
     "start": "node server.js"
   },
   "keywords": [

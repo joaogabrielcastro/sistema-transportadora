@@ -12,7 +12,6 @@ const prisma =
       process.env.NODE_ENV === "development"
         ? ["query", "info", "warn", "error"]
         : ["error"],
-    accelerateUrl: process.env.PRISMA_ACCELERATE_URL, // <-- adicionar isto
   });
 
 if (process.env.NODE_ENV !== "production") {

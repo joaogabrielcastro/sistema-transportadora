@@ -4,7 +4,7 @@
   "description": "Sistema de Transportadora - Backend API",
   "main": "server.js",
   "scripts": {
-    "postinstall": "prisma generate",
+    "postinstall": "node -e \"process.env.PRISMA_CLIENT_ENGINE_TYPE='library'; require('child_process').execSync('npx prisma generate', { stdio: 'inherit' })\"",
     "prestart": "npx prisma db push",
     "dev": "node --watch server.js",
     "lint": "eslint .",

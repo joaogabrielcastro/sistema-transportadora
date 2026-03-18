@@ -1,7 +1,9 @@
 // backend/src/server.js
 /* eslint-disable no-undef */
 
-import app from "./src/app.js";
+process.env.PRISMA_CLIENT_ENGINE_TYPE = "library";
+
+const { default: app } = await import("./src/app.js");
 
 const PORT = process.env.PORT || 3011;
 

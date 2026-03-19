@@ -2,6 +2,7 @@
 import { useState, useCallback } from "react";
 import axios from "axios";
 import logger from "../utils/logger";
+import { useToast } from "../components/ui/useToast.js";
 
 // Cache simples em memória
 const cache = new Map();
@@ -111,6 +112,7 @@ api.interceptors.response.use(
 export const useApi = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const toast = useToast();
 
   const request = useCallback(async (config) => {
     try {
@@ -143,6 +145,19 @@ export const useApi = () => {
       const response = await retryRequest(() => api(config));
       const normalized = normalizeApiResponse(response);
 
+      // Feedback de sucesso (mutações)
+      const method = String(config.method || "GET").toUpperCase();
+      if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+        const message =
+          normalized?.message ||
+          (method === "POST"
+            ? "Salvo com sucesso."
+            : method === "DELETE"
+              ? "Excluído com sucesso."
+              : "Atualizado com sucesso.");
+        toast.success(message);
+      }
+
       // Armazenar no cache se for GET e cache estiver ativado
       if (cacheKey) {
         cache.set(cacheKey, {
@@ -154,6 +169,8 @@ export const useApi = () => {
       return normalized;
     } catch (err) {
       let errorMessage = err.message || "Erro desconhecido";
+      let fieldErrors = null;
+      let status = err.response?.status ?? null;
 
       // Tentar extrair mensagem detalhada do backend
       if (err.response?.data) {
@@ -168,16 +185,41 @@ export const useApi = () => {
           err.response.data.details &&
           Array.isArray(err.response.data.details)
         ) {
-          errorMessage += ": " + err.response.data.details.join(", ");
+          // details pode ser array de strings (backend errorHandler) ou array de objetos (validation middleware)
+          if (typeof err.response.data.details[0] === "string") {
+            errorMessage += ": " + err.response.data.details.join(", ");
+            fieldErrors = Object.fromEntries(
+              err.response.data.details
+                .map((line) => {
+                  const idx = String(line).indexOf(":");
+                  if (idx <= 0) return null;
+                  const field = line.slice(0, idx).trim();
+                  const msg = line.slice(idx + 1).trim();
+                  return [field, msg];
+                })
+                .filter(Boolean),
+            );
+          } else {
+            fieldErrors = Object.fromEntries(
+              err.response.data.details
+                .map((d) => (d?.field ? [d.field, d.message] : null))
+                .filter(Boolean),
+            );
+          }
         }
       }
 
       setError(errorMessage);
-      throw new Error(errorMessage);
+      toast.error(errorMessage);
+
+      const e = new Error(errorMessage);
+      e.status = status;
+      e.fieldErrors = fieldErrors;
+      throw e;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   const get = useCallback(
     (url, config = {}) => {

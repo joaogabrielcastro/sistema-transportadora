@@ -33,6 +33,7 @@ const EditCaminhao = () => {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
     const fetchCaminhao = async () => {
@@ -185,6 +186,7 @@ const EditCaminhao = () => {
     e.preventDefault();
     setSubmitting(true);
     setError("");
+    setFieldErrors({});
 
     if (!validateForm()) {
       setSubmitting(false);
@@ -220,11 +222,11 @@ const EditCaminhao = () => {
       }, 1500);
     } catch (err) {
       console.error("Erro ao atualizar:", err);
-      const errorMessage =
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        "Erro ao atualizar caminhão";
+      const errorMessage = err.message || "Erro ao atualizar caminhão";
       setError(errorMessage);
+      if (err?.fieldErrors) {
+        setFieldErrors(err.fieldErrors);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -265,7 +267,7 @@ const EditCaminhao = () => {
                   handleInputChange("numero_cavalo", e.target.value)
                 }
                 placeholder="100+"
-                error={errors.numero_cavalo}
+                error={errors.numero_cavalo || fieldErrors.numero_cavalo}
               />
             </div>
 
@@ -275,7 +277,7 @@ const EditCaminhao = () => {
               value={form.motorista}
               onChange={(e) => handleInputChange("motorista", e.target.value)}
               placeholder="Nome completo"
-              error={errors.motorista}
+              error={errors.motorista || fieldErrors.motorista}
             />
 
             {/* Dados do Veículo */}
@@ -286,7 +288,7 @@ const EditCaminhao = () => {
                 value={form.marca}
                 onChange={(e) => handleInputChange("marca", e.target.value)}
                 placeholder="Ex: Scania, Volvo"
-                error={errors.marca}
+                error={errors.marca || fieldErrors.marca}
               />
 
               <FormField
@@ -295,7 +297,7 @@ const EditCaminhao = () => {
                 value={form.modelo}
                 onChange={(e) => handleInputChange("modelo", e.target.value)}
                 placeholder="Ex: R 450, FH 540"
-                error={errors.modelo}
+                error={errors.modelo || fieldErrors.modelo}
               />
 
               <FormField
@@ -306,7 +308,7 @@ const EditCaminhao = () => {
                 onChange={(e) => handleInputChange("ano", e.target.value)}
                 placeholder="Ex: 2020"
                 maxLength={4}
-                error={errors.ano}
+                error={errors.ano || fieldErrors.ano}
               />
             </div>
 
@@ -319,7 +321,7 @@ const EditCaminhao = () => {
                 onChange={(e) => handleInputChange("qtd_pneus", e.target.value)}
                 required
                 placeholder="Ex: 6"
-                error={errors.qtd_pneus}
+                error={errors.qtd_pneus || fieldErrors.qtd_pneus}
               />
 
               <FormField
@@ -330,7 +332,7 @@ const EditCaminhao = () => {
                 onChange={(e) => handleInputChange("km_atual", e.target.value)}
                 required
                 placeholder="Ex: 150000"
-                error={errors.km_atual}
+                error={errors.km_atual || fieldErrors.km_atual}
               />
             </div>
 
@@ -375,7 +377,7 @@ const EditCaminhao = () => {
                     name="carreta_0"
                     value={carretas[0]}
                     onChange={(e) => handleCarretaChange(0, e.target.value)}
-                    error={errors.carreta_0}
+                    error={errors.carreta_0 || fieldErrors.carreta_0}
                     placeholder="0-99"
                   />
                   <FormField
@@ -387,7 +389,7 @@ const EditCaminhao = () => {
                     }
                     placeholder="ABC1D23"
                     maxLength={7}
-                    error={errors.placa_carreta_1}
+                    error={errors.placa_carreta_1 || fieldErrors.placa_carreta_1}
                   />
                 </div>
 
@@ -420,7 +422,7 @@ const EditCaminhao = () => {
                         name="carreta_1"
                         value={carretas[1]}
                         onChange={(e) => handleCarretaChange(1, e.target.value)}
-                        error={errors.carreta_1}
+                        error={errors.carreta_1 || fieldErrors.carreta_1}
                         placeholder="0-99"
                       />
                       <FormField
@@ -432,7 +434,7 @@ const EditCaminhao = () => {
                         }
                         placeholder="ABC1D23"
                         maxLength={7}
-                        error={errors.placa_carreta_2}
+                        error={errors.placa_carreta_2 || fieldErrors.placa_carreta_2}
                       />
                     </div>
                   </div>

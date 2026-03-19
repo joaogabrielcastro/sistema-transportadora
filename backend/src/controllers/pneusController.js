@@ -8,29 +8,27 @@ import {
 import { z } from "zod";
 import { catchAsync } from "../utils/catchAsync.js";
 
-// Função genérica para converter todos os campos de data para o formato ISO-8601 DateTime
-function converterDatasBody(body) {
-  const dataRegex = /^\d{2}\/\d{2}\/\d{4}$/;
-  const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
-  for (const key in body) {
-    if (key.toLowerCase().includes("data") && typeof body[key] === "string") {
-      // dd/MM/yyyy -> yyyy-MM-ddT00:00:00.000Z
-      if (dataRegex.test(body[key])) {
-        const [dia, mes, ano] = body[key].split("/");
-        body[key] = `${ano}-${mes}-${dia}T00:00:00.000Z`;
-      }
-      // yyyy-MM-dd -> yyyy-MM-ddT00:00:00.000Z
-      else if (isoDateRegex.test(body[key])) {
-        body[key] = `${body[key]}T00:00:00.000Z`;
-      }
+function convertDdMmYyyyToYyyyMmDd(value) {
+  if (typeof value !== "string") return value;
+  const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return value;
+  const [, dd, mm, yyyy] = match;
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function normalizeDatesForDb(input) {
+  if (!input || typeof input !== "object") return input;
+  const out = { ...input };
+  for (const key of Object.keys(out)) {
+    if (key.toLowerCase().includes("data")) {
+      out[key] = convertDdMmYyyyToYyyyMmDd(out[key]);
     }
   }
-  return body;
+  return out;
 }
 
 export const pneusController = {
   createPneu: catchAsync(async (req, res) => {
-    converterDatasBody(req.body);
     // Validação Schema Básico
     let dados;
     if (req.body.stock_pneu_id) {
@@ -38,7 +36,7 @@ export const pneusController = {
     } else {
       dados = pneuSchema.parse(req.body);
     }
-    const novoPneu = await PneuService.createPneu(dados, {
+    const novoPneu = await PneuService.createPneu(normalizeDatesForDb(dados), {
       stock_pneu_id: req.body.stock_pneu_id,
       consume_from_stock: req.body.consume_from_stock,
     });
@@ -50,24 +48,24 @@ export const pneusController = {
   }),
 
   createBulkPneus: catchAsync(async (req, res) => {
-    if (Array.isArray(req.body.pneus)) {
-      req.body.pneus = req.body.pneus.map((pneu) => converterDatasBody(pneu));
-    }
     const { pneus } = z.object({ pneus: z.array(pneuSchema) }).parse(req.body);
     if (pneus.length === 0) {
       return res
         .status(400)
         .json({ error: "A lista de pneus não pode estar vazia." });
     }
-    const novosPneus = await PneuService.createBulkPneus(pneus);
+    const novosPneus = await PneuService.createBulkPneus(
+      pneus.map(normalizeDatesForDb),
+    );
     res.status(201).json({ success: true, data: novosPneus });
   }),
 
   // Criar um pneu apenas para o estoque
   createStockPneu: catchAsync(async (req, res) => {
-    converterDatasBody(req.body);
     const pneuValidado = pneuCreateInStockSchema.parse(req.body);
-    const novoPneu = await PneuService.createStockPneu(pneuValidado);
+    const novoPneu = await PneuService.createStockPneu(
+      normalizeDatesForDb(pneuValidado),
+    );
     res.status(201).json({ success: true, data: novoPneu });
   }),
 
@@ -79,16 +77,15 @@ export const pneusController = {
 
   // Criar pneus em lote no estoque
   createBulkStockPneus: catchAsync(async (req, res) => {
-    if (Array.isArray(req.body.pneus)) {
-      req.body.pneus = req.body.pneus.map((pneu) => converterDatasBody(pneu));
-    }
     const { pneus } = z
       .object({ pneus: z.array(pneuCreateInStockSchema) })
       .parse(req.body);
     if (pneus.length === 0) {
       return res.status(400).json({ error: "Lista vazia." });
     }
-    const novos = await PneuService.createBulkStockPneus(pneus);
+    const novos = await PneuService.createBulkStockPneus(
+      pneus.map(normalizeDatesForDb),
+    );
     res.status(201).json({ success: true, data: novos });
   }),
 
@@ -114,11 +111,10 @@ export const pneusController = {
   }),
 
   updatePneu: catchAsync(async (req, res) => {
-    converterDatasBody(req.body);
     const pneuValidado = pneuUpdateSchema.parse(req.body);
     const pneuAtualizado = await PneuService.updatePneu(
       req.params.id,
-      pneuValidado,
+      normalizeDatesForDb(pneuValidado),
     );
     res.status(200).json({
       success: true,

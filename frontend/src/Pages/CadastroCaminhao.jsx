@@ -31,6 +31,7 @@ const CadastroCaminhao = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
     if (success || error) {
@@ -172,6 +173,7 @@ const CadastroCaminhao = () => {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setFieldErrors({});
 
     if (!validateForm()) {
       setLoading(false);
@@ -211,6 +213,9 @@ const CadastroCaminhao = () => {
       // O useApi já extrai a mensagem de erro do backend e a coloca em err.message
       const errorMessage = err.message || "Erro ao cadastrar caminhão";
       setError(errorMessage);
+      if (err?.fieldErrors) {
+        setFieldErrors(err.fieldErrors);
+      }
     } finally {
       setLoading(false);
     }
@@ -240,7 +245,7 @@ const CadastroCaminhao = () => {
                 required
                 placeholder="ABC1D23"
                 maxLength={7}
-                error={errors.placa}
+                error={errors.placa || fieldErrors.placa}
                 icon={
                   <svg
                     className="w-5 h-5"
@@ -267,7 +272,7 @@ const CadastroCaminhao = () => {
                   handleInputChange("numero_cavalo", e.target.value)
                 }
                 placeholder="100+"
-                error={errors.numero_cavalo}
+                error={errors.numero_cavalo || fieldErrors.numero_cavalo}
                 icon={
                   <svg
                     className="w-5 h-5"
@@ -293,7 +298,7 @@ const CadastroCaminhao = () => {
               onChange={(e) => handleInputChange("motorista", e.target.value)}
               required
               placeholder="Nome completo"
-              error={errors.motorista}
+              error={errors.motorista || fieldErrors.motorista}
               icon={
                 <svg
                   className="w-5 h-5"
@@ -319,7 +324,7 @@ const CadastroCaminhao = () => {
                 value={form.marca}
                 onChange={(e) => handleInputChange("marca", e.target.value)}
                 placeholder="Ex: Scania, Volvo"
-                error={errors.marca}
+                error={errors.marca || fieldErrors.marca}
                 icon={
                   <svg
                     className="w-5 h-5"
@@ -343,7 +348,7 @@ const CadastroCaminhao = () => {
                 value={form.modelo}
                 onChange={(e) => handleInputChange("modelo", e.target.value)}
                 placeholder="Ex: R 450, FH 540"
-                error={errors.modelo}
+                error={errors.modelo || fieldErrors.modelo}
                 icon={
                   <svg
                     className="w-5 h-5"
@@ -369,7 +374,7 @@ const CadastroCaminhao = () => {
                 onChange={(e) => handleInputChange("ano", e.target.value)}
                 placeholder="Ex: 2020"
                 maxLength={4}
-                error={errors.ano}
+                error={errors.ano || fieldErrors.ano}
                 icon={
                   <svg
                     className="w-5 h-5"
@@ -397,7 +402,7 @@ const CadastroCaminhao = () => {
                 onChange={(e) => handleInputChange("qtd_pneus", e.target.value)}
                 required
                 placeholder="Ex: 6"
-                error={errors.qtd_pneus}
+                error={errors.qtd_pneus || fieldErrors.qtd_pneus}
                 icon={
                   <svg
                     className="w-5 h-5"
@@ -423,7 +428,7 @@ const CadastroCaminhao = () => {
                 onChange={(e) => handleInputChange("km_atual", e.target.value)}
                 required
                 placeholder="Ex: 150000"
-                error={errors.km_atual}
+                error={errors.km_atual || fieldErrors.km_atual}
                 icon={
                   <svg
                     className="w-5 h-5"

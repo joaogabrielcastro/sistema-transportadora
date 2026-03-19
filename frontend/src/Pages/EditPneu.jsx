@@ -33,6 +33,7 @@ const EditPneu = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -75,7 +76,7 @@ const EditPneu = () => {
           marca: pneuData.marca || "",
           modelo: pneuData.modelo || "",
           data_instalacao: pneuData.data_instalacao
-            ? new Date(pneuData.data_instalacao).toISOString().split("T")[0]
+            ? new Date(pneuData.data_instalacao).toLocaleDateString("pt-BR")
             : "",
           km_instalacao: pneuData.km_instalacao || "",
           observacao: pneuData.observacao || "",
@@ -102,6 +103,13 @@ const EditPneu = () => {
       ...prev,
       [name]: value,
     }));
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -109,6 +117,7 @@ const EditPneu = () => {
     setSubmitting(true);
     setError(null);
     setSuccessMessage("");
+    setFieldErrors({});
 
     try {
       const payload = {
@@ -137,11 +146,10 @@ const EditPneu = () => {
       }, 2000);
     } catch (err) {
       console.error("Erro completo:", err);
-      setError(
-        err.response?.data?.error ||
-          err.response?.data?.message ||
-          "Erro ao atualizar o pneu. Verifique os dados e tente novamente."
-      );
+      if (err?.fieldErrors) {
+        setFieldErrors(err.fieldErrors);
+      }
+      setError(err.message || "Erro ao atualizar o pneu.");
     } finally {
       setSubmitting(false);
     }
@@ -236,6 +244,7 @@ const EditPneu = () => {
                 onChange={handleChange}
                 required
                 options={posicaoOptions}
+                error={fieldErrors.posicao_id}
               />
 
               <FormField
@@ -246,6 +255,7 @@ const EditPneu = () => {
                 onChange={handleChange}
                 required
                 options={statusOptions}
+                error={fieldErrors.status_id}
               />
 
               <FormField
@@ -266,6 +276,7 @@ const EditPneu = () => {
                 onChange={handleChange}
                 required
                 placeholder="Ex: Michelin, Goodyear"
+                error={fieldErrors.marca}
               />
 
               <FormField
@@ -276,16 +287,19 @@ const EditPneu = () => {
                 onChange={handleChange}
                 required
                 placeholder="Ex: XZY-123"
+                error={fieldErrors.modelo}
               />
 
               <FormField
                 label="Data de Instalação"
-                type="date"
+                type="text"
                 name="data_instalacao"
                 value={formData.data_instalacao}
                 onChange={handleChange}
                 required
-                max={new Date().toISOString().split("T")[0]}
+                placeholder="dd/MM/aaaa"
+                helperText="Ex: 19/03/2026"
+                error={fieldErrors.data_instalacao}
               />
 
               <FormField
@@ -304,6 +318,7 @@ const EditPneu = () => {
                       )}`
                     : ""
                 }
+                error={fieldErrors.km_instalacao}
               />
             </div>
 

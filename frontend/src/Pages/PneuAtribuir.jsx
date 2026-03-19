@@ -28,13 +28,14 @@ const PneuAtribuir = () => {
     caminhao_id: "",
     posicao_id: "",
     status_id: "",
-    data_instalacao: new Date().toISOString().split("T")[0],
+    data_instalacao: new Date().toLocaleDateString("pt-BR"),
     km_instalacao: "",
   });
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errorMSG, setErrorMSG] = useState(null);
   const [success, setSuccess] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const fetchData = async () => {
     setLoading(true);
@@ -83,6 +84,13 @@ const PneuAtribuir = () => {
       return;
     }
     setForm((prev) => ({ ...prev, [name]: value }));
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -90,6 +98,7 @@ const PneuAtribuir = () => {
     setSubmitting(true);
     setErrorMSG(null);
     setSuccess("");
+    setFieldErrors({});
 
     if (
       !form.stock_pneu_id ||
@@ -117,9 +126,10 @@ const PneuAtribuir = () => {
       setTimeout(() => navigate("/pneus"), 1500);
     } catch (err) {
       console.error(err);
-      setErrorMSG(
-        "Erro ao atribuir pneu. Verifique se a posição já não está ocupada.",
-      );
+      if (err?.fieldErrors) {
+        setFieldErrors(err.fieldErrors);
+      }
+      setErrorMSG(err.message || "Erro ao atribuir pneu.");
     } finally {
       setSubmitting(false);
     }
@@ -149,6 +159,7 @@ const PneuAtribuir = () => {
 
         <Card>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               label="Pneu (em estoque)"
               name="stock_pneu_id"
@@ -156,11 +167,23 @@ const PneuAtribuir = () => {
               value={form.stock_pneu_id}
               onChange={handleChange}
               placeholder="Selecione o pneu"
+              error={fieldErrors.stock_pneu_id}
               options={pneus.map((p) => ({
                 value: p.id,
                 label: `${p.marca} ${p.modelo} ${p.dot ? `(DOT: ${p.dot})` : ""}`,
               }))}
             />
+            <FormField
+              label="Data de Instalação"
+              name="data_instalacao"
+              type="text"
+              value={form.data_instalacao}
+              onChange={handleChange}
+              placeholder="dd/MM/aaaa"
+              helperText="Ex: 19/03/2026"
+              error={fieldErrors.data_instalacao}
+            />
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
@@ -170,6 +193,7 @@ const PneuAtribuir = () => {
                 value={form.caminhao_id}
                 onChange={handleChange}
                 placeholder="Selecione o caminhão"
+                error={fieldErrors.caminhao_id}
                 options={caminhoes.map((c) => ({
                   value: c.id,
                   label: `${c.placa} - ${c.modelo || "Modelo N/A"}`,
@@ -183,6 +207,7 @@ const PneuAtribuir = () => {
                 value={form.posicao_id}
                 onChange={handleChange}
                 placeholder="Selecione a posição"
+                error={fieldErrors.posicao_id}
                 options={posicoes.map((p) => ({
                   value: p.id,
                   label: p.nome_posicao,
@@ -203,6 +228,7 @@ const PneuAtribuir = () => {
                 }))}
                 placeholder="Selecione o status"
                 helperText="Geralmente 'Em uso' para pneus novos instalados."
+                error={fieldErrors.status_id}
               />
               <FormField
                 label="KM Atual do Caminhão"
@@ -212,16 +238,9 @@ const PneuAtribuir = () => {
                 onChange={handleChange}
                 placeholder="Ex: 154000"
                 helperText="KM do caminhão no momento da instalação"
+                error={fieldErrors.km_instalacao}
               />
             </div>
-
-            <FormField
-              label="Data de Instalação"
-              name="data_instalacao"
-              type="date"
-              value={form.data_instalacao}
-              onChange={handleChange}
-            />
 
             <div className="flex justify-end pt-4">
               <Button

@@ -9,6 +9,7 @@ const Button = ({
   type = "button",
   disabled = false,
   loading = false,
+  loadingText,
   onClick,
   className = "",
   icon,
@@ -71,7 +72,7 @@ const Button = ({
       ) : icon ? (
         <span className="mr-2">{icon}</span>
       ) : null}
-      {children}
+      {loading && loadingText ? loadingText : children}
     </button>
   );
 };
@@ -90,6 +91,7 @@ Button.propTypes = {
   type: PropTypes.oneOf(["button", "submit", "reset"]),
   disabled: PropTypes.bool,
   loading: PropTypes.bool,
+  loadingText: PropTypes.string,
   onClick: PropTypes.func,
   className: PropTypes.string,
   icon: PropTypes.node,

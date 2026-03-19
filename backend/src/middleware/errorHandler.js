@@ -5,6 +5,19 @@ import { ZodError } from "zod";
 
 const { Prisma } = prismaClientPkg;
 
+const friendlyServerMessage = (req) => {
+  // Mensagem padrão mais amigável, sem expor detalhes internos
+  const action =
+    req.method === "POST"
+      ? "salvar"
+      : req.method === "PUT" || req.method === "PATCH"
+        ? "atualizar"
+        : req.method === "DELETE"
+          ? "excluir"
+          : "processar";
+  return `Não foi possível ${action} sua solicitação. Tente novamente ou contate o suporte.`;
+};
+
 export const errorHandler = (err, req, res, _next) => {
   logger.error("Error occurred", {
     message: err.message,
@@ -19,6 +32,7 @@ export const errorHandler = (err, req, res, _next) => {
     return res.status(400).json({
       success: false,
       error: "Erro de validação nos dados enviados",
+      code: "VALIDATION_ERROR",
       details: err.errors.map((e) => `${e.path.join(".")}: ${e.message}`),
     });
   }
@@ -60,6 +74,13 @@ export const errorHandler = (err, req, res, _next) => {
         code: err.code,
       });
     }
+
+    // Fallback para outros códigos do Prisma
+    return res.status(400).json({
+      success: false,
+      error: "Não foi possível concluir a operação no banco de dados.",
+      code: err.code,
+    });
   }
 
   // Erro de recurso não encontrado
@@ -84,9 +105,9 @@ export const errorHandler = (err, req, res, _next) => {
   // Erro genérico do servidor
   res.status(500).json({
     success: false,
-    error: "Erro interno do servidor",
-    message:
-      process.env.NODE_ENV === "development" ? err.message : "Algo deu errado",
+    error: friendlyServerMessage(req),
+    code: "INTERNAL_ERROR",
+    message: process.env.NODE_ENV === "development" ? err.message : undefined,
   });
 };
 

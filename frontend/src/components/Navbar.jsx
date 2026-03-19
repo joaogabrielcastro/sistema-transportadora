@@ -102,6 +102,26 @@ const Navbar = () => {
       ),
     },
     {
+      path: "/pneus/atribuir",
+      label: "Atribuir Pneu",
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5 mr-2"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 12h6m2 10H7a2 2 0 01-2-2V6a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"
+          />
+        </svg>
+      ),
+    },
+    {
       path: "/cadastro-caminhao",
       label: "Cadastrar Caminhão",
       icon: (

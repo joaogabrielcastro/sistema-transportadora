@@ -72,6 +72,8 @@ export const config = {
   },
   logging: {
     level: process.env.LOG_LEVEL || "info",
-    enableConsole: process.env.NODE_ENV === "development",
+    // Em produção (Coolify/Docker), logs no stdout são essenciais para debugar 500s.
+    // Pode ser desabilitado explicitamente com LOG_CONSOLE=false.
+    enableConsole: parseBoolean(process.env.LOG_CONSOLE, true),
   },
 };

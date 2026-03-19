@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 
 const Alert = ({
@@ -14,6 +14,11 @@ const Alert = ({
 }) => {
   const [isVisible, setIsVisible] = useState(true);
 
+  const handleClose = useCallback(() => {
+    setIsVisible(false);
+    if (onClose) onClose();
+  }, [onClose]);
+
   useEffect(() => {
     if (autoClose && isVisible) {
       const timer = setTimeout(() => {
@@ -21,12 +26,7 @@ const Alert = ({
       }, duration);
       return () => clearTimeout(timer);
     }
-  }, [autoClose, duration, isVisible]);
-
-  const handleClose = () => {
-    setIsVisible(false);
-    if (onClose) onClose();
-  };
+  }, [autoClose, duration, isVisible, handleClose]);
 
   if (!isVisible) return null;
 

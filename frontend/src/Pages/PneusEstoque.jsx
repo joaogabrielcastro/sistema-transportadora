@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { z } from "zod";
 import { useApi } from "../hooks/useApi.js";
 import {
@@ -42,14 +42,14 @@ const PneusEstoque = () => {
     ),
   });
 
-  const fetchEstoque = async () => {
+  const fetchEstoque = useCallback(async () => {
     try {
       const res = await get("/pneus/in-stock");
       setPneus(res.data || []);
     } catch (err) {
       console.error(err);
     }
-  };
+  }, [get]);
 
   const handleDeletePneu = async (pneuId) => {
     const pneu = pneus.find(p => p.id === pneuId);
@@ -75,7 +75,7 @@ const PneusEstoque = () => {
 
   useEffect(() => {
     fetchEstoque();
-  }, []);
+  }, [fetchEstoque]);
 
   const validateLine = (line) => {
     const input = {

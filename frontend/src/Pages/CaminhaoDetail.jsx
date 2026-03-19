@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
 import { Card, Button, LoadingSpinner } from "../components/ui";
@@ -65,7 +65,7 @@ const CaminhaoDetail = () => {
   const [consumoKmPorLitro, setConsumoKmPorLitro] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
 
     try {
@@ -115,11 +115,11 @@ const CaminhaoDetail = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [get, placa]);
 
   useEffect(() => {
     fetchData();
-  }, [placa]);
+  }, [fetchData]);
 
   const todosRegistros = useMemo(() => {
     const gastosFormatados = gastos.map((g) => ({

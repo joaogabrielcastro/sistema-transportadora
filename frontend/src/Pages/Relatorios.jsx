@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useApi } from "../hooks/useApi";
 import {
   Card,
@@ -42,18 +42,18 @@ const Relatorios = () => {
     end: new Date().toISOString().split("T")[0],
   });
 
-  useEffect(() => {
-    fetchCaminhoes();
-  }, []);
-
-  const fetchCaminhoes = async () => {
+  const fetchCaminhoes = useCallback(async () => {
     try {
       const res = await get("/caminhoes");
       setCaminhoes(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error("Erro ao carregar caminhões", error);
     }
-  };
+  }, [get]);
+
+  useEffect(() => {
+    fetchCaminhoes();
+  }, [fetchCaminhoes]);
 
   const generateReport = async () => {
     setLoading(true);

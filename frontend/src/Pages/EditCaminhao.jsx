@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
 import {
@@ -33,44 +33,43 @@ const EditCaminhao = () => {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
 
+  const fetchCaminhao = useCallback(async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await get(`/caminhoes/${placa}`);
+      const data = response.data || response;
+
+      setForm({
+        placa: data.placa || "",
+        qtd_pneus: data.qtd_pneus || "",
+        km_atual: data.km_atual || "",
+        numero_cavalo: data.numero_cavalo || "",
+        motorista: data.motorista || "",
+        marca: data.marca || "",
+        modelo: data.modelo || "",
+        ano: data.ano || "",
+        placa_carreta_1: data.placa_carreta_1 || "",
+        placa_carreta_2: data.placa_carreta_2 || "",
+      });
+
+      const carretasArray = [];
+      if (data.numero_carreta_1) carretasArray.push(String(data.numero_carreta_1));
+      if (data.numero_carreta_2) carretasArray.push(String(data.numero_carreta_2));
+
+      setCarretas(carretasArray.length > 0 ? carretasArray : [""]);
+    } catch (err) {
+      console.error("Erro ao carregar:", err);
+      setError("Erro ao carregar dados do caminhão.");
+    } finally {
+      setLoading(false);
+    }
+  }, [get, placa]);
+
   useEffect(() => {
-    const fetchCaminhao = async () => {
-      setLoading(true);
-      setError("");
-
-      try {
-        const response = await get(`/caminhoes/${placa}`);
-        const data = response.data || response;
-
-        setForm({
-          placa: data.placa || "",
-          qtd_pneus: data.qtd_pneus || "",
-          km_atual: data.km_atual || "",
-          numero_cavalo: data.numero_cavalo || "",
-          motorista: data.motorista || "",
-          marca: data.marca || "",
-          modelo: data.modelo || "",
-          ano: data.ano || "",
-          placa_carreta_1: data.placa_carreta_1 || "",
-          placa_carreta_2: data.placa_carreta_2 || "",
-        });
-
-        const carretasArray = [];
-        if (data.numero_carreta_1)
-          carretasArray.push(String(data.numero_carreta_1));
-        if (data.numero_carreta_2)
-          carretasArray.push(String(data.numero_carreta_2));
-
-        setCarretas(carretasArray.length > 0 ? carretasArray : [""]);
-      } catch (err) {
-        console.error("Erro ao carregar:", err);
-        setError("Erro ao carregar dados do caminhão.");
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchCaminhao();
-  }, [placa]);
+  }, [fetchCaminhao]);
 
   const validateForm = () => {
     const newErrors = {};

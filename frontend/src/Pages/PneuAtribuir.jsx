@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useApi } from "../hooks/useApi.js";
 import {
   Card,
@@ -34,7 +34,7 @@ const PneuAtribuir = () => {
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [pRes, cRes, posRes, statusRes] = await Promise.all([
@@ -55,11 +55,11 @@ const PneuAtribuir = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [get]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   // Atualiza campo de KM quando caminhão é selecionado
   const handleCaminhaoChange = (e) => {

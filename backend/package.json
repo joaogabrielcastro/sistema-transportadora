@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "postinstall": "node -e \"process.env.PRISMA_CLIENT_ENGINE_TYPE='library'; require('child_process').execSync('npx prisma generate', { stdio: 'inherit' })\"",
-    "prestart": "node -e \"process.env.PRISMA_CLIENT_ENGINE_TYPE='library'; const cp=require('child_process'); cp.execSync('npx prisma generate', { stdio: 'inherit' }); cp.execSync('npx prisma db push', { stdio: 'inherit' });\"",
+    "prestart": "node -e \"process.env.PRISMA_CLIENT_ENGINE_TYPE='library'; const cp=require('child_process'); cp.execSync('npx prisma generate', { stdio: 'inherit' }); try { cp.execSync('npx prisma migrate deploy', { stdio: 'inherit' }); } catch (e) { cp.execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit' }); }\"",
     "dev": "node --watch server.js",
     "lint": "eslint .",
     "start": "node server.js"

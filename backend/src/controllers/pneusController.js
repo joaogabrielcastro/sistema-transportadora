@@ -8,12 +8,12 @@ import {
 import { z } from "zod";
 import { catchAsync } from "../utils/catchAsync.js";
 
-function convertDdMmYyyyToYyyyMmDd(value) {
+function convertDdMmYyyyToIsoDateTime(value) {
   if (typeof value !== "string") return value;
   const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if (!match) return value;
   const [, dd, mm, yyyy] = match;
-  return `${yyyy}-${mm}-${dd}`;
+  return `${yyyy}-${mm}-${dd}T00:00:00.000Z`;
 }
 
 function normalizeDatesForDb(input) {
@@ -21,7 +21,7 @@ function normalizeDatesForDb(input) {
   const out = { ...input };
   for (const key of Object.keys(out)) {
     if (key.toLowerCase().includes("data")) {
-      out[key] = convertDdMmYyyyToYyyyMmDd(out[key]);
+      out[key] = convertDdMmYyyyToIsoDateTime(out[key]);
     }
   }
   return out;

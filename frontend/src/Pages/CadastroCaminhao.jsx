@@ -5,7 +5,6 @@ import {
   Card,
   Button,
   FormField,
-  Alert,
   LoadingSpinner,
 } from "../components/ui";
 
@@ -29,19 +28,7 @@ const CadastroCaminhao = () => {
   const [carretas, setCarretas] = useState([""]);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState("");
-  const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
-
-  useEffect(() => {
-    if (success || error) {
-      const timer = setTimeout(() => {
-        setSuccess("");
-        setError("");
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [success, error]);
 
   const validatePlaca = (placa) => {
     if (!placa) return true;
@@ -172,7 +159,6 @@ const CadastroCaminhao = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
     setFieldErrors({});
 
     if (!validateForm()) {
@@ -203,16 +189,11 @@ const CadastroCaminhao = () => {
       };
 
       await post("/caminhoes", payload);
-      setSuccess("Caminhão cadastrado com sucesso!");
-
       setTimeout(() => {
         navigate("/");
       }, 1500);
     } catch (err) {
       console.error("Erro ao cadastrar:", err);
-      // O useApi já extrai a mensagem de erro do backend e a coloca em err.message
-      const errorMessage = err.message || "Erro ao cadastrar caminhão";
-      setError(errorMessage);
       if (err?.fieldErrors) {
         setFieldErrors(err.fieldErrors);
       }
@@ -229,11 +210,6 @@ const CadastroCaminhao = () => {
           subtitle="Preencha os dados para adicionar um veículo à frota"
           className="shadow-lg"
         >
-          {success && (
-            <Alert type="success" message={success} className="mb-6" />
-          )}
-          {error && <Alert type="error" message={error} className="mb-6" />}
-
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Dados Principais */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

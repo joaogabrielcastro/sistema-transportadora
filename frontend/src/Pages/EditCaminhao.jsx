@@ -5,7 +5,6 @@ import {
   Card,
   Button,
   FormField,
-  Alert,
   LoadingSpinner,
 } from "../components/ui";
 
@@ -31,7 +30,6 @@ const EditCaminhao = () => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
 
@@ -73,16 +71,6 @@ const EditCaminhao = () => {
     };
     fetchCaminhao();
   }, [placa]);
-
-  useEffect(() => {
-    if (success || error) {
-      const timer = setTimeout(() => {
-        setSuccess("");
-        setError("");
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [success, error]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -215,15 +203,12 @@ const EditCaminhao = () => {
       };
 
       await put(`/caminhoes/${placa}`, payload);
-      setSuccess("Caminhão atualizado com sucesso!");
-
       setTimeout(() => {
         navigate(`/caminhao/${placa}`);
       }, 1500);
     } catch (err) {
       console.error("Erro ao atualizar:", err);
-      const errorMessage = err.message || "Erro ao atualizar caminhão";
-      setError(errorMessage);
+      setError(err.message || "Erro ao atualizar caminhão");
       if (err?.fieldErrors) {
         setFieldErrors(err.fieldErrors);
       }
@@ -242,11 +227,6 @@ const EditCaminhao = () => {
           subtitle="Atualize os dados do veículo"
           className="shadow-lg"
         >
-          {success && (
-            <Alert type="success" message={success} className="mb-6" />
-          )}
-          {error && <Alert type="error" message={error} className="mb-6" />}
-
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
@@ -441,12 +421,6 @@ const EditCaminhao = () => {
                 )}
               </div>
             </div>
-
-            <Alert
-              type="info"
-              message="Atenção: Atualize o KM sempre que houver manutenção."
-              className="text-sm"
-            />
 
             <div className="flex gap-4 pt-4">
               <Button

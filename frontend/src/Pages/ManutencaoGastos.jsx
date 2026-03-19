@@ -3,7 +3,6 @@ import { useApi } from "../hooks/useApi";
 import {
   Card,
   Button,
-  Alert,
   LoadingSpinner,
   FormField,
 } from "../components/ui";
@@ -553,8 +552,6 @@ const ManutencaoGastos = () => {
     km_registro: "",
     quantidade_combustivel: "",
   });
-  const [error, setError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -563,7 +560,6 @@ const ManutencaoGastos = () => {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    setError(null);
 
     try {
       const [caminhoesRes, itensRes, tiposRes, gastosRes, checklistRes] =
@@ -629,7 +625,6 @@ const ManutencaoGastos = () => {
 
       setRegistros(todosRegistros);
     } catch (err) {
-      setError("Erro ao carregar dados. Verifique a conexão com o servidor.");
       console.error("Erro ao carregar dados:", err);
     } finally {
       setLoading(false);
@@ -676,8 +671,6 @@ const ManutencaoGastos = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    setError(null);
-    setSuccessMessage("");
 
     try {
       const caminhaoId = parseInt(form.caminhao_id);
@@ -745,11 +738,7 @@ const ManutencaoGastos = () => {
         km_registro: "",
         quantidade_combustivel: "",
       });
-
-      setSuccessMessage("Registro cadastrado com sucesso!");
-      setTimeout(() => setSuccessMessage(""), 5000);
     } catch (err) {
-      setError(err.response?.data?.message || "Erro ao cadastrar registro.");
       console.error("Erro ao cadastrar registro:", err);
     } finally {
       setSubmitting(false);
@@ -777,15 +766,8 @@ const ManutencaoGastos = () => {
       } catch (cErr) {
         console.warn("Erro ao limpar cache:", cErr);
       }
-      setSuccessMessage("Registro excluído com sucesso!");
-      setTimeout(() => setSuccessMessage(""), 5000);
     } catch (err) {
       console.error("Erro completo:", err);
-      setError(
-        err.response?.data?.error ||
-          err.response?.data?.message ||
-          "Erro ao excluir registro."
-      );
     }
   };
 
@@ -803,18 +785,6 @@ const ManutencaoGastos = () => {
             Controle completo de gastos e manutenções da frota
           </p>
         </div>
-
-        {/* Mensagens de Feedback */}
-        {error && (
-          <div className="mb-6">
-            <Alert type="error" message={error} />
-          </div>
-        )}
-        {successMessage && (
-          <div className="mb-6">
-            <Alert type="success" message={successMessage} />
-          </div>
-        )}
 
         {/* Formulário */}
         <RegistroForm

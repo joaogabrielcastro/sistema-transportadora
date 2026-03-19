@@ -4,7 +4,6 @@ import { useApi } from "../hooks/useApi";
 import {
   Card,
   Button,
-  Alert,
   LoadingSpinner,
   FormField,
 } from "../components/ui";
@@ -28,8 +27,6 @@ const EditGasto = () => {
   const [caminhoes, setCaminhoes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState("");
 
   // IDs dos tipos de gasto especiais
   const ID_TIPO_GASTO_COMBUSTIVEL = 9;
@@ -37,7 +34,6 @@ const EditGasto = () => {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      setError(null);
 
       try {
         const [gastoRes, tiposRes, caminhoesRes] = await Promise.all([
@@ -81,9 +77,6 @@ const EditGasto = () => {
         setCaminhoes(caminhoesData);
       } catch (err) {
         console.error("Erro completo:", err);
-        setError(
-          "Erro ao carregar dados do gasto. Verifique a conexão com o servidor."
-        );
       } finally {
         setLoading(false);
       }
@@ -115,8 +108,6 @@ const EditGasto = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    setError(null);
-    setSuccessMessage("");
 
     try {
       const isCombustivel =
@@ -139,8 +130,6 @@ const EditGasto = () => {
 
       await put(`/gastos/${id}`, payload);
 
-      setSuccessMessage("Gasto atualizado com sucesso!");
-
       // Redireciona após 2 segundos
       setTimeout(() => {
         navigate(
@@ -149,11 +138,6 @@ const EditGasto = () => {
       }, 2000);
     } catch (err) {
       console.error("Erro completo:", err);
-      setError(
-        err.response?.data?.error ||
-          err.response?.data?.message ||
-          "Erro ao atualizar o gasto. Verifique os dados e tente novamente."
-      );
     } finally {
       setSubmitting(false);
     }
@@ -207,18 +191,6 @@ const EditGasto = () => {
           </Link>
           <h1 className="text-3xl font-bold text-text-primary">Editar Gasto</h1>
         </div>
-
-        {/* Mensagens de Feedback */}
-        {error && (
-          <div className="mb-6">
-            <Alert type="error" message={error} />
-          </div>
-        )}
-        {successMessage && (
-          <div className="mb-6">
-            <Alert type="success" message={successMessage} />
-          </div>
-        )}
 
         {/* Formulário */}
         <Card>

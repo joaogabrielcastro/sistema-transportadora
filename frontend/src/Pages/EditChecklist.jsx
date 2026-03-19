@@ -4,7 +4,6 @@ import { useApi } from "../hooks/useApi";
 import {
   Card,
   Button,
-  Alert,
   LoadingSpinner,
   FormField,
 } from "../components/ui";
@@ -27,13 +26,10 @@ const EditChecklist = () => {
   const [itensChecklist, setItensChecklist] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      setError(null);
 
       try {
         const [checklistRes, caminhoesRes, itensRes] = await Promise.all([
@@ -77,9 +73,6 @@ const EditChecklist = () => {
         setItensChecklist(itensData);
       } catch (err) {
         console.error("Erro completo:", err);
-        setError(
-          "Erro ao carregar dados para edição. Verifique a conexão com o servidor."
-        );
       } finally {
         setLoading(false);
       }
@@ -98,8 +91,6 @@ const EditChecklist = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    setError(null);
-    setSuccessMessage("");
 
     try {
       const payload = {
@@ -116,19 +107,12 @@ const EditChecklist = () => {
 
       await put(`/checklist/${id}`, payload);
 
-      setSuccessMessage("Manutenção atualizada com sucesso!");
-
       // Redireciona após 2 segundos
       setTimeout(() => {
         navigate("/manutencao-gastos");
       }, 2000);
     } catch (err) {
       console.error("Erro completo:", err);
-      setError(
-        err.response?.data?.error ||
-          err.response?.data?.message ||
-          "Erro ao atualizar a manutenção. Verifique os dados e tente novamente."
-      );
     } finally {
       setSubmitting(false);
     }
@@ -174,18 +158,6 @@ const EditChecklist = () => {
             Editar Manutenção
           </h1>
         </div>
-
-        {/* Mensagens de Feedback */}
-        {error && (
-          <div className="mb-6">
-            <Alert type="error" message={error} />
-          </div>
-        )}
-        {successMessage && (
-          <div className="mb-6">
-            <Alert type="success" message={successMessage} />
-          </div>
-        )}
 
         {/* Formulário */}
         <Card>

@@ -4,14 +4,13 @@ import { useApi } from "../hooks/useApi.js";
 import {
   Card,
   Button,
-  Alert,
   LoadingSpinner,
   FormField,
 } from "../components/ui";
 import { Link } from "react-router-dom";
 
 const PneusEstoque = () => {
-  const { get, post, delete: del, loading, error } = useApi();
+  const { get, post, delete: del, loading } = useApi();
   const [pneus, setPneus] = useState([]);
   const [statusList, setStatusList] = useState([]);
   const [deletingId, setDeletingId] = useState(null);
@@ -26,7 +25,6 @@ const PneusEstoque = () => {
       quantidade: 1,
     },
   ]);
-  const [success, setSuccess] = useState("");
   const [bulkErrors, setBulkErrors] = useState({});
 
   const pneuLineSchema = z.object({
@@ -65,16 +63,11 @@ const PneusEstoque = () => {
     try {
       console.log("Tentando deletar pneu:", { id: pneuId, pneu });
       await del(`/pneus/${pneuId}`);
-      setSuccess(`Pneu ${pneuInfo} excluído com sucesso`);
-      setTimeout(() => setSuccess(""), 3000);
       fetchEstoque();
     } catch (err) {
       console.error("Erro completo ao excluir pneu:", err);
       console.error("Resposta do servidor:", err.response?.data);
       console.error("Status HTTP:", err.response?.status);
-      
-      const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message || "Erro desconhecido ao excluir pneu";
-      alert(`Erro ao excluir pneu ${pneuInfo}:\n\n${errorMessage}\n\nVerifique o console do navegador para mais detalhes.`);
     } finally {
       setDeletingId(null);
     }
@@ -135,9 +128,6 @@ const PneusEstoque = () => {
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold mb-4">Estoque de Pneus</h1>
 
-        {error && <Alert type="error" message={error} />}
-        {success && <Alert type="success" message={success} />}
-
         {/* Formulário único removido: mantemos apenas o cadastro em lote abaixo */}
 
         <Card title="Cadastro em Lote (estoque)" className="mt-6">
@@ -192,16 +182,11 @@ const PneusEstoque = () => {
 
               if (Object.keys(newBulkErrors).length > 0) {
                 setBulkErrors(newBulkErrors);
-                alert(
-                  "Existem linhas com dados inválidos. Verifique os campos.",
-                );
                 return;
               }
 
               try {
                 await post("/pneus/stock/bulk", { pneus: toCreate });
-                setSuccess(`${toCreate.length} pneus adicionados ao estoque com sucesso`);
-                setTimeout(() => setSuccess(""), 4000);
                 fetchEstoque();
                 // reset form
                 setPneusBulk([
@@ -218,7 +203,6 @@ const PneusEstoque = () => {
                 setBulkErrors({});
               } catch (err) {
                 console.error(err);
-                alert("Erro ao enviar pneus. Veja o console para detalhes.");
               }
             }}
           >

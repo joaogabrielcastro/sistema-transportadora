@@ -15,7 +15,7 @@ import {
   Filler,
 } from "chart.js";
 import { useApi, useCaminhoes } from "../hooks";
-import { Card, Alert, Button, LoadingSpinner } from "../components/ui";
+import { Card, Button, LoadingSpinner } from "../components/ui";
 import { formatCurrency, formatNumber } from "../utils";
 import ConfirmModal from "../components/ConfirmModal";
 
@@ -408,37 +408,6 @@ const Home = () => {
               </Button>
             </div>
           </form>
-        </div>
-
-        {/* Alerts */}
-        <div className="space-y-4">
-          {errorCaminhoes && (
-            <Alert
-              type="error"
-              title="Erro"
-              message={errorCaminhoes}
-              dismissible
-              onClose={() => window.location.reload()}
-            />
-          )}
-          {successMessage && (
-            <Alert
-              type="success"
-              title="Sucesso"
-              message={successMessage}
-              dismissible
-              onClose={() => setSuccessMessage("")}
-            />
-          )}
-          {errorMessage && (
-            <Alert
-              type="error"
-              title="Atenção"
-              message={errorMessage}
-              dismissible
-              onClose={() => setErrorMessage("")}
-            />
-          )}
         </div>
 
         {/* Content Area */}

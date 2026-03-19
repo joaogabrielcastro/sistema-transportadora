@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
 import {
   Card,
-  Alert,
   LoadingSpinner,
   FormField,
   StatusBadge,
@@ -228,13 +227,11 @@ const Pneus = () => {
   const { get, delete: del } = useApi();
   const [caminhoes, setCaminhoes] = useState([]);
   const [pneus, setPneus] = useState([]);
-  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filtroPlaca, setFiltroPlaca] = useState("");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    setError(null);
 
     try {
       // Busca caminhoes e pneus
@@ -253,7 +250,6 @@ const Pneus = () => {
 
       setPneus(pneusEmUso);
     } catch (err) {
-      setError("Erro ao carregar dados.");
       console.error(err);
     } finally {
       setLoading(false);
@@ -276,7 +272,7 @@ const Pneus = () => {
       await del(`/pneus/${id}`);
       fetchData();
     } catch (err) {
-      alert("Erro ao excluir");
+      console.error(err);
     }
   };
 
@@ -298,8 +294,6 @@ const Pneus = () => {
             </Link>
           </div>
         </div>
-
-        {error && <Alert type="error" message={error} />}
 
         <PneusTable
           pneus={pneus}

@@ -7,25 +7,7 @@ import {
 } from "../schemas/pneuSchema.js";
 import { z } from "zod";
 import { catchAsync } from "../utils/catchAsync.js";
-
-function convertDdMmYyyyToIsoDateTime(value) {
-  if (typeof value !== "string") return value;
-  const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (!match) return value;
-  const [, dd, mm, yyyy] = match;
-  return `${yyyy}-${mm}-${dd}T00:00:00.000Z`;
-}
-
-function normalizeDatesForDb(input) {
-  if (!input || typeof input !== "object") return input;
-  const out = { ...input };
-  for (const key of Object.keys(out)) {
-    if (key.toLowerCase().includes("data")) {
-      out[key] = convertDdMmYyyyToIsoDateTime(out[key]);
-    }
-  }
-  return out;
-}
+import { normalizeDatesForDb } from "../utils/dates.js";
 
 export const pneusController = {
   createPneu: catchAsync(async (req, res) => {
@@ -50,14 +32,20 @@ export const pneusController = {
   createBulkPneus: catchAsync(async (req, res) => {
     const { pneus } = z.object({ pneus: z.array(pneuSchema) }).parse(req.body);
     if (pneus.length === 0) {
-      return res
-        .status(400)
-        .json({ error: "A lista de pneus não pode estar vazia." });
+      return res.status(400).json({
+        success: false,
+        error: "A lista de pneus não pode estar vazia.",
+        code: "VALIDATION_ERROR",
+      });
     }
     const novosPneus = await PneuService.createBulkPneus(
       pneus.map(normalizeDatesForDb),
     );
-    res.status(201).json({ success: true, data: novosPneus });
+    res.status(201).json({
+      success: true,
+      data: novosPneus,
+      message: "Pneus criados com sucesso",
+    });
   }),
 
   // Criar um pneu apenas para o estoque
@@ -81,12 +69,20 @@ export const pneusController = {
       .object({ pneus: z.array(pneuCreateInStockSchema) })
       .parse(req.body);
     if (pneus.length === 0) {
-      return res.status(400).json({ error: "Lista vazia." });
+      return res.status(400).json({
+        success: false,
+        error: "A lista de pneus não pode estar vazia.",
+        code: "VALIDATION_ERROR",
+      });
     }
     const novos = await PneuService.createBulkStockPneus(
       pneus.map(normalizeDatesForDb),
     );
-    res.status(201).json({ success: true, data: novos });
+    res.status(201).json({
+      success: true,
+      data: novos,
+      message: "Pneus em estoque criados com sucesso",
+    });
   }),
 
   getAllPneus: catchAsync(async (req, res) => {
@@ -124,15 +120,7 @@ export const pneusController = {
   }),
 
   deletePneu: catchAsync(async (req, res) => {
-    try {
-      await PneuService.delete(req.params.id);
-      res.status(204).send();
-    } catch (error) {
-      console.error("Erro ao deletar pneu:", error);
-      res.status(400).json({
-        error: error.message || "Erro ao excluir pneu",
-        details: error.toString(),
-      });
-    }
+    await PneuService.delete(req.params.id);
+    res.status(204).send();
   }),
 };

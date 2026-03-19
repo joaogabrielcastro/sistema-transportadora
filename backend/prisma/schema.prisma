@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
   engineType = "library"
 }
 
@@ -9,8 +9,8 @@ datasource db {
 
 /// This table contains check constraints and requires additional setup for migrations. 
 model caminhoes {
-  id                Int         @id @default(autoincrement())
-  placa             String      @unique @db.VarChar(10)
+  id               Int         @id @default(autoincrement())
+  placa            String      @unique @db.VarChar(10)
   qtd_pneus        Int
   km_atual         Int?        @default(0)
   criado_em        DateTime?   @default(now()) @db.Timestamptz(6)
@@ -18,8 +18,8 @@ model caminhoes {
   numero_cavalo    Int?
   motorista        String?     @db.VarChar(100)
   numero_carreta_2 Int?
-  placa_carreta_1  String?     @db.VarChar
-  placa_carreta_2  String?     @db.VarChar
+  placa_carreta_1  String?     @db.VarChar(10)
+  placa_carreta_2  String?     @db.VarChar(10)
   ano              Int?
   marca            String?     @db.VarChar(100)
   modelo           String?     @db.VarChar(100)
@@ -35,11 +35,14 @@ model checklist {
   data_manutencao DateTime         @db.Date
   observacao      String?
   oficina         String?
-  valor           Decimal?         @db.Decimal
+  valor           Decimal?         @db.Decimal(10, 2)
   km_registro     BigInt?
   km_manutencao   Int?
   caminhoes       caminhoes?       @relation(fields: [caminhao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   itens_checklist itens_checklist? @relation(fields: [item_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([caminhao_id])
+  @@index([data_manutencao])
 }
 
 model gastos {
@@ -53,6 +56,11 @@ model gastos {
   km_registro            Int?
   caminhoes              caminhoes?    @relation(fields: [caminhao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   tipos_gastos           tipos_gastos? @relation(fields: [tipo_gasto_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([caminhao_id])
+  @@index([data_gasto])
+  @@index([tipo_gasto_id])
+  @@index([caminhao_id, data_gasto])
 }
 
 model itens_checklist {
@@ -76,6 +84,10 @@ model pneus {
   caminhoes       caminhoes?      @relation(fields: [caminhao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   posicoes_pneus  posicoes_pneus? @relation(fields: [posicao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   status_pneus    status_pneus?   @relation(fields: [status_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([caminhao_id])
+  @@index([status_id])
+  @@index([posicao_id])
 }
 
 model posicoes_pneus {

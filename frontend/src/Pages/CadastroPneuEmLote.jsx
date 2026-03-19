@@ -6,7 +6,6 @@ import {
   Card,
   Button,
   FormField,
-  Alert,
   LoadingSpinner,
 } from "../components/ui";
 
@@ -47,7 +46,6 @@ const CadastroPneuEmLote = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
-  const [successMessage, setSuccessMessage] = useState("");
 
   // Carregar dados iniciais (caminhões, posições, status)
   useEffect(() => {
@@ -121,7 +119,6 @@ const CadastroPneuEmLote = () => {
     e.preventDefault();
     setSubmitting(true);
     setErrors({});
-    setSuccessMessage("");
 
     if (!caminhaoId) {
       setErrors({ form: "Selecione um caminhão." });
@@ -170,7 +167,6 @@ const CadastroPneuEmLote = () => {
       await post("/pneus/bulk", {
         pneus: pneusParaValidar,
       });
-      setSuccessMessage("Pneus cadastrados com sucesso!");
       setTimeout(() => {
         const caminhao = caminhoes.find((c) => c.id == caminhaoId);
         if (caminhao) {
@@ -181,9 +177,7 @@ const CadastroPneuEmLote = () => {
       }, 2000);
     } catch (error) {
       console.error("Erro ao salvar:", error);
-      setErrors({
-        form: error.response?.data?.error || "Erro ao cadastrar pneus.",
-      });
+      setErrors({ form: error?.message || "Erro ao cadastrar pneus." });
     } finally {
       setSubmitting(false);
     }
@@ -234,17 +228,6 @@ const CadastroPneuEmLote = () => {
             Cadastro de Pneus em Lote
           </h1>
         </div>
-
-        {errors.form && (
-          <div className="mb-6">
-            <Alert type="error" message={errors.form} />
-          </div>
-        )}
-        {successMessage && (
-          <div className="mb-6">
-            <Alert type="success" message={successMessage} />
-          </div>
-        )}
 
         <Card>
           <form onSubmit={handleSubmit} className="space-y-8">

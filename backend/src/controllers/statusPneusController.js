@@ -1,13 +1,10 @@
 // backend/src/controllers/statusPneusController.js
 import { statusPneusModel } from "../models/statusPneusModel.js";
+import { catchAsync } from "../utils/catchAsync.js";
 
 export const statusPneusController = {
-  getAllStatus: async (req, res, next) => {
-    try {
-      const status = await statusPneusModel.getAll();
-      res.status(200).json(status);
-    } catch (error) {
-      next(error);
-    }
-  },
+  getAllStatus: catchAsync(async (_req, res) => {
+    const status = await statusPneusModel.getAll();
+    res.status(200).json({ success: true, data: status });
+  }),
 };

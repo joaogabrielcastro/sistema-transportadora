@@ -24,7 +24,8 @@ export const errorHandler = (err, req, res, _next) => {
     stack: err.stack,
     path: req.path,
     method: req.method,
-    body: req.body,
+    // Evitar vazar dados sensíveis em logs
+    bodyKeys: req.body && typeof req.body === "object" ? Object.keys(req.body) : null,
   });
 
   // Erro de validação do Zod

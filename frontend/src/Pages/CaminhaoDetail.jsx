@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
-import { Card, Button, Alert, LoadingSpinner } from "../components/ui";
+import { Card, Button, LoadingSpinner } from "../components/ui";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -64,11 +64,9 @@ const CaminhaoDetail = () => {
   const [pneus, setPneus] = useState([]);
   const [consumoKmPorLitro, setConsumoKmPorLitro] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   const fetchData = async () => {
     setLoading(true);
-    setError("");
 
     try {
       const caminhaoRes = await get(`/caminhoes/${placa}`);
@@ -114,7 +112,6 @@ const CaminhaoDetail = () => {
       }
     } catch (err) {
       console.error("Erro ao carregar dados:", err);
-      setError("Erro ao carregar dados do caminhão.");
     } finally {
       setLoading(false);
     }
@@ -311,19 +308,6 @@ const CaminhaoDetail = () => {
   }, [gastos, checklists, pneus, todosRegistros]);
 
   if (loading) return <LoadingSpinner fullScreen />;
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-background pt-24 px-4 flex justify-center">
-        <div className="w-full max-w-2xl">
-          <Alert type="error" message={error} />
-          <Button className="mt-4" onClick={fetchData}>
-            Tentar Novamente
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   if (!caminhao) return null;
 

@@ -2,7 +2,10 @@ import { z } from "zod";
 
 const dataStringSchema = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use o formato de data YYYY-MM-DD.");
+  .regex(
+    /^(\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4})$/,
+    "Use o formato de data YYYY-MM-DD ou dd/MM/yyyy.",
+  );
 
 export const gastoSchema = z.object({
   caminhao_id: z.number().int().positive().optional().nullable(),

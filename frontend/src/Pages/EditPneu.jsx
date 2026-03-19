@@ -5,7 +5,6 @@ import { useApi } from "../hooks/useApi";
 import {
   Card,
   Button,
-  Alert,
   LoadingSpinner,
   FormField,
 } from "../components/ui";
@@ -31,14 +30,11 @@ const EditPneu = () => {
   const [statusList, setStatusList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      setError(null);
 
       try {
         const [pneuRes, caminhoesRes, posicoesRes, statusRes] =
@@ -76,7 +72,7 @@ const EditPneu = () => {
           marca: pneuData.marca || "",
           modelo: pneuData.modelo || "",
           data_instalacao: pneuData.data_instalacao
-            ? new Date(pneuData.data_instalacao).toLocaleDateString("pt-BR")
+            ? new Date(pneuData.data_instalacao).toISOString().split("T")[0]
             : "",
           km_instalacao: pneuData.km_instalacao || "",
           observacao: pneuData.observacao || "",
@@ -87,9 +83,6 @@ const EditPneu = () => {
         setStatusList(statusData);
       } catch (err) {
         console.error("Erro completo:", err);
-        setError(
-          "Erro ao carregar dados para edição. Verifique a conexão com o servidor."
-        );
       } finally {
         setLoading(false);
       }
@@ -115,8 +108,6 @@ const EditPneu = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    setError(null);
-    setSuccessMessage("");
     setFieldErrors({});
 
     try {
@@ -138,8 +129,6 @@ const EditPneu = () => {
 
       await put(`/pneus/${id}`, payload);
 
-      setSuccessMessage("Pneu atualizado com sucesso!");
-
       // Redireciona após 2 segundos
       setTimeout(() => {
         navigate("/pneus");
@@ -149,7 +138,6 @@ const EditPneu = () => {
       if (err?.fieldErrors) {
         setFieldErrors(err.fieldErrors);
       }
-      setError(err.message || "Erro ao atualizar o pneu.");
     } finally {
       setSubmitting(false);
     }
@@ -202,18 +190,6 @@ const EditPneu = () => {
           </Link>
           <h1 className="text-3xl font-bold text-text-primary">Editar Pneu</h1>
         </div>
-
-        {/* Mensagens de Feedback */}
-        {error && (
-          <div className="mb-6">
-            <Alert type="error" message={error} />
-          </div>
-        )}
-        {successMessage && (
-          <div className="mb-6">
-            <Alert type="success" message={successMessage} />
-          </div>
-        )}
 
         {/* Formulário */}
         <Card>
@@ -292,13 +268,12 @@ const EditPneu = () => {
 
               <FormField
                 label="Data de Instalação"
-                type="text"
+                type="date"
                 name="data_instalacao"
                 value={formData.data_instalacao}
                 onChange={handleChange}
                 required
-                placeholder="dd/MM/aaaa"
-                helperText="Ex: 19/03/2026"
+                max={new Date().toISOString().split("T")[0]}
                 error={fieldErrors.data_instalacao}
               />
 

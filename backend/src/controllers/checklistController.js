@@ -6,29 +6,15 @@ import {
 } from "../schemas/checklistSchema.js";
 import { catchAsync } from "../utils/catchAsync.js";
 import { ChecklistService } from "../services/ChecklistService.js";
-
-// Função genérica para converter todos os campos de data dd/MM/yyyy para yyyy-MM-dd
-function converterDatasBody(body) {
-  const dataRegex = /^\d{2}\/\d{2}\/\d{4}$/;
-  for (const key in body) {
-    if (
-      key.toLowerCase().includes("data") &&
-      typeof body[key] === "string" &&
-      dataRegex.test(body[key])
-    ) {
-      const [dia, mes, ano] = body[key].split("/");
-      body[key] = `${ano}-${mes}-${dia}`;
-    }
-  }
-  return body;
-}
+import { normalizeDatesForDb } from "../utils/dates.js";
 
 export const checklistController = {
   createChecklist: catchAsync(async (req, res) => {
-    converterDatasBody(req.body);
     const checklistValidado = checklistSchema.parse(req.body);
     const novoChecklist =
-      await ChecklistService.createWithCaminhaoUpdate(checklistValidado);
+      await ChecklistService.createWithCaminhaoUpdate(
+        normalizeDatesForDb(checklistValidado),
+      );
     res.status(201).json({
       success: true,
       data: novoChecklist,
@@ -77,11 +63,10 @@ export const checklistController = {
   }),
 
   updateChecklist: catchAsync(async (req, res) => {
-    converterDatasBody(req.body);
     const checklistValidado = checklistUpdateSchema.parse(req.body);
     const checklistAtualizado = await checklistModel.update(
       req.params.id,
-      checklistValidado,
+      normalizeDatesForDb(checklistValidado),
     );
     res.status(200).json({
       success: true,

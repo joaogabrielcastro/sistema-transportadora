@@ -3,7 +3,6 @@ import { useApi } from "../hooks/useApi.js";
 import {
   Card,
   Button,
-  Alert,
   LoadingSpinner,
   FormField,
 } from "../components/ui";
@@ -28,13 +27,11 @@ const PneuAtribuir = () => {
     caminhao_id: "",
     posicao_id: "",
     status_id: "",
-    data_instalacao: new Date().toLocaleDateString("pt-BR"),
+    data_instalacao: new Date().toISOString().split("T")[0],
     km_instalacao: "",
   });
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [errorMSG, setErrorMSG] = useState(null);
-  const [success, setSuccess] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
 
   const fetchData = async () => {
@@ -55,7 +52,6 @@ const PneuAtribuir = () => {
       setStatusOptions(extractData(statusRes));
     } catch (err) {
       console.error(err);
-      setErrorMSG("Erro ao carregar dados iniciais.");
     } finally {
       setLoading(false);
     }
@@ -96,8 +92,6 @@ const PneuAtribuir = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    setErrorMSG(null);
-    setSuccess("");
     setFieldErrors({});
 
     if (
@@ -106,7 +100,6 @@ const PneuAtribuir = () => {
       !form.posicao_id ||
       !form.status_id
     ) {
-      setErrorMSG("Preencha todos os campos obrigatórios.");
       setSubmitting(false);
       return;
     }
@@ -122,14 +115,12 @@ const PneuAtribuir = () => {
       };
 
       await post("/pneus", payload);
-      setSuccess("Pneu atribuído ao caminhão com sucesso!");
       setTimeout(() => navigate("/pneus"), 1500);
     } catch (err) {
       console.error(err);
       if (err?.fieldErrors) {
         setFieldErrors(err.fieldErrors);
       }
-      setErrorMSG(err.message || "Erro ao atribuir pneu.");
     } finally {
       setSubmitting(false);
     }
@@ -137,7 +128,7 @@ const PneuAtribuir = () => {
 
   if (loading)
     return (
-      <div className="flex justify-center items-center main-h-screen pt-24">
+      <div className="flex justify-center items-center min-h-screen pt-24">
         <LoadingSpinner />
       </div>
     );
@@ -153,9 +144,6 @@ const PneuAtribuir = () => {
             Selecione um pneu do estoque e instale em um caminhão.
           </p>
         </div>
-
-        {errorMSG && <Alert type="error" message={errorMSG} />}
-        {success && <Alert type="success" message={success} />}
 
         <Card>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -176,11 +164,10 @@ const PneuAtribuir = () => {
             <FormField
               label="Data de Instalação"
               name="data_instalacao"
-              type="text"
+              type="date"
               value={form.data_instalacao}
               onChange={handleChange}
-              placeholder="dd/MM/aaaa"
-              helperText="Ex: 19/03/2026"
+              max={new Date().toISOString().split("T")[0]}
               error={fieldErrors.data_instalacao}
             />
             </div>

@@ -11,9 +11,12 @@ const cache = new Map();
 const DEFAULT_CACHE_TTL = 0;
 
 // Configuração da API
-const apiBaseUrl =
+const apiBaseUrlRaw =
   import.meta.env.VITE_API_URL ||
   `${window.location.protocol}//${window.location.hostname}:3000`;
+
+// Se `VITE_API_URL` já vier com `/api` no final, evitamos criar `/api/api/...`.
+const apiBaseUrl = String(apiBaseUrlRaw).replace(/\/api\/?$/i, "");
 
 export const api = axios.create({
   baseURL: `${apiBaseUrl}/api`,

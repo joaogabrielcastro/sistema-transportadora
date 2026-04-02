@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+/** "", NaN e ausência viram null; undefined em updates parciais permanece undefined. */
+const optionalNumeroCaminhao = z.preprocess((val) => {
+  if (val === undefined) return undefined;
+  if (val === "" || val === null) return null;
+  const n = typeof val === "number" ? val : Number(val);
+  if (Number.isNaN(n)) return null;
+  return n;
+}, z.union([z.null(), z.number().int().nonnegative()]).optional());
+
 export const caminhaoSchema = z.object({
   placa: z.string().min(7, "A placa deve ter no mínimo 7 caracteres."),
   km_atual: z
@@ -21,11 +30,11 @@ export const caminhaoSchema = z.object({
     .max(new Date().getFullYear() + 1, "Ano inválido")
     .nullable()
     .optional(),
-  numero_carreta_1: z.number().int().nonnegative().nullable().optional(),
+  numero_carreta_1: optionalNumeroCaminhao,
   placa_carreta_1: z.string().nullable().optional(),
-  numero_carreta_2: z.number().int().nonnegative().nullable().optional(),
+  numero_carreta_2: optionalNumeroCaminhao,
   placa_carreta_2: z.string().nullable().optional(),
-  numero_cavalo: z.number().int().nonnegative().nullable().optional(),
+  numero_cavalo: optionalNumeroCaminhao,
 });
 
 export const caminhaoUpdateSchema = caminhaoSchema.partial();

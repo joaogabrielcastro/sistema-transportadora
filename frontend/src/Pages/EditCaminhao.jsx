@@ -43,20 +43,25 @@ const EditCaminhao = () => {
 
       setForm({
         placa: data.placa || "",
-        qtd_pneus: data.qtd_pneus || "",
-        km_atual: data.km_atual || "",
-        numero_cavalo: data.numero_cavalo || "",
+        qtd_pneus: data.qtd_pneus ?? "",
+        km_atual: data.km_atual ?? "",
+        numero_cavalo:
+          data.numero_cavalo != null ? String(data.numero_cavalo) : "",
         motorista: data.motorista || "",
         marca: data.marca || "",
         modelo: data.modelo || "",
-        ano: data.ano || "",
+        ano: data.ano ?? "",
         placa_carreta_1: data.placa_carreta_1 || "",
         placa_carreta_2: data.placa_carreta_2 || "",
       });
 
       const carretasArray = [];
-      if (data.numero_carreta_1) carretasArray.push(String(data.numero_carreta_1));
-      if (data.numero_carreta_2) carretasArray.push(String(data.numero_carreta_2));
+      if (data.numero_carreta_1 != null) {
+        carretasArray.push(String(data.numero_carreta_1));
+      }
+      if (data.numero_carreta_2 != null) {
+        carretasArray.push(String(data.numero_carreta_2));
+      }
 
       setCarretas(carretasArray.length > 0 ? carretasArray : [""]);
     } catch (err) {
@@ -186,18 +191,22 @@ const EditCaminhao = () => {
       const payload = {
         qtd_pneus: form.qtd_pneus ? parseInt(form.qtd_pneus) : null,
         km_atual: form.km_atual ? parseInt(form.km_atual) : null,
-        numero_cavalo: form.numero_cavalo ? parseInt(form.numero_cavalo) : null,
+        numero_cavalo: form.numero_cavalo?.trim()
+          ? parseInt(form.numero_cavalo, 10)
+          : null,
         motorista: form.motorista.trim() || null,
         marca: form.marca.trim() || null,
         modelo: form.modelo.trim() || null,
         ano: form.ano ? parseInt(form.ano) : null,
-        numero_carreta_1: carretasPreenchidas[0]
-          ? parseInt(carretasPreenchidas[0])
-          : null,
+        numero_carreta_1:
+          carretasPreenchidas[0] != null && carretasPreenchidas[0] !== ""
+            ? parseInt(carretasPreenchidas[0], 10)
+            : null,
         placa_carreta_1: form.placa_carreta_1 || null,
-        numero_carreta_2: carretasPreenchidas[1]
-          ? parseInt(carretasPreenchidas[1])
-          : null,
+        numero_carreta_2:
+          carretasPreenchidas[1] != null && carretasPreenchidas[1] !== ""
+            ? parseInt(carretasPreenchidas[1], 10)
+            : null,
         placa_carreta_2: form.placa_carreta_2 || null,
       };
 
@@ -245,7 +254,8 @@ const EditCaminhao = () => {
                 onChange={(e) =>
                   handleInputChange("numero_cavalo", e.target.value)
                 }
-                placeholder="100+"
+                placeholder="Opcional"
+                helpText="Deixe em branco se o cavalo ainda não foi numerado."
                 error={errors.numero_cavalo || fieldErrors.numero_cavalo}
               />
             </div>
@@ -318,9 +328,15 @@ const EditCaminhao = () => {
             {/* Seção de Carretas */}
             <div className="bg-gray-50 p-6 rounded-xl border border-border">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-text-primary">
-                  Dados das Carretas
-                </h3>
+                <div>
+                  <h3 className="text-lg font-medium text-text-primary">
+                    Dados das Carretas
+                  </h3>
+                  <p className="text-sm text-text-secondary mt-1">
+                    Número e placa da carreta são opcionais se ainda não houver
+                    cadastro.
+                  </p>
+                </div>
                 {carretas.length < 2 && (
                   <Button
                     type="button"
@@ -357,7 +373,8 @@ const EditCaminhao = () => {
                     value={carretas[0]}
                     onChange={(e) => handleCarretaChange(0, e.target.value)}
                     error={errors.carreta_0 || fieldErrors.carreta_0}
-                    placeholder="0-99"
+                    placeholder="Opcional (0–99)"
+                    helpText="Deixe em branco se a carreta ainda não foi numerada."
                   />
                   <FormField
                     label="Placa Carreta 1"
@@ -402,7 +419,8 @@ const EditCaminhao = () => {
                         value={carretas[1]}
                         onChange={(e) => handleCarretaChange(1, e.target.value)}
                         error={errors.carreta_1 || fieldErrors.carreta_1}
-                        placeholder="0-99"
+                        placeholder="Opcional (0–99)"
+                        helpText="Deixe em branco se a carreta ainda não foi numerada."
                       />
                       <FormField
                         label="Placa Carreta 2"

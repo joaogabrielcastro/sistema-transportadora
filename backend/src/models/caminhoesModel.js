@@ -23,7 +23,10 @@ const buildUniquenessWhere = (
   }
 
   if (placa_carreta_1 != null && placa_carreta_1 !== "") {
-    or.push({ placa_carreta_1 }, { placa_carreta_2: placa_carreta_1 });
+    or.push(
+      { placa_carreta_1: { equals: placa_carreta_1, mode: "insensitive" } },
+      { placa_carreta_2: { equals: placa_carreta_1, mode: "insensitive" } },
+    );
   }
 
   if (numero_carreta_2 != null && numero_carreta_2 !== "") {
@@ -34,11 +37,17 @@ const buildUniquenessWhere = (
   }
 
   if (placa_carreta_2 != null && placa_carreta_2 !== "") {
-    or.push({ placa_carreta_1: placa_carreta_2 }, { placa_carreta_2 });
+    or.push(
+      { placa_carreta_1: { equals: placa_carreta_2, mode: "insensitive" } },
+      { placa_carreta_2: { equals: placa_carreta_2, mode: "insensitive" } },
+    );
   }
 
   if (numero_cavalo != null && numero_cavalo !== "") {
-    or.push({ numero_cavalo: Number(numero_cavalo) });
+    const n = Number(numero_cavalo);
+    if (!Number.isNaN(n)) {
+      or.push({ numero_cavalo: n });
+    }
   }
 
   return or;

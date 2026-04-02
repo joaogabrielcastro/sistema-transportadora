@@ -173,18 +173,22 @@ const CadastroCaminhao = () => {
         placa: form.placa.replace(/-/g, ""),
         qtd_pneus: parseInt(form.qtd_pneus),
         km_atual: parseInt(form.km_atual),
-        numero_cavalo: parseInt(form.numero_cavalo),
+        numero_cavalo: form.numero_cavalo?.trim()
+          ? parseInt(form.numero_cavalo, 10)
+          : null,
         motorista: form.motorista.trim(),
         marca: form.marca.trim() || null,
         modelo: form.modelo.trim() || null,
         ano: form.ano ? parseInt(form.ano) : null,
-        numero_carreta_1: carretasPreenchidas[0]
-          ? parseInt(carretasPreenchidas[0])
-          : null,
+        numero_carreta_1:
+          carretasPreenchidas[0] != null && carretasPreenchidas[0] !== ""
+            ? parseInt(carretasPreenchidas[0], 10)
+            : null,
         placa_carreta_1: form.placa_carreta_1.trim() || null,
-        numero_carreta_2: carretasPreenchidas[1]
-          ? parseInt(carretasPreenchidas[1])
-          : null,
+        numero_carreta_2:
+          carretasPreenchidas[1] != null && carretasPreenchidas[1] !== ""
+            ? parseInt(carretasPreenchidas[1], 10)
+            : null,
         placa_carreta_2: form.placa_carreta_2.trim() || null,
       };
 
@@ -247,7 +251,8 @@ const CadastroCaminhao = () => {
                 onChange={(e) =>
                   handleInputChange("numero_cavalo", e.target.value)
                 }
-                placeholder="100+"
+                placeholder="Opcional"
+                helpText="Deixe em branco se o cavalo ainda não foi numerado."
                 error={errors.numero_cavalo || fieldErrors.numero_cavalo}
                 icon={
                   <svg
@@ -426,9 +431,15 @@ const CadastroCaminhao = () => {
             {/* Seção de Carretas */}
             <div className="bg-gray-50 p-6 rounded-xl border border-border">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-text-primary">
-                  Dados das Carretas
-                </h3>
+                <div>
+                  <h3 className="text-lg font-medium text-text-primary">
+                    Dados das Carretas
+                  </h3>
+                  <p className="text-sm text-text-secondary mt-1">
+                    Número e placa da carreta são opcionais se ainda não houver
+                    cadastro.
+                  </p>
+                </div>
                 {carretas.length < 2 && (
                   <Button
                     type="button"
@@ -465,7 +476,8 @@ const CadastroCaminhao = () => {
                     value={carretas[0]}
                     onChange={(e) => handleCarretaChange(0, e.target.value)}
                     error={errors.carreta_0}
-                    placeholder="0-99"
+                    placeholder="Opcional (0–99)"
+                    helpText="Deixe em branco se a carreta ainda não foi numerada."
                   />
                   <FormField
                     label="Placa Carreta 1"
@@ -510,7 +522,8 @@ const CadastroCaminhao = () => {
                         value={carretas[1]}
                         onChange={(e) => handleCarretaChange(1, e.target.value)}
                         error={errors.carreta_1}
-                        placeholder="0-99"
+                        placeholder="Opcional (0–99)"
+                        helpText="Deixe em branco se a carreta ainda não foi numerada."
                       />
                       <FormField
                         label="Placa Carreta 2"

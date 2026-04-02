@@ -5,6 +5,34 @@ import { ZodError } from "zod";
 
 const { Prisma } = prismaClientPkg;
 
+const prismaUniqueFieldLabels = {
+  placa: "placa do cavalo",
+  placa_carreta_1: "placa da carreta 1",
+  placa_carreta_2: "placa da carreta 2",
+  numero_carreta_1: "número da carreta 1",
+  numero_carreta_2: "número da carreta 2",
+  numero_cavalo: "número do cavalo",
+};
+
+const formatP2002Message = (meta) => {
+  const raw = meta?.target;
+  const fields = Array.isArray(raw)
+    ? raw
+    : raw != null
+      ? [String(raw)]
+      : [];
+  if (fields.length === 0) {
+    return "Registro duplicado: já existe outro cadastro com o mesmo valor em um campo único.";
+  }
+  const labels = fields.map(
+    (f) => prismaUniqueFieldLabels[f] || String(f).replace(/_/g, " "),
+  );
+  return (
+    `Registro duplicado: o valor informado já existe em outro caminhão (${labels.join(", ")}). ` +
+    `Abra a lista de caminhões, procure por essa placa ou número e ajuste o outro cadastro primeiro.`
+  );
+};
+
 const friendlyServerMessage = (req) => {
   // Mensagem padrão mais amigável, sem expor detalhes internos
   const action =
@@ -53,7 +81,7 @@ export const errorHandler = (err, req, res, _next) => {
     if (err.code === "P2002") {
       return res.status(400).json({
         success: false,
-        error: "Registro duplicado para um campo único.",
+        error: formatP2002Message(err.meta),
         code: err.code,
         target: err.meta?.target,
       });
@@ -89,6 +117,16 @@ export const errorHandler = (err, req, res, _next) => {
     return res.status(404).json({
       success: false,
       error: err.message,
+    });
+  }
+
+  // Regra de negócio: duplicidade de carreta/cavalo entre caminhões
+  if (err.code === "DUPLICATE_CAMINHAO_FIELDS") {
+    return res.status(400).json({
+      success: false,
+      error: err.message,
+      code: err.code,
+      conflicts: err.conflicts ?? null,
     });
   }
 

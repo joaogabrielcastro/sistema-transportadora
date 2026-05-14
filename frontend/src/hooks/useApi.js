@@ -146,11 +146,25 @@ export const useApi = () => {
 
       // Fazer requisição com retry
       const response = await retryRequest(() => api(config));
+
+      if (
+        config.responseType === "blob" ||
+        config.responseType === "arraybuffer"
+      ) {
+        return {
+          success: true,
+          data: response.data,
+        };
+      }
+
       const normalized = normalizeApiResponse(response);
 
       // Feedback de sucesso (mutações)
       const method = String(config.method || "GET").toUpperCase();
-      if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+      if (
+        ["POST", "PUT", "PATCH", "DELETE"].includes(method) &&
+        !config.skipSuccessToast
+      ) {
         const message =
           normalized?.message ||
           (method === "POST"

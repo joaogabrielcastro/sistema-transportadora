@@ -26,8 +26,10 @@
     "express": "^5.1.0",
     "express-rate-limit": "^7.5.1",
     "helmet": "^8.1.0",
+    "nodemailer": "^7.0.3",
     "pg": "^8.20.0",
     "prisma": "^7.5.0",
+    "puppeteer": "^24.15.0",
     "zod": "^4.1.12"
   },
   "engines": {

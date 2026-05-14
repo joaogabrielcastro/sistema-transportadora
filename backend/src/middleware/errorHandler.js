@@ -112,6 +112,14 @@ export const errorHandler = (err, req, res, _next) => {
     });
   }
 
+  if (err.statusCode === 503) {
+    return res.status(503).json({
+      success: false,
+      error: err.message || "Serviço temporariamente indisponível.",
+      code: "SERVICE_UNAVAILABLE",
+    });
+  }
+
   // Erro de recurso não encontrado
   if (err.message === "Caminhão não encontrado") {
     return res.status(404).json({

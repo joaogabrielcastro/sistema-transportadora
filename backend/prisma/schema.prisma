@@ -23,9 +23,26 @@ model caminhoes {
   ano              Int?
   marca            String?     @db.VarChar(100)
   modelo           String?     @db.VarChar(100)
-  checklist        checklist[]
-  gastos           gastos[]
-  pneus            pneus[]
+  checklist             checklist[]
+  gastos                gastos[]
+  pneus                 pneus[]
+  ordens_coleta_envio   ordens_coleta_envio[]
+}
+
+model ordens_coleta_envio {
+  id                 Int        @id @default(autoincrement())
+  tipo               String     @db.VarChar(32)
+  caminhao_id        Int?
+  dados              Json       @db.JsonB
+  email_destinatario String     @db.VarChar(255)
+  assunto            String?    @db.VarChar(500)
+  criado_em          DateTime   @default(now()) @db.Timestamptz(6)
+  enviado_em         DateTime?  @db.Timestamptz(6)
+  erro_envio         String?
+  caminhoes          caminhoes? @relation(fields: [caminhao_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([criado_em])
+  @@index([tipo])
 }
 
 model checklist {

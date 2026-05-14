@@ -21,6 +21,7 @@ import checklistRoutes from "./routes/checklistRoutes.js";
 import itensChecklistRoutes from "./routes/itensChecklistRoutes.js";
 import tiposGastosRoutes from "./routes/tiposGastosRoutes.js";
 import reportsRoutes from "./routes/reportsRoutes.js";
+import ordemColetaRoutes from "./routes/ordemColetaRoutes.js";
 
 const app = express();
 
@@ -94,6 +95,7 @@ app.use("/api/checklist", checklistRoutes);
 app.use("/api/itens-checklist", itensChecklistRoutes);
 app.use("/api/tipos-gastos", tiposGastosRoutes);
 app.use("/api/reports", reportsRoutes);
+app.use("/api/ordem-coleta", ordemColetaRoutes);
 
 // Middleware de tratamento de rotas não encontradas
 app.use(notFound);

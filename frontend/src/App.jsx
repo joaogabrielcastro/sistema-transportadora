@@ -19,6 +19,7 @@ const EditGasto = lazy(() => import("./Pages/EditGasto.jsx"));
 const EditChecklist = lazy(() => import("./Pages/EditChecklist.jsx"));
 const CadastroPneuEmLote = lazy(() => import("./Pages/CadastroPneuEmLote.jsx"));
 const Relatorios = lazy(() => import("./Pages/Relatorios.jsx"));
+const OrdensColeta = lazy(() => import("./Pages/OrdensColeta.jsx"));
 
 function App() {
   return (
@@ -49,6 +50,7 @@ function App() {
               element={<CadastroPneuEmLote />}
             />
             <Route path="/relatorios" element={<Relatorios />} />
+            <Route path="/ordem-coleta" element={<OrdensColeta />} />
           </Routes>
         </Suspense>
       </Router>

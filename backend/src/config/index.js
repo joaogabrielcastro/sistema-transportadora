@@ -76,4 +76,12 @@ export const config = {
     // Pode ser desabilitado explicitamente com LOG_CONSOLE=false.
     enableConsole: parseBoolean(process.env.LOG_CONSOLE, true),
   },
+  mail: {
+    smtpHost: process.env.SMTP_HOST || "",
+    smtpPort: Number(process.env.SMTP_PORT || 0) || 0,
+    smtpSecure: parseBoolean(process.env.SMTP_SECURE, false),
+    smtpUser: process.env.SMTP_USER || "",
+    smtpPass: process.env.SMTP_PASS || "",
+    mailFrom: process.env.MAIL_FROM || "",
+  },
 };

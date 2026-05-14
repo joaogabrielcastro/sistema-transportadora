@@ -1,0 +1,235 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page { 
+            size: A4; 
+            margin: 0; 
+            background-color: #ffffff; 
+        }
+        body { 
+            font-family: 'Segoe UI', Helvetica, Arial, sans-serif; 
+            color: #222222; 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box;
+            line-height: 1.3;
+        }
+        .top-accent { 
+            height: 10px; 
+            background: linear-gradient(90deg, #cc0000 0%, #1a1a1a 100%); 
+            width: 100%;
+        }
+        .wrapper { 
+            padding: 12mm 15mm 10mm 15mm; 
+        }
+        .header-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-bottom: 15px; 
+        }
+        .header-table td { 
+            vertical-align: middle; 
+        }
+        .title-container { 
+            text-align: right; 
+        }
+        .title-container h1 { 
+            margin: 0; 
+            font-size: 18pt; 
+            text-transform: uppercase; 
+            color: #111; 
+            font-weight: 800; 
+            letter-spacing: 0.5px;
+        }
+        .doc-badge { 
+            background-color: #333333; 
+            color: #ffffff; 
+            padding: 3px 10px; 
+            font-size: 9pt;
+            font-weight: bold; 
+            display: inline-block; 
+            border-radius: 4px; 
+            margin: 4px 0; 
+            text-transform: uppercase;
+        }
+        .section-title { 
+            background-color: #f4f4f4; 
+            padding: 5px 10px; 
+            font-weight: bold; 
+            font-size: 9pt; 
+            border-left: 4px solid #cc0000; 
+            margin: 14px 0 8px 0; 
+            text-transform: uppercase; 
+            color: #333;
+        }
+        .grid-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+        }
+        .grid-table td { 
+            padding: 6px 10px; 
+            border: 1px solid #e8e8e8; 
+            vertical-align: top; 
+        }
+        .field-label { 
+            font-size: 7pt; 
+            color: #777; 
+            text-transform: uppercase; 
+            font-weight: 700; 
+            display: block; 
+            margin-bottom: 1px; 
+        }
+        .field-value { 
+            font-size: 10pt; 
+            font-weight: 600; 
+            color: #000; 
+        }
+        .highlight-text {
+            color: #cc0000;
+            font-weight: bold;
+        }
+        .auth-text {
+            font-size: 8.5pt;
+            color: #444;
+            line-height: 1.4;
+            margin-top: 12px;
+            text-align: justify;
+            background-color: #fffaf9;
+            border: 1px solid #fbe5e5;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .signature-section { 
+            margin-top: 35px; 
+            width: 100%; 
+            page-break-inside: avoid;
+        }
+        .sig-block { 
+            width: 45%; 
+            border-top: 1.5px solid #333; 
+            text-align: center; 
+            font-size: 8pt; 
+            padding-top: 6px; 
+            font-weight: bold; 
+            color: #333;
+        }
+        .bottom-band { 
+            position: absolute; 
+            bottom: 0; 
+            left: 0;
+            width: 100%; 
+            background-color: #1a1a1a; 
+            color: #ffffff; 
+            text-align: center; 
+            padding: 10px 0; 
+        }
+        .bottom-band .main-line {
+            font-size: 8pt;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-accent"></div>
+    <div class="wrapper">
+        <table class="header-table">
+            <tr>
+                <td style="width: 45%;"><img src="data:image/png;base64,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" style="height: 60px; object-fit: contain;" alt="ABROTTO"></td>
+                <td class="title-container" style="width: 55%;">
+                    <h1>Autorização de Coleta</h1>
+                    <div class="doc-badge">Liberação de Mercadorias</div>
+                    <div style="font-size: 8.5pt; color: #666; font-weight: 600; margin-top: 2px;">EMISSÃO: {{data_emissao}}</div>
+                </td>
+            </tr>
+        </table>
+
+        <div class="section-title">1. Partes Envolvidas na Operação</div>
+        <table class="grid-table">
+            <tr>
+                <td style="width: 50%;">
+                    <span class="field-label">Cliente Solicitante (Razão Social)</span>
+                    <span class="field-value highlight-text" style="font-size: 11pt;">{{razao_social}}</span>
+                    <div style="font-size: 8pt; color: #555; margin-top: 2px;">
+                        {{cliente_endereco_linha1}}<br>{{cliente_endereco_linha2}}
+                    </div>
+                </td>
+                <td style="width: 50%;">
+                    <span class="field-label">Local de Retirada (Fornecedor)</span>
+                    <span class="field-value" style="font-size: 11pt;">{{fornecedor_nome}}</span>
+                    <div style="font-size: 8pt; color: #555; margin-top: 2px;">
+                        CNPJ: {{fornecedor_cnpj}}<br>{{fornecedor_endereco}}
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <div class="section-title">2. Credenciamento de Frota e Condutor</div>
+        <table class="grid-table">
+            <tr>
+                <td style="width: 60%;">
+                    <span class="field-label">Transportadora Credenciada</span>
+                    <span class="field-value">ABROTTO TRANSPORTES RODOVIÁRIOS LTDA</span>
+                </td>
+                <td style="width: 40%;">
+                    <span class="field-label">CNPJ da Transportadora</span>
+                    <span class="field-value">35.735.601/0001-27</span>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <span class="field-label">Motorista Autorizado</span>
+                    <span class="field-value">{{motorista}}</span>
+                </td>
+                <td>
+                    <span class="field-label">Documento (CPF)</span>
+                    <span class="field-value">{{motorista_cpf}}</span>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <span class="field-label">Placa Trator (Cavalo)</span>
+                    <span class="field-value highlight-text">{{placa_cavalo}}</span>
+                </td>
+                <td>
+                    <span class="field-label">Contato / Celular</span>
+                    <span class="field-value">{{telefone_coleta}}</span>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <span class="field-label">Placas das Carretas Vinculadas</span>
+                    <span class="field-value">{{placa_carreta_1}} / {{placa_carreta_2}}</span>
+                </td>
+                <td>
+                    <span class="field-label">Data Agendada da Coleta</span>
+                    <span class="field-value highlight-text">{{data_coleta_prevista}}</span>
+                </td>
+            </tr>
+        </table>
+
+        <div class="auth-text">
+            <strong>TERMO DE AUTORIZAÇÃO:</strong> A empresa <strong>{{razao_social}}</strong> autoriza a fornecedora <strong>{{fornecedor_nome}}</strong> a liberar os volumes e realizar o carregamento ao transportador credenciado <strong>ABROTTO TRANSPORTES</strong>. A conferência de mercadorias e a lacração do compartimento de carga no ato do embarque configuram a regularidade e quitação do processo de entrega.
+        </div>
+
+        <div class="signature-section">
+            <div class="sig-block" style="float: left;">
+                ASSINATURA E CARIMBO<br>
+                <span style="font-size: 6.5pt; color: #666; font-weight: normal;">{{razao_social}} (Cliente)</span>
+            </div>
+            <div class="sig-block" style="float: right;">
+                VISTO DE LIBERAÇÃO<br>
+                <span style="font-size: 6.5pt; color: #666; font-weight: normal;">{{fornecedor_nome}} (Fornecedor)</span>
+            </div>
+            <div style="clear: both;"></div>
+        </div>
+    </div>
+
+    <div class="bottom-band">
+        <div class="main-line">ABROTTO TRANSPORTES — Soluções Integradas em Transporte e Logística</div>
+    </div>
+</body>
+</html>

@@ -113,13 +113,23 @@ export class OrdemColetaService {
     return mergeTemplate(raw, vars);
   }
 
+  static resolvePuppeteerExecutable() {
+    const fromEnv = (process.env.PUPPETEER_EXECUTABLE_PATH || "").trim();
+    if (fromEnv) return fromEnv;
+    if (process.platform === "linux") {
+      return "/usr/bin/chromium";
+    }
+    return undefined;
+  }
+
   static async htmlToPdfBuffer(html) {
     const launchOpts = {
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
     };
-    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-      launchOpts.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+    const executablePath = OrdemColetaService.resolvePuppeteerExecutable();
+    if (executablePath) {
+      launchOpts.executablePath = executablePath;
     }
 
     const browser = await puppeteer.launch(launchOpts);

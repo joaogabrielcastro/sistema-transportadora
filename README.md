@@ -50,6 +50,13 @@ VITE_API_URL=http://localhost:3020
 
 Desenvolvimento local com Postgres via Docker: na raiz do projeto, `docker compose up -d` (porta **5433** no host; veja `backend/.env.example`).
 
+### Deploy do backend (Coolify)
+
+- **Base directory:** `backend`
+- Preferir **Dockerfile** (`backend/Dockerfile`) em vez de Nixpacks, se o build falhar no `npm ci`.
+- Variáveis: `DATABASE_URL`, `PORT`, `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium` (já no Dockerfile).
+- Volume persistente em `uploads/` para PDFs dos caminhões.
+
 ### Banco de produção já existente (erro P3005)
 
 Se `npx prisma migrate deploy` retornar *database schema is not empty*, o banco foi criado antes do histórico do Migrate. No backend:

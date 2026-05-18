@@ -49,6 +49,13 @@ const resolveIfNeeded = async (migrationName) => {
 };
 
 try {
+  if (!String(process.env.DATABASE_URL || "").trim()) {
+    console.warn(
+      "DATABASE_URL não definida — migrações ignoradas (normal em fase de build da imagem).",
+    );
+    process.exit(0);
+  }
+
   const hasCaminhoes = await tableExists("caminhoes");
   if (!hasCaminhoes) {
     console.error(

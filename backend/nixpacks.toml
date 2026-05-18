@@ -1,0 +1,12 @@
+# Coolify / Railway Nixpacks — diretório de build: backend/
+[variables]
+NODE_ENV = "production"
+PRISMA_CLIENT_ENGINE_TYPE = "library"
+PUPPETEER_SKIP_DOWNLOAD = "true"
+PUPPETEER_EXECUTABLE_PATH = "/usr/bin/chromium"
+
+[phases.install]
+cmds = ["npm ci --omit=dev"]
+
+[start]
+cmd = "npm start"

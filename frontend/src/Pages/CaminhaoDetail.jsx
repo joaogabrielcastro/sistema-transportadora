@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
 import { Card, Button, LoadingSpinner } from "../components/ui";
+import CaminhaoDocumentos from "../components/CaminhaoDocumentos";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -504,6 +505,10 @@ const CaminhaoDetail = () => {
             </div>
           </Card>
         </div>
+
+        <Card title="Documentos do veículo (PDF)" className="mb-8">
+          <CaminhaoDocumentos placa={caminhao.placa} />
+        </Card>
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">

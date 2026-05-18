@@ -18,12 +18,42 @@ const apiBaseUrlRaw =
 // Se `VITE_API_URL` já vier com `/api` no final, evitamos criar `/api/api/...`.
 const apiBaseUrl = String(apiBaseUrlRaw).replace(/\/api\/?$/i, "");
 
+/** URL base da API (sem `/api`), para mensagens de diagnóstico na UI. */
+export const getApiBaseUrl = () => apiBaseUrl;
+
 export const api = axios.create({
   baseURL: `${apiBaseUrl}/api`,
   timeout: 30000,
-  headers: {
-    "Content-Type": "application/json",
-  },
+});
+
+// Não fixar Content-Type global: FormData precisa do boundary gerado pelo browser.
+api.interceptors.request.use((config) => {
+  const isFormData =
+    typeof FormData !== "undefined" && config.data instanceof FormData;
+
+  if (isFormData) {
+    const headers = axios.AxiosHeaders.from(config.headers || {});
+    headers.delete("Content-Type");
+    config.headers = headers;
+    return config;
+  }
+
+  const method = String(config.method || "get").toLowerCase();
+  const sendsJsonBody =
+    config.data != null &&
+    typeof config.data === "object" &&
+    !(config.data instanceof Blob) &&
+    !(config.data instanceof ArrayBuffer);
+
+  if (sendsJsonBody && ["post", "put", "patch"].includes(method)) {
+    const headers = axios.AxiosHeaders.from(config.headers || {});
+    if (!headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
+    }
+    config.headers = headers;
+  }
+
+  return config;
 });
 
 const normalizeApiResponse = (response) => {

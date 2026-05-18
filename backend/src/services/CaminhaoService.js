@@ -1,5 +1,6 @@
 // backend/src/services/CaminhaoService.js
 import { caminhoesModel } from "../models/caminhoesModel.js";
+import { CaminhaoDocumentoService } from "./CaminhaoDocumentoService.js";
 import { logger } from "../utils/logger.js";
 
 const normalizePlaca = (value) => {
@@ -150,6 +151,11 @@ export class CaminhaoService {
         erro.code = "DEPENDENCIES_EXIST";
         erro.dependencies = dependencias;
         throw erro;
+      }
+
+      const caminhao = await caminhoesModel.getByPlaca(placa);
+      if (caminhao?.id) {
+        await CaminhaoDocumentoService.purgeCaminhao(caminhao.id);
       }
 
       await caminhoesModel.delete(placa);

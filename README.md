@@ -28,7 +28,7 @@ Aplicação fullstack para gestão de frota, manutenção, pneus e gastos operac
 
 - `DATABASE_URL`: string de conexão PostgreSQL.
 - `PRISMA_CLIENT_ENGINE_TYPE`: **use `library`** em Docker/Node (evita o Prisma “edge/client” exigir `adapter`/`accelerateUrl`).
-- `PORT`: porta da API (default `3011`).
+- `PORT`: porta da API (default `3020` no `server.js`; defina no Coolify/host).
 - `NODE_ENV`: `development` ou `production`.
 - `CORS_ORIGINS`: lista CSV de origens permitidas.
 - `DB_SSL_MODE`: `require`, `no-verify` ou `disable`.
@@ -45,8 +45,10 @@ Aplicação fullstack para gestão de frota, manutenção, pneus e gastos operac
 Exemplo:
 
 ```bash
-VITE_API_URL=http://localhost:3000
+VITE_API_URL=http://localhost:3020
 ```
+
+Desenvolvimento local com Postgres via Docker: na raiz do projeto, `docker compose up -d` (porta **5433** no host; veja `backend/.env.example`).
 
 ## Como Rodar
 

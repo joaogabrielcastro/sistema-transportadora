@@ -237,8 +237,7 @@ const OrdensColeta = () => {
                   " Nenhum caminhão cadastrado no sistema."}
                 {erroCaminhoes && (
                   <span className="text-danger block mt-1">
-                    Não foi possível carregar a frota. Confira se o backend está
-                    no ar e se a URL em VITE_API_URL está correta.
+                    Não foi possível carregar a frota: {erroCaminhoes}
                   </span>
                 )}
               </p>

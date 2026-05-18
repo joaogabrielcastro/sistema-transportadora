@@ -27,6 +27,19 @@ model caminhoes {
   gastos                gastos[]
   pneus                 pneus[]
   ordens_coleta_envio   ordens_coleta_envio[]
+  caminhao_documentos   caminhao_documentos[]
+}
+
+model caminhao_documentos {
+  id            Int       @id @default(autoincrement())
+  caminhao_id   Int
+  nome_original String    @db.VarChar(255)
+  arquivo_path  String    @db.VarChar(500)
+  tamanho_bytes Int
+  criado_em     DateTime? @default(now()) @db.Timestamptz(6)
+  caminhoes     caminhoes @relation(fields: [caminhao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([caminhao_id])
 }
 
 model ordens_coleta_envio {

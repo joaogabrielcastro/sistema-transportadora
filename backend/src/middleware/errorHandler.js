@@ -104,11 +104,49 @@ export const errorHandler = (err, req, res, _next) => {
       });
     }
 
+    if (
+      err.code === "P1000" ||
+      /authentication failed/i.test(String(err.message))
+    ) {
+      return res.status(503).json({
+        success: false,
+        error:
+          "Falha ao autenticar no PostgreSQL. Ajuste DATABASE_URL em backend/.env (usuário e senha corretos) ou suba o banco de desenvolvimento com: npm run db:up",
+        code: err.code || "DB_AUTH_FAILED",
+      });
+    }
+
     // Fallback para outros códigos do Prisma
-    return res.status(400).json({
+    return res.status(503).json({
       success: false,
       error: "Não foi possível concluir a operação no banco de dados.",
       code: err.code,
+    });
+  }
+
+  if (err instanceof Prisma.PrismaClientInitializationError) {
+    const msg = String(err.message || "");
+    if (/authentication failed/i.test(msg) || err.errorCode === "P1000") {
+      return res.status(503).json({
+        success: false,
+        error:
+          "Falha ao conectar no PostgreSQL. Verifique DATABASE_URL em backend/.env ou execute npm run db:up na pasta backend.",
+        code: "DB_AUTH_FAILED",
+      });
+    }
+  }
+
+  if (err.statusCode === 400) {
+    return res.status(400).json({
+      success: false,
+      error: err.message || "Requisição inválida.",
+    });
+  }
+
+  if (err.statusCode === 404) {
+    return res.status(404).json({
+      success: false,
+      error: err.message || "Não encontrado.",
     });
   }
 

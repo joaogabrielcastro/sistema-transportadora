@@ -22,6 +22,9 @@ import itensChecklistRoutes from "./routes/itensChecklistRoutes.js";
 import tiposGastosRoutes from "./routes/tiposGastosRoutes.js";
 import reportsRoutes from "./routes/reportsRoutes.js";
 import ordemColetaRoutes from "./routes/ordemColetaRoutes.js";
+import { ensureUploadDirs } from "./utils/uploadPaths.js";
+
+ensureUploadDirs();
 
 const app = express();
 

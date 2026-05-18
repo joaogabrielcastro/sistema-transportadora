@@ -1,5 +1,6 @@
 // backend/src/controllers/caminhoesController.js
 import { CaminhaoService } from "../services/CaminhaoService.js";
+import { CaminhaoDocumentoService } from "../services/CaminhaoDocumentoService.js";
 import { caminhoesModel } from "../models/caminhoesModel.js";
 import {
   caminhaoSchema,
@@ -136,6 +137,10 @@ export const caminhoesController = {
   // Deletar caminhão com cascata (remove todos os registros relacionados)
   deleteCaminhaoWithCascade: catchAsync(async (req, res) => {
     const { placa } = req.params;
+    const caminhao = await caminhoesModel.getByPlaca(placa);
+    if (caminhao?.id) {
+      await CaminhaoDocumentoService.purgeCaminhao(caminhao.id);
+    }
     await caminhoesModel.deleteWithCascade(placa);
 
     res.status(204).send();

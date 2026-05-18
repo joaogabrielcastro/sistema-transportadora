@@ -117,14 +117,28 @@
             color: #333;
         }
         .bottom-band { 
-            position: absolute; 
-            bottom: 0; 
-            left: 0;
             width: 100%; 
             background-color: #1a1a1a; 
             color: #ffffff; 
             text-align: center; 
             padding: 10px 0; 
+            margin-top: 28px;
+            box-sizing: border-box;
+        }
+        @media print {
+            body {
+                position: relative;
+                min-height: 297mm;
+            }
+            .wrapper {
+                padding-bottom: 56px;
+            }
+            .bottom-band {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                margin-top: 0;
+            }
         }
         .bottom-band .main-line {
             font-size: 8pt;

@@ -1,0 +1,23 @@
+# Postgres para desenvolvimento (credenciais alinhadas ao backend/.env).
+# Porta 5433 no host evita conflito com outro PostgreSQL já na 5432.
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: transportadora_postgres_dev
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: transportadora_dev
+    volumes:
+      - transportadora_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d transportadora_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  transportadora_pgdata:

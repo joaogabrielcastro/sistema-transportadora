@@ -50,6 +50,16 @@ VITE_API_URL=http://localhost:3020
 
 Desenvolvimento local com Postgres via Docker: na raiz do projeto, `docker compose up -d` (porta **5433** no host; veja `backend/.env.example`).
 
+### Banco de produção já existente (erro P3005)
+
+Se `npx prisma migrate deploy` retornar *database schema is not empty*, o banco foi criado antes do histórico do Migrate. No backend:
+
+```bash
+npm run db:migrate
+```
+
+Isso marca migrações antigas como aplicadas e aplica só o que faltar (ex.: `caminhao_documentos`).
+
 ## Como Rodar
 
 ### Backend

@@ -221,22 +221,31 @@ export const useApi = () => {
 
       // Tentar extrair mensagem detalhada do backend
       if (err.response?.data) {
-        if (err.response.data.error) {
-          errorMessage = err.response.data.error;
-        } else if (err.response.data.message) {
-          errorMessage = err.response.data.message;
+        let payload = err.response.data;
+
+        // Requisições blob (ex.: PDF): erro 503 vem como Blob com JSON dentro
+        if (typeof Blob !== "undefined" && payload instanceof Blob) {
+          try {
+            const text = await payload.text();
+            payload = JSON.parse(text);
+          } catch {
+            payload = null;
+          }
+        }
+
+        if (payload?.error) {
+          errorMessage = payload.error;
+        } else if (payload?.message) {
+          errorMessage = payload.message;
         }
 
         // Se houver detalhes de validação (ex: Zod)
-        if (
-          err.response.data.details &&
-          Array.isArray(err.response.data.details)
-        ) {
+        if (payload?.details && Array.isArray(payload.details)) {
           // details pode ser array de strings (backend errorHandler) ou array de objetos (validation middleware)
-          if (typeof err.response.data.details[0] === "string") {
-            errorMessage += ": " + err.response.data.details.join(", ");
+          if (typeof payload.details[0] === "string") {
+            errorMessage += ": " + payload.details.join(", ");
             fieldErrors = Object.fromEntries(
-              err.response.data.details
+              payload.details
                 .map((line) => {
                   const idx = String(line).indexOf(":");
                   if (idx <= 0) return null;
@@ -248,7 +257,7 @@ export const useApi = () => {
             );
           } else {
             fieldErrors = Object.fromEntries(
-              err.response.data.details
+              payload.details
                 .map((d) => (d?.field ? [d.field, d.message] : null))
                 .filter(Boolean),
             );

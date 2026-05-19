@@ -149,6 +149,8 @@ export class OrdemColetaService {
         "--disable-dev-shm-usage",
         "--disable-gpu",
         "--font-render-hinting=none",
+        "--single-process",
+        "--no-zygote",
       ],
     };
 

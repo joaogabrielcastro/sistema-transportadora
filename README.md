@@ -61,7 +61,7 @@ O log `FROM ghcr.io/railwayapp/nixpacks` indica que o Coolify está usando **Nix
    - **Base Directory:** `.` (raiz) · **Dockerfile:** `Dockerfile` (copia `backend/`)
 4. **Remova** variáveis que forcem Nixpacks; mantenha `DATABASE_URL`, `PORT`, SMTP, etc.
 5. `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium` (já vem no Dockerfile; não use `chromium-browser`)
-6. Volume persistente: `/app/uploads` (PDFs dos caminhões)
+6. **Volume obrigatório** para PDFs dos caminhões: montar **`/app/uploads`** no container (Storage → Volume → mount path `/app/uploads`). Sem isso, a lista aparece no banco mas **Abrir** falha após redeploy — remova e envie os PDFs de novo após configurar o volume.
 7. **Redeploy** com “Clear build cache” / rebuild sem cache
 
 Variáveis mínimas: `DATABASE_URL`, `PORT` (ex.: 3020), SMTP se for enviar e-mail.

@@ -23,6 +23,7 @@ import tiposGastosRoutes from "./routes/tiposGastosRoutes.js";
 import reportsRoutes from "./routes/reportsRoutes.js";
 import ordemColetaRoutes from "./routes/ordemColetaRoutes.js";
 import { ensureUploadDirs } from "./utils/uploadPaths.js";
+import { getUploadsHealth } from "./utils/uploadsHealth.js";
 import { OrdemColetaService } from "./services/OrdemColetaService.js";
 
 ensureUploadDirs();
@@ -81,7 +82,8 @@ app.get("/", (req, res) => {
   });
 });
 
-app.get("/health", (req, res) => {
+app.get("/health", async (req, res) => {
+  const uploads = await getUploadsHealth();
   res.json({
     status: "healthy",
     timestamp: new Date().toISOString(),
@@ -90,6 +92,7 @@ app.get("/health", (req, res) => {
       chromiumPath: OrdemColetaService.resolvePuppeteerExecutable(),
       puppeteerEnv: process.env.PUPPETEER_EXECUTABLE_PATH || null,
     },
+    uploads,
   });
 });
 

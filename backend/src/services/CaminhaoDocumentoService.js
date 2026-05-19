@@ -6,12 +6,25 @@ import { CAMINHAO_DOCS_ROOT, caminhaoDocsDir } from "../utils/uploadPaths.js";
 
 const MAX_DOCS_PER_CAMINHAO = 30;
 
-const formatDoc = (row) => ({
+const absoluteFromRel = (relPath) =>
+  path.join(CAMINHAO_DOCS_ROOT, relPath.replace(/\\/g, "/"));
+
+const arquivoExiste = async (relPath) => {
+  try {
+    await fs.access(absoluteFromRel(relPath));
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const formatDoc = (row, arquivo_disponivel = true) => ({
   id: row.id,
   caminhao_id: row.caminhao_id,
   nome_original: row.nome_original,
   tamanho_bytes: row.tamanho_bytes,
   criado_em: row.criado_em,
+  arquivo_disponivel,
 });
 
 export class CaminhaoDocumentoService {
@@ -31,7 +44,13 @@ export class CaminhaoDocumentoService {
       where: { caminhao_id: caminhao.id },
       orderBy: { criado_em: "desc" },
     });
-    return rows.map(formatDoc);
+    const comDisponibilidade = await Promise.all(
+      rows.map(async (row) => {
+        const ok = await arquivoExiste(row.arquivo_path);
+        return formatDoc(row, ok);
+      }),
+    );
+    return comDisponibilidade;
   }
 
   static async upload(placa, files = []) {
@@ -96,12 +115,15 @@ export class CaminhaoDocumentoService {
       throw err;
     }
 
-    const absolute = path.join(CAMINHAO_DOCS_ROOT, doc.arquivo_path);
+    const absolute = absoluteFromRel(doc.arquivo_path);
     try {
       await fs.access(absolute);
     } catch {
-      const err = new Error("Arquivo do documento não encontrado no servidor");
+      const err = new Error(
+        "Arquivo do documento não encontrado no servidor. Isso costuma ocorrer após redeploy sem volume persistente em /app/uploads — configure o volume no Coolify e envie o PDF novamente, ou remova o registro e anexe de novo.",
+      );
       err.statusCode = 404;
+      err.code = "DOCUMENTO_ARQUIVO_AUSENTE";
       throw err;
     }
 
@@ -109,8 +131,20 @@ export class CaminhaoDocumentoService {
   }
 
   static async remover(placa, docId) {
-    const { doc, absolute } = await this.obterArquivo(placa, docId);
+    const caminhao = await this.resolveCaminhao(placa);
+    const doc = await prisma.caminhao_documentos.findFirst({
+      where: { id: Number(docId), caminhao_id: caminhao.id },
+    });
+
+    if (!doc) {
+      const err = new Error("Documento não encontrado");
+      err.statusCode = 404;
+      throw err;
+    }
+
     await prisma.caminhao_documentos.delete({ where: { id: doc.id } });
+
+    const absolute = absoluteFromRel(doc.arquivo_path);
     await fs.unlink(absolute).catch(() => {});
 
     const dir = caminhaoDocsDir(doc.caminhao_id);
@@ -132,7 +166,7 @@ export class CaminhaoDocumentoService {
     });
 
     for (const row of rows) {
-      const absolute = path.join(CAMINHAO_DOCS_ROOT, row.arquivo_path);
+      const absolute = absoluteFromRel(row.arquivo_path);
       await fs.unlink(absolute).catch(() => {});
     }
 

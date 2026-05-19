@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useApi, getApiBaseUrl } from "../hooks";
+import { useApi } from "../hooks";
 import { Button } from "./ui";
 
 const formatBytes = (bytes) => {
@@ -34,8 +34,32 @@ const CaminhaoDocumentos = ({ placa }) => {
     carregar();
   }, [carregar]);
 
-  const urlArquivo = (docId) =>
-    `${getApiBaseUrl()}/api/caminhoes/${encodeURIComponent(placa)}/documentos/${docId}/arquivo`;
+  const abrirPdf = async (doc) => {
+    if (doc.arquivo_disponivel === false) {
+      window.alert(
+        "O arquivo deste PDF não está mais no servidor (comum após redeploy sem volume em /app/uploads). Remova o item e envie o PDF novamente.",
+      );
+      return;
+    }
+
+    try {
+      const res = await request({
+        method: "GET",
+        url: `/caminhoes/${placa}/documentos/${doc.id}/arquivo`,
+        responseType: "blob",
+        skipSuccessToast: true,
+      });
+      const blob =
+        res?.data instanceof Blob
+          ? res.data
+          : new Blob([res?.data], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch {
+      /* toast do useApi */
+    }
+  };
 
   const handleUpload = async (event) => {
     const files = event.target.files;
@@ -118,16 +142,22 @@ const CaminhaoDocumentos = ({ placa }) => {
                   {doc.criado_em &&
                     ` · ${new Date(doc.criado_em).toLocaleString("pt-BR")}`}
                 </p>
+                {doc.arquivo_disponivel === false && (
+                  <p className="text-xs text-amber-700 mt-1">
+                    Arquivo ausente no servidor — remova e envie o PDF novamente.
+                  </p>
+                )}
               </div>
               <div className="flex gap-2 shrink-0">
-                <a
-                  href={urlArquivo(doc.id)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-lg border border-border text-text-primary hover:bg-gray-100"
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={doc.arquivo_disponivel === false}
+                  onClick={() => abrirPdf(doc)}
                 >
                   Abrir
-                </a>
+                </Button>
                 <Button
                   type="button"
                   variant="outline"

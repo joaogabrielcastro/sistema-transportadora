@@ -8,7 +8,13 @@ const backendRoot = path.join(
   "..",
 );
 
-export const UPLOADS_ROOT = path.join(backendRoot, "uploads");
+const defaultUploadsRoot = path.join(backendRoot, "uploads");
+
+/** Em produção (Coolify): monte volume em /app/uploads e opcionalmente UPLOADS_DIR=/app/uploads */
+export const UPLOADS_ROOT = process.env.UPLOADS_DIR
+  ? path.resolve(process.env.UPLOADS_DIR)
+  : defaultUploadsRoot;
+
 export const CAMINHAO_DOCS_ROOT = path.join(UPLOADS_ROOT, "caminhoes");
 
 export const ensureUploadDirs = () => {

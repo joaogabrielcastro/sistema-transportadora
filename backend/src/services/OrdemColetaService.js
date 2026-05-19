@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import puppeteer from "puppeteer";
 import nodemailer from "nodemailer";
 import prisma from "../lib/prisma.js";
@@ -114,36 +115,71 @@ export class OrdemColetaService {
   }
 
   static resolvePuppeteerExecutable() {
-    const fromEnv = (process.env.PUPPETEER_EXECUTABLE_PATH || "").trim();
-    if (fromEnv) return fromEnv;
-    if (process.platform === "linux") {
-      return "/usr/bin/chromium";
+    const candidates = [
+      process.env.PUPPETEER_EXECUTABLE_PATH,
+      "/usr/bin/chromium",
+      "/usr/bin/chromium-browser",
+      "/usr/bin/google-chrome-stable",
+    ]
+      .map((p) => (p || "").trim())
+      .filter(Boolean);
+
+    for (const p of candidates) {
+      if (fs.existsSync(p)) return p;
     }
-    return undefined;
+    return null;
   }
 
   static async htmlToPdfBuffer(html) {
-    const launchOpts = {
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-    };
     const executablePath = OrdemColetaService.resolvePuppeteerExecutable();
-    if (executablePath) {
-      launchOpts.executablePath = executablePath;
+    if (!executablePath) {
+      const err = new Error(
+        "Geração de PDF indisponível: Chromium não encontrado no servidor. Use o Dockerfile do backend ou defina PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium.",
+      );
+      err.statusCode = 503;
+      throw err;
     }
 
-    const browser = await puppeteer.launch(launchOpts);
+    const launchOpts = {
+      headless: true,
+      executablePath,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--font-render-hinting=none",
+      ],
+    };
+
+    let browser;
     try {
+      browser = await puppeteer.launch(launchOpts);
       const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: "networkidle0", timeout: 45_000 });
+      await page.emulateMediaType("print");
+      // HTML inline (base64/SVG): "load" é mais estável que networkidle0 em container
+      await page.setContent(html, { waitUntil: "load", timeout: 60_000 });
       const pdf = await page.pdf({
         format: "A4",
         printBackground: true,
         margin: { top: "14mm", bottom: "14mm", left: "12mm", right: "12mm" },
+        timeout: 60_000,
       });
       return pdf;
+    } catch (cause) {
+      logger.error("Falha ao gerar PDF com Puppeteer", {
+        message: cause?.message,
+        executablePath,
+      });
+      const err = new Error(
+        `Não foi possível gerar o PDF (${cause?.message || "erro no Chromium"}). Confira Chromium no container e PUPPETEER_EXECUTABLE_PATH.`,
+      );
+      err.statusCode = 503;
+      throw err;
     } finally {
-      await browser.close();
+      if (browser) {
+        await browser.close().catch(() => {});
+      }
     }
   }
 

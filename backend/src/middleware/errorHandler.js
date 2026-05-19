@@ -158,6 +158,16 @@ export const errorHandler = (err, req, res, _next) => {
     });
   }
 
+  const msg = String(err.message || "");
+  if (/puppeteer|chromium|browser process|Failed to launch/i.test(msg)) {
+    return res.status(503).json({
+      success: false,
+      error:
+        "Não foi possível gerar o PDF. Verifique se o Chromium está instalado no servidor (Dockerfile do backend) e PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium.",
+      code: "PDF_GENERATION_FAILED",
+    });
+  }
+
   // Erro de recurso não encontrado
   if (err.message === "Caminhão não encontrado") {
     return res.status(404).json({

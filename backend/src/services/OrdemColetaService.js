@@ -114,18 +114,40 @@ export class OrdemColetaService {
     return mergeTemplate(raw, vars);
   }
 
+  /** Ignora atalhos Snap (ex.: /usr/bin/chromium-browser no Ubuntu), inválidos em Docker. */
+  static isUsableChromiumPath(filePath) {
+    try {
+      if (!filePath || !fs.existsSync(filePath)) return false;
+      const stat = fs.statSync(filePath);
+      if (!stat.isFile()) return false;
+
+      const sample = fs
+        .readFileSync(filePath, { encoding: "utf8" })
+        .slice(0, 4096);
+      if (
+        /snap install chromium|chromium snap to be installed|requires the chromium snap/i.test(
+          sample,
+        )
+      ) {
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   static resolvePuppeteerExecutable() {
     const candidates = [
       process.env.PUPPETEER_EXECUTABLE_PATH,
       "/usr/bin/chromium",
-      "/usr/bin/chromium-browser",
       "/usr/bin/google-chrome-stable",
     ]
       .map((p) => (p || "").trim())
       .filter(Boolean);
 
     for (const p of candidates) {
-      if (fs.existsSync(p)) return p;
+      if (OrdemColetaService.isUsableChromiumPath(p)) return p;
     }
     return null;
   }
@@ -134,7 +156,7 @@ export class OrdemColetaService {
     const executablePath = OrdemColetaService.resolvePuppeteerExecutable();
     if (!executablePath) {
       const err = new Error(
-        "Geração de PDF indisponível: Chromium não encontrado no servidor. Use o Dockerfile do backend ou defina PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium.",
+        "Geração de PDF indisponível: Chromium não encontrado. Use o Dockerfile do backend (apt install chromium) e PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium — não use /usr/bin/chromium-browser (Snap).",
       );
       err.statusCode = 503;
       throw err;

@@ -8,7 +8,8 @@ RUN apt-get update \
     fonts-dejavu-core \
     ca-certificates \
   && rm -rf /var/lib/apt/lists/* \
-  && test -x /usr/bin/chromium
+  && test -x /usr/bin/chromium \
+  && ! head -c 200 /usr/bin/chromium | grep -qi snap
 
 WORKDIR /app
 

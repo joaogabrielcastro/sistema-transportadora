@@ -3,6 +3,7 @@
 NODE_ENV = "production"
 PRISMA_CLIENT_ENGINE_TYPE = "library"
 PUPPETEER_SKIP_DOWNLOAD = "true"
+# Nixpacks em Ubuntu pode expor snap em chromium-browser — prefira Dockerfile.
 PUPPETEER_EXECUTABLE_PATH = "/usr/bin/chromium"
 
 [phases.install]

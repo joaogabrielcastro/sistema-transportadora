@@ -1,0 +1,2 @@
+# NÃO use este arquivo no Coolify — ele força build Nixpacks (lento, falha com Puppeteer/Snap).
+# Use Build Pack = Dockerfile e backend/Dockerfile

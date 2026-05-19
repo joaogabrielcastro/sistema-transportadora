@@ -52,10 +52,19 @@ Desenvolvimento local com Postgres via Docker: na raiz do projeto, `docker compo
 
 ### Deploy do backend (Coolify)
 
-- **Base directory:** `backend`
-- Preferir **Dockerfile** (`backend/Dockerfile`) em vez de Nixpacks, se o build falhar no `npm ci`.
-- Variáveis: `DATABASE_URL`, `PORT`, `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium` (já no Dockerfile).
-- Volume persistente em `uploads/` para PDFs dos caminhões.
+O log `FROM ghcr.io/railwayapp/nixpacks` indica que o Coolify está usando **Nixpacks** (build longo, costuma dar timeout). Troque para **Dockerfile**.
+
+1. Serviço da API → **Configuration** → **Build**
+2. **Build Pack / Build Type:** `Dockerfile` (não Nixpacks, não Nixpacks/Railpack automático)
+3. Uma das opções:
+   - **Base Directory:** `backend` · **Dockerfile:** `Dockerfile`
+   - **Base Directory:** `.` (raiz) · **Dockerfile:** `Dockerfile` (copia `backend/`)
+4. **Remova** variáveis que forcem Nixpacks; mantenha `DATABASE_URL`, `PORT`, SMTP, etc.
+5. `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium` (já vem no Dockerfile; não use `chromium-browser`)
+6. Volume persistente: `/app/uploads` (PDFs dos caminhões)
+7. **Redeploy** com “Clear build cache” / rebuild sem cache
+
+Variáveis mínimas: `DATABASE_URL`, `PORT` (ex.: 3020), SMTP se for enviar e-mail.
 
 ### Banco de produção já existente (erro P3005)
 

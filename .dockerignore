@@ -1,0 +1,8 @@
+node_modules
+frontend
+.git
+.env
+*.md
+backend/node_modules
+backend/uploads
+backend/.env

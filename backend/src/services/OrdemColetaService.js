@@ -148,10 +148,11 @@ export class OrdemColetaService {
 
   static buildHtml(tipo, vars) {
     const raw = pickTemplate(tipo);
-    return mergeTemplate(raw, {
-      ...vars,
-      assinatura_carimbo_padrao: ASSINATURA_CARIMBO_PADRAO_HTML,
-    });
+    const extras =
+      tipo === "CANOINHAS"
+        ? { assinatura_carimbo_padrao: ASSINATURA_CARIMBO_PADRAO_HTML }
+        : {};
+    return mergeTemplate(raw, { ...vars, ...extras });
   }
 
   /** Ignora atalhos Snap (ex.: /usr/bin/chromium-browser no Ubuntu), inválidos em Docker. */
@@ -257,6 +258,7 @@ export class OrdemColetaService {
       host,
       port,
       secure: config.mail.smtpSecure,
+      requireTLS: !config.mail.smtpSecure && port === 587,
       auth:
         config.mail.smtpUser && config.mail.smtpPass
           ? { user: config.mail.smtpUser, pass: config.mail.smtpPass }

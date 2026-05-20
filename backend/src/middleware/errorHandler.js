@@ -33,6 +33,46 @@ const formatP2002Message = (meta) => {
   );
 };
 
+/** Erros do Nodemailer / Microsoft 365 — mensagem clara para o usuário. */
+const resolveSmtpError = (err) => {
+  const msg = String(err?.message || err?.response || "");
+  const code = err?.code || "";
+
+  if (
+    /smtp_auth_disabled|SmtpClientAuthentication is disabled/i.test(msg)
+  ) {
+    return {
+      status: 503,
+      error:
+        "O Microsoft 365 bloqueou o envio SMTP nesta caixa de e-mail. Um administrador do domínio precisa habilitar “SMTP autenticado” para logistica@abrottotransportes.com.br no centro de administração M365 (Exchange → caixa de correio → autenticação SMTP). Guia: https://aka.ms/smtp_auth_disabled",
+      code: "SMTP_AUTH_DISABLED",
+    };
+  }
+
+  if (
+    code === "EAUTH" ||
+    /535|Invalid login|Authentication unsuccessful/i.test(msg)
+  ) {
+    return {
+      status: 503,
+      error:
+        "Falha ao autenticar no servidor de e-mail. Confira SMTP_USER e SMTP_PASS no Coolify (use senha de aplicativo se a conta tiver verificação em duas etapas) e se o SMTP autenticado está habilitado na caixa.",
+      code: "SMTP_AUTH_FAILED",
+    };
+  }
+
+  if (/ECONNECTION|ETIMEDOUT|ESOCKET|getaddrinfo/i.test(msg)) {
+    return {
+      status: 503,
+      error:
+        "Não foi possível conectar ao servidor SMTP. Verifique SMTP_HOST e SMTP_PORT (Microsoft 365: smtp.office365.com, porta 587).",
+      code: "SMTP_CONNECTION_FAILED",
+    };
+  }
+
+  return null;
+};
+
 const friendlyServerMessage = (req) => {
   // Mensagem padrão mais amigável, sem expor detalhes internos
   const action =
@@ -194,6 +234,15 @@ export const errorHandler = (err, req, res, _next) => {
     return res.status(400).json({
       success: false,
       error: err.message,
+    });
+  }
+
+  const smtp = resolveSmtpError(err);
+  if (smtp) {
+    return res.status(smtp.status).json({
+      success: false,
+      error: smtp.error,
+      code: smtp.code,
     });
   }
 

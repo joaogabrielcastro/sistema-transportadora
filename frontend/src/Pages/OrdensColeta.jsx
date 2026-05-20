@@ -3,9 +3,8 @@ import { saveAs } from "file-saver";
 import { useApi, useCaminhoes } from "../hooks";
 import { Card, Button, Alert, FormField } from "../components/ui";
 import {
-  ORDEM_COLETA_CAMPOS_PADRAO,
-  ORDEM_COLETA_CAMPOS_AUTORIZACAO_COMPACTA,
   buildEmptyDadosVariaveis,
+  camposFormularioPorTipo,
 } from "../utils/ordemColetaFields.js";
 
 /** `CANOINHAS` mantém o id na API/BD por compatibilidade; na interface é “autorização compacta”, um exemplo de layout, não a regra para todos. */
@@ -42,15 +41,10 @@ const OrdensColeta = () => {
   const [pagination, setPagination] = useState(null);
   const [localError, setLocalError] = useState("");
 
-  const camposFormulario = useMemo(() => {
-    if (tipo === "CANOINHAS") {
-      return [
-        ...ORDEM_COLETA_CAMPOS_PADRAO,
-        ...ORDEM_COLETA_CAMPOS_AUTORIZACAO_COMPACTA,
-      ];
-    }
-    return ORDEM_COLETA_CAMPOS_PADRAO;
-  }, [tipo]);
+  const camposFormulario = useMemo(
+    () => camposFormularioPorTipo(tipo),
+    [tipo],
+  );
 
   const hintTipoSelecionado = useMemo(
     () => tipos.find((t) => t.id === tipo)?.hint,
@@ -78,9 +72,9 @@ const OrdensColeta = () => {
   }, [carregarHistorico]);
 
   const buildPayload = useCallback(() => {
-    const dv = { ...dadosVariaveis };
+    const dv = {};
     camposFormulario.forEach((c) => {
-      if (dv[c.key] == null) dv[c.key] = "";
+      dv[c.key] = dadosVariaveis[c.key] ?? "";
     });
     return {
       tipo,

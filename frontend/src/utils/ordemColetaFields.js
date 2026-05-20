@@ -34,25 +34,32 @@ export const ORDEM_COLETA_CAMPOS_PADRAO = [
   },
 ];
 
-/** Campos extras do template “autorização compacta” (referência: formulário de um cliente real; personalize o HTML para cada tomador). */
+/**
+ * Campos do PDF “autorização compacta” (placeholders em autorizacao_coleta_compacta.html).
+ * Motorista, placa e carretas vêm do caminhão selecionado.
+ */
 export const ORDEM_COLETA_CAMPOS_AUTORIZACAO_COMPACTA = [
-  { key: "razao_social", label: "Tomador — razão social" },
+  { key: "razao_social", label: "Cliente — razão social" },
   {
     key: "cliente_endereco_linha1",
-    label: "Tomador — endereço (linha 1, ex.: rua e bairro)",
+    label: "Cliente — endereço (linha 1, ex.: rua e bairro)",
   },
   {
     key: "cliente_endereco_linha2",
-    label: "Tomador — cidade / UF / CEP (linha 2)",
+    label: "Cliente — cidade / UF / CEP (linha 2)",
   },
-  { key: "fornecedor_nome", label: "Fornecedor / local de retirada (nome)" },
+  { key: "fornecedor_nome", label: "Fornecedor / local de retirada" },
   { key: "fornecedor_cnpj", label: "Fornecedor — CNPJ" },
   { key: "fornecedor_endereco", label: "Fornecedor — endereço completo" },
-  { key: "numero_autorizacao", label: "Número da autorização (opcional)" },
-  { key: "cnpj", label: "CNPJ (campo genérico, se usar em outro trecho)" },
-  { key: "validade_ate", label: "Válido até", type: "date" },
-  { key: "finalidade_coleta", label: "Finalidade da coleta" },
+  { key: "motorista_cpf", label: "CPF do motorista" },
+  { key: "telefone_coleta", label: "Celular do motorista" },
+  { key: "data_coleta_prevista", label: "Data agendada da coleta", type: "date" },
 ];
+
+export const camposFormularioPorTipo = (tipo) =>
+  tipo === "CANOINHAS"
+    ? ORDEM_COLETA_CAMPOS_AUTORIZACAO_COMPACTA
+    : ORDEM_COLETA_CAMPOS_PADRAO;
 
 export const buildEmptyDadosVariaveis = () => {
   const all = [

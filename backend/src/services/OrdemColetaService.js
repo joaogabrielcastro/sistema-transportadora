@@ -8,6 +8,7 @@ import { logger } from "../utils/logger.js";
 import { config } from "../config/index.js";
 import { ORDEM_COLETA_PADRAO_HTML } from "../templates/ordemColetaPadraoHtml.js";
 import { ORDEM_COLETA_CANOINHAS_HTML } from "../templates/ordemColetaCanoinhasHtml.js";
+import { ASSINATURA_CARIMBO_PADRAO_HTML } from "../templates/assinaturaCarimboPadrao.js";
 
 const str = (v) => {
   if (v == null) return "";
@@ -147,7 +148,10 @@ export class OrdemColetaService {
 
   static buildHtml(tipo, vars) {
     const raw = pickTemplate(tipo);
-    return mergeTemplate(raw, vars);
+    return mergeTemplate(raw, {
+      ...vars,
+      assinatura_carimbo_padrao: ASSINATURA_CARIMBO_PADRAO_HTML,
+    });
   }
 
   /** Ignora atalhos Snap (ex.: /usr/bin/chromium-browser no Ubuntu), inválidos em Docker. */

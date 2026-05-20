@@ -66,6 +66,16 @@ O log `FROM ghcr.io/railwayapp/nixpacks` indica que o Coolify está usando **Nix
 
 Variáveis mínimas: `DATABASE_URL`, `PORT` (ex.: 3020), SMTP se for enviar e-mail.
 
+### Deploy do frontend (Coolify)
+
+1. Serviço do site → **Build** → **Build Pack:** `Dockerfile`
+2. **Base Directory:** `frontend` · **Dockerfile:** `Dockerfile`
+3. **Porta exposta no container:** `80` (nginx)
+4. **Build argument** (obrigatório em produção): `VITE_API_URL=https://api-abbroto.jwsoftware.com.br` (URL da API **sem** `/api` no final)
+5. Redeploy
+
+Se aparecer `open Dockerfile: no such file or directory`, a base directory não é `frontend` ou o Dockerfile ainda não foi enviado ao repositório.
+
 ### Banco de produção já existente (erro P3005)
 
 Se `npx prisma migrate deploy` retornar *database schema is not empty*, o banco foi criado antes do histórico do Migrate. No backend:

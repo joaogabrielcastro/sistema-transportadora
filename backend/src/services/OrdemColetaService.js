@@ -179,8 +179,16 @@ export class OrdemColetaService {
   }
 
   static resolvePuppeteerExecutable() {
+    let fromPuppeteer = "";
+    try {
+      fromPuppeteer = puppeteer.executablePath();
+    } catch {
+      /* Chrome do Puppeteer ainda não instalado (ex.: dev local sem browsers install) */
+    }
+
     const candidates = [
       process.env.PUPPETEER_EXECUTABLE_PATH,
+      fromPuppeteer,
       "/usr/bin/chromium",
       "/usr/bin/google-chrome-stable",
     ]
@@ -197,7 +205,7 @@ export class OrdemColetaService {
     const executablePath = OrdemColetaService.resolvePuppeteerExecutable();
     if (!executablePath) {
       const err = new Error(
-        "Geração de PDF indisponível: Chromium não encontrado. Use o Dockerfile do backend (apt install chromium) e PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium — não use /usr/bin/chromium-browser (Snap).",
+        "Geração de PDF indisponível: Chrome/Chromium não encontrado. No Docker, use o Dockerfile do backend; localmente: npx puppeteer browsers install chrome.",
       );
       err.statusCode = 503;
       throw err;

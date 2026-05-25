@@ -203,7 +203,7 @@ export const errorHandler = (err, req, res, _next) => {
     return res.status(503).json({
       success: false,
       error:
-        "Não foi possível gerar o PDF. Verifique se o Chromium está instalado no servidor (Dockerfile do backend) e PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium.",
+        "Não foi possível gerar o PDF. Verifique o Chrome do Puppeteer no container (rebuild do Dockerfile) ou rode: npx puppeteer browsers install chrome.",
       code: "PDF_GENERATION_FAILED",
     });
   }

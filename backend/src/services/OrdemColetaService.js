@@ -9,6 +9,7 @@ import { config } from "../config/index.js";
 import { ORDEM_COLETA_PADRAO_HTML } from "../templates/ordemColetaPadraoHtml.js";
 import { ORDEM_COLETA_CANOINHAS_HTML } from "../templates/ordemColetaCanoinhasHtml.js";
 import { ASSINATURA_CARIMBO_PADRAO_HTML } from "../templates/assinaturaCarimboPadrao.js";
+import { resolveChromeExecutable } from "../utils/resolveChromeExecutable.js";
 
 const str = (v) => {
   if (v == null) return "";
@@ -155,50 +156,8 @@ export class OrdemColetaService {
     return mergeTemplate(raw, { ...vars, ...extras });
   }
 
-  /** Ignora atalhos Snap (ex.: /usr/bin/chromium-browser no Ubuntu), inválidos em Docker. */
-  static isUsableChromiumPath(filePath) {
-    try {
-      if (!filePath || !fs.existsSync(filePath)) return false;
-      const stat = fs.statSync(filePath);
-      if (!stat.isFile()) return false;
-
-      const sample = fs
-        .readFileSync(filePath, { encoding: "utf8" })
-        .slice(0, 4096);
-      if (
-        /snap install chromium|chromium snap to be installed|requires the chromium snap/i.test(
-          sample,
-        )
-      ) {
-        return false;
-      }
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
   static resolvePuppeteerExecutable() {
-    let fromPuppeteer = "";
-    try {
-      fromPuppeteer = puppeteer.executablePath();
-    } catch {
-      /* Chrome do Puppeteer ainda não instalado (ex.: dev local sem browsers install) */
-    }
-
-    const candidates = [
-      process.env.PUPPETEER_EXECUTABLE_PATH,
-      fromPuppeteer,
-      "/usr/bin/chromium",
-      "/usr/bin/google-chrome-stable",
-    ]
-      .map((p) => (p || "").trim())
-      .filter(Boolean);
-
-    for (const p of candidates) {
-      if (OrdemColetaService.isUsableChromiumPath(p)) return p;
-    }
-    return null;
+    return resolveChromeExecutable();
   }
 
   static async htmlToPdfBuffer(html) {

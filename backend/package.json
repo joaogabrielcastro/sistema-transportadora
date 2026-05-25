@@ -4,8 +4,8 @@
   "description": "Sistema de Transportadora - Backend API",
   "main": "server.js",
   "scripts": {
-    "postinstall": "node -e \"process.env.PRISMA_CLIENT_ENGINE_TYPE='library'; require('child_process').execSync('npx prisma generate', { stdio: 'inherit' })\"",
-    "prestart": "node -e \"process.env.PRISMA_CLIENT_ENGINE_TYPE='library'; const cp=require('child_process'); cp.execSync('npx prisma generate', { stdio: 'inherit' }); cp.execSync('node scripts/baseline-and-deploy.mjs', { stdio: 'inherit' });\"",
+    "postinstall": "node -e \"process.env.PRISMA_CLIENT_ENGINE_TYPE='library'; require('child_process').execSync('npx prisma generate', { stdio: 'inherit' })\" && node scripts/ensure-chrome.mjs",
+    "prestart": "node -e \"process.env.PRISMA_CLIENT_ENGINE_TYPE='library'; const cp=require('child_process'); cp.execSync('npx prisma generate', { stdio: 'inherit' }); cp.execSync('node scripts/baseline-and-deploy.mjs', { stdio: 'inherit' });\" && node scripts/ensure-chrome.mjs",
     "dev": "node --watch server.js",
     "db:up": "docker compose -f ../docker-compose.yml up -d",
     "db:down": "docker compose -f ../docker-compose.yml down",

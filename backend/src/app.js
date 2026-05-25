@@ -91,6 +91,7 @@ app.get("/health", async (req, res) => {
     pdf: {
       chromiumPath: OrdemColetaService.resolvePuppeteerExecutable(),
       puppeteerEnv: process.env.PUPPETEER_EXECUTABLE_PATH || null,
+      puppeteerCacheDir: process.env.PUPPETEER_CACHE_DIR || null,
     },
     uploads,
   });

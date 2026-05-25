@@ -51,7 +51,8 @@ ENV PUPPETEER_SKIP_DOWNLOAD=true
 
 COPY . .
 
-RUN mkdir -p uploads/caminhoes
+RUN mkdir -p uploads/caminhoes \
+  && node -e "import { resolveChromeExecutable } from './src/utils/resolveChromeExecutable.js'; const p=resolveChromeExecutable(); if(!p) { console.error('Chrome do Puppeteer não encontrado no build'); process.exit(1); } console.log('Chrome OK:', p);"
 
 EXPOSE 3020
 

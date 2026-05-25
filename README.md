@@ -60,7 +60,7 @@ O log `FROM ghcr.io/railwayapp/nixpacks` indica que o Coolify está usando **Nix
    - **Base Directory:** `backend` · **Dockerfile:** `Dockerfile`
    - **Base Directory:** `.` (raiz) · **Dockerfile:** `Dockerfile` (copia `backend/`)
 4. **Remova** variáveis que forcem Nixpacks; mantenha `DATABASE_URL`, `PORT`, SMTP, etc.
-5. **Não** defina `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium` — o Dockerfile instala o Chrome do Puppeteer (imagem menor; evita falha no passo *exporting layers* por falta de RAM).
+5. **Remova** `PUPPETEER_EXECUTABLE_PATH` do Coolify (se estiver `/usr/bin/chromium`, o PDF quebra). O Dockerfile + `prestart` instalam o Chrome em `/app/.cache/puppeteer`. Confira em `/health` → `pdf.chromiumPath` com caminho válido.
 6. **Volume obrigatório** para PDFs dos caminhões: montar **`/app/uploads`** no container (Storage → Volume → mount path `/app/uploads`). Sem isso, a lista aparece no banco mas **Abrir** falha após redeploy — remova e envie os PDFs de novo após configurar o volume.
 7. **Redeploy** com “Clear build cache” / rebuild sem cache. Se o build ainda falhar no export, aumente RAM/swap do servidor (≥ 4 GB recomendado no build).
 

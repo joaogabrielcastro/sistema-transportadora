@@ -42,7 +42,8 @@ ENV NODE_ENV=production \
 COPY backend/package.json backend/package-lock.json backend/prisma.config.ts ./
 COPY backend/prisma ./prisma/
 
-RUN npm ci --omit=dev \
+RUN npm ci --omit=dev --ignore-scripts \
+  && npx prisma generate \
   && PUPPETEER_SKIP_DOWNLOAD=false npx puppeteer browsers install chrome
 
 ENV PUPPETEER_SKIP_DOWNLOAD=true

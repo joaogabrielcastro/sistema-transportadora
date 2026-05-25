@@ -43,8 +43,9 @@ ENV NODE_ENV=production \
 COPY package.json package-lock.json prisma.config.ts ./
 COPY prisma ./prisma/
 
-# Baixa Chrome headless do Puppeteer (evita imagem gigante do apt chromium)
-RUN npm ci --omit=dev \
+# --ignore-scripts: postinstall rodaria ensure-chrome antes do COPY do código
+RUN npm ci --omit=dev --ignore-scripts \
+  && npx prisma generate \
   && PUPPETEER_SKIP_DOWNLOAD=false npx puppeteer browsers install chrome
 
 ENV PUPPETEER_SKIP_DOWNLOAD=true

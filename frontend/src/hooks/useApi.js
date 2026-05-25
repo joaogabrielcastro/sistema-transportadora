@@ -121,8 +121,12 @@ api.interceptors.response.use(
     logger.error("API Error:", error);
 
     if (error.code === "ECONNABORTED") {
+      const url = String(error.config?.url || "");
+      const isOrdemPdfOuEmail = /ordem-coleta\/(enviar|pdf)/.test(url);
       throw new Error(
-        "Servidor demorando para responder. O backend pode estar iniciando (isso pode levar até 1 minuto). Tente novamente em alguns segundos.",
+        isOrdemPdfOuEmail
+          ? "Gerar PDF e enviar e-mail pode levar até 2 minutos. Aguarde e tente de novo uma vez — evite clicar várias vezes no botão."
+          : "Servidor demorando para responder. O backend pode estar iniciando. Tente novamente em alguns segundos.",
       );
     }
 

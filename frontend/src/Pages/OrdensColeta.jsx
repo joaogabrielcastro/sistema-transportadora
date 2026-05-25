@@ -111,6 +111,7 @@ const OrdensColeta = () => {
         data: buildPayload(),
         responseType: "blob",
         skipSuccessToast: true,
+        timeout: 120_000,
       });
       const blob = res?.data;
       if (!(blob instanceof Blob)) {
@@ -131,11 +132,15 @@ const OrdensColeta = () => {
       return;
     }
     try {
-      await post("/ordem-coleta/enviar", {
-        ...buildPayload(),
-        emailDestinatario: emailDestinatario.trim(),
-        assunto: assunto.trim() || undefined,
-      });
+      await post(
+        "/ordem-coleta/enviar",
+        {
+          ...buildPayload(),
+          emailDestinatario: emailDestinatario.trim(),
+          assunto: assunto.trim() || undefined,
+        },
+        { timeout: 120_000 },
+      );
       await carregarHistorico();
     } catch {
       /* toast já exibido pelo useApi */

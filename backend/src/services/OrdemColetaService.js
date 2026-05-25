@@ -226,6 +226,9 @@ export class OrdemColetaService {
       port,
       secure: config.mail.smtpSecure,
       requireTLS: !config.mail.smtpSecure && port === 587,
+      connectionTimeout: 20_000,
+      greetingTimeout: 20_000,
+      socketTimeout: 25_000,
       auth:
         config.mail.smtpUser && config.mail.smtpPass
           ? { user: config.mail.smtpUser, pass: config.mail.smtpPass }
@@ -333,9 +336,13 @@ export class OrdemColetaService {
   static async fluxoEnviar(parsed) {
     OrdemColetaService.assertMailConfigured();
 
+    logger.info("Ordem enviar: montando documento", { tipo: parsed.tipo });
     const vars = await OrdemColetaService.mergeVars(parsed);
     const html = OrdemColetaService.buildHtml(parsed.tipo, vars);
+
+    logger.info("Ordem enviar: gerando PDF");
     const pdfBuffer = await OrdemColetaService.htmlToPdfBuffer(html);
+    logger.info("Ordem enviar: PDF pronto", { bytes: pdfBuffer?.length ?? 0 });
     const prefix = OrdemColetaService.filenamePrefix(parsed.tipo);
     const filename = `${prefix}_${Date.now()}.pdf`;
     const assunto =
@@ -352,6 +359,9 @@ export class OrdemColetaService {
     const tipoLegivel =
       parsed.tipo === "CANOINHAS" ? "Autorização compacta" : "Ordem de coleta";
     try {
+      logger.info("Ordem enviar: enviando SMTP", {
+        to: parsed.emailDestinatario,
+      });
       await OrdemColetaService.enviarEmailComAnexo({
         to: parsed.emailDestinatario,
         subject: assunto,

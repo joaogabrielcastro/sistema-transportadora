@@ -163,16 +163,6 @@ const OrdensColeta = () => {
           <h1 className="text-2xl font-bold text-gray-800">
             Ordens de coleta e autorizações
           </h1>
-          <p className="text-gray-600 mt-1">
-            O fluxo principal é a ordem de coleta (modelo genérico). A autorização compacta
-            veio de um exemplo real de cliente (Canoinhas) e serve só de referência — não define
-            regra para os demais; adapte o HTML por tomador. Substitua ou duplique os layouts em{" "}
-            <code className="text-sm bg-gray-200 px-1 rounded">
-              backend/src/templates/html
-            </code>
-            , com placeholders{" "}
-            <code className="text-sm bg-gray-200 px-1 rounded">{"{{campo}}"}</code>.
-          </p>
         </div>
 
         {localError && (

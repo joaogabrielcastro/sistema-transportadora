@@ -10,7 +10,12 @@ export default defineConfig({
       registerType: "autoUpdate",
       injectRegister: "auto",
       workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
+        // HTML fora do precache: navegação busca index.html na rede após deploy
+        globPatterns: ["**/*.{js,css,ico,png,svg,woff2}"],
+        navigateFallback: "index.html",
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
       },
       includeAssets: [
         "favicon.ico",

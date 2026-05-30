@@ -91,8 +91,8 @@ const retryRequest = async (fn, retries = 3, delay = 1000) => {
   } catch (error) {
     if (retries === 0) throw error;
 
-    // Não fazer retry em erros de validação (4xx exceto 408, 429)
-    if (error.response?.status >= 400 && error.response?.status < 500) {
+    // Não repetir em 4xx (exceto 408/429) nem em 5xx
+    if (error.response?.status >= 400) {
       if (error.response.status !== 408 && error.response.status !== 429) {
         throw error;
       }

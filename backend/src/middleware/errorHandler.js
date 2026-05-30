@@ -2,6 +2,7 @@
 import { logger } from "../utils/logger.js";
 import prismaClientPkg from "@prisma/client";
 import { ZodError } from "zod";
+import { formatZodIssueLines } from "../utils/zodIssues.js";
 
 const { Prisma } = prismaClientPkg;
 
@@ -96,13 +97,14 @@ export const errorHandler = (err, req, res, _next) => {
     bodyKeys: req.body && typeof req.body === "object" ? Object.keys(req.body) : null,
   });
 
-  // Erro de validação do Zod
-  if (err instanceof ZodError && Array.isArray(err.errors)) {
+  // Erro de validação do Zod (v4: issues; legado: errors)
+  if (err instanceof ZodError) {
+    const details = formatZodIssueLines(err);
     return res.status(400).json({
       success: false,
       error: "Erro de validação nos dados enviados",
       code: "VALIDATION_ERROR",
-      details: err.errors.map((e) => `${e.path.join(".")}: ${e.message}`),
+      details: details.length ? details : [err.message],
     });
   }
 

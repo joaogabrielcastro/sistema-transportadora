@@ -8,13 +8,17 @@ const dataStringSchema = z
   );
 
 export const gastoSchema = z.object({
-  caminhao_id: z.number().int().positive().optional().nullable(),
-  tipo_gasto_id: z.number().int().positive().optional().nullable(),
+  caminhao_id: z.coerce.number().int().positive(),
+  tipo_gasto_id: z.coerce.number().int().positive(),
   data_gasto: dataStringSchema,
-  valor: z.number().nonnegative(),
+  valor: z.coerce.number().nonnegative(),
   descricao: z.string().optional().nullable(),
-  km_registro: z.number().int().positive().optional().nullable(),
-  quantidade_combustivel: z.number().nonnegative().optional().nullable(),
+  km_registro: z.coerce.number().int().positive().optional().nullable(),
+  quantidade_combustivel: z.coerce
+    .number()
+    .nonnegative()
+    .optional()
+    .nullable(),
 });
 
 export const gastoUpdateSchema = gastoSchema.partial();

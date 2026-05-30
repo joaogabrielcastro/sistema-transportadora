@@ -1,6 +1,7 @@
 // backend/src/middleware/validation.js
 import { z } from "zod";
 import { logger } from "../utils/logger.js";
+import { getZodIssues } from "../utils/zodIssues.js";
 
 export const validateRequest = (schema) => {
   return (req, res, next) => {
@@ -17,16 +18,19 @@ export const validateRequest = (schema) => {
       logger.warn("Validation failed", {
         path: req.path,
         method: req.method,
-        errors: error.errors,
+        issues: getZodIssues(error),
       });
 
+      const issues = getZodIssues(error);
       return res.status(400).json({
         success: false,
         error: "Dados inválidos",
-        details: error.errors?.map((err) => ({
-          field: err.path.join("."),
-          message: err.message,
-        })) || [{ message: error.message }],
+        details: issues.length
+          ? issues.map((issue) => ({
+              field: Array.isArray(issue.path) ? issue.path.join(".") : "",
+              message: issue.message,
+            }))
+          : [{ message: error.message }],
       });
     }
   };
@@ -34,12 +38,13 @@ export const validateRequest = (schema) => {
 
 export const handleValidationError = (error, req, res, next) => {
   if (error instanceof z.ZodError) {
+    const issues = getZodIssues(error);
     return res.status(400).json({
       success: false,
       error: "Dados inválidos",
-      details: error.errors.map((err) => ({
-        field: err.path.join("."),
-        message: err.message,
+      details: issues.map((issue) => ({
+        field: Array.isArray(issue.path) ? issue.path.join(".") : "",
+        message: issue.message,
       })),
     });
   }

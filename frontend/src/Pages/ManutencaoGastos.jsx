@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useApi } from "../hooks/useApi";
+import { useToast } from "../components/ui/useToast.js";
 import {
   Card,
   Button,
@@ -535,6 +536,7 @@ const HistoricoRegistros = ({
 
 const ManutencaoGastos = () => {
   const { get, post, put, delete: del, clearCache } = useApi();
+  const toast = useToast();
   const [caminhoes, setCaminhoes] = useState([]);
   const [itensChecklist, setItensChecklist] = useState([]);
   const [tiposGastos, setTiposGastos] = useState([]);
@@ -673,13 +675,34 @@ const ManutencaoGastos = () => {
     setSubmitting(true);
 
     try {
-      const caminhaoId = parseInt(form.caminhao_id);
+      const caminhaoId = parseInt(form.caminhao_id, 10);
       const newKm = form.km_registro ? parseInt(form.km_registro, 10) : null;
 
+      if (!Number.isFinite(caminhaoId) || caminhaoId <= 0) {
+        throw new Error("Selecione um caminhão.");
+      }
+      if (!form.tipo_id) {
+        throw new Error(
+          form.tipo === "gasto"
+            ? "Selecione o tipo de gasto."
+            : "Selecione o item de manutenção.",
+        );
+      }
+      if (!form.valor || Number.isNaN(parseFloat(String(form.valor).replace(",", ".")))) {
+        throw new Error("Informe um valor válido.");
+      }
+      if (!form.data) {
+        throw new Error("Informe a data.");
+      }
+
       if (form.tipo === "gasto") {
+        const tipoGastoId = parseInt(form.tipo_id, 10);
+        if (!Number.isFinite(tipoGastoId) || tipoGastoId <= 0) {
+          throw new Error("Selecione o tipo de gasto.");
+        }
         const payload = {
           caminhao_id: caminhaoId,
-          tipo_gasto_id: parseInt(form.tipo_id),
+          tipo_gasto_id: tipoGastoId,
           valor: parseFloat(String(form.valor).replace(",", ".")),
           data_gasto: form.data,
           descricao: form.observacao,
@@ -690,9 +713,13 @@ const ManutencaoGastos = () => {
         };
         await post("/gastos", payload);
       } else {
+        const itemId = parseInt(form.tipo_id, 10);
+        if (!Number.isFinite(itemId) || itemId <= 0) {
+          throw new Error("Selecione o item de manutenção.");
+        }
         const payload = {
           caminhao_id: caminhaoId,
-          item_id: parseInt(form.tipo_id),
+          item_id: itemId,
           data_manutencao: form.data,
           observacao: form.observacao,
           valor: parseFloat(String(form.valor).replace(",", ".")),
@@ -740,6 +767,9 @@ const ManutencaoGastos = () => {
       });
     } catch (err) {
       console.error("Erro ao cadastrar registro:", err);
+      if (!err?.response) {
+        toast.error(err.message || "Não foi possível salvar o registro.");
+      }
     } finally {
       setSubmitting(false);
     }

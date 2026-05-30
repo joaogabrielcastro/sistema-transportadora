@@ -72,9 +72,13 @@ Variáveis mínimas: `DATABASE_URL`, `PORT` (ex.: 3020), SMTP se for enviar e-ma
 2. **Base Directory:** `frontend` · **Dockerfile:** `Dockerfile`
 3. **Porta exposta no container:** `80` (nginx)
 4. **Build argument** (obrigatório em produção): `VITE_API_URL=https://api-abbroto.jwsoftware.com.br` (URL da API **sem** `/api` no final)
-5. Redeploy
+5. Redeploy com **Clear build cache**
 
 Se aparecer `open Dockerfile: no such file or directory`, a base directory não é `frontend` ou o Dockerfile ainda não foi enviado ao repositório.
+
+**502 Bad Gateway** no site com API saudável (`/health` 200): o container do frontend está parado ou com porta errada — não é causado por limpar storage do navegador. Checklist completo: [`docs/COOLIFY-CHECKLIST.md`](docs/COOLIFY-CHECKLIST.md).
+
+**Versão antiga em alguns PCs:** PWA/service worker + cache do nginx; após redeploy, peça para fechar todas as abas do domínio ou limpar service worker (ver checklist).
 
 ### Banco de produção já existente (erro P3005)
 

@@ -63,11 +63,17 @@ export const ordemColetaController = {
     if (!parsed.success) {
       return badRequest(res, parsed.error.issues);
     }
-    const result = await OrdemColetaService.fluxoEnviar(parsed.data);
-    res.status(201).json({
+    const result = await OrdemColetaService.iniciarEnvioAssincrono(parsed.data);
+    res.status(202).json({
       success: true,
       data: result,
-      message: "E-mail enviado com sucesso.",
+      message:
+        "Envio enfileirado. O PDF será gerado e o e-mail enviado em segundo plano.",
     });
+  }),
+
+  statusEnvio: catchAsync(async (req, res) => {
+    const status = await OrdemColetaService.consultarStatusEnvio(req.params.id);
+    res.status(200).json({ success: true, data: status });
   }),
 };

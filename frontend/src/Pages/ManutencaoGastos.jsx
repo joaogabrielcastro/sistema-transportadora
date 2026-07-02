@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useApi } from "../hooks/useApi";
+import { useApi, useManutencaoGastosQueries } from "../hooks";
 import { useToast } from "../components/ui/useToast.js";
-import { extractApiArray } from "../utils/extractApiArray.js";
 import ConfirmModal from "../components/ConfirmModal";
 import {
   Card,
   Button,
   LoadingSpinner,
   FormField,
+  Alert,
 } from "../components/ui";
 
 const StatusBadge = ({ tipo }) => {
@@ -547,12 +547,19 @@ const HistoricoRegistros = ({
 
 const ManutencaoGastos = () => {
   const navigate = useNavigate();
-  const { get, post, put, delete: del, clearCache } = useApi();
+  const { post, put, delete: del } = useApi();
   const toast = useToast();
-  const [caminhoes, setCaminhoes] = useState([]);
-  const [itensChecklist, setItensChecklist] = useState([]);
-  const [tiposGastos, setTiposGastos] = useState([]);
-  const [registros, setRegistros] = useState([]);
+
+  const {
+    caminhoes,
+    itensChecklist,
+    tiposGastos,
+    registros,
+    listaTruncada,
+    isLoading: loading,
+    refetch,
+  } = useManutencaoGastosQueries();
+
   const [filtroPlaca, setFiltroPlaca] = useState("");
   const [registroSelecionado, setRegistroSelecionado] = useState(null);
   const [form, setForm] = useState({
@@ -566,83 +573,11 @@ const ManutencaoGastos = () => {
     km_registro: "",
     quantidade_combustivel: "",
   });
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
   const ID_TIPO_GASTO_COMBUSTIVEL = 9;
-
-  const listaParams = { params: { page: 1, limit: 200 }, skipLoading: true };
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-
-    try {
-      const [caminhoesRes, itensRes, tiposRes, gastosRes, checklistRes] =
-        await Promise.all([
-          get("/caminhoes", listaParams),
-          get("/itens-checklist", { skipLoading: true }),
-          get("/tipos-gastos", { skipLoading: true }),
-          get("/gastos", listaParams),
-          get("/checklist", listaParams),
-        ]);
-
-      const caminhoesData = extractApiArray(caminhoesRes);
-      const itensData = extractApiArray(itensRes);
-      const tiposData = extractApiArray(tiposRes);
-      const gastosData = extractApiArray(gastosRes);
-      const checklistData = extractApiArray(checklistRes);
-
-      // Formatando dados
-      const gastosFormatados = (
-        Array.isArray(gastosData) ? gastosData : []
-      ).map((g) => ({
-        ...g,
-        tipo_registro: "Gasto",
-        nome_tipo: g.tipos_gastos?.nome_tipo,
-        placa: g.caminhoes?.placa,
-        data: g.data_gasto,
-        observacao: g.descricao,
-        oficina: "N/A",
-        km_registro: g.km_registro || "N/A",
-        quantidade_combustivel: g.quantidade_combustivel || "N/A",
-      }));
-
-      const checklistFormatados = (
-        Array.isArray(checklistData) ? checklistData : []
-      ).map((c) => ({
-        ...c,
-        tipo_registro: "Manutenção",
-        nome_tipo: c.itens_checklist?.nome_item,
-        placa: c.caminhoes?.placa,
-        data: c.data_manutencao,
-        valor: c.valor || "N/A",
-        observacao: c.observacao,
-        oficina: c.oficina || "N/A",
-        km_registro: c.km_manutencao || "N/A",
-        quantidade_combustivel: "N/A",
-      }));
-
-      setCaminhoes(caminhoesData);
-      setItensChecklist(itensData);
-      setTiposGastos(tiposData);
-
-      const todosRegistros = [...gastosFormatados, ...checklistFormatados].sort(
-        (a, b) => new Date(b.data) - new Date(a.data)
-      );
-
-      setRegistros(todosRegistros);
-    } catch (err) {
-      console.error("Erro ao carregar dados:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [get]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -751,14 +686,7 @@ const ManutencaoGastos = () => {
         }
       }
 
-      // Invalidar cache e recarregar dados
-      try {
-        clearCache();
-      } catch (cErr) {
-        console.warn("Erro ao limpar cache:", cErr);
-      }
-
-      await fetchData();
+      await refetch();
 
       // Resetar formulário
       setForm({
@@ -807,16 +735,6 @@ const ManutencaoGastos = () => {
         await del(`/gastos/${id}`);
       }
 
-      setRegistros((prev) =>
-        prev.filter((r) => !(r.id === id && r.tipo_registro === tipo)),
-      );
-
-      try {
-        clearCache();
-      } catch (cErr) {
-        console.warn("Erro ao limpar cache:", cErr);
-      }
-
       toast.success("Registro excluído com sucesso.");
       setDeleteTarget(null);
     } catch (err) {
@@ -843,6 +761,14 @@ const ManutencaoGastos = () => {
             Controle completo de gastos e manutenções da frota
           </p>
         </div>
+
+        {listaTruncada && (
+          <Alert
+            type="warning"
+            className="mb-6"
+            message={`O histórico completo tem mais de ${API_CONFIG.LIST_MAX} registros. Exibindo os ${API_CONFIG.LIST_MAX} mais recentes de gastos e manutenções.`}
+          />
+        )}
 
         {/* Formulário */}
         <RegistroForm

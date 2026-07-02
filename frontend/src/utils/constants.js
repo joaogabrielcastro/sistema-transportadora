@@ -135,6 +135,7 @@ export const API_CONFIG = {
   TIMEOUT: 10000,
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 1000,
+  LIST_MAX: 200,
 };
 
 // Regex patterns

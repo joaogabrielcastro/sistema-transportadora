@@ -1,5 +1,6 @@
 import prisma from "../lib/prisma.js";
 import { serializePrisma } from "../utils/prismaSerialization.js";
+import { MAX_LIST_LIMIT } from "../utils/listLimits.js";
 
 const gastoInclude = {
   caminhoes: {
@@ -56,20 +57,31 @@ export const gastosModel = {
     return serializePrisma(data);
   },
 
-  getByCaminhaoId: async (caminhaoId) => {
-    const data = await prisma.gastos.findMany({
-      where: { caminhao_id: parseId(caminhaoId) },
-      include: {
-        tipos_gastos: {
-          select: {
-            nome_tipo: true,
+  getByCaminhaoId: async (caminhaoId, { limit = MAX_LIST_LIMIT } = {}) => {
+    const where = { caminhao_id: parseId(caminhaoId) };
+
+    const [data, total] = await prisma.$transaction([
+      prisma.gastos.findMany({
+        where,
+        include: {
+          tipos_gastos: {
+            select: {
+              nome_tipo: true,
+            },
           },
         },
-      },
-      orderBy: { data_gasto: "desc" },
-    });
+        orderBy: { data_gasto: "desc" },
+        take: limit,
+      }),
+      prisma.gastos.count({ where }),
+    ]);
 
-    return serializePrisma(data);
+    return {
+      data: serializePrisma(data),
+      total,
+      limit,
+      truncated: total > data.length,
+    };
   },
 
   update: async (id, gastoData) => {
@@ -105,6 +117,7 @@ export const gastosModel = {
         quantidade_combustivel: true,
       },
       orderBy: { km_registro: "desc" },
+      take: 50,
     });
 
     return serializePrisma(data);

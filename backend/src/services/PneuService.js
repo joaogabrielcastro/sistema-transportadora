@@ -96,6 +96,11 @@ export class PneuService {
   }
 
   static async updatePneu(id, data) {
+    const existing = await pneusModel.getById(id);
+    if (!existing) {
+      throw new Error("Pneu não encontrado");
+    }
+
     const pneuAtualizado = await pneusModel.update(id, data);
 
     if (data.km_instalacao) {
@@ -111,15 +116,29 @@ export class PneuService {
     return pneuAtualizado;
   }
 
-  static async getAll(params) {
+  static async getAll(params = {}) {
+    const { limit } = params;
     if (params?.caminhaoId) {
-      return await pneusModel.getByCaminhaoId(params.caminhaoId);
+      return await pneusModel.getByCaminhaoId(params.caminhaoId, { limit });
     }
-    return await pneusModel.getAll();
+    return await pneusModel.getAll({ limit });
   }
 
-  static async getInStock() {
-    return await pneusModel.getInStock();
+  static async listPaginated(options = {}) {
+    return pneusModel.listPaginated(options);
+  }
+
+  static buildPagination(page, limit, count) {
+    return {
+      currentPage: page,
+      totalPages: Math.max(1, Math.ceil(count / limit)),
+      totalItems: count,
+      itemsPerPage: limit,
+    };
+  }
+
+  static async getInStock(options = {}) {
+    return await pneusModel.getInStock(options);
   }
 
   static async getById(id) {
@@ -127,6 +146,10 @@ export class PneuService {
   }
 
   static async delete(id) {
+    const existing = await pneusModel.getById(id);
+    if (!existing) {
+      throw new Error("Pneu não encontrado");
+    }
     return await pneusModel.delete(id);
   }
 }

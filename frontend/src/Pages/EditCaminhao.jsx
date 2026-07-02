@@ -7,6 +7,7 @@ import {
   Button,
   FormField,
   LoadingSpinner,
+  Alert,
 } from "../components/ui";
 
 const EditCaminhao = () => {
@@ -67,7 +68,9 @@ const EditCaminhao = () => {
       setCarretas(carretasArray.length > 0 ? carretasArray : [""]);
     } catch (err) {
       console.error("Erro ao carregar:", err);
-      setError("Erro ao carregar dados do caminhão.");
+      setError(
+        err?.message || "Não foi possível carregar os dados deste caminhão.",
+      );
     } finally {
       setLoading(false);
     }
@@ -227,6 +230,26 @@ const EditCaminhao = () => {
   };
 
   if (loading) return <LoadingSpinner fullScreen />;
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
+        <div className="max-w-2xl mx-auto space-y-4">
+          <Alert
+            type="error"
+            title="Caminhão não encontrado"
+            message={error}
+          />
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={() => navigate(-1)}>
+              Voltar
+            </Button>
+            <Button onClick={() => navigate("/")}>Ir para início</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8 flex justify-center">

@@ -8,6 +8,7 @@ import {
 import { z } from "zod";
 import { catchAsync } from "../utils/catchAsync.js";
 import { normalizeDatesForDb } from "../utils/dates.js";
+import { parseListLimit } from "../utils/listLimits.js";
 
 export const pneusController = {
   createPneu: catchAsync(async (req, res) => {
@@ -50,7 +51,26 @@ export const pneusController = {
 
   // Listar pneus em estoque
   getInStockPneus: catchAsync(async (req, res) => {
-    const pneus = await PneuService.getInStock();
+    const pageParam = req.query.page;
+    if (pageParam !== undefined) {
+      const page = Math.max(1, parseInt(pageParam, 10) || 1);
+      const limit = parseListLimit(req.query.limit, 20);
+      const { data, count, meta } = await PneuService.listPaginated({
+        page,
+        limit,
+        emUso: false,
+        includeStockStatusCounts: true,
+      });
+      return res.status(200).json({
+        success: true,
+        data,
+        meta,
+        pagination: PneuService.buildPagination(page, limit, count),
+      });
+    }
+
+    const limit = parseListLimit(req.query.limit);
+    const pneus = await PneuService.getInStock({ limit });
     res.status(200).json({ success: true, data: pneus });
   }),
 
@@ -77,8 +97,35 @@ export const pneusController = {
   }),
 
   getAllPneus: catchAsync(async (req, res) => {
+    const pageParam = req.query.page;
+    if (pageParam !== undefined) {
+      const page = Math.max(1, parseInt(pageParam, 10) || 1);
+      const limit = parseListLimit(req.query.limit, 20);
+      const emUso =
+        req.query.emUso === "true"
+          ? true
+          : req.query.emUso === "false"
+            ? false
+            : undefined;
+      const { caminhaoId, placa } = req.query;
+      const placaFiltro = placa ? String(placa).trim() : undefined;
+      const { data, count } = await PneuService.listPaginated({
+        page,
+        limit,
+        caminhaoId,
+        emUso,
+        placa: placaFiltro,
+      });
+      return res.status(200).json({
+        success: true,
+        data,
+        pagination: PneuService.buildPagination(page, limit, count),
+      });
+    }
+
     const { caminhaoId } = req.query;
-    const pneus = await PneuService.getAll({ caminhaoId });
+    const limit = parseListLimit(req.query.limit);
+    const pneus = await PneuService.getAll({ caminhaoId, limit });
     res.status(200).json({ success: true, data: pneus });
   }),
 
@@ -93,7 +140,11 @@ export const pneusController = {
 
   // Mantido para compatibilidade
   getPneusByCaminhao: catchAsync(async (req, res) => {
-    const pneus = await PneuService.getAll({ caminhaoId: req.params.id });
+    const limit = parseListLimit(req.query.limit);
+    const pneus = await PneuService.getAll({
+      caminhaoId: req.params.id,
+      limit,
+    });
     res.status(200).json({ success: true, data: pneus });
   }),
 

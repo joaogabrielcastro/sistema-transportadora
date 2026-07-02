@@ -215,7 +215,8 @@ export const errorHandler = (err, req, res, _next) => {
     err.message === "Caminhão não encontrado" ||
     err.message === "Gasto não encontrado" ||
     err.message === "Item de checklist não encontrado" ||
-    err.message === "Pneu não encontrado"
+    err.message === "Pneu não encontrado" ||
+    err.message === "Envio não encontrado"
   ) {
     return res.status(404).json({
       success: false,

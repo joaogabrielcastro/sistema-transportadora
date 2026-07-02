@@ -1,8 +1,7 @@
 // src/pages/EditPneu.jsx
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useApi } from "../hooks/useApi";
-import { extractApiArray, extractApiData } from "../utils/extractApiArray.js";
+import { useApi, useEditPneuQuery } from "../hooks";
 import {
   Card,
   Button,
@@ -14,7 +13,13 @@ import {
 const EditPneu = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { get, put } = useApi();
+  const { put } = useApi();
+
+  const {
+    data,
+    isLoading: loading,
+    error: queryError,
+  } = useEditPneuQuery(id);
 
   const [formData, setFormData] = useState({
     caminhao_id: "",
@@ -30,58 +35,32 @@ const EditPneu = () => {
   const [caminhoes, setCaminhoes] = useState([]);
   const [posicoes, setPosicoes] = useState([]);
   const [statusList, setStatusList] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [loadError, setLoadError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
 
+  const loadError = queryError?.message || null;
+
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setLoadError(null);
+    if (!data) return;
 
-      try {
-        const [pneuRes, caminhoesRes, posicoesRes, statusRes] =
-          await Promise.all([
-            get(`/pneus/${id}`),
-            get("/caminhoes"),
-            get("/posicoes-pneus"),
-            get("/status-pneus"),
-          ]);
-
-        const pneuData = extractApiData(pneuRes);
-        const caminhoesData = extractApiArray(caminhoesRes);
-        const posicoesData = extractApiArray(posicoesRes);
-        const statusData = extractApiArray(statusRes);
-
-        setFormData({
-          caminhao_id: pneuData.caminhao_id || "",
-          posicao_id: pneuData.posicao_id || "",
-          status_id: pneuData.status_id || "",
-          vida_util_km: pneuData.vida_util_km || "",
-          marca: pneuData.marca || "",
-          modelo: pneuData.modelo || "",
-          data_instalacao: pneuData.data_instalacao
-            ? new Date(pneuData.data_instalacao).toISOString().split("T")[0]
-            : "",
-          km_instalacao: pneuData.km_instalacao || "",
-          observacao: pneuData.observacao || "",
-        });
-
-        setCaminhoes(caminhoesData);
-        setPosicoes(posicoesData);
-        setStatusList(statusData);
-      } catch (err) {
-        console.error("Erro completo:", err);
-        setLoadError(
-          err?.message || "Não foi possível carregar os dados deste pneu.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [id, get]);
+    const pneuData = data.pneu;
+    setFormData({
+      caminhao_id: pneuData.caminhao_id || "",
+      posicao_id: pneuData.posicao_id || "",
+      status_id: pneuData.status_id || "",
+      vida_util_km: pneuData.vida_util_km || "",
+      marca: pneuData.marca || "",
+      modelo: pneuData.modelo || "",
+      data_instalacao: pneuData.data_instalacao
+        ? new Date(pneuData.data_instalacao).toISOString().split("T")[0]
+        : "",
+      km_instalacao: pneuData.km_instalacao || "",
+      observacao: pneuData.observacao || "",
+    });
+    setCaminhoes(data.caminhoes);
+    setPosicoes(data.posicoes);
+    setStatusList(data.statusList);
+  }, [data, id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

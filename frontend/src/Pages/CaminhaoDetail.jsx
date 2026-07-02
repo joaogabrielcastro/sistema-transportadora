@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useApi } from "../hooks/useApi";
+import { useCaminhaoDetailQuery } from "../hooks";
 import { Card, Button, LoadingSpinner, Alert } from "../components/ui";
 import CaminhaoDocumentos from "../components/CaminhaoDocumentos";
-import { extractApiArray, extractApiData } from "../utils/extractApiArray.js";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -58,68 +57,22 @@ const StatCard = ({ icon, value, label, color = "blue" }) => {
 const CaminhaoDetail = () => {
   const { placa } = useParams();
   const navigate = useNavigate();
-  const { get } = useApi();
 
-  const [caminhao, setCaminhao] = useState(null);
-  const [gastos, setGastos] = useState([]);
-  const [checklists, setChecklists] = useState([]);
-  const [pneus, setPneus] = useState([]);
-  const [consumoKmPorLitro, setConsumoKmPorLitro] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { data, isLoading: loading, error } = useCaminhaoDetailQuery(placa);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const caminhao = data?.caminhao ?? null;
+  const gastos = data?.gastos ?? [];
+  const checklists = data?.checklists ?? [];
+  const pneus = data?.pneus ?? [];
+  const consumoKmPorLitro = data?.consumoKmPorLitro ?? null;
+  const listTruncation = data?.listTruncation ?? {
+    gastos: false,
+    checklists: false,
+    gastosTotal: 0,
+    checklistsTotal: 0,
+  };
 
-    try {
-      const caminhaoRes = await get(`/caminhoes/${placa}`);
-      const caminhaoData = extractApiData(caminhaoRes);
-      setCaminhao(caminhaoData);
-
-      if (caminhaoData && caminhaoData.id) {
-        const [gastosRes, checklistRes, pneusRes, consumoRes] =
-          await Promise.all([
-            get(`/gastos/caminhao/${caminhaoData.id}`),
-            get(`/checklist/caminhao/${caminhaoData.id}`),
-            get(`/pneus/caminhao/${caminhaoData.id}`),
-            get(`/gastos/consumo/${caminhaoData.id}`),
-          ]);
-
-        const gastosData = extractApiArray(gastosRes);
-        const checklistData = extractApiArray(checklistRes);
-        const pneusData = extractApiArray(pneusRes);
-        const consumoData = extractApiArray(consumoRes);
-
-        setGastos(gastosData);
-        setChecklists(checklistData);
-        setPneus(pneusData);
-
-        if (consumoData && consumoData.length > 1) {
-          const ultimo = consumoData[0];
-          const penultimo = consumoData[1];
-          const kmRodado = ultimo.km_registro - penultimo.km_registro;
-          const litros = parseFloat(ultimo.quantidade_combustivel);
-
-          if (litros > 0 && kmRodado > 0) {
-            setConsumoKmPorLitro((kmRodado / litros).toFixed(2));
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Erro ao carregar dados:", err);
-      setCaminhao(null);
-      setError(
-        err?.message || "Não foi possível carregar os dados deste caminhão.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [get, placa]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const loadError = error?.message || null;
 
   const todosRegistros = useMemo(() => {
     const gastosFormatados = gastos.map((g) => ({
@@ -309,7 +262,7 @@ const CaminhaoDetail = () => {
 
   if (loading) return <LoadingSpinner fullScreen />;
 
-  if (error || !caminhao) {
+  if (loadError || !caminhao) {
     return (
       <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
         <div className="max-w-2xl mx-auto space-y-4">
@@ -317,7 +270,7 @@ const CaminhaoDetail = () => {
             type="error"
             title="Caminhão não encontrado"
             message={
-              error ||
+              loadError ||
               `Não encontramos um caminhão com a placa "${placa}".`
             }
           />
@@ -359,6 +312,24 @@ const CaminhaoDetail = () => {
             </Button>
           </div>
         </div>
+
+        {(listTruncation.gastos || listTruncation.checklists) && (
+          <Alert
+            type="warning"
+            className="mb-6"
+            message={`Exibindo os ${API_CONFIG.LIST_MAX} registros mais recentes. Total no banco: ${
+              listTruncation.gastos
+                ? `${listTruncation.gastosTotal} gasto(s)`
+                : ""
+            }${
+              listTruncation.gastos && listTruncation.checklists ? " e " : ""
+            }${
+              listTruncation.checklists
+                ? `${listTruncation.checklistsTotal} manutenção(ões)`
+                : ""
+            }.`}
+          />
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useApi } from "../hooks/useApi.js";
 import { extractApiArray } from "../utils/extractApiArray.js";
+import { API_CONFIG } from "../utils/constants.js";
 import {
   Card,
   Button,
@@ -38,9 +39,10 @@ const PneuAtribuir = () => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
+      const listParams = { params: { limit: API_CONFIG.LIST_MAX } };
       const [pRes, cRes, posRes, statusRes] = await Promise.all([
-        get("/pneus/in-stock"),
-        get("/caminhoes"),
+        get("/pneus/in-stock", listParams),
+        get("/caminhoes", listParams),
         get("/posicoes-pneus"),
         get("/status-pneus"),
       ]);

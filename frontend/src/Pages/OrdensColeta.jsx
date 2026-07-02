@@ -1,8 +1,14 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { saveAs } from "file-saver";
-import { useApi, useCaminhoes } from "../hooks";
+import {
+  useApi,
+  useCaminhoesListQuery,
+  useOrdemColetaHistoricoQuery,
+} from "../hooks";
+import { extractApiData } from "../utils/extractApiArray.js";
 import Pagination from "../components/Pagination.jsx";
 import { Card, Button, Alert, FormField } from "../components/ui";
+import { useToast } from "../components/ui/useToast.js";
 import {
   buildEmptyDadosVariaveis,
   camposFormularioPorTipo,
@@ -26,23 +32,33 @@ const labelTipoHistorico = (tipoApi) => {
 
 const OrdensColeta = () => {
   const { get, post, request } = useApi();
+  const toast = useToast();
+
   const {
-    caminhoes,
-    loading: loadingCaminhoes,
+    data: caminhoesPage,
+    isLoading: loadingCaminhoes,
     error: erroCaminhoes,
-    fetchAll: fetchCaminhoes,
-  } = useCaminhoes();
+  } = useCaminhoesListQuery({ page: 1, limit: 200 });
+
+  const caminhoes = caminhoesPage?.data ?? [];
+
   const [tipo, setTipo] = useState("PADRAO");
   const [placa, setPlaca] = useState("");
   const [dadosVariaveis, setDadosVariaveis] = useState(buildEmptyDadosVariaveis);
   const [emailDestinatario, setEmailDestinatario] = useState("");
   const [assunto, setAssunto] = useState("");
   const [previewHtml, setPreviewHtml] = useState("");
-  const [historico, setHistorico] = useState([]);
-  const [pagination, setPagination] = useState(null);
   const [historicoPage, setHistoricoPage] = useState(1);
   const [actionLoading, setActionLoading] = useState(null);
   const [localError, setLocalError] = useState("");
+
+  const {
+    data: historicoData,
+    refetch: refetchHistorico,
+  } = useOrdemColetaHistoricoQuery(historicoPage);
+
+  const historico = historicoData?.rows ?? [];
+  const pagination = historicoData?.pagination ?? null;
 
   const camposFormulario = useMemo(
     () => camposFormularioPorTipo(tipo),
@@ -53,32 +69,6 @@ const OrdensColeta = () => {
     () => tipos.find((t) => t.id === tipo)?.hint,
     [tipo],
   );
-
-  const carregarHistorico = useCallback(
-    async (page) => {
-      try {
-        const res = await get(
-          `/ordem-coleta/historico?page=${page}&limit=15`,
-          { skipLoading: true },
-        );
-        setHistorico(Array.isArray(res.data) ? res.data : []);
-        setPagination(res.pagination || null);
-      } catch {
-        setHistorico([]);
-      }
-    },
-    [get],
-  );
-
-  useEffect(() => {
-    void carregarHistorico(historicoPage);
-  }, [historicoPage, carregarHistorico]);
-
-  useEffect(() => {
-    void fetchCaminhoes().catch(() => {
-      /* erro já tratado pelo useApi (toast) */
-    });
-  }, [fetchCaminhoes]);
 
   const buildPayload = useCallback(() => {
     const dv = {};
@@ -148,18 +138,57 @@ const OrdensColeta = () => {
     }
     setActionLoading("enviar");
     try {
-      await post(
+      const res = await post(
         "/ordem-coleta/enviar",
         {
           ...buildPayload(),
           emailDestinatario: emailDestinatario.trim(),
           assunto: assunto.trim() || undefined,
         },
-        { timeout: 120_000 },
+        { timeout: 30_000, skipSuccessToast: true },
       );
-      await carregarHistorico(1);
-    } catch {
-      /* toast já exibido pelo useApi */
+
+      const jobId = extractApiData(res)?.id;
+      if (!jobId) {
+        throw new Error("Resposta inválida ao enfileirar o envio.");
+      }
+
+      toast.info(
+        "Gerando PDF e enviando e-mail em segundo plano. Aguarde alguns instantes…",
+      );
+
+      const maxAttempts = 90;
+      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        const statusRes = await get(`/ordem-coleta/envio/${jobId}`, {
+          skipLoading: true,
+          skipSuccessToast: true,
+        });
+        const status = extractApiData(statusRes);
+
+        if (status?.status === "sent") {
+          toast.success("E-mail enviado com sucesso.");
+          setHistoricoPage(1);
+          await refetchHistorico();
+          return;
+        }
+
+        if (status?.status === "failed") {
+          throw new Error(
+            status.error ||
+              "Falha ao enviar o e-mail. Verifique SMTP no servidor.",
+          );
+        }
+      }
+
+      throw new Error(
+        "O envio ainda está em processamento. Confira o histórico em alguns minutos.",
+      );
+    } catch (e) {
+      setLocalError(e.message || "Falha ao enviar o e-mail.");
+      if (!e?.response) {
+        toast.error(e.message || "Falha ao enviar o e-mail.");
+      }
     } finally {
       setActionLoading(null);
     }
@@ -244,7 +273,8 @@ const OrdensColeta = () => {
                   " Nenhum caminhão cadastrado no sistema."}
                 {erroCaminhoes && (
                   <span className="text-danger block mt-1">
-                    Não foi possível carregar a frota: {erroCaminhoes}
+                    Não foi possível carregar a frota:{" "}
+                    {erroCaminhoes.message || String(erroCaminhoes)}
                   </span>
                 )}
               </p>
@@ -350,15 +380,17 @@ const OrdensColeta = () => {
                       <td className="py-2 pr-4">{row.email_destinatario}</td>
                       <td className="py-2 pr-4">{row.caminhao_placa || "—"}</td>
                       <td className="py-2 pr-4">
-                        {row.enviado_em ? (
+                        {row.status === "sent" || row.enviado_em ? (
                           <span className="text-green-700">Enviado</span>
-                        ) : (
+                        ) : row.status === "failed" || row.erro_envio ? (
                           <span
                             className="text-red-600"
                             title={row.erro_envio || ""}
                           >
                             Falha
                           </span>
+                        ) : (
+                          <span className="text-amber-700">Processando…</span>
                         )}
                       </td>
                     </tr>

@@ -1,9 +1,13 @@
 // src/pages/Pneus.jsx
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { useApi } from "../hooks/useApi";
-import { extractApiArray } from "../utils/extractApiArray.js";
-import ConfirmModal from "../components/ConfirmModal";
+import {
+  useApi,
+  useCaminhoesListQuery,
+  usePneusEmUsoQuery,
+} from "../hooks";
+import { API_CONFIG } from "../utils/constants.js";import ConfirmModal from "../components/ConfirmModal";
+import Pagination from "../components/Pagination.jsx";
 import {
   Card,
   LoadingSpinner,
@@ -225,43 +229,36 @@ const PneusTable = ({
   );
 };
 
+const PNEUS_PAGE_SIZE = 20;
+
 const Pneus = () => {
-  const { get, delete: del } = useApi();
-  const [caminhoes, setCaminhoes] = useState([]);
-  const [pneus, setPneus] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { delete: del } = useApi();
   const [filtroPlaca, setFiltroPlaca] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const { data: caminhoesPage } = useCaminhoesListQuery({
+    page: 1,
+    limit: API_CONFIG.LIST_MAX,
+  });
 
-    try {
-      // Busca caminhoes e pneus
-      const [caminhoesRes, pneusRes] = await Promise.all([
-        get("/caminhoes"),
-        get("/pneus"),
-      ]);
+  const {
+    data: pneusPage,
+    isLoading: loading,
+  } = usePneusEmUsoQuery({
+    page: currentPage,
+    limit: PNEUS_PAGE_SIZE,
+    placa: filtroPlaca.trim() || undefined,
+  });
 
-      setCaminhoes(extractApiArray(caminhoesRes));
-
-      const allPneus = extractApiArray(pneusRes);
-      // Filtra apenas pneus que têm caminhão associado (Em uso)
-      const pneusEmUso = allPneus.filter((p) => p.caminhao_id !== null);
-
-      setPneus(pneusEmUso);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [get]);
+  const caminhoes = caminhoesPage?.data ?? [];
+  const pneus = pneusPage?.data ?? [];
+  const pagination = pneusPage?.pagination ?? null;
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
+    setCurrentPage(1);
+  }, [filtroPlaca]);
   const handleDeleteClick = (id) => {
     const pneu = pneus.find((p) => p.id === id);
     setDeleteTarget({
@@ -278,9 +275,7 @@ const Pneus = () => {
     setDeleting(true);
     try {
       await del(`/pneus/${deleteTarget.id}`);
-      setDeleteTarget(null);
-      fetchData();
-    } catch (err) {
+      setDeleteTarget(null);    } catch (err) {
       console.error(err);
     } finally {
       setDeleting(false);
@@ -314,6 +309,14 @@ const Pneus = () => {
           filtroPlaca={filtroPlaca}
           onFiltroChange={(e) => setFiltroPlaca(e.target.value)}
         />
+
+        {pagination && pagination.totalPages > 1 && (
+          <Pagination
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
 
       <ConfirmModal

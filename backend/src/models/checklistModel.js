@@ -1,5 +1,6 @@
 import prisma from "../lib/prisma.js";
 import { serializePrisma } from "../utils/prismaSerialization.js";
+import { MAX_LIST_LIMIT } from "../utils/listLimits.js";
 
 const checklistInclude = {
   caminhoes: {
@@ -56,20 +57,31 @@ export const checklistModel = {
     return serializePrisma(data);
   },
 
-  getByCaminhaoId: async (caminhaoId) => {
-    const data = await prisma.checklist.findMany({
-      where: { caminhao_id: parseId(caminhaoId) },
-      include: {
-        itens_checklist: {
-          select: {
-            nome_item: true,
+  getByCaminhaoId: async (caminhaoId, { limit = MAX_LIST_LIMIT } = {}) => {
+    const where = { caminhao_id: parseId(caminhaoId) };
+
+    const [data, total] = await prisma.$transaction([
+      prisma.checklist.findMany({
+        where,
+        include: {
+          itens_checklist: {
+            select: {
+              nome_item: true,
+            },
           },
         },
-      },
-      orderBy: { data_manutencao: "desc" },
-    });
+        orderBy: { data_manutencao: "desc" },
+        take: limit,
+      }),
+      prisma.checklist.count({ where }),
+    ]);
 
-    return serializePrisma(data);
+    return {
+      data: serializePrisma(data),
+      total,
+      limit,
+      truncated: total > data.length,
+    };
   },
 
   update: async (id, checklistData) => {

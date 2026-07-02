@@ -1,301 +1,72 @@
 // frontend/src/hooks/useApi.js
 import { useState, useCallback, useRef } from "react";
-import axios from "axios";
 import logger from "../utils/logger";
 import { useToast } from "../components/ui/useToast.js";
+import {
+  api,
+  apiFetch,
+  getApiBaseUrl,
+  parseApiError,
+} from "../lib/apiClient.js";
+import { queryClient } from "../lib/queryClient.js";
 
-// Cache simples em memória
-const cache = new Map();
-// REDUZIDO: De 5 min para 0 (Desativado por padrão para evitar dados obsoletos)
-// Para ativar, passe { cache: true } na config da requisição
-const DEFAULT_CACHE_TTL = 0;
+export { api, getApiBaseUrl };
 
-// Configuração da API
-const apiBaseUrlRaw =
-  import.meta.env.VITE_API_URL ||
-  `${window.location.protocol}//${window.location.hostname}:3000`;
-
-const apiToken = (import.meta.env.VITE_API_TOKEN || "").trim();
-
-// Se `VITE_API_URL` já vier com `/api` no final, evitamos criar `/api/api/...`.
-const apiBaseUrl = String(apiBaseUrlRaw).replace(/\/api\/?$/i, "");
-
-/** URL base da API (sem `/api`), para mensagens de diagnóstico na UI. */
-export const getApiBaseUrl = () => apiBaseUrl;
-
-export const api = axios.create({
-  baseURL: `${apiBaseUrl}/api`,
-  timeout: 30000,
-});
-
-api.interceptors.request.use((config) => {
-  const headers = axios.AxiosHeaders.from(config.headers || {});
-
-  if (apiToken) {
-    headers.set("Authorization", `Bearer ${apiToken}`);
-  }
-
-  const isFormData =
-    typeof FormData !== "undefined" && config.data instanceof FormData;
-
-  if (isFormData) {
-    headers.delete("Content-Type");
-    config.headers = headers;
-    return config;
-  }
-
-  const method = String(config.method || "get").toLowerCase();
-  const sendsJsonBody =
-    config.data != null &&
-    typeof config.data === "object" &&
-    !(config.data instanceof Blob) &&
-    !(config.data instanceof ArrayBuffer);
-
-  if (sendsJsonBody && ["post", "put", "patch"].includes(method)) {
-    if (!headers.has("Content-Type")) {
-      headers.set("Content-Type", "application/json");
-    }
-  }
-
-  config.headers = headers;
-  return config;
-});
-
-const normalizeApiResponse = (response) => {
-  if (response.status === 204) {
-    return {
-      success: true,
-      data: null,
-      message: "Operação concluída com sucesso",
-    };
-  }
-
-  const payload = response.data;
-
-  if (payload && typeof payload === "object" && "success" in payload) {
-    return payload;
-  }
-
-  return {
-    success: true,
-    data: payload,
-    message: "Operação realizada com sucesso",
-  };
-};
-
-// Limpa o cache quando houver mutações (POST, PUT, DELETE)
-const invalidateCache = () => {
-  logger.info("Cache invalidado devido a uma mutação (POST/PUT/DELETE)");
-  cache.clear();
-};
-
-// Função de retry com exponential backoff
-const retryRequest = async (fn, retries = 3, delay = 1000) => {
-  try {
-    return await fn();
-  } catch (error) {
-    if (retries === 0) throw error;
-
-    // Não repetir em 4xx (exceto 408/429) nem em 5xx
-    if (error.response?.status >= 400) {
-      if (error.response.status !== 408 && error.response.status !== 429) {
-        throw error;
-      }
-    }
-
-    logger.warn(`Retrying request... (${retries} attempts left)`);
-    await new Promise((resolve) => setTimeout(resolve, delay));
-    return retryRequest(fn, retries - 1, delay * 2);
-  }
-};
-
-// Interceptador para respostas
-api.interceptors.response.use(
-  (response) => {
-    // Se for uma requisição de escrita com sucesso, limpa cache
-    if (
-      ["post", "put", "delete", "patch"].includes(
-        response.config.method?.toLowerCase(),
-      )
-    ) {
-      invalidateCache();
-    }
-    return response;
-  },
-  (error) => {
-    logger.error("API Error:", error);
-
-    if (error.code === "ECONNABORTED") {
-      const url = String(error.config?.url || "");
-      const isOrdemPdfOuEmail = /ordem-coleta\/(enviar|pdf)/.test(url);
-      throw new Error(
-        isOrdemPdfOuEmail
-          ? "Gerar PDF e enviar e-mail pode levar até 2 minutos. Aguarde e tente de novo uma vez — evite clicar várias vezes no botão."
-          : "Servidor demorando para responder. O backend pode estar iniciando. Tente novamente em alguns segundos.",
-      );
-    }
-
-    if (error.code === "ECONNREFUSED") {
-      throw new Error(
-        "Servidor não disponível. Verifique se o backend está rodando.",
-      );
-    }
-
-    if (error.response) {
-      // Retornar o erro original em vez de uma mensagem genérica
-      throw error;
-    }
-
-    throw new Error("Erro de conexão com o servidor");
-  },
-);
-
-// Hook principal para requisições API
+// Hook principal para requisições API (mutações com toast/loading)
 export const useApi = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const toast = useToast();
   const pendingRequestsRef = useRef(0);
 
-  const request = useCallback(async (config) => {
-    const trackLoading = config.skipLoading !== true;
+  const request = useCallback(
+    async (config) => {
+      const trackLoading = config.skipLoading !== true;
 
-    try {
-      if (trackLoading) {
-        pendingRequestsRef.current += 1;
-        setLoading(true);
-      }
-      setError(null);
-
-      const useCache = config.cache === true; // Opt-in
-
-      // Gerar chave de cache para requisições GET
-      const cacheKey =
-        useCache && config.method === "GET"
-          ? `${config.url}_${JSON.stringify(config.params || {})}`
-          : null;
-
-      // Verificar cache para GET
-      if (cacheKey && cache.has(cacheKey)) {
-        const cached = cache.get(cacheKey);
-        // Usa TTL default ou o configurado
-        const ttl = config.ttl || DEFAULT_CACHE_TTL;
-
-        if (Date.now() - cached.timestamp < ttl) {
-          logger.info("Cache hit:", cacheKey);
-          return cached.data;
-        } else {
-          cache.delete(cacheKey);
+      try {
+        if (trackLoading) {
+          pendingRequestsRef.current += 1;
+          setLoading(true);
         }
-      }
+        setError(null);
 
-      // Fazer requisição com retry
-      const response = await retryRequest(() => api(config));
+        const normalized = await apiFetch(config);
 
-      if (
-        config.responseType === "blob" ||
-        config.responseType === "arraybuffer"
-      ) {
-        return {
-          success: true,
-          data: response.data,
-        };
-      }
-
-      const normalized = normalizeApiResponse(response);
-
-      // Feedback de sucesso (mutações)
-      const method = String(config.method || "GET").toUpperCase();
-      if (
-        ["POST", "PUT", "PATCH", "DELETE"].includes(method) &&
-        !config.skipSuccessToast
-      ) {
-        const message =
-          normalized?.message ||
-          (method === "POST"
-            ? "Salvo com sucesso."
-            : method === "DELETE"
-              ? "Excluído com sucesso."
-              : "Atualizado com sucesso.");
-        toast.success(message);
-      }
-
-      // Armazenar no cache se for GET e cache estiver ativado
-      if (cacheKey) {
-        cache.set(cacheKey, {
-          data: normalized,
-          timestamp: Date.now(),
-        });
-      }
-
-      return normalized;
-    } catch (err) {
-      let errorMessage = err.message || "Erro desconhecido";
-      let fieldErrors = null;
-      let status = err.response?.status ?? null;
-
-      // Tentar extrair mensagem detalhada do backend
-      if (err.response?.data) {
-        let payload = err.response.data;
-
-        // Requisições blob (ex.: PDF): erro 503 vem como Blob com JSON dentro
-        if (typeof Blob !== "undefined" && payload instanceof Blob) {
-          try {
-            const text = await payload.text();
-            payload = JSON.parse(text);
-          } catch {
-            payload = null;
-          }
+        const method = String(config.method || "GET").toUpperCase();
+        if (
+          ["POST", "PUT", "PATCH", "DELETE"].includes(method) &&
+          !config.skipSuccessToast
+        ) {
+          const message =
+            normalized?.message ||
+            (method === "POST"
+              ? "Salvo com sucesso."
+              : method === "DELETE"
+                ? "Excluído com sucesso."
+                : "Atualizado com sucesso.");
+          toast.success(message);
         }
 
-        if (payload?.error) {
-          errorMessage = payload.error;
-        } else if (payload?.message) {
-          errorMessage = payload.message;
-        }
-
-        // Se houver detalhes de validação (ex: Zod)
-        if (payload?.details && Array.isArray(payload.details)) {
-          // details pode ser array de strings (backend errorHandler) ou array de objetos (validation middleware)
-          if (typeof payload.details[0] === "string") {
-            errorMessage += ": " + payload.details.join(", ");
-            fieldErrors = Object.fromEntries(
-              payload.details
-                .map((line) => {
-                  const idx = String(line).indexOf(":");
-                  if (idx <= 0) return null;
-                  const field = line.slice(0, idx).trim();
-                  const msg = line.slice(idx + 1).trim();
-                  return [field, msg];
-                })
-                .filter(Boolean),
-            );
-          } else {
-            fieldErrors = Object.fromEntries(
-              payload.details
-                .map((d) => (d?.field ? [d.field, d.message] : null))
-                .filter(Boolean),
-            );
+        return normalized;
+      } catch (err) {
+        const parsed = await parseApiError(err);
+        setError(parsed.message);
+        toast.error(parsed.message);
+        throw parsed;
+      } finally {
+        if (trackLoading) {
+          pendingRequestsRef.current = Math.max(
+            0,
+            pendingRequestsRef.current - 1,
+          );
+          if (pendingRequestsRef.current === 0) {
+            setLoading(false);
           }
         }
       }
-
-      setError(errorMessage);
-      toast.error(errorMessage);
-
-      const e = new Error(errorMessage);
-      e.status = status;
-      e.fieldErrors = fieldErrors;
-      throw e;
-    } finally {
-      if (trackLoading) {
-        pendingRequestsRef.current = Math.max(0, pendingRequestsRef.current - 1);
-        if (pendingRequestsRef.current === 0) {
-          setLoading(false);
-        }
-      }
-    }
-  }, [toast]);
+    },
+    [toast],
+  );
 
   const get = useCallback(
     (url, config = {}) => {
@@ -329,12 +100,9 @@ export const useApi = () => {
     setError(null);
   }, []);
 
-  const clearCache = useCallback((key) => {
-    if (key) {
-      cache.delete(key);
-    } else {
-      cache.clear();
-    }
+  const clearCache = useCallback(() => {
+    logger.info("Cache invalidado manualmente");
+    queryClient.invalidateQueries();
   }, []);
 
   return {
@@ -350,7 +118,7 @@ export const useApi = () => {
   };
 };
 
-// Hook específico para recursos com paginação
+// Hook específico para recursos com paginação (legado — prefira React Query)
 export const useApiResource = (baseUrl) => {
   const { loading, error, get, post, put, delete: del, clearError } = useApi();
   const [data, setData] = useState([]);
@@ -366,7 +134,6 @@ export const useApiResource = (baseUrl) => {
         const response = await get(baseUrl, { params });
 
         if (response.success) {
-          // Verificar se tem paginação
           if (response.pagination) {
             setData(response.data);
             setPagination(response.pagination);

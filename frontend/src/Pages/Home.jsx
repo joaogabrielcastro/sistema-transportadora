@@ -1,26 +1,47 @@
 // src/pages/Home.jsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { useApi, useCaminhoes } from "../hooks";
+import {
+  useApi,
+  useCaminhoes,
+  useCaminhoesListQuery,
+  useReportsOverviewQuery,
+} from "../hooks";
 import { Card, Button, LoadingSpinner } from "../components/ui";
 import { formatCurrency, formatNumber } from "../utils";
+import { extractApiArray, extractApiData } from "../utils/extractApiArray.js";
 import ConfirmModal from "../components/ConfirmModal";
 
 const Home = () => {
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Usando os novos hooks
   const {
-    caminhoes,
-    loading: loadingCaminhoes,
+    data: caminhoesPage,
+    isLoading: loadingCaminhoes,
     error: errorCaminhoes,
-    pagination,
-    fetchAll,
-    search: searchCaminhoes,
-    removeWithCascade,
-  } = useCaminhoes();
+  } = useCaminhoesListQuery({ page: currentPage, limit: 10 });
+
+  const caminhoes = caminhoesPage?.data ?? [];
+  const pagination = caminhoesPage?.pagination;
+
+  const { data: overview } = useReportsOverviewQuery();
 
   const { get: apiGet } = useApi();
+  const { search: searchCaminhoes, removeWithCascade } = useCaminhoes();
+
+  const stats = useMemo(
+    () => ({
+      totalCaminhoes:
+        overview?.totalCaminhoes ||
+        pagination?.totalItems ||
+        caminhoes?.length ||
+        0,
+      totalGastos: overview?.totalGastos || 0,
+      totalManutencoes: overview?.totalManutencoes || 0,
+      mediaGastos: overview?.mediaGastos || 0,
+    }),
+    [overview, pagination?.totalItems, caminhoes?.length],
+  );
 
   // Estados da aplicação
   const [searchTerm, setSearchTerm] = useState("");
@@ -29,47 +50,10 @@ const Home = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [stats, setStats] = useState({
-    totalCaminhoes: 0,
-    totalGastos: 0,
-    totalManutencoes: 0,
-    mediaGastos: 0,
-  });
-
   // Estados para o modal de confirmação
   const [modalOpen, setModalOpen] = useState(false);
   const [caminhaoParaExcluir, setCaminhaoParaExcluir] = useState(null);
   const [excluindo, setExcluindo] = useState(false);
-
-  // Carregamento inicial e atualização de dados
-  const loadStats = useCallback(async () => {
-    try {
-      const overviewResponse = await apiGet("/reports/overview");
-      const overview = overviewResponse.data || {};
-
-      setStats({
-        totalCaminhoes:
-          overview.totalCaminhoes ||
-          pagination?.totalItems ||
-          caminhoes?.length ||
-          0,
-        totalGastos: overview.totalGastos || 0,
-        totalManutencoes: overview.totalManutencoes || 0,
-        mediaGastos: overview.mediaGastos || 0,
-      });
-    } catch (error) {
-      console.error("Erro ao carregar estatísticas:", error);
-      setErrorMessage("Erro ao carregar estatísticas do sistema");
-    }
-  }, [apiGet, pagination?.totalItems, caminhoes?.length]);
-
-  useEffect(() => {
-    fetchAll({ page: currentPage, limit: 10 });
-  }, [currentPage, fetchAll]);
-
-  useEffect(() => {
-    void loadStats();
-  }, [loadStats, caminhoes?.length, pagination?.totalItems]);
 
   // Função de busca
   const handleSearch = async (e) => {
@@ -86,7 +70,7 @@ const Home = () => {
 
     try {
       const results = await searchCaminhoes(searchTerm.trim());
-      setSearchResults(Array.isArray(results?.data) ? results.data : []);
+      setSearchResults(extractApiArray(results));
     } catch (err) {
       setErrorMessage("Erro ao buscar caminhões. Tente novamente.");
       setSearchResults([]);
@@ -102,7 +86,7 @@ const Home = () => {
         `/caminhoes/${caminhao.placa}/check-dependencies`,
       );
 
-      const responseData = dependenciasResponse?.data || {};
+      const responseData = extractApiData(dependenciasResponse);
       const { temDependencias, detalhes } = responseData;
 
       if (temDependencias) {
@@ -146,8 +130,6 @@ const Home = () => {
       setSuccessMessage(
         `Caminhão ${caminhaoParaExcluir.placa} excluído com sucesso!`,
       );
-      fetchAll({ page: currentPage, limit: 10 });
-      loadStats();
       handleCloseModal();
     } catch (err) {
       console.error("Erro ao excluir caminhão:", err);

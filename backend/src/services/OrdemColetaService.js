@@ -10,48 +10,11 @@ import { ORDEM_COLETA_PADRAO_HTML } from "../templates/ordemColetaPadraoHtml.js"
 import { ORDEM_COLETA_CANOINHAS_HTML } from "../templates/ordemColetaCanoinhasHtml.js";
 import { ASSINATURA_CARIMBO_PADRAO_HTML } from "../templates/assinaturaCarimboPadrao.js";
 import { resolveChromeExecutable } from "../utils/resolveChromeExecutable.js";
-
-const str = (v) => {
-  if (v == null) return "";
-  if (typeof v === "number" && Number.isFinite(v)) return String(v);
-  return String(v).trim();
-};
-
-/** Converte yyyy-mm-dd (input date) para dd/mm/aaaa no PDF. */
-const formatDateBr = (value) => {
-  const s = str(value);
-  if (!s) return "";
-  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
-  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
-  return s;
-};
-
-const finalizeOrdemVars = (vars) => {
-  vars.data_coleta_prevista = formatDateBr(vars.data_coleta_prevista);
-  vars.validade_ate = formatDateBr(vars.validade_ate);
-
-  const horaPrev = str(vars.horario_previsto_coleta);
-  const dataPrev = str(vars.data_coleta_prevista);
-  const coletaPartes = [];
-  if (dataPrev) coletaPartes.push(dataPrev);
-  if (horaPrev) coletaPartes.push(horaPrev);
-  vars.coleta_prevista_exibicao =
-    coletaPartes.join(" às ") || str(vars.local_coleta) || "A definir";
-
-  const carretas = [vars.placa_carreta_1, vars.placa_carreta_2]
-    .map(str)
-    .filter(Boolean);
-  vars.placas_carretas_exibicao = carretas.length ? carretas.join(" / ") : "";
-
-  if (!str(vars.horario_chegada_coleta)) {
-    vars.horario_chegada_coleta = "____:____";
-  }
-  if (!str(vars.horario_saida_coleta)) {
-    vars.horario_saida_coleta = "____:____";
-  }
-
-  return vars;
-};
+import {
+  str,
+  finalizeOrdemVars,
+} from "../utils/ordemColetaFormat.js";
+import { enqueueOrdemEnvio } from "../queues/ordemColetaJobQueue.js";
 
 const pickTemplate = (tipo) => {
   // CANOINHAS = id legado do tipo “autorização compacta” (exemplo de cliente), não regra global
@@ -288,6 +251,176 @@ export class OrdemColetaService {
     });
   }
 
+  static async atualizarRegistroEnvio(id, data) {
+    return prisma.ordens_coleta_envio.update({
+      where: { id: Number(id) },
+      data,
+    });
+  }
+
+  static async consultarStatusEnvio(id) {
+    const row = await prisma.ordens_coleta_envio.findUnique({
+      where: { id: Number(id) },
+      select: {
+        id: true,
+        assunto: true,
+        enviado_em: true,
+        erro_envio: true,
+        email_destinatario: true,
+        criado_em: true,
+      },
+    });
+
+    if (!row) {
+      throw new Error("Envio não encontrado");
+    }
+
+    if (row.enviado_em) {
+      return {
+        id: row.id,
+        status: "sent",
+        assunto: row.assunto,
+        enviado_em: row.enviado_em,
+        email_destinatario: row.email_destinatario,
+      };
+    }
+
+    if (row.erro_envio) {
+      return {
+        id: row.id,
+        status: "failed",
+        error: row.erro_envio,
+        email_destinatario: row.email_destinatario,
+      };
+    }
+
+    return {
+      id: row.id,
+      status: "processing",
+      email_destinatario: row.email_destinatario,
+      criado_em: row.criado_em,
+    };
+  }
+
+  static async processarEnvioPorId(envioId, parsed) {
+    const registro = await prisma.ordens_coleta_envio.findUnique({
+      where: { id: Number(envioId) },
+      select: { enviado_em: true, erro_envio: true },
+    });
+
+    if (!registro) {
+      throw new Error("Envio não encontrado");
+    }
+
+    if (registro.enviado_em) {
+      return { id: envioId, status: "sent", skipped: true };
+    }
+
+    if (registro.erro_envio) {
+      return { id: envioId, status: "failed", skipped: true };
+    }
+
+    const assuntoInicial =
+      (parsed.assunto && String(parsed.assunto).trim()) || null;
+
+    logger.info("Ordem enviar: montando documento", {
+      id: envioId,
+      tipo: parsed.tipo,
+    });
+    const vars = await OrdemColetaService.mergeVars(parsed);
+    const html = OrdemColetaService.buildHtml(parsed.tipo, vars);
+
+    logger.info("Ordem enviar: gerando PDF", { id: envioId });
+    const pdfBuffer = await OrdemColetaService.htmlToPdfBuffer(html);
+    logger.info("Ordem enviar: PDF pronto", {
+      id: envioId,
+      bytes: pdfBuffer?.length ?? 0,
+    });
+
+    const prefix = OrdemColetaService.filenamePrefix(parsed.tipo);
+    const filename = `${prefix}_${Date.now()}.pdf`;
+    const assunto =
+      assuntoInicial ||
+      defaultAssunto(parsed.tipo, vars.placa_cavalo || parsed.placa || null);
+
+    const dadosGravar = {
+      placa: parsed.placa,
+      dadosVariaveis: parsed.dadosVariaveis,
+      assunto_usado: assunto,
+      filename,
+    };
+
+    const tipoLegivel =
+      parsed.tipo === "CANOINHAS" ? "Autorização compacta" : "Ordem de coleta";
+
+    try {
+      logger.info("Ordem enviar: enviando SMTP", {
+        id: envioId,
+        to: parsed.emailDestinatario,
+      });
+      await OrdemColetaService.enviarEmailComAnexo({
+        to: parsed.emailDestinatario,
+        subject: assunto,
+        text: `Documento em anexo (${tipoLegivel}).`,
+        pdfBuffer,
+        filename,
+      });
+
+      await OrdemColetaService.atualizarRegistroEnvio(envioId, {
+        assunto,
+        dados: dadosGravar,
+        enviado_em: new Date(),
+        erro_envio: null,
+      });
+
+      logger.info("Ordem de coleta enviada por e-mail", {
+        id: envioId,
+        tipo: parsed.tipo,
+        to: parsed.emailDestinatario,
+      });
+
+      return { id: envioId, assunto, filename, status: "sent" };
+    } catch (err) {
+      logger.error("Falha ao enviar ordem de coleta", {
+        id: envioId,
+        err: err?.message,
+      });
+
+      await OrdemColetaService.atualizarRegistroEnvio(envioId, {
+        assunto,
+        dados: dadosGravar,
+        erro_envio: err?.message || String(err),
+      }).catch((e) =>
+        logger.error("Falha ao registrar erro do envio", { err: e?.message }),
+      );
+
+      throw err;
+    }
+  }
+
+  static async iniciarEnvioAssincrono(parsed) {
+    OrdemColetaService.assertMailConfigured();
+
+    const caminhaoId = await OrdemColetaService.resolverCaminhaoId(parsed.placa);
+    const row = await OrdemColetaService.registrarEnvio({
+      tipo: parsed.tipo,
+      caminhaoId,
+      dados: {
+        placa: parsed.placa,
+        dadosVariaveis: parsed.dadosVariaveis,
+        status: "processing",
+      },
+      emailDestinatario: parsed.emailDestinatario,
+      assunto: parsed.assunto?.trim() || null,
+      enviadoEm: null,
+      erroEnvio: null,
+    });
+
+    enqueueOrdemEnvio(row.id, parsed);
+
+    return { id: row.id, status: "processing" };
+  }
+
   static async listarHistorico({ page, limit }) {
     const skip = (page - 1) * limit;
     const [rows, total] = await prisma.$transaction([
@@ -311,6 +444,11 @@ export class OrdemColetaService {
         criado_em: r.criado_em,
         enviado_em: r.enviado_em,
         erro_envio: r.erro_envio,
+        status: r.enviado_em
+          ? "sent"
+          : r.erro_envio
+            ? "failed"
+            : "processing",
         caminhao_placa: r.caminhoes?.placa ?? null,
         caminhao_motorista: r.caminhoes?.motorista ?? null,
       })),
@@ -333,74 +471,39 @@ export class OrdemColetaService {
     return tipo === "CANOINHAS" ? "autorizacao_coleta_compacta" : "ordem_coleta";
   }
 
-  static async fluxoEnviar(parsed) {
-    OrdemColetaService.assertMailConfigured();
+  /** Reenfileira envios interrompidos por restart do servidor. */
+  static async retomarEnviosPendentes() {
+    const { enqueueOrdemEnvio } = await import(
+      "../queues/ordemColetaJobQueue.js"
+    );
 
-    logger.info("Ordem enviar: montando documento", { tipo: parsed.tipo });
-    const vars = await OrdemColetaService.mergeVars(parsed);
-    const html = OrdemColetaService.buildHtml(parsed.tipo, vars);
+    const pendentes = await prisma.ordens_coleta_envio.findMany({
+      where: {
+        enviado_em: null,
+        erro_envio: null,
+      },
+      orderBy: { criado_em: "asc" },
+      take: 50,
+    });
 
-    logger.info("Ordem enviar: gerando PDF");
-    const pdfBuffer = await OrdemColetaService.htmlToPdfBuffer(html);
-    logger.info("Ordem enviar: PDF pronto", { bytes: pdfBuffer?.length ?? 0 });
-    const prefix = OrdemColetaService.filenamePrefix(parsed.tipo);
-    const filename = `${prefix}_${Date.now()}.pdf`;
-    const assunto =
-      (parsed.assunto && String(parsed.assunto).trim()) ||
-      defaultAssunto(parsed.tipo, vars.placa_cavalo || parsed.placa || null);
+    if (!pendentes.length) return 0;
 
-    const caminhaoId = await OrdemColetaService.resolverCaminhaoId(parsed.placa);
-    const dadosGravar = {
-      placa: parsed.placa,
-      dadosVariaveis: parsed.dadosVariaveis,
-      assunto_usado: assunto,
-    };
-
-    const tipoLegivel =
-      parsed.tipo === "CANOINHAS" ? "Autorização compacta" : "Ordem de coleta";
-    try {
-      logger.info("Ordem enviar: enviando SMTP", {
-        to: parsed.emailDestinatario,
-      });
-      await OrdemColetaService.enviarEmailComAnexo({
-        to: parsed.emailDestinatario,
-        subject: assunto,
-        text: `Documento em anexo (${tipoLegivel}).`,
-        pdfBuffer,
-        filename,
-      });
-
-      const row = await OrdemColetaService.registrarEnvio({
-        tipo: parsed.tipo,
-        caminhaoId,
-        dados: dadosGravar,
-        emailDestinatario: parsed.emailDestinatario,
-        assunto,
-        enviadoEm: new Date(),
-        erroEnvio: null,
-      });
-
-      logger.info("Ordem de coleta enviada por e-mail", {
-        id: row.id,
-        tipo: parsed.tipo,
-        to: parsed.emailDestinatario,
-      });
-
-      return { id: row.id, assunto, filename };
-    } catch (err) {
-      logger.error("Falha ao enviar ordem de coleta", { err: err?.message });
-
-      await OrdemColetaService.registrarEnvio({
-        tipo: parsed.tipo,
-        caminhaoId,
-        dados: dadosGravar,
-        emailDestinatario: parsed.emailDestinatario,
-        assunto,
-        enviadoEm: null,
-        erroEnvio: err?.message || String(err),
-      }).catch((e) => logger.error("Falha ao registrar ordem com erro", { err: e?.message }));
-
-      throw err;
+    for (const row of pendentes) {
+      const dados = row.dados && typeof row.dados === "object" ? row.dados : {};
+      const parsed = {
+        tipo: row.tipo,
+        placa: dados.placa ?? null,
+        dadosVariaveis: dados.dadosVariaveis ?? {},
+        emailDestinatario: row.email_destinatario,
+        assunto: row.assunto ?? undefined,
+      };
+      enqueueOrdemEnvio(row.id, parsed);
     }
+
+    logger.info("Envios de ordem de coleta retomados após boot", {
+      count: pendentes.length,
+    });
+
+    return pendentes.length;
   }
 }

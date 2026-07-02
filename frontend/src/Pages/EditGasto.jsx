@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useApi } from "../hooks/useApi";
-import { extractApiArray, extractApiData } from "../utils/extractApiArray.js";
+import { useApi, useEditGastoQuery } from "../hooks";
 import {
   Card,
   Button,
@@ -13,7 +12,13 @@ import {
 const EditGasto = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { get, put } = useApi();
+  const { put } = useApi();
+
+  const {
+    data,
+    isLoading: loading,
+    error: queryError,
+  } = useEditGastoQuery(id);
 
   const [caminhaoPlaca, setCaminhaoPlaca] = useState("");
   const [formData, setFormData] = useState({
@@ -27,56 +32,32 @@ const EditGasto = () => {
   });
   const [tiposGastos, setTiposGastos] = useState([]);
   const [caminhoes, setCaminhoes] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [loadError, setLoadError] = useState(null);
+
+  const loadError = queryError?.message || null;
 
   // IDs dos tipos de gasto especiais
   const ID_TIPO_GASTO_COMBUSTIVEL = 9;
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setLoadError(null);
+    if (!data) return;
 
-      try {
-        const [gastoRes, tiposRes, caminhoesRes] = await Promise.all([
-          get(`/gastos/${id}`),
-          get("/tipos-gastos"),
-          get("/caminhoes"),
-        ]);
-
-        const gastoData = extractApiData(gastoRes);
-        const tiposData = extractApiArray(tiposRes);
-        const caminhoesData = extractApiArray(caminhoesRes);
-
-        setCaminhaoPlaca(gastoData.caminhoes?.placa || "");
-
-        setFormData({
-          caminhao_id: gastoData.caminhao_id || "",
-          tipo_gasto_id: gastoData.tipo_gasto_id || "",
-          valor: gastoData.valor || "",
-          data_gasto: gastoData.data_gasto
-            ? new Date(gastoData.data_gasto).toISOString().split("T")[0]
-            : "",
-          descricao: gastoData.descricao || "",
-          km_registro: gastoData.km_registro || "",
-          quantidade_combustivel: gastoData.quantidade_combustivel || "",
-        });
-
-        setTiposGastos(tiposData);
-        setCaminhoes(caminhoesData);
-      } catch (err) {
-        console.error("Erro completo:", err);
-        setLoadError(
-          err?.message || "Não foi possível carregar os dados deste gasto.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [id, get]);
+    const gastoData = data.gasto;
+    setCaminhaoPlaca(gastoData.caminhoes?.placa || "");
+    setFormData({
+      caminhao_id: gastoData.caminhao_id || "",
+      tipo_gasto_id: gastoData.tipo_gasto_id || "",
+      valor: gastoData.valor || "",
+      data_gasto: gastoData.data_gasto
+        ? new Date(gastoData.data_gasto).toISOString().split("T")[0]
+        : "",
+      descricao: gastoData.descricao || "",
+      km_registro: gastoData.km_registro || "",
+      quantidade_combustivel: gastoData.quantidade_combustivel || "",
+    });
+    setTiposGastos(data.tiposGastos);
+    setCaminhoes(data.caminhoes);
+  }, [data, id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

@@ -1,5 +1,6 @@
 import prisma from "../lib/prisma.js";
 import { serializePrisma } from "../utils/prismaSerialization.js";
+import { MAX_LIST_LIMIT } from "../utils/listLimits.js";
 
 const pneuInclude = {
   caminhoes: {
@@ -67,10 +68,11 @@ export const pneusModel = {
     return serializePrisma(created);
   },
 
-  getAll: async () => {
+  getAll: async ({ limit = MAX_LIST_LIMIT } = {}) => {
     const data = await prisma.pneus.findMany({
       include: pneuInclude,
       orderBy: { id: "desc" },
+      take: limit,
     });
 
     return serializePrisma(data);
@@ -85,7 +87,7 @@ export const pneusModel = {
     return serializePrisma(data);
   },
 
-  getInStock: async () => {
+  getInStock: async ({ limit = MAX_LIST_LIMIT } = {}) => {
     const data = await prisma.pneus.findMany({
       where: { caminhao_id: null },
       include: {
@@ -101,12 +103,13 @@ export const pneusModel = {
         },
       },
       orderBy: { id: "desc" },
+      take: limit,
     });
 
     return serializePrisma(data);
   },
 
-  getByCaminhaoId: async (caminhaoId) => {
+  getByCaminhaoId: async (caminhaoId, { limit = MAX_LIST_LIMIT } = {}) => {
     const data = await prisma.pneus.findMany({
       where: { caminhao_id: parseId(caminhaoId) },
       include: {
@@ -122,6 +125,7 @@ export const pneusModel = {
         },
       },
       orderBy: { id: "desc" },
+      take: limit,
     });
 
     return serializePrisma(data);
@@ -176,5 +180,84 @@ export const pneusModel = {
     }
 
     return pneusModel.assignFromStock(candidate.id, updates);
+  },
+
+  buildListWhere({ caminhaoId, emUso, placa } = {}) {
+    const where = {};
+
+    if (caminhaoId != null && caminhaoId !== "") {
+      where.caminhao_id = parseId(caminhaoId);
+      return where;
+    }
+
+    if (emUso === true) {
+      where.caminhao_id = { not: null };
+    } else if (emUso === false) {
+      where.caminhao_id = null;
+    }
+
+    const placaNorm = String(placa || "")
+      .trim()
+      .toUpperCase()
+      .replace(/-/g, "");
+    if (placaNorm) {
+      where.caminhoes = {
+        placa: { contains: placaNorm, mode: "insensitive" },
+      };
+    }
+
+    return where;
+  },
+
+  listPaginated: async ({
+    page = 1,
+    limit = 20,
+    caminhaoId,
+    emUso,
+    placa,
+    includeStockStatusCounts = false,
+  } = {}) => {
+    const where = pneusModel.buildListWhere({ caminhaoId, emUso, placa });
+    const skip = (page - 1) * limit;
+
+    const queries = [
+      prisma.pneus.findMany({
+        where,
+        include: pneuInclude,
+        orderBy: { id: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.pneus.count({ where }),
+    ];
+
+    if (includeStockStatusCounts) {
+      queries.push(
+        prisma.pneus.groupBy({
+          by: ["status_id"],
+          where: { caminhao_id: null },
+          _count: { _all: true },
+        }),
+      );
+    }
+
+    const results = await prisma.$transaction(queries);
+    const data = results[0];
+    const count = results[1];
+    const statusGroups = includeStockStatusCounts ? results[2] : null;
+
+    const meta = {};
+    if (statusGroups) {
+      meta.statusCounts = statusGroups.map((g) => ({
+        status_id: g.status_id,
+        count: g._count._all,
+      }));
+    }
+
+    return {
+      data: serializePrisma(data),
+      count,
+      meta,
+    };
   },
 };

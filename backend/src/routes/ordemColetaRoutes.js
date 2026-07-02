@@ -7,5 +7,6 @@ router.get("/historico", ordemColetaController.historico);
 router.post("/preview", ordemColetaController.preview);
 router.post("/pdf", ordemColetaController.pdf);
 router.post("/enviar", ordemColetaController.enviar);
+router.get("/envio/:id", ordemColetaController.statusEnvio);
 
 export default router;

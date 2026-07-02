@@ -77,6 +77,13 @@ Variáveis mínimas: `DATABASE_URL`, `PORT` (ex.: 3020), SMTP se for enviar e-ma
 
 Sem `VITE_API_TOKEN` no build do frontend, a API retorna **401** quando auth está ativa.
 
+### Ordens de coleta (envio assíncrono)
+
+1. `POST /api/ordem-coleta/enviar` responde **202** e enfileira PDF + e-mail.
+2. O frontend consulta `GET /api/ordem-coleta/envio/:id` até o status ser `sent` ou `failed`.
+3. Envios interrompidos por restart do servidor são **retomados automaticamente** ao subir a API (registros com `enviado_em` e `erro_envio` nulos).
+4. O histórico mostra status **Processando…** enquanto o job roda.
+
 ### Deploy do frontend (Coolify)
 
 1. Serviço do site → **Build** → **Build Pack:** `Dockerfile`

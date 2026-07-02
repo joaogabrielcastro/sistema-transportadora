@@ -3,6 +3,7 @@ import { gastoSchema, gastoUpdateSchema } from "../schemas/gastoSchema.js";
 import { catchAsync } from "../utils/catchAsync.js";
 import { GastoService } from "../services/GastoService.js";
 import { normalizeDatesForDb } from "../utils/dates.js";
+import { parseListLimit } from "../utils/listLimits.js";
 
 export const gastosController = {
   createGasto: catchAsync(async (req, res) => {
@@ -21,10 +22,7 @@ export const gastosController = {
 
   getAllGastos: catchAsync(async (req, res) => {
     const page = parseInt(req.query.page, 10) || 1;
-    const limit = Math.min(
-      200,
-      Math.max(1, parseInt(req.query.limit, 10) || 10),
-    );
+    const limit = parseListLimit(req.query.limit, 10);
     const { caminhaoId } = req.query;
 
     const { data, count } = await gastosModel.getAll({
@@ -58,8 +56,17 @@ export const gastosController = {
 
   getGastosByCaminhao: catchAsync(async (req, res) => {
     const { id } = req.params;
-    const gastos = await gastosModel.getByCaminhaoId(id);
-    res.status(200).json({ success: true, data: gastos });
+    const limit = parseListLimit(req.query.limit);
+    const result = await gastosModel.getByCaminhaoId(id, { limit });
+    res.status(200).json({
+      success: true,
+      data: result.data,
+      meta: {
+        total: result.total,
+        limit: result.limit,
+        truncated: result.truncated,
+      },
+    });
   }),
 
   updateGasto: catchAsync(async (req, res) => {

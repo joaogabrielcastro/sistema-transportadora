@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useApi } from "../hooks/useApi";
-import { extractApiArray, extractApiData } from "../utils/extractApiArray.js";
+import { useApi, useEditChecklistQuery } from "../hooks";
 import {
   Card,
   Button,
@@ -13,7 +12,13 @@ import {
 const EditChecklist = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { get, put } = useApi();
+  const { put } = useApi();
+
+  const {
+    data,
+    isLoading: loading,
+    error: queryError,
+  } = useEditChecklistQuery(id);
 
   const [formData, setFormData] = useState({
     caminhao_id: "",
@@ -26,54 +31,28 @@ const EditChecklist = () => {
   });
   const [caminhoes, setCaminhoes] = useState([]);
   const [itensChecklist, setItensChecklist] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [loadError, setLoadError] = useState(null);
+
+  const loadError = queryError?.message || null;
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setLoadError(null);
+    if (!data) return;
 
-      try {
-        const [checklistRes, caminhoesRes, itensRes] = await Promise.all([
-          get(`/checklist/${id}`),
-          get("/caminhoes"),
-          get("/itens-checklist"),
-        ]);
-
-        const checklistData = extractApiData(checklistRes);
-        const caminhoesData = extractApiArray(caminhoesRes);
-        const itensData = extractApiArray(itensRes);
-
-        setFormData({
-          caminhao_id: checklistData.caminhao_id || "",
-          item_id: checklistData.item_id || "",
-          data_manutencao: checklistData.data_manutencao
-            ? new Date(checklistData.data_manutencao)
-                .toISOString()
-                .split("T")[0]
-            : "",
-          observacao: checklistData.observacao || "",
-          valor: checklistData.valor || "",
-          oficina: checklistData.oficina || "",
-          km_registro: checklistData.km_manutencao || "",
-        });
-
-        setCaminhoes(caminhoesData);
-        setItensChecklist(itensData);
-      } catch (err) {
-        console.error("Erro completo:", err);
-        setLoadError(
-          err?.message ||
-            "Não foi possível carregar os dados desta manutenção.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [id, get]);
+    const checklistData = data.checklist;
+    setFormData({
+      caminhao_id: checklistData.caminhao_id || "",
+      item_id: checklistData.item_id || "",
+      data_manutencao: checklistData.data_manutencao
+        ? new Date(checklistData.data_manutencao).toISOString().split("T")[0]
+        : "",
+      observacao: checklistData.observacao || "",
+      valor: checklistData.valor || "",
+      oficina: checklistData.oficina || "",
+      km_registro: checklistData.km_manutencao || "",
+    });
+    setCaminhoes(data.caminhoes);
+    setItensChecklist(data.itensChecklist);
+  }, [data, id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

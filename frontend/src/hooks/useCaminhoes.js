@@ -1,5 +1,6 @@
 // frontend/src/hooks/useCaminhoes.js
 import { useApi, useApiResource } from "./useApi";
+import { extractApiData } from "../utils/extractApiArray.js";
 
 export const useCaminhoes = () => {
   const {
@@ -21,7 +22,7 @@ export const useCaminhoes = () => {
   const getByPlaca = async (placa) => {
     try {
       const response = await get(`/caminhoes/${placa}`);
-      return response.data;
+      return extractApiData(response);
     } catch (err) {
       throw new Error(err.message || "Erro ao buscar caminhão");
     }
@@ -31,7 +32,7 @@ export const useCaminhoes = () => {
   const checkDependencies = async (placa) => {
     try {
       const response = await get(`/caminhoes/${placa}/check-dependencies`);
-      return response.data;
+      return extractApiData(response);
     } catch (err) {
       throw new Error(err.message || "Erro ao verificar dependências");
     }

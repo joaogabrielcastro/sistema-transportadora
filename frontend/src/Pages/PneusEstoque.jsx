@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState } from "react";
 import { z } from "zod";
-import { useApi } from "../hooks/useApi.js";
-import { extractApiArray } from "../utils/extractApiArray.js";
+import { useApi, usePneusEstoqueQuery, useStatusPneusQuery } from "../hooks";
 import ConfirmModal from "../components/ConfirmModal";
+import Pagination from "../components/Pagination.jsx";
 import {
   Card,
   Button,
@@ -11,12 +11,25 @@ import {
 } from "../components/ui";
 import { Link } from "react-router-dom";
 
+const ESTOQUE_PAGE_SIZE = 20;
+
 const PneusEstoque = () => {
-  const { get, post, delete: del, loading } = useApi();
-  const [pneus, setPneus] = useState([]);
-  const [statusList, setStatusList] = useState([]);
+  const { post, delete: del } = useApi();
   const [deletingId, setDeletingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const {
+    data: estoquePage,
+    isLoading: loadingEstoque,
+  } = usePneusEstoqueQuery({ page: currentPage, limit: ESTOQUE_PAGE_SIZE });
+
+  const { data: statusList = [] } = useStatusPneusQuery();
+
+  const pneus = estoquePage?.data ?? [];
+  const pagination = estoquePage?.pagination ?? null;
+  const statusCounts = estoquePage?.statusCounts ?? [];
+
   const [pneusBulk, setPneusBulk] = useState([
     {
       id: Date.now(),
@@ -45,14 +58,19 @@ const PneusEstoque = () => {
     ),
   });
 
-  const fetchEstoque = useCallback(async () => {
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+
+    setDeletingId(deleteTarget.id);
     try {
-      const res = await get("/pneus/in-stock");
-      setPneus(extractApiArray(res));
+      await del(`/pneus/${deleteTarget.id}`);
+      setDeleteTarget(null);
     } catch (err) {
-      console.error(err);
+      console.error("Erro ao excluir pneu:", err);
+    } finally {
+      setDeletingId(null);
     }
-  }, [get]);
+  };
 
   const handleDeleteClick = (pneuId) => {
     const pneu = pneus.find((p) => p.id === pneuId);
@@ -66,25 +84,6 @@ const PneusEstoque = () => {
       status: pneu?.status_pneus?.nome_status || "N/A",
     });
   };
-
-  const confirmDelete = async () => {
-    if (!deleteTarget) return;
-
-    setDeletingId(deleteTarget.id);
-    try {
-      await del(`/pneus/${deleteTarget.id}`);
-      setDeleteTarget(null);
-      fetchEstoque();
-    } catch (err) {
-      console.error("Erro ao excluir pneu:", err);
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  useEffect(() => {
-    fetchEstoque();
-  }, [fetchEstoque]);
 
   const validateLine = (line) => {
     const input = {
@@ -118,19 +117,6 @@ const PneusEstoque = () => {
       return next;
     });
   };
-
-  // carregar lista de status para contagens e selects
-  useEffect(() => {
-    const loadStatus = async () => {
-      try {
-        const res = await get("/status-pneus");
-        setStatusList(extractApiArray(res));
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    loadStatus();
-  }, [get]);
 
   return (
     <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
@@ -196,7 +182,6 @@ const PneusEstoque = () => {
 
               try {
                 await post("/pneus/stock/bulk", { pneus: toCreate });
-                fetchEstoque();
                 // reset form
                 setPneusBulk([
                   {
@@ -373,10 +358,8 @@ const PneusEstoque = () => {
             <div className="flex flex-wrap gap-2">
               {statusList
                 .filter((s) => {
-                  // Filtra apenas status relevantes para estoque ou que tenham pneus
-                  const count = (pneus || []).filter(
-                    (p) => p.status_id === s.id,
-                  ).length;
+                  const fromApi = statusCounts.find((c) => c.status_id === s.id);
+                  const count = fromApi?.count ?? 0;
                   const statusEstoque = [
                     "Novo no estoque",
                     "Recapado no estoque",
@@ -388,9 +371,8 @@ const PneusEstoque = () => {
                   return statusEstoque.includes(s.nome_status) || count > 0;
                 })
                 .map((s) => {
-                  const count = (pneus || []).filter(
-                    (p) => p.status_id === s.id,
-                  ).length;
+                  const fromApi = statusCounts.find((c) => c.status_id === s.id);
+                  const count = fromApi?.count ?? 0;
 
                   // Se a contagem for 0 e não for um status chave de estoque, não mostra
                   if (
@@ -417,7 +399,7 @@ const PneusEstoque = () => {
             </div>
           </div>
 
-          {loading ? (
+          {loadingEstoque ? (
             <LoadingSpinner />
           ) : (
             <div className="space-y-3">
@@ -456,6 +438,14 @@ const PneusEstoque = () => {
                 ))
               )}
             </div>
+          )}
+
+          {pagination && pagination.totalPages > 1 && (
+            <Pagination
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              onPageChange={setCurrentPage}
+            />
           )}
         </Card>
       </div>

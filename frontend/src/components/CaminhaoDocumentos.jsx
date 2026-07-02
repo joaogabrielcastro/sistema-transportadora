@@ -3,6 +3,7 @@ import { useApi } from "../hooks";
 import { extractApiArray } from "../utils/extractApiArray.js";
 import ConfirmModal from "./ConfirmModal";
 import { Button } from "./ui";
+import { useToast } from "./ui/useToast.js";
 
 const formatBytes = (bytes) => {
   if (!bytes) return "0 B";
@@ -13,6 +14,7 @@ const formatBytes = (bytes) => {
 
 const CaminhaoDocumentos = ({ placa }) => {
   const { get, request, delete: del, loading } = useApi();
+  const toast = useToast();
   const [documentos, setDocumentos] = useState([]);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -40,7 +42,7 @@ const CaminhaoDocumentos = ({ placa }) => {
 
   const abrirPdf = async (doc) => {
     if (doc.arquivo_disponivel === false) {
-      window.alert(
+      toast.warning(
         "O arquivo deste PDF não está mais no servidor (comum após redeploy sem volume em /app/uploads). Remova o item e envie o PDF novamente.",
       );
       return;

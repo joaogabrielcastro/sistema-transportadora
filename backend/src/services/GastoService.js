@@ -31,4 +31,34 @@ export class GastoService {
 
     return gastosModel.getById(novoGasto.id);
   }
+
+  static async updateWithCaminhaoUpdate(id, gastoData) {
+    const existing = await gastosModel.getById(id);
+    if (!existing) {
+      throw new Error("Gasto não encontrado");
+    }
+
+    const parsedId = Number(id);
+    const caminhaoId = gastoData.caminhao_id ?? existing.caminhao_id;
+    const novoKm =
+      gastoData.km_registro !== undefined
+        ? gastoData.km_registro
+        : undefined;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.gastos.update({
+        where: { id: parsedId },
+        data: gastoData,
+      });
+
+      if (caminhaoId && novoKm != null && novoKm !== "") {
+        await tx.caminhoes.update({
+          where: { id: Number(caminhaoId) },
+          data: { km_atual: Number(novoKm) },
+        });
+      }
+    });
+
+    return gastosModel.getById(parsedId);
+  }
 }

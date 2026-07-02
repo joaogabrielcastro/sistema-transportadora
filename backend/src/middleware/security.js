@@ -3,16 +3,37 @@ import crypto from "node:crypto";
 import { config } from "../config/index.js";
 import { logger } from "../utils/logger.js";
 
+const SENSITIVE_KEY = /pass|password|token|secret|authorization|smtp/i;
+
+const summarizeAuditBody = (body) => {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return undefined;
+  }
+
+  const keys = Object.keys(body);
+  if (keys.length === 0) return undefined;
+
+  const summary = {};
+  for (const key of keys) {
+    if (SENSITIVE_KEY.test(key)) {
+      summary[key] = "[redacted]";
+    } else if (body[key] != null && typeof body[key] === "object") {
+      summary[key] = "[object]";
+    } else {
+      summary[key] = body[key];
+    }
+  }
+  return summary;
+};
+
 export const attachRequestContext = (req, res, next) => {
   const requestId = req.headers["x-request-id"] || crypto.randomUUID();
-  const userId = req.headers["x-user-id"] || "anonymous";
-  const role = req.headers["x-user-role"] || "viewer";
 
   req.context = {
     requestId,
     user: {
-      id: userId,
-      role,
+      id: "anonymous",
+      role: "viewer",
     },
   };
 
@@ -46,26 +67,11 @@ export const requireAuth = (req, res, next) => {
     });
   }
 
+  if (req.context?.user) {
+    req.context.user = { id: "api-token", role: "admin" };
+  }
+
   return next();
-};
-
-export const requireRole = (...allowedRoles) => {
-  return (req, res, next) => {
-    if (!config.auth.enabled) {
-      return next();
-    }
-
-    const role = req.context?.user?.role;
-
-    if (!role || !allowedRoles.includes(role)) {
-      return res.status(403).json({
-        success: false,
-        error: "Você não possui permissão para esta ação.",
-      });
-    }
-
-    return next();
-  };
 };
 
 export const auditLog = (req, res, next) => {
@@ -82,7 +88,9 @@ export const auditLog = (req, res, next) => {
     role: req.context?.user?.role,
     method: req.method,
     path: req.path,
-    body: req.body,
+    bodyKeys:
+      req.body && typeof req.body === "object" ? Object.keys(req.body) : null,
+    bodySummary: summarizeAuditBody(req.body),
   });
 
   return next();

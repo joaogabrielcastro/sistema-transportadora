@@ -10,8 +10,6 @@ import {
   auditLog,
   requireAuth,
 } from "./middleware/security.js";
-
-// Importa todas as rotas
 import caminhoesRoutes from "./routes/caminhoesRoutes.js";
 import pneusRoutes from "./routes/pneusRoutes.js";
 import posicoesPneusRoutes from "./routes/posicoesPneusRoutes.js";
@@ -41,11 +39,11 @@ app.use(attachRequestContext);
 // CORS configurado via config
 app.use(
   cors({
-    origin: function (origin, callback) {
+    origin(origin, callback) {
       if (!origin || config.app.corsOrigins.indexOf(origin) !== -1) {
         callback(null, true);
       } else {
-        callback(new Error("Not allowed by CORS"));
+        callback(null, false);
       }
     },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -84,16 +82,21 @@ app.get("/", (req, res) => {
 
 app.get("/health", async (req, res) => {
   const uploads = await getUploadsHealth();
+  const chromiumPath = OrdemColetaService.resolvePuppeteerExecutable();
+  const isProd = config.app.env === "production";
+
   res.json({
     status: "healthy",
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    pdf: {
-      chromiumPath: OrdemColetaService.resolvePuppeteerExecutable(),
-      puppeteerEnv: process.env.PUPPETEER_EXECUTABLE_PATH || null,
-      puppeteerCacheDir: process.env.PUPPETEER_CACHE_DIR || null,
-    },
-    uploads,
+    pdf: isProd
+      ? { ready: Boolean(chromiumPath) }
+      : {
+          ready: Boolean(chromiumPath),
+          chromiumPath,
+          puppeteerCacheDir: process.env.PUPPETEER_CACHE_DIR || null,
+        },
+    uploads: isProd ? { writable: uploads.writable } : uploads,
   });
 });
 

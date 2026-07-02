@@ -8,9 +8,11 @@ RUN npm ci
 
 COPY . .
 
-# Defina no Coolify (Build Arguments / variáveis de build): VITE_API_URL
+# Defina no Coolify (Build Arguments): VITE_API_URL, VITE_API_TOKEN
 ARG VITE_API_URL=https://api-abbroto.jwsoftware.com.br
+ARG VITE_API_TOKEN=
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_API_TOKEN=$VITE_API_TOKEN
 
 RUN npm run build
 

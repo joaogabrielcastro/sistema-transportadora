@@ -11,24 +11,44 @@ const globalForPrisma = globalThis;
 
 const databaseUrl = (process.env.DATABASE_URL || "")
   .trim()
-  // Remove aspas literais que alguns ambientes colocam na var
   .replace(/^["']|["']$/g, "");
-// Seu Postgres não suporta TLS.
-// Para evitar qualquer comportamento inesperado do `pg`, removemos `sslmode`
-// da connection string e forçamos `ssl: false`.
-let cleanDatabaseUrl = databaseUrl;
-try {
-  const u = new URL(databaseUrl);
-  u.searchParams.delete("sslmode");
-  cleanDatabaseUrl = u.toString();
-} catch {
-  cleanDatabaseUrl = databaseUrl
-    .replace(/([?&])sslmode=[^&]*/i, "$1")
-    .replace(/[?&]$/, "")
-    .replace(/\?&/, "?");
+
+function resolvePgSsl() {
+  const mode = String(process.env.DB_SSL_MODE || "auto")
+    .trim()
+    .toLowerCase();
+
+  if (["disable", "false", "off", "0"].includes(mode)) {
+    return false;
+  }
+
+  if (["require", "true", "on", "1", "enable"].includes(mode)) {
+    return { rejectUnauthorized: false };
+  }
+
+  // auto: respeita sslmode na URL ou hosts gerenciados comuns
+  if (/sslmode=(require|verify-full|verify-ca|prefer)/i.test(databaseUrl)) {
+    return { rejectUnauthorized: false };
+  }
+
+  return false;
 }
 
-const ssl = false;
+const ssl = resolvePgSsl();
+
+let cleanDatabaseUrl = databaseUrl;
+if (!ssl) {
+  try {
+    const u = new URL(databaseUrl);
+    u.searchParams.delete("sslmode");
+    cleanDatabaseUrl = u.toString();
+  } catch {
+    cleanDatabaseUrl = databaseUrl
+      .replace(/([?&])sslmode=[^&]*/i, "$1")
+      .replace(/[?&]$/, "")
+      .replace(/\?&/, "?");
+  }
+}
 
 const prisma =
   globalForPrisma.prisma ??

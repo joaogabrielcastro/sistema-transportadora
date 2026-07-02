@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
 import { useToast } from "../components/ui/useToast.js";
+import { extractApiArray } from "../utils/extractApiArray.js";
 import {
   Card,
   Button,
@@ -313,9 +315,9 @@ const HistoricoRegistros = ({
   registros,
   onDelete,
   onVerDetalhes,
+  onEditar,
   filtroPlaca,
   onFiltroChange,
-  loading,
 }) => {
   const registrosFormatados = useMemo(() => {
     return registros.map((registro) => ({
@@ -346,26 +348,25 @@ const HistoricoRegistros = ({
   }, [registrosFormatados, filtroPlaca]);
 
   const estatisticas = useMemo(() => {
-    const gastos = registrosFormatados.filter(
-      (r) => r.tipo_registro === "Gasto" && r.valor !== "N/A"
+    const base = registrosFiltrados;
+    const gastos = base.filter(
+      (r) => r.tipo_registro === "Gasto" && r.valor !== "N/A",
     );
     const totalGastos = gastos.reduce((sum, g) => sum + parseFloat(g.valor), 0);
-    const manutencoes = registrosFormatados.filter(
-      (r) => r.tipo_registro === "Manutenção" && r.valor !== "N/A"
+    const manutencoes = base.filter(
+      (r) => r.tipo_registro === "Manutenção" && r.valor !== "N/A",
     );
 
     const totalValorManutencoes = manutencoes.reduce(
       (sum, m) => sum + parseFloat(m.valor),
-      0
+      0,
     );
     return {
       totalGastos,
       totalValorManutencoes,
-      totalRegistros: registrosFormatados.length,
+      totalRegistros: base.length,
     };
-  }, [registrosFormatados]);
-
-  if (loading) return <LoadingSpinner />;
+  }, [registrosFiltrados]);
 
   return (
     <Card className="overflow-hidden">
@@ -508,6 +509,14 @@ const HistoricoRegistros = ({
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end gap-3">
                       <button
+                        type="button"
+                        onClick={() => onEditar(registro)}
+                        className="text-gray-600 hover:text-gray-900 transition-colors text-xs font-medium uppercase tracking-wide"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => onVerDetalhes(registro)}
                         className="text-blue-600 hover:text-blue-900 transition-colors text-xs font-medium uppercase tracking-wide"
                         title="Ver detalhes completos"
@@ -515,6 +524,7 @@ const HistoricoRegistros = ({
                         Ver Detalhes
                       </button>
                       <button
+                        type="button"
                         onClick={() =>
                           onDelete(registro.tipo_registro, registro.id)
                         }
@@ -535,6 +545,7 @@ const HistoricoRegistros = ({
 };
 
 const ManutencaoGastos = () => {
+  const navigate = useNavigate();
   const { get, post, put, delete: del, clearCache } = useApi();
   const toast = useToast();
   const [caminhoes, setCaminhoes] = useState([]);
@@ -557,8 +568,9 @@ const ManutencaoGastos = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const ID_TIPO_GASTO_MANUTENCAO = 10;
   const ID_TIPO_GASTO_COMBUSTIVEL = 9;
+
+  const listaParams = { params: { page: 1, limit: 200 }, skipLoading: true };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -566,26 +578,18 @@ const ManutencaoGastos = () => {
     try {
       const [caminhoesRes, itensRes, tiposRes, gastosRes, checklistRes] =
         await Promise.all([
-          get("/caminhoes"),
-          get("/itens-checklist"),
-          get("/tipos-gastos"),
-          get("/gastos"),
-          get("/checklist"),
+          get("/caminhoes", listaParams),
+          get("/itens-checklist", { skipLoading: true }),
+          get("/tipos-gastos", { skipLoading: true }),
+          get("/gastos", listaParams),
+          get("/checklist", listaParams),
         ]);
 
-      const extractArray = (res) => {
-        if (Array.isArray(res)) return res;
-        if (res?.data && Array.isArray(res.data)) return res.data;
-        if (res?.data?.data && Array.isArray(res.data.data))
-          return res.data.data;
-        return [];
-      };
-
-      const caminhoesData = extractArray(caminhoesRes);
-      const itensData = extractArray(itensRes);
-      const tiposData = extractArray(tiposRes);
-      const gastosData = extractArray(gastosRes);
-      const checklistData = extractArray(checklistRes);
+      const caminhoesData = extractApiArray(caminhoesRes);
+      const itensData = extractApiArray(itensRes);
+      const tiposData = extractApiArray(tiposRes);
+      const gastosData = extractApiArray(gastosRes);
+      const checklistData = extractApiArray(checklistRes);
 
       // Formatando dados
       const gastosFormatados = (
@@ -775,6 +779,14 @@ const ManutencaoGastos = () => {
     }
   };
 
+  const handleEditar = (registro) => {
+    if (registro.tipo_registro === "Manutenção") {
+      navigate(`/checklist/editar/${registro.id}`);
+      return;
+    }
+    navigate(`/gasto/editar/${registro.id}`);
+  };
+
   const handleDelete = async (tipo, id) => {
     if (!window.confirm("Tem certeza que deseja excluir este registro?"))
       return;
@@ -834,10 +846,10 @@ const ManutencaoGastos = () => {
         <HistoricoRegistros
           registros={registros}
           onDelete={handleDelete}
+          onEditar={handleEditar}
           onVerDetalhes={(registro) => setRegistroSelecionado(registro)}
           filtroPlaca={filtroPlaca}
           onFiltroChange={(e) => setFiltroPlaca(e.target.value)}
-          loading={loading}
         />
       </div>
 

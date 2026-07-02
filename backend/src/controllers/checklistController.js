@@ -24,7 +24,10 @@ export const checklistController = {
 
   getAllChecklists: catchAsync(async (req, res) => {
     const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 10;
+    const limit = Math.min(
+      200,
+      Math.max(1, parseInt(req.query.limit, 10) || 10),
+    );
     const { caminhaoId } = req.query;
 
     const { data, count } = await checklistModel.getAll({
@@ -64,7 +67,7 @@ export const checklistController = {
 
   updateChecklist: catchAsync(async (req, res) => {
     const checklistValidado = checklistUpdateSchema.parse(req.body);
-    const checklistAtualizado = await checklistModel.update(
+    const checklistAtualizado = await ChecklistService.updateWithCaminhaoUpdate(
       req.params.id,
       normalizeDatesForDb(checklistValidado),
     );

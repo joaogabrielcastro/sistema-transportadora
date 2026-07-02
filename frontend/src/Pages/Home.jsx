@@ -1,37 +1,10 @@
 // src/pages/Home.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  PointElement,
-  LineElement,
-  Filler,
-} from "chart.js";
 import { useApi, useCaminhoes } from "../hooks";
 import { Card, Button, LoadingSpinner } from "../components/ui";
 import { formatCurrency, formatNumber } from "../utils";
 import ConfirmModal from "../components/ConfirmModal";
-
-// Configuração do ChartJS
-ChartJS.register(
-  ArcElement,
-  Tooltip,
-  Legend,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  PointElement,
-  LineElement,
-  Filler,
-);
 
 const Home = () => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -95,14 +68,8 @@ const Home = () => {
   }, [currentPage, fetchAll]);
 
   useEffect(() => {
-    loadStats();
-  }, [loadStats]);
-
-  useEffect(() => {
-    if (caminhoes) {
-      loadStats();
-    }
-  }, [caminhoes, loadStats]);
+    void loadStats();
+  }, [loadStats, caminhoes?.length, pagination?.totalItems]);
 
   // Função de busca
   const handleSearch = async (e) => {

@@ -31,4 +31,34 @@ export class ChecklistService {
 
     return checklistModel.getById(novoChecklist.id);
   }
+
+  static async updateWithCaminhaoUpdate(id, checklistData) {
+    const existing = await checklistModel.getById(id);
+    if (!existing) {
+      throw new Error("Item de checklist não encontrado");
+    }
+
+    const parsedId = Number(id);
+    const caminhaoId = checklistData.caminhao_id ?? existing.caminhao_id;
+    const novoKm =
+      checklistData.km_manutencao !== undefined
+        ? checklistData.km_manutencao
+        : undefined;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.checklist.update({
+        where: { id: parsedId },
+        data: checklistData,
+      });
+
+      if (caminhaoId && novoKm != null && novoKm !== "") {
+        await tx.caminhoes.update({
+          where: { id: Number(caminhaoId) },
+          data: { km_atual: Number(novoKm) },
+        });
+      }
+    });
+
+    return checklistModel.getById(parsedId);
+  }
 }

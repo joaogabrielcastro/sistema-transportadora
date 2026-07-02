@@ -1,5 +1,5 @@
 // frontend/src/hooks/useApi.js
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import axios from "axios";
 import logger from "../utils/logger";
 import { useToast } from "../components/ui/useToast.js";
@@ -15,6 +15,8 @@ const apiBaseUrlRaw =
   import.meta.env.VITE_API_URL ||
   `${window.location.protocol}//${window.location.hostname}:3000`;
 
+const apiToken = (import.meta.env.VITE_API_TOKEN || "").trim();
+
 // Se `VITE_API_URL` já vier com `/api` no final, evitamos criar `/api/api/...`.
 const apiBaseUrl = String(apiBaseUrlRaw).replace(/\/api\/?$/i, "");
 
@@ -26,13 +28,17 @@ export const api = axios.create({
   timeout: 30000,
 });
 
-// Não fixar Content-Type global: FormData precisa do boundary gerado pelo browser.
 api.interceptors.request.use((config) => {
+  const headers = axios.AxiosHeaders.from(config.headers || {});
+
+  if (apiToken) {
+    headers.set("Authorization", `Bearer ${apiToken}`);
+  }
+
   const isFormData =
     typeof FormData !== "undefined" && config.data instanceof FormData;
 
   if (isFormData) {
-    const headers = axios.AxiosHeaders.from(config.headers || {});
     headers.delete("Content-Type");
     config.headers = headers;
     return config;
@@ -46,13 +52,12 @@ api.interceptors.request.use((config) => {
     !(config.data instanceof ArrayBuffer);
 
   if (sendsJsonBody && ["post", "put", "patch"].includes(method)) {
-    const headers = axios.AxiosHeaders.from(config.headers || {});
     if (!headers.has("Content-Type")) {
       headers.set("Content-Type", "application/json");
     }
-    config.headers = headers;
   }
 
+  config.headers = headers;
   return config;
 });
 
@@ -150,10 +155,16 @@ export const useApi = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const toast = useToast();
+  const pendingRequestsRef = useRef(0);
 
   const request = useCallback(async (config) => {
+    const trackLoading = config.skipLoading !== true;
+
     try {
-      setLoading(true);
+      if (trackLoading) {
+        pendingRequestsRef.current += 1;
+        setLoading(true);
+      }
       setError(null);
 
       const useCache = config.cache === true; // Opt-in
@@ -277,7 +288,12 @@ export const useApi = () => {
       e.fieldErrors = fieldErrors;
       throw e;
     } finally {
-      setLoading(false);
+      if (trackLoading) {
+        pendingRequestsRef.current = Math.max(0, pendingRequestsRef.current - 1);
+        if (pendingRequestsRef.current === 0) {
+          setLoading(false);
+        }
+      }
     }
   }, [toast]);
 

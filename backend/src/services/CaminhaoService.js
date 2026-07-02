@@ -136,6 +136,27 @@ export class CaminhaoService {
     }
   }
 
+  static async atualizarCaminhaoPorId(id, data) {
+    const normalized = normalizeCaminhaoPayload(data);
+    logger.info("Atualizando caminhão por id", { id });
+
+    const caminhao = await caminhoesModel.getById(id);
+    if (!caminhao) {
+      throw new Error("Caminhão não encontrado");
+    }
+
+    await this.validateUniqueness(normalized, caminhao.placa);
+
+    const caminhaoAtualizado = await caminhoesModel.updateById(id, normalized);
+
+    logger.info("Caminhão atualizado por id com sucesso", {
+      id: caminhaoAtualizado.id,
+      placa: caminhaoAtualizado.placa,
+    });
+
+    return caminhaoAtualizado;
+  }
+
   static async deletarCaminhao(placa) {
     logger.info("Iniciando deleção de caminhão", { placa });
 

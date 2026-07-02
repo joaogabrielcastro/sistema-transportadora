@@ -12,6 +12,7 @@
     "db:down": "docker compose -f ../docker-compose.yml down",
     "db:migrate": "node scripts/baseline-and-deploy.mjs",
     "lint": "eslint .",
+    "test": "node --test tests/**/*.test.js",
     "start": "node server.js"
   },
   "keywords": [

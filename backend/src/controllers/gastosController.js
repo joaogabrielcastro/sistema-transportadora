@@ -21,7 +21,10 @@ export const gastosController = {
 
   getAllGastos: catchAsync(async (req, res) => {
     const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 10;
+    const limit = Math.min(
+      200,
+      Math.max(1, parseInt(req.query.limit, 10) || 10),
+    );
     const { caminhaoId } = req.query;
 
     const { data, count } = await gastosModel.getAll({
@@ -61,7 +64,7 @@ export const gastosController = {
 
   updateGasto: catchAsync(async (req, res) => {
     const gastoValidado = gastoUpdateSchema.parse(req.body);
-    const gastoAtualizado = await gastosModel.update(
+    const gastoAtualizado = await GastoService.updateWithCaminhaoUpdate(
       req.params.id,
       normalizeDatesForDb(gastoValidado),
     );

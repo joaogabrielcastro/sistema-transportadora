@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { saveAs } from "file-saver";
 import { useApi, useCaminhoes } from "../hooks";
+import Pagination from "../components/Pagination.jsx";
 import { Card, Button, Alert, FormField } from "../components/ui";
 import {
   buildEmptyDadosVariaveis,
@@ -24,7 +25,7 @@ const labelTipoHistorico = (tipoApi) => {
 };
 
 const OrdensColeta = () => {
-  const { get, post, request, loading } = useApi();
+  const { get, post, request } = useApi();
   const {
     caminhoes,
     loading: loadingCaminhoes,
@@ -39,6 +40,8 @@ const OrdensColeta = () => {
   const [previewHtml, setPreviewHtml] = useState("");
   const [historico, setHistorico] = useState([]);
   const [pagination, setPagination] = useState(null);
+  const [historicoPage, setHistoricoPage] = useState(1);
+  const [actionLoading, setActionLoading] = useState(null);
   const [localError, setLocalError] = useState("");
 
   const camposFormulario = useMemo(
@@ -51,25 +54,31 @@ const OrdensColeta = () => {
     [tipo],
   );
 
-  const carregarHistorico = useCallback(async () => {
-    try {
-      const res = await get("/ordem-coleta/historico?page=1&limit=15");
-      setHistorico(Array.isArray(res.data) ? res.data : []);
-      setPagination(res.pagination || null);
-    } catch {
-      setHistorico([]);
-    }
-  }, [get]);
+  const carregarHistorico = useCallback(
+    async (page) => {
+      try {
+        const res = await get(
+          `/ordem-coleta/historico?page=${page}&limit=15`,
+          { skipLoading: true },
+        );
+        setHistorico(Array.isArray(res.data) ? res.data : []);
+        setPagination(res.pagination || null);
+      } catch {
+        setHistorico([]);
+      }
+    },
+    [get],
+  );
+
+  useEffect(() => {
+    void carregarHistorico(historicoPage);
+  }, [historicoPage, carregarHistorico]);
 
   useEffect(() => {
     void fetchCaminhoes().catch(() => {
       /* erro já tratado pelo useApi (toast) */
     });
   }, [fetchCaminhoes]);
-
-  useEffect(() => {
-    carregarHistorico();
-  }, [carregarHistorico]);
 
   const buildPayload = useCallback(() => {
     const dv = {};
@@ -89,6 +98,7 @@ const OrdensColeta = () => {
 
   const handlePreview = async () => {
     setLocalError("");
+    setActionLoading("preview");
     try {
       const res = await request({
         method: "POST",
@@ -99,11 +109,14 @@ const OrdensColeta = () => {
       setPreviewHtml(res?.data?.html || "");
     } catch (e) {
       setLocalError(e.message || "Não foi possível gerar a pré-visualização.");
+    } finally {
+      setActionLoading(null);
     }
   };
 
   const handlePdf = async () => {
     setLocalError("");
+    setActionLoading("pdf");
     try {
       const res = await request({
         method: "POST",
@@ -122,6 +135,8 @@ const OrdensColeta = () => {
       saveAs(blob, `${prefix}_${new Date().toISOString().slice(0, 10)}.pdf`);
     } catch (e) {
       setLocalError(e.message || "Falha ao gerar o PDF.");
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -131,6 +146,7 @@ const OrdensColeta = () => {
       setLocalError("Informe o e-mail do destinatário.");
       return;
     }
+    setActionLoading("enviar");
     try {
       await post(
         "/ordem-coleta/enviar",
@@ -141,9 +157,11 @@ const OrdensColeta = () => {
         },
         { timeout: 120_000 },
       );
-      await carregarHistorico();
+      await carregarHistorico(1);
     } catch {
       /* toast já exibido pelo useApi */
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -270,14 +288,25 @@ const OrdensColeta = () => {
               type="button"
               variant="secondary"
               onClick={handlePreview}
-              loading={loading}
+              loading={actionLoading === "preview"}
+              disabled={Boolean(actionLoading)}
             >
               Pré-visualizar HTML
             </Button>
-            <Button type="button" onClick={handlePdf} loading={loading}>
+            <Button
+              type="button"
+              onClick={handlePdf}
+              loading={actionLoading === "pdf"}
+              disabled={Boolean(actionLoading)}
+            >
               Baixar PDF
             </Button>
-            <Button type="button" onClick={handleEnviar} loading={loading}>
+            <Button
+              type="button"
+              onClick={handleEnviar}
+              loading={actionLoading === "enviar"}
+              disabled={Boolean(actionLoading)}
+            >
               Gerar PDF e enviar por e-mail
             </Button>
           </div>
@@ -337,9 +366,16 @@ const OrdensColeta = () => {
                 </tbody>
               </table>
               {pagination && (
-                <p className="mt-3 text-xs text-text-light">
-                  Total: {pagination.totalItems} registro(s).
-                </p>
+                <>
+                  <p className="mt-3 text-xs text-text-light">
+                    Total: {pagination.totalItems} registro(s).
+                  </p>
+                  <Pagination
+                    currentPage={pagination.currentPage || historicoPage}
+                    totalPages={pagination.totalPages || 1}
+                    onPageChange={(page) => setHistoricoPage(page)}
+                  />
+                </>
               )}
             </div>
           )}

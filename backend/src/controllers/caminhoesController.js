@@ -149,17 +149,17 @@ export const caminhoesController = {
   // Atualizar caminhão por ID (usado pelo frontend quando se tem apenas o id)
   updateCaminhaoById: catchAsync(async (req, res) => {
     const { id } = req.params;
-    const caminhaoData = req.body;
+    const caminhaoValidado = caminhaoUpdateSchema.parse(req.body);
 
-    const caminhaoAtualizado = await caminhoesModel.updateById(
+    const caminhaoAtualizado = await CaminhaoService.atualizarCaminhaoPorId(
       id,
-      caminhaoData,
+      caminhaoValidado,
     );
 
     res.status(200).json({
       success: true,
       data: caminhaoAtualizado,
-      message: "Caminhão atualizado por id com sucesso",
+      message: "Caminhão atualizado com sucesso",
     });
   }),
 };

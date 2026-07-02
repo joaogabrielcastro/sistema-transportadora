@@ -66,13 +66,25 @@ O log `FROM ghcr.io/railwayapp/nixpacks` indica que o Coolify está usando **Nix
 
 Variáveis mínimas: `DATABASE_URL`, `PORT` (ex.: 3020), SMTP se for enviar e-mail.
 
+**Segurança em produção (obrigatório):**
+
+| Backend (Coolify) | Frontend (build arg) |
+|-------------------|----------------------|
+| `NODE_ENV=production` | `VITE_API_URL` |
+| `AUTH_ENABLED=true` | `VITE_API_TOKEN` (= mesmo valor de `API_TOKEN`) |
+| `API_TOKEN=` senha longa aleatória (≥16 chars) | |
+| `CORS_ORIGINS=https://abbroto.jwsoftware.com.br` | |
+
+Sem `VITE_API_TOKEN` no build do frontend, a API retorna **401** quando auth está ativa.
+
 ### Deploy do frontend (Coolify)
 
 1. Serviço do site → **Build** → **Build Pack:** `Dockerfile`
 2. **Base Directory:** `frontend` · **Dockerfile:** `Dockerfile`
 3. **Porta exposta no container:** `80` (nginx)
 4. **Build argument** (obrigatório em produção): `VITE_API_URL=https://api-abbroto.jwsoftware.com.br` (URL da API **sem** `/api` no final)
-5. Redeploy com **Clear build cache**
+5. **Build argument:** `VITE_API_TOKEN` — mesmo valor de `API_TOKEN` do backend
+6. Redeploy com **Clear build cache**
 
 Se aparecer `open Dockerfile: no such file or directory`, a base directory não é `frontend` ou o Dockerfile ainda não foi enviado ao repositório.
 

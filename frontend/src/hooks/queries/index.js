@@ -1,5 +1,5 @@
-export { useCaminhoesListQuery } from "./useCaminhoesQuery.js";
-export { useReportsOverviewQuery } from "./useReportsQuery.js";
+export { useCaminhoesListQuery, useCaminhaoByPlacaQuery } from "./useCaminhoesQuery.js";
+export { useReportsOverviewQuery, useCostPerKmReportQuery } from "./useReportsQuery.js";
 export { useManutencaoGastosQueries } from "./useManutencaoGastosQueries.js";
 export { useOrdemColetaHistoricoQuery } from "./useOrdemColetaQuery.js";
 export {
@@ -7,6 +7,8 @@ export {
   usePneusEstoqueQuery,
   useStatusPneusQuery,
   usePosicoesPneusQuery,
+  usePneuAtribuirQueries,
+  useCadastroPneuLoteQueries,
 } from "./usePneusQuery.js";
 export { useCaminhaoDetailQuery } from "./useCaminhaoDetailQuery.js";
 export {

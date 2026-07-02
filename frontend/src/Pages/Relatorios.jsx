@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useApi } from "../hooks/useApi";
-import { extractApiArray, extractApiData } from "../utils/extractApiArray.js";
+import React, { useState } from "react";
+import {
+  useCaminhoesListQuery,
+  useCostPerKmReportQuery,
+} from "../hooks";
+import { API_CONFIG } from "../utils/constants.js";
 import {
   Card,
   Button,
-  LoadingSpinner,
   Alert,
   FormField,
 } from "../components/ui";
@@ -31,10 +33,6 @@ ChartJS.register(
 );
 
 const Relatorios = () => {
-  const { get } = useApi();
-  const [loading, setLoading] = useState(false);
-  const [reportData, setReportData] = useState([]);
-  const [caminhoes, setCaminhoes] = useState([]);
   const [selectedCaminhao, setSelectedCaminhao] = useState("");
   const [dateRange, setDateRange] = useState({
     start: new Date(new Date().setMonth(new Date().getMonth() - 1))
@@ -42,62 +40,35 @@ const Relatorios = () => {
       .split("T")[0],
     end: new Date().toISOString().split("T")[0],
   });
+  const [submittedParams, setSubmittedParams] = useState(null);
 
-  const fetchCaminhoes = useCallback(async () => {
-    try {
-      const res = await get("/caminhoes");
-      setCaminhoes(extractApiArray(res));
-    } catch (error) {
-      console.error("Erro ao carregar caminhões", error);
-    }
-  }, [get]);
+  const { data: caminhoesPage } = useCaminhoesListQuery({
+    page: 1,
+    limit: API_CONFIG.LIST_MAX,
+  });
 
-  useEffect(() => {
-    fetchCaminhoes();
-  }, [fetchCaminhoes]);
+  const caminhoes = caminhoesPage?.data ?? [];
 
-  const generateReport = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        startDate: dateRange.start,
-        endDate: dateRange.end,
-      });
+  const {
+    data: report,
+    isFetching: loading,
+  } = useCostPerKmReportQuery(submittedParams ?? {}, Boolean(submittedParams));
 
-      if (selectedCaminhao) {
-        params.append("caminhaoId", selectedCaminhao);
-      }
-
-      const res = await get(`/reports/cost-per-km?${params.toString()}`);
-      const payload = extractApiData(res);
-      const items = Array.isArray(payload.items) ? payload.items : [];
-
-      const processed = items.map((item) => ({
-        ...item,
-        kmDriven: typeof item.kmDriven === "number" ? item.kmDriven : "N/I",
-      }));
-
-      setStats({
-        grandTotal: payload.stats?.grandTotal || 0,
-        totalKm: payload.stats?.totalKm || 0,
-        avgCostPerKm: payload.stats?.avgCostPerKm || 0,
-        truckCount: payload.stats?.truckCount || processed.length,
-      });
-
-      setReportData(processed);
-    } catch (error) {
-      console.error("Erro ao gerar relatório", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const [stats, setStats] = useState({
+  const reportData = report?.items ?? [];
+  const stats = report?.stats ?? {
     grandTotal: 0,
     totalKm: 0,
     avgCostPerKm: 0,
     truckCount: 0,
-  });
+  };
+
+  const generateReport = () => {
+    setSubmittedParams({
+      startDate: dateRange.start,
+      endDate: dateRange.end,
+      caminhaoId: selectedCaminhao || undefined,
+    });
+  };
 
   const handleExportPDF = () => {
     const columns = [
@@ -213,61 +184,59 @@ const Relatorios = () => {
               <h3 className="text-lg font-semibold mb-4 text-gray-800">
                 Custo por Caminhão
               </h3>
-              <div className="h-64">
+              <div className="h-64 mb-6">
                 <Bar
                   data={{
-                    labels: reportData.map((d) => d.placa),
+                    labels: reportData.map((r) => r.placa),
                     datasets: [
                       {
                         label: "Custo Total (R$)",
-                        data: reportData.map((d) => d.totalCost),
-                        backgroundColor: "rgba(59, 130, 246, 0.5)",
+                        data: reportData.map((r) => r.totalCost),
+                        backgroundColor: "rgba(59, 130, 246, 0.6)",
                       },
                     ],
                   }}
-                  options={{ maintainAspectRatio: false }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                  }}
                 />
               </div>
-            </Card>
 
-            <Card title="Detalhamento">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Caminhão
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Placa
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Total Gasto
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        KM Percorrido (Est.)
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        KM Rodado (Est.)
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Custo / KM
                       </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {reportData.map((row, idx) => (
-                      <tr key={idx}>
-                        <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                    {reportData.map((row) => (
+                      <tr key={row.placa}>
+                        <td className="px-6 py-4 whitespace-nowrap font-medium">
                           {row.placa}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap">
                           {formatCurrency(row.totalCost)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                          {row.kmDriven === "N/I" ? (
-                            <span className="text-yellow-600 text-xs bg-yellow-100 px-2 py-1 rounded">
-                              Dados Insuficientes
-                            </span>
-                          ) : (
-                            `${formatNumber(row.kmDriven)} km`
-                          )}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {row.kmDriven === "N/I"
+                            ? "Dados Insuficientes"
+                            : `${formatNumber(row.kmDriven)} km`}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-500 font-bold">
+                        <td className="px-6 py-4 whitespace-nowrap">
                           {row.kmDriven === "N/I"
                             ? "-"
                             : formatCurrency(row.costPerKm)}
@@ -279,6 +248,13 @@ const Relatorios = () => {
               </div>
             </Card>
           </div>
+        )}
+
+        {submittedParams && !loading && reportData.length === 0 && (
+          <Alert
+            type="info"
+            message="Nenhum dado encontrado para o período e filtros selecionados."
+          />
         )}
       </div>
     </div>

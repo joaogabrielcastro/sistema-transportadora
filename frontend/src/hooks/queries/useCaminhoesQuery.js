@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../../lib/apiClient.js";
 import { queryKeys } from "../../lib/queryKeys.js";
-import { extractApiArray } from "../../utils/extractApiArray.js";
+import { extractApiArray, extractApiData } from "../../utils/extractApiArray.js";
 
 export function useCaminhoesListQuery(params = { page: 1, limit: 10 }) {
   return useQuery({
@@ -18,5 +18,16 @@ export function useCaminhoesListQuery(params = { page: 1, limit: 10 }) {
         pagination: res.pagination || null,
       };
     },
+  });
+}
+
+export function useCaminhaoByPlacaQuery(placa) {
+  return useQuery({
+    queryKey: queryKeys.caminhoes.byPlaca(placa),
+    enabled: Boolean(placa),
+    queryFn: async () =>
+      extractApiData(
+        await apiFetch({ method: "GET", url: `/caminhoes/${placa}` }),
+      ),
   });
 }

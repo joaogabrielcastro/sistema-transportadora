@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useApi } from "../hooks/useApi";
-import { extractApiData } from "../utils/extractApiArray.js";
+import { useApi, useCaminhaoByPlacaQuery } from "../hooks";
 import {
   Card,
   Button,
@@ -13,7 +12,13 @@ import {
 const EditCaminhao = () => {
   const { placa } = useParams();
   const navigate = useNavigate();
-  const { get, put } = useApi();
+  const { put } = useApi();
+
+  const {
+    data: caminhaoData,
+    isLoading: loading,
+    error: queryError,
+  } = useCaminhaoByPlacaQuery(placa);
 
   const [form, setForm] = useState({
     placa: "",
@@ -30,55 +35,39 @@ const EditCaminhao = () => {
 
   const [carretas, setCarretas] = useState([""]);
   const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
 
-  const fetchCaminhao = useCallback(async () => {
-    setLoading(true);
-    setError("");
-
-    try {
-      const response = await get(`/caminhoes/${placa}`);
-      const data = extractApiData(response);
-
-      setForm({
-        placa: data.placa || "",
-        qtd_pneus: data.qtd_pneus ?? "",
-        km_atual: data.km_atual ?? "",
-        numero_cavalo:
-          data.numero_cavalo != null ? String(data.numero_cavalo) : "",
-        motorista: data.motorista || "",
-        marca: data.marca || "",
-        modelo: data.modelo || "",
-        ano: data.ano ?? "",
-        placa_carreta_1: data.placa_carreta_1 || "",
-        placa_carreta_2: data.placa_carreta_2 || "",
-      });
-
-      const carretasArray = [];
-      if (data.numero_carreta_1 != null) {
-        carretasArray.push(String(data.numero_carreta_1));
-      }
-      if (data.numero_carreta_2 != null) {
-        carretasArray.push(String(data.numero_carreta_2));
-      }
-
-      setCarretas(carretasArray.length > 0 ? carretasArray : [""]);
-    } catch (err) {
-      console.error("Erro ao carregar:", err);
-      setError(
-        err?.message || "Não foi possível carregar os dados deste caminhão.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [get, placa]);
+  const error = queryError?.message || "";
 
   useEffect(() => {
-    fetchCaminhao();
-  }, [fetchCaminhao]);
+    if (!caminhaoData) return;
+
+    const data = caminhaoData;
+    setForm({
+      placa: data.placa || "",
+      qtd_pneus: data.qtd_pneus ?? "",
+      km_atual: data.km_atual ?? "",
+      numero_cavalo:
+        data.numero_cavalo != null ? String(data.numero_cavalo) : "",
+      motorista: data.motorista || "",
+      marca: data.marca || "",
+      modelo: data.modelo || "",
+      ano: data.ano ?? "",
+      placa_carreta_1: data.placa_carreta_1 || "",
+      placa_carreta_2: data.placa_carreta_2 || "",
+    });
+
+    const carretasArray = [];
+    if (data.numero_carreta_1 != null) {
+      carretasArray.push(String(data.numero_carreta_1));
+    }
+    if (data.numero_carreta_2 != null) {
+      carretasArray.push(String(data.numero_carreta_2));
+    }
+
+    setCarretas(carretasArray.length > 0 ? carretasArray : [""]);
+  }, [caminhaoData, placa]);
 
   const validateForm = () => {
     const newErrors = {};

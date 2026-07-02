@@ -1,7 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useApi } from "../hooks/useApi.js";
-import { extractApiArray } from "../utils/extractApiArray.js";
-import { API_CONFIG } from "../utils/constants.js";
+import React, { useState } from "react";
+import { useApi, usePneuAtribuirQueries } from "../hooks";
 import {
   Card,
   Button,
@@ -11,19 +9,15 @@ import {
 import { useSearchParams, useNavigate } from "react-router-dom";
 
 const PneuAtribuir = () => {
-  const { get, post } = useApi();
+  const { post } = useApi();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const initialPneuId = searchParams.get("pneu_id") || "";
 
-  // Estados de dados
-  const [pneus, setPneus] = useState([]);
-  const [caminhoes, setCaminhoes] = useState([]);
-  const [posicoes, setPosicoes] = useState([]);
-  const [statusOptions, setStatusOptions] = useState([]);
+  const { pneus, caminhoes, posicoes, statusOptions, isLoading: loading } =
+    usePneuAtribuirQueries();
 
-  // Estados de formulário e UI
   const [form, setForm] = useState({
     stock_pneu_id: initialPneuId,
     caminhao_id: "",
@@ -32,37 +26,9 @@ const PneuAtribuir = () => {
     data_instalacao: new Date().toISOString().split("T")[0],
     km_instalacao: "",
   });
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const listParams = { params: { limit: API_CONFIG.LIST_MAX } };
-      const [pRes, cRes, posRes, statusRes] = await Promise.all([
-        get("/pneus/in-stock", listParams),
-        get("/caminhoes", listParams),
-        get("/posicoes-pneus"),
-        get("/status-pneus"),
-      ]);
-
-      setPneus(extractApiArray(pRes));
-      setCaminhoes(extractApiArray(cRes));
-      setPosicoes(extractApiArray(posRes));
-      setStatusOptions(extractApiArray(statusRes));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [get]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  // Atualiza campo de KM quando caminhão é selecionado
   const handleCaminhaoChange = (e) => {
     const caminhaoId = parseInt(e.target.value);
     const caminhao = caminhoes.find((c) => c.id === caminhaoId);

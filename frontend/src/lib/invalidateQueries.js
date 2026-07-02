@@ -12,17 +12,17 @@ export function invalidateQueriesFromMutation(url = "", method = "") {
 
   if (/^caminhoes/.test(path)) {
     queryClient.invalidateQueries({ queryKey: queryKeys.caminhoes.all });
-    queryClient.invalidateQueries({ queryKey: queryKeys.reports.overview });
+    queryClient.invalidateQueries({ queryKey: ["reports"] });
   }
 
   if (/^gastos/.test(path)) {
     queryClient.invalidateQueries({ queryKey: queryKeys.gastos.all });
-    queryClient.invalidateQueries({ queryKey: queryKeys.reports.overview });
+    queryClient.invalidateQueries({ queryKey: ["reports"] });
   }
 
   if (/^checklist/.test(path)) {
     queryClient.invalidateQueries({ queryKey: queryKeys.checklist.all });
-    queryClient.invalidateQueries({ queryKey: queryKeys.reports.overview });
+    queryClient.invalidateQueries({ queryKey: ["reports"] });
   }
 
   if (/^ordem-coleta/.test(path)) {

@@ -2,11 +2,13 @@ export const queryKeys = {
   caminhoes: {
     all: ["caminhoes"],
     list: (params) => ["caminhoes", "list", params],
+    byPlaca: (placa) => ["caminhoes", "by-placa", placa],
     detail: (placa) => ["caminhoes", "detail", placa],
     search: (term) => ["caminhoes", "search", term],
   },
   reports: {
     overview: ["reports", "overview"],
+    costPerKm: (params) => ["reports", "cost-per-km", params],
   },
   gastos: {
     all: ["gastos"],

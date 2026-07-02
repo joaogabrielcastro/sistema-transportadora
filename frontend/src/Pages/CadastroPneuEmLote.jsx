@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { z } from "zod";
-import { useApi } from "../hooks/useApi";
+import { useApi, useCadastroPneuLoteQueries } from "../hooks";
 import {
   Card,
   Button,
@@ -23,8 +23,16 @@ const pneuSchema = z.object({
 const CadastroPneuEmLote = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { get, post } = useApi();
+  const { post } = useApi();
   const caminhaoIdFromState = location.state?.caminhaoId;
+
+  const {
+    caminhoes,
+    posicoes,
+    status,
+    isLoading: loading,
+    error: loadError,
+  } = useCadastroPneuLoteQueries();
 
   const [pneus, setPneus] = useState([
     {
@@ -39,36 +47,8 @@ const CadastroPneuEmLote = () => {
     },
   ]);
   const [caminhaoId, setCaminhaoId] = useState(caminhaoIdFromState || "");
-  const [caminhoes, setCaminhoes] = useState([]);
-  const [posicoes, setPosicoes] = useState([]);
-  const [status, setStatus] = useState([]);
-
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
-
-  // Carregar dados iniciais (caminhões, posições, status)
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [caminhoesData, posicoesData, statusData] = await Promise.all([
-          get("/caminhoes?limit=1000"), // Busca todos os caminhões
-          get("/posicoes-pneus"),
-          get("/status-pneus"),
-        ]);
-
-        setCaminhoes(caminhoesData.data || caminhoesData || []);
-        setPosicoes(posicoesData.data || posicoesData || []);
-        setStatus(statusData.data || statusData || []);
-      } catch (error) {
-        console.error("Erro ao carregar dados:", error);
-        setErrors({ form: "Erro ao carregar dados iniciais." });
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [get]);
 
   const handleAddPneu = () => {
     setPneus([
@@ -184,6 +164,16 @@ const CadastroPneuEmLote = () => {
   };
 
   if (loading) return <LoadingSpinner fullScreen />;
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
+        <div className="max-w-4xl mx-auto text-center text-red-600">
+          {loadError}
+        </div>
+      </div>
+    );
+  }
 
   const caminhaoOptions = caminhoes.map((c) => ({
     value: c.id,

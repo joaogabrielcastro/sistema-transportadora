@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useApi, useEditGastoQuery } from "../hooks";
+import { useApiMutation, useEditGastoQuery } from "../hooks";
 import {
   Card,
   Button,
@@ -12,7 +12,7 @@ import {
 const EditGasto = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { put } = useApi();
+  const { put } = useApiMutation();
 
   const {
     data,

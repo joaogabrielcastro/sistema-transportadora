@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { saveAs } from "file-saver";
 import {
   useApi,
+  useApiMutation,
   useCaminhoesListQuery,
   useOrdemColetaHistoricoQuery,
 } from "../hooks";
@@ -31,7 +32,8 @@ const labelTipoHistorico = (tipoApi) => {
 };
 
 const OrdensColeta = () => {
-  const { get, post, request } = useApi();
+  const { get, request } = useApi();
+  const { post } = useApiMutation();
   const toast = useToast();
 
   const {
@@ -98,6 +100,7 @@ const OrdensColeta = () => {
         url: "/ordem-coleta/preview",
         data: buildPayload(),
         skipSuccessToast: true,
+        skipErrorToast: true,
       });
       setPreviewHtml(res?.data?.html || "");
     } catch (e) {
@@ -117,6 +120,7 @@ const OrdensColeta = () => {
         data: buildPayload(),
         responseType: "blob",
         skipSuccessToast: true,
+        skipErrorToast: true,
         timeout: 120_000,
       });
       const blob = res?.data;

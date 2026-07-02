@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useApi, usePneuAtribuirQueries } from "../hooks";
+import { useApiMutation, usePneuAtribuirQueries } from "../hooks";
 import {
   Card,
   Button,
@@ -9,7 +9,7 @@ import {
 import { useSearchParams, useNavigate } from "react-router-dom";
 
 const PneuAtribuir = () => {
-  const { post } = useApi();
+  const { post } = useApiMutation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { lazy, Suspense, useState } from "react";
 import {
   useCaminhoesListQuery,
   useCostPerKmReportQuery,
@@ -9,27 +9,13 @@ import {
   Button,
   Alert,
   FormField,
+  LoadingSpinner,
 } from "../components/ui";
 import { exportToPDF, exportToExcel } from "../utils/exportUtils";
 import { formatCurrency, formatNumber } from "../utils/formatters";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-} from "chart.js";
-import { Bar } from "react-chartjs-2";
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
+const CostPerKmBarChart = lazy(
+  () => import("../components/relatorios/CostPerKmBarChart.jsx"),
 );
 
 const Relatorios = () => {
@@ -41,6 +27,7 @@ const Relatorios = () => {
     end: new Date().toISOString().split("T")[0],
   });
   const [submittedParams, setSubmittedParams] = useState(null);
+  const [exporting, setExporting] = useState(null);
 
   const { data: caminhoesPage } = useCaminhoesListQuery({
     page: 1,
@@ -70,7 +57,7 @@ const Relatorios = () => {
     });
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     const columns = [
       "Placa",
       "Total Gasto",
@@ -83,17 +70,29 @@ const Relatorios = () => {
       r.kmDriven === "N/I" ? "Dados Insuf." : `${r.kmDriven} km`,
       r.kmDriven === "N/I" ? "-" : formatCurrency(r.costPerKm),
     ]);
-    exportToPDF("Relatório de Custo Operacional", columns, rows);
+
+    setExporting("pdf");
+    try {
+      await exportToPDF("Relatório de Custo Operacional", columns, rows);
+    } finally {
+      setExporting(null);
+    }
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     const data = reportData.map((r) => ({
       Placa: r.placa,
       "Total Gasto": r.totalCost,
       "KM Rodado (Estimado)": r.kmDriven,
       "Custo / KM": r.costPerKm,
     }));
-    exportToExcel(data, "relatorio_custos.xlsx");
+
+    setExporting("excel");
+    try {
+      await exportToExcel(data, "relatorio_custos.xlsx");
+    } finally {
+      setExporting(null);
+    }
   };
 
   return (
@@ -172,10 +171,20 @@ const Relatorios = () => {
             </div>
 
             <div className="flex gap-4 justify-end">
-              <Button variant="outline" onClick={handleExportPDF}>
+              <Button
+                variant="outline"
+                onClick={handleExportPDF}
+                loading={exporting === "pdf"}
+                disabled={Boolean(exporting)}
+              >
                 Exportar PDF
               </Button>
-              <Button variant="outline" onClick={handleExportExcel}>
+              <Button
+                variant="outline"
+                onClick={handleExportExcel}
+                loading={exporting === "excel"}
+                disabled={Boolean(exporting)}
+              >
                 Exportar Excel
               </Button>
             </div>
@@ -184,25 +193,15 @@ const Relatorios = () => {
               <h3 className="text-lg font-semibold mb-4 text-gray-800">
                 Custo por Caminhão
               </h3>
-              <div className="h-64 mb-6">
-                <Bar
-                  data={{
-                    labels: reportData.map((r) => r.placa),
-                    datasets: [
-                      {
-                        label: "Custo Total (R$)",
-                        data: reportData.map((r) => r.totalCost),
-                        backgroundColor: "rgba(59, 130, 246, 0.6)",
-                      },
-                    ],
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                  }}
-                />
-              </div>
+              <Suspense
+                fallback={
+                  <div className="h-64 mb-6 flex items-center justify-center">
+                    <LoadingSpinner text="Carregando gráfico..." />
+                  </div>
+                }
+              >
+                <CostPerKmBarChart reportData={reportData} />
+              </Suspense>
 
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">

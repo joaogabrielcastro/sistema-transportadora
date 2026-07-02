@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { z } from "zod";
-import { useApi, usePneusEstoqueQuery, useStatusPneusQuery } from "../hooks";
+import { useApiMutation, usePneusEstoqueQuery, useStatusPneusQuery } from "../hooks";
 import ConfirmModal from "../components/ConfirmModal";
 import Pagination from "../components/Pagination.jsx";
 import {
@@ -14,7 +14,7 @@ import { Link } from "react-router-dom";
 const ESTOQUE_PAGE_SIZE = 20;
 
 const PneusEstoque = () => {
-  const { post, delete: del } = useApi();
+  const { post, delete: del } = useApiMutation();
   const [deletingId, setDeletingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);

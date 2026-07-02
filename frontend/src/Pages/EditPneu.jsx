@@ -1,7 +1,7 @@
 // src/pages/EditPneu.jsx
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useApi, useEditPneuQuery } from "../hooks";
+import { useApiMutation, useEditPneuQuery } from "../hooks";
 import {
   Card,
   Button,
@@ -13,7 +13,7 @@ import {
 const EditPneu = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { put } = useApi();
+  const { put } = useApiMutation();
 
   const {
     data,

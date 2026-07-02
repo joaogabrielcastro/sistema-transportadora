@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useApi, useCaminhaoByPlacaQuery } from "../hooks";
+import { useApiMutation, useCaminhaoByPlacaQuery } from "../hooks";
 import {
   Card,
   Button,
@@ -12,7 +12,7 @@ import {
 const EditCaminhao = () => {
   const { placa } = useParams();
   const navigate = useNavigate();
-  const { put } = useApi();
+  const { put } = useApiMutation();
 
   const {
     data: caminhaoData,

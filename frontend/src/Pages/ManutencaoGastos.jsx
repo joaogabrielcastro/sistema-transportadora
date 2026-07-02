@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useApi, useManutencaoGastosQueries } from "../hooks";
+import { useApiMutation, useManutencaoGastosQueries } from "../hooks";
 import { useToast } from "../components/ui/useToast.js";
 import { API_CONFIG } from "../utils/constants.js";
 import ConfirmModal from "../components/ConfirmModal";
@@ -548,7 +548,7 @@ const HistoricoRegistros = ({
 
 const ManutencaoGastos = () => {
   const navigate = useNavigate();
-  const { post, put, delete: del } = useApi();
+  const { post, put, delete: del } = useApiMutation();
   const toast = useToast();
 
   const {

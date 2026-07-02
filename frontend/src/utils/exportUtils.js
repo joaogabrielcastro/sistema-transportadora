@@ -1,21 +1,22 @@
-import { jsPDF } from "jspdf";
-import "jspdf-autotable";
-import * as XLSX from "xlsx";
-import { saveAs } from "file-saver";
+/**
+ * Export utilities with dynamic imports — PDF/Excel libs load only on use.
+ */
 
 /**
- * Export data to PDF using jsPDF and jspdf-autotable
- * @param {string} title - Title of the report
- * @param {Array} columns - Array of column headers
- * @param {Array} data - Array of arrays (rows) matching columns
- * @param {string} filename - Output filename
+ * @param {string} title
+ * @param {Array} columns
+ * @param {Array} data
+ * @param {string} [filename]
  */
-export const exportToPDF = (
+export const exportToPDF = async (
   title,
   columns,
   data,
   filename = "relatorio.pdf",
 ) => {
+  const { jsPDF } = await import("jspdf");
+  await import("jspdf-autotable");
+
   const doc = new jsPDF();
 
   doc.text(title, 14, 20);
@@ -32,15 +33,27 @@ export const exportToPDF = (
 };
 
 /**
- * Export data to Excel using xlsx and file-saver
- * @param {Array} data - Array of objects to export
- * @param {string} filename - Output filename
+ * @param {Array<Record<string, unknown>>} data
+ * @param {string} [filename]
  */
-export const exportToExcel = (data, filename = "relatorio.xlsx") => {
-  const worksheet = XLSX.utils.json_to_sheet(data);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Relatório");
-  const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+export const exportToExcel = async (data, filename = "relatorio.xlsx") => {
+  const ExcelJS = (await import("exceljs")).default;
+  const { saveAs } = await import("file-saver");
+
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Relatório");
+
+  if (data.length > 0) {
+    const headers = Object.keys(data[0]);
+    worksheet.columns = headers.map((header) => ({
+      header,
+      key: header,
+      width: Math.max(header.length, 12),
+    }));
+    worksheet.addRows(data);
+  }
+
+  const excelBuffer = await workbook.xlsx.writeBuffer();
   const dataBlob = new Blob([excelBuffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8",
   });

@@ -10,7 +10,7 @@ import {
 
 export { api, getApiBaseUrl };
 
-// Hook principal para requisições API (mutações com toast/loading)
+/** Leituras ad hoc e requisições especiais (blob, preview, upload via request). */
 export const useApi = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -28,28 +28,13 @@ export const useApi = () => {
         }
         setError(null);
 
-        const normalized = await apiFetch(config);
-
-        const method = String(config.method || "GET").toUpperCase();
-        if (
-          ["POST", "PUT", "PATCH", "DELETE"].includes(method) &&
-          !config.skipSuccessToast
-        ) {
-          const message =
-            normalized?.message ||
-            (method === "POST"
-              ? "Salvo com sucesso."
-              : method === "DELETE"
-                ? "Excluído com sucesso."
-                : "Atualizado com sucesso.");
-          toast.success(message);
-        }
-
-        return normalized;
+        return await apiFetch(config);
       } catch (err) {
         const parsed = await parseApiError(err);
         setError(parsed.message);
-        toast.error(parsed.message);
+        if (!config.skipErrorToast) {
+          toast.error(parsed.message);
+        }
         throw parsed;
       } finally {
         if (trackLoading) {
@@ -67,30 +52,7 @@ export const useApi = () => {
   );
 
   const get = useCallback(
-    (url, config = {}) => {
-      return request({ method: "GET", url, ...config });
-    },
-    [request],
-  );
-
-  const post = useCallback(
-    (url, data, config = {}) => {
-      return request({ method: "POST", url, data, ...config });
-    },
-    [request],
-  );
-
-  const put = useCallback(
-    (url, data, config = {}) => {
-      return request({ method: "PUT", url, data, ...config });
-    },
-    [request],
-  );
-
-  const del = useCallback(
-    (url, config = {}) => {
-      return request({ method: "DELETE", url, ...config });
-    },
+    (url, config = {}) => request({ method: "GET", url, ...config }),
     [request],
   );
 
@@ -102,9 +64,6 @@ export const useApi = () => {
     loading,
     error,
     get,
-    post,
-    put,
-    delete: del,
     clearError,
     request,
   };

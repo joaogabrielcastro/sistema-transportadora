@@ -3,6 +3,7 @@ import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   useApi,
+  useApiMutation,
   useCaminhoesListQuery,
   useReportsOverviewQuery,
 } from "../hooks";
@@ -25,7 +26,8 @@ const Home = () => {
 
   const { data: overview } = useReportsOverviewQuery();
 
-  const { get: apiGet, delete: apiDelete } = useApi();
+  const { get: apiGet } = useApi();
+  const { delete: apiDelete } = useApiMutation();
 
   const stats = useMemo(
     () => ({

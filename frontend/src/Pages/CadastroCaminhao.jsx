@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useApi } from "../hooks/useApi";
+import { useApiMutation } from "../hooks";
 import {
   Card,
   Button,
@@ -10,7 +10,7 @@ import {
 
 const CadastroCaminhao = () => {
   const navigate = useNavigate();
-  const { post } = useApi();
+  const { post } = useApiMutation();
 
   const [form, setForm] = useState({
     placa: "",

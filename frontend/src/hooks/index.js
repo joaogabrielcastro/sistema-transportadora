@@ -1,5 +1,6 @@
 // frontend/src/hooks/index.js
 export { useApi, api, getApiBaseUrl } from "./useApi.js";
+export { useApiMutation } from "./useApiMutation.js";
 export { useDebouncedValue } from "./useDebouncedValue.js";
 export {
   useCaminhoesListQuery,

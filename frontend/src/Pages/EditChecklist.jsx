@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useApi, useEditChecklistQuery } from "../hooks";
+import { useApiMutation, useEditChecklistQuery } from "../hooks";
 import {
   Card,
   Button,
@@ -12,7 +12,7 @@ import {
 const EditChecklist = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { put } = useApi();
+  const { put } = useApiMutation();
 
   const {
     data,

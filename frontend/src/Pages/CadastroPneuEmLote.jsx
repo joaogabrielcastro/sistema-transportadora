@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { z } from "zod";
-import { useApi, useCadastroPneuLoteQueries } from "../hooks";
+import { useApiMutation, useCadastroPneuLoteQueries } from "../hooks";
 import {
   Card,
   Button,
@@ -23,7 +23,7 @@ const pneuSchema = z.object({
 const CadastroPneuEmLote = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { post } = useApi();
+  const { post } = useApiMutation();
   const caminhaoIdFromState = location.state?.caminhaoId;
 
   const {

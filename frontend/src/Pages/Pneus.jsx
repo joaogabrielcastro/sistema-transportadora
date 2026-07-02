@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
-  useApi,
+  useApiMutation,
   useCaminhoesListQuery,
   usePneusEmUsoQuery,
   useDebouncedValue,
@@ -220,7 +220,7 @@ const PneusTable = ({
 const PNEUS_PAGE_SIZE = 20;
 
 const Pneus = () => {
-  const { delete: del } = useApi();
+  const { delete: del } = useApiMutation();
   const [filtroPlaca, setFiltroPlaca] = useState("");
   const placaDebounced = useDebouncedValue(filtroPlaca.trim(), 400);
   const [deleteTarget, setDeleteTarget] = useState(null);

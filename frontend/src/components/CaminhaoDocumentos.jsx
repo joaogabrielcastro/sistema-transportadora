@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { useApi, useCaminhaoDocumentosQuery } from "../hooks";
+import { useApi, useApiMutation, useCaminhaoDocumentosQuery } from "../hooks";
 import ConfirmModal from "./ConfirmModal";
 import { Button } from "./ui";
 import { useToast } from "./ui/useToast.js";
@@ -12,7 +12,9 @@ const formatBytes = (bytes) => {
 };
 
 const CaminhaoDocumentos = ({ placa }) => {
-  const { request, delete: del, loading } = useApi();
+  const { request, loading } = useApi();
+  const { post, delete: del, isPending: mutating } = useApiMutation();
+  const busy = loading || mutating;
   const toast = useToast();
   const {
     data: documentos = [],
@@ -58,11 +60,7 @@ const CaminhaoDocumentos = ({ placa }) => {
     Array.from(files).forEach((file) => formData.append("arquivos", file));
 
     try {
-      await request({
-        method: "POST",
-        url: `/caminhoes/${placa}/documentos`,
-        data: formData,
-      });
+      await post(`/caminhoes/${placa}/documentos`, formData);
     } finally {
       event.target.value = "";
     }
@@ -103,7 +101,7 @@ const CaminhaoDocumentos = ({ placa }) => {
           <Button
             type="button"
             variant="secondary"
-            loading={loading}
+            loading={busy}
             onClick={() => inputRef.current?.click()}
           >
             Adicionar PDFs
@@ -154,7 +152,7 @@ const CaminhaoDocumentos = ({ placa }) => {
                   type="button"
                   variant="outline"
                   size="sm"
-                  loading={loading}
+                  loading={busy}
                   onClick={() => handleRemoverClick(doc)}
                   className="text-danger border-danger/30 hover:bg-red-50"
                 >

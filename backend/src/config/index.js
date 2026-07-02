@@ -63,7 +63,6 @@ export const config = {
   auth: {
     enabled: parseBoolean(process.env.AUTH_ENABLED, false),
     apiToken: process.env.API_TOKEN || "",
-    adminRoles: parseCsv(process.env.ADMIN_ROLES, ["admin", "owner"]),
   },
   security: {
     rateLimitWindowMs: Number(

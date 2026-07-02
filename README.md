@@ -36,7 +36,6 @@ Aplicação fullstack para gestão de frota, manutenção, pneus e gastos operac
 - `RATE_LIMIT_MAX`: limite de requests por janela.
 - `AUTH_ENABLED`: `true`/`false` para exigir token.
 - `API_TOKEN`: token esperado no header `Authorization: Bearer ...`.
-- `ADMIN_ROLES`: lista CSV para papéis administrativos.
 
 ### Frontend (`frontend/.env`)
 

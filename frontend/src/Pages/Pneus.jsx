@@ -50,20 +50,6 @@ const PneusTable = ({
     });
   }, [pneus, caminhoes]);
 
-  const pneusFiltrados = useMemo(() => {
-    // Se não tem filtro, mostra todos (ou todos com caminhão?)
-    // O objetivo desta tela é ser "Controle de Pneus", ou seja, pneus montados.
-    // Mas talvez seja útil ver todos.
-    // Vamos filtrar apenas os que têm caminhão (em uso) por padrão, ou vamos mostrar todos com uma flag?
-    // O componente pai já filtra `pneusEmUso`. Então aqui só chega pneu com caminhão.
-
-    if (!filtroPlaca.trim()) return pneusComCalculos;
-
-    return pneusComCalculos.filter((pneu) =>
-      pneu.caminhao?.placa?.toLowerCase().includes(filtroPlaca.toLowerCase()),
-    );
-  }, [pneusComCalculos, filtroPlaca]);
-
   if (loading) return <LoadingSpinner />;
 
   return (
@@ -108,7 +94,7 @@ const PneusTable = ({
         </div>
       </div>
 
-      {pneusFiltrados.length === 0 ? (
+      {pneusComCalculos.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-200">
           <h3 className="text-lg font-medium text-gray-900 mb-1">
             {" "}
@@ -145,7 +131,7 @@ const PneusTable = ({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {pneusFiltrados.map((pneu) => (
+              {pneusComCalculos.map((pneu) => (
                 <tr
                   key={pneu.id}
                   className="hover:bg-gray-50 transition-colors"
@@ -278,7 +264,8 @@ const Pneus = () => {
     setDeleting(true);
     try {
       await del(`/pneus/${deleteTarget.id}`);
-      setDeleteTarget(null);    } catch (err) {
+      setDeleteTarget(null);
+    } catch (err) {
       console.error(err);
     } finally {
       setDeleting(false);

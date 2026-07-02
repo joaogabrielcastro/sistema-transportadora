@@ -3,11 +3,10 @@ import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   useApi,
-  useCaminhoes,
   useCaminhoesListQuery,
   useReportsOverviewQuery,
 } from "../hooks";
-import { Card, Button, LoadingSpinner } from "../components/ui";
+import { Card, Button, LoadingSpinner, Alert } from "../components/ui";
 import { formatCurrency, formatNumber } from "../utils";
 import { extractApiArray, extractApiData } from "../utils/extractApiArray.js";
 import ConfirmModal from "../components/ConfirmModal";
@@ -26,8 +25,7 @@ const Home = () => {
 
   const { data: overview } = useReportsOverviewQuery();
 
-  const { get: apiGet } = useApi();
-  const { search: searchCaminhoes, removeWithCascade } = useCaminhoes();
+  const { get: apiGet, delete: apiDelete } = useApi();
 
   const stats = useMemo(
     () => ({
@@ -69,7 +67,10 @@ const Home = () => {
     setHasSearched(true);
 
     try {
-      const results = await searchCaminhoes(searchTerm.trim());
+      const results = await apiGet(
+        `/caminhoes/search?term=${encodeURIComponent(searchTerm.trim())}`,
+        { skipLoading: true },
+      );
       setSearchResults(extractApiArray(results));
     } catch (err) {
       setErrorMessage("Erro ao buscar caminhões. Tente novamente.");
@@ -126,7 +127,7 @@ const Home = () => {
 
     setExcluindo(true);
     try {
-      await removeWithCascade(caminhaoParaExcluir.placa);
+      await apiDelete(`/caminhoes/${caminhaoParaExcluir.placa}/cascade`);
       setSuccessMessage(
         `Caminhão ${caminhaoParaExcluir.placa} excluído com sucesso!`,
       );
@@ -364,7 +365,13 @@ const Home = () => {
         </div>
 
         {/* Content Area */}
-        {loadingCaminhoes ? (
+        {errorCaminhoes ? (
+          <Alert
+            type="error"
+            title="Erro ao carregar frota"
+            message={errorCaminhoes.message || "Tente recarregar a página."}
+          />
+        ) : loadingCaminhoes ? (
           <div className="flex justify-center py-20">
             <LoadingSpinner size="lg" text="Carregando frota..." />
           </div>

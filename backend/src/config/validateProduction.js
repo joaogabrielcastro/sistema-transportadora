@@ -9,6 +9,7 @@ export function validateProductionConfig() {
   }
 
   const errors = [];
+  const warnings = [];
 
   if (!config.auth.enabled) {
     errors.push("AUTH_ENABLED=true é obrigatório em produção.");
@@ -22,6 +23,25 @@ export function validateProductionConfig() {
 
   if (!config.database.url) {
     errors.push("DATABASE_URL é obrigatório em produção.");
+  }
+
+  if (!process.env.CORS_ORIGINS?.trim()) {
+    errors.push(
+      "CORS_ORIGINS deve estar definido explicitamente em produção (ex.: https://abbroto.jwsoftware.com.br).",
+    );
+  }
+
+  if (config.database.sslMode === "disable") {
+    warnings.push(
+      "DB_SSL_MODE=disable em produção — use require ou no-verify se o provedor exigir TLS.",
+    );
+  }
+
+  if (warnings.length > 0) {
+    console.warn("[boot] Avisos de produção:");
+    for (const line of warnings) {
+      console.warn(`  - ${line}`);
+    }
   }
 
   if (errors.length > 0) {

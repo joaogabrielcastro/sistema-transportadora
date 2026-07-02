@@ -40,7 +40,10 @@ const OrdensColeta = () => {
     error: erroCaminhoes,
   } = useCaminhoesListQuery({ page: 1, limit: 200 });
 
-  const caminhoes = caminhoesPage?.data ?? [];
+  const caminhoes = useMemo(
+    () => caminhoesPage?.data ?? [],
+    [caminhoesPage?.data],
+  );
 
   const [tipo, setTipo] = useState("PADRAO");
   const [placa, setPlaca] = useState("");

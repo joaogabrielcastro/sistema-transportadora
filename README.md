@@ -137,6 +137,21 @@ npm run lint
 npm test
 ```
 
+### Frontend
+
+```bash
+cd frontend
+npm run lint
+npm run build
+```
+
+### CI (GitHub Actions)
+
+Em cada push/PR para `main` ou `master`, o workflow `.github/workflows/ci.yml` executa:
+
+- **Backend:** `npm run lint` e `npm test`
+- **Frontend:** `npm run lint` e `npm run build`
+
 ## Endpoints de Analytics
 
 - `GET /api/reports/overview`
@@ -147,3 +162,5 @@ npm test
 - Defina `DB_SSL_MODE=require` para validar certificado.
 - Evite `DB_SSL_MODE=no-verify` fora de cenário temporário.
 - Ative `AUTH_ENABLED=true` e configure `API_TOKEN` em produção.
+- O endpoint `/health` retorna **503** com `status: "degraded"` se banco, PDF ou uploads falharem — use no monitoramento do Coolify.
+- Faça backup periódico do Postgres e do volume `/app/uploads` (ver `docs/COOLIFY-CHECKLIST.md`).

@@ -1,6 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useApi } from "../hooks";
-import { extractApiArray } from "../utils/extractApiArray.js";
+import React, { useRef, useState } from "react";
+import { useApi, useCaminhaoDocumentosQuery } from "../hooks";
 import ConfirmModal from "./ConfirmModal";
 import { Button } from "./ui";
 import { useToast } from "./ui/useToast.js";
@@ -13,32 +12,16 @@ const formatBytes = (bytes) => {
 };
 
 const CaminhaoDocumentos = ({ placa }) => {
-  const { get, request, delete: del, loading } = useApi();
+  const { request, delete: del, loading } = useApi();
   const toast = useToast();
-  const [documentos, setDocumentos] = useState([]);
-  const [carregandoLista, setCarregandoLista] = useState(true);
+  const {
+    data: documentos = [],
+    isLoading: carregandoLista,
+  } = useCaminhaoDocumentosQuery(placa);
+
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [removing, setRemoving] = useState(false);
   const inputRef = useRef(null);
-
-  const carregar = useCallback(async () => {
-    if (!placa) return;
-    setCarregandoLista(true);
-    try {
-      const res = await get(`/caminhoes/${placa}/documentos`, {
-        skipSuccessToast: true,
-      });
-      setDocumentos(extractApiArray(res));
-    } catch {
-      setDocumentos([]);
-    } finally {
-      setCarregandoLista(false);
-    }
-  }, [get, placa]);
-
-  useEffect(() => {
-    carregar();
-  }, [carregar]);
 
   const abrirPdf = async (doc) => {
     if (doc.arquivo_disponivel === false) {
@@ -80,7 +63,6 @@ const CaminhaoDocumentos = ({ placa }) => {
         url: `/caminhoes/${placa}/documentos`,
         data: formData,
       });
-      await carregar();
     } finally {
       event.target.value = "";
     }
@@ -97,7 +79,6 @@ const CaminhaoDocumentos = ({ placa }) => {
     try {
       await del(`/caminhoes/${placa}/documentos/${deleteTarget.id}`);
       setDeleteTarget(null);
-      await carregar();
     } finally {
       setRemoving(false);
     }

@@ -1,4 +1,3 @@
-/* global process, console */
 import "dotenv/config";
 
 const caseId = process.env.TEST_CASE || "1";

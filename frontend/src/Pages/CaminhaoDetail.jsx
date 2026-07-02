@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useCaminhaoDetailQuery } from "../hooks";
+import { API_CONFIG } from "../utils/constants.js";
 import { Card, Button, LoadingSpinner, Alert } from "../components/ui";
 import CaminhaoDocumentos from "../components/CaminhaoDocumentos";
 import {
@@ -61,9 +62,9 @@ const CaminhaoDetail = () => {
   const { data, isLoading: loading, error } = useCaminhaoDetailQuery(placa);
 
   const caminhao = data?.caminhao ?? null;
-  const gastos = data?.gastos ?? [];
-  const checklists = data?.checklists ?? [];
-  const pneus = data?.pneus ?? [];
+  const gastos = useMemo(() => data?.gastos ?? [], [data?.gastos]);
+  const checklists = useMemo(() => data?.checklists ?? [], [data?.checklists]);
+  const pneus = useMemo(() => data?.pneus ?? [], [data?.pneus]);
   const consumoKmPorLitro = data?.consumoKmPorLitro ?? null;
   const listTruncation = data?.listTruncation ?? {
     gastos: false,

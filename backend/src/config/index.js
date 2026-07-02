@@ -49,7 +49,7 @@ export const config = {
     sslMode: process.env.DB_SSL_MODE || "auto",
   },
   app: {
-    port: process.env.PORT || 3000,
+    port: Number(process.env.PORT) || 3020,
     env: process.env.NODE_ENV || "development",
     corsOrigins: parseCsv(process.env.CORS_ORIGINS, [
       "https://abbroto.jwsoftware.com.br",

@@ -21,8 +21,7 @@ import tiposGastosRoutes from "./routes/tiposGastosRoutes.js";
 import reportsRoutes from "./routes/reportsRoutes.js";
 import ordemColetaRoutes from "./routes/ordemColetaRoutes.js";
 import { ensureUploadDirs } from "./utils/uploadPaths.js";
-import { getUploadsHealth } from "./utils/uploadsHealth.js";
-import { OrdemColetaService } from "./services/OrdemColetaService.js";
+import { runHealthCheck } from "./utils/healthCheck.js";
 
 ensureUploadDirs();
 
@@ -66,10 +65,8 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(auditLog);
-
-// Rate limit e auth só na API (health check livre para monitoramento)
-app.use("/api", apiRateLimiter, requireAuth);
+// Rate limit, auth e auditoria só na API (health check livre para monitoramento)
+app.use("/api", apiRateLimiter, requireAuth, auditLog);
 
 // Health check endpoint
 app.get("/", (req, res) => {
@@ -82,23 +79,8 @@ app.get("/", (req, res) => {
 });
 
 app.get("/health", async (req, res) => {
-  const uploads = await getUploadsHealth();
-  const chromiumPath = OrdemColetaService.resolvePuppeteerExecutable();
-  const isProd = config.app.env === "production";
-
-  res.json({
-    status: "healthy",
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    pdf: isProd
-      ? { ready: Boolean(chromiumPath) }
-      : {
-          ready: Boolean(chromiumPath),
-          chromiumPath,
-          puppeteerCacheDir: process.env.PUPPETEER_CACHE_DIR || null,
-        },
-    uploads: isProd ? { writable: uploads.writable } : uploads,
-  });
+  const { httpStatus, payload } = await runHealthCheck();
+  res.status(httpStatus).json(payload);
 });
 
 // Define as rotas da API

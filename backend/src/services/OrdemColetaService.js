@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import puppeteer from "puppeteer";
 import nodemailer from "nodemailer";
 import prisma from "../lib/prisma.js";

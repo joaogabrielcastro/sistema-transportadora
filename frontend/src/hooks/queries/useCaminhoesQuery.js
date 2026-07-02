@@ -31,3 +31,17 @@ export function useCaminhaoByPlacaQuery(placa) {
       ),
   });
 }
+
+export function useCaminhaoDocumentosQuery(placa) {
+  return useQuery({
+    queryKey: queryKeys.caminhoes.documentos(placa),
+    enabled: Boolean(placa),
+    queryFn: async () =>
+      extractApiArray(
+        await apiFetch({
+          method: "GET",
+          url: `/caminhoes/${placa}/documentos`,
+        }),
+      ),
+  });
+}

@@ -5,8 +5,10 @@ import {
   useApi,
   useCaminhoesListQuery,
   usePneusEmUsoQuery,
+  useDebouncedValue,
 } from "../hooks";
-import { API_CONFIG } from "../utils/constants.js";import ConfirmModal from "../components/ConfirmModal";
+import { API_CONFIG } from "../utils/constants.js";
+import ConfirmModal from "../components/ConfirmModal";
 import Pagination from "../components/Pagination.jsx";
 import {
   Card,
@@ -234,6 +236,7 @@ const PNEUS_PAGE_SIZE = 20;
 const Pneus = () => {
   const { delete: del } = useApi();
   const [filtroPlaca, setFiltroPlaca] = useState("");
+  const placaDebounced = useDebouncedValue(filtroPlaca.trim(), 400);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -249,7 +252,7 @@ const Pneus = () => {
   } = usePneusEmUsoQuery({
     page: currentPage,
     limit: PNEUS_PAGE_SIZE,
-    placa: filtroPlaca.trim() || undefined,
+    placa: placaDebounced || undefined,
   });
 
   const caminhoes = caminhoesPage?.data ?? [];
@@ -258,7 +261,7 @@ const Pneus = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filtroPlaca]);
+  }, [placaDebounced]);
   const handleDeleteClick = (id) => {
     const pneu = pneus.find((p) => p.id === id);
     setDeleteTarget({

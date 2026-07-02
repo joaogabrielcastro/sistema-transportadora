@@ -1,4 +1,4 @@
-export { useCaminhoesListQuery, useCaminhaoByPlacaQuery } from "./useCaminhoesQuery.js";
+export { useCaminhoesListQuery, useCaminhaoByPlacaQuery, useCaminhaoDocumentosQuery } from "./useCaminhoesQuery.js";
 export { useReportsOverviewQuery, useCostPerKmReportQuery } from "./useReportsQuery.js";
 export { useManutencaoGastosQueries } from "./useManutencaoGastosQueries.js";
 export { useOrdemColetaHistoricoQuery } from "./useOrdemColetaQuery.js";

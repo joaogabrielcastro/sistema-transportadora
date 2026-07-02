@@ -40,6 +40,7 @@ curl.exe -s https://api-abbroto.jwsoftware.com.br/health
 | **Base Directory** | `frontend` |
 | **Dockerfile** | `Dockerfile` |
 | **Build Arguments** | `VITE_API_URL=https://api-abbroto.jwsoftware.com.br` |
+| | `VITE_API_TOKEN=` mesmo valor de `API_TOKEN` do backend |
 
 A URL da API **não** deve terminar com `/api`.
 
@@ -83,7 +84,10 @@ Alternativa: Base Directory `.` e Dockerfile na raiz (copia `backend/`).
 | `DATABASE_URL` | PostgreSQL de produção |
 | `PORT` | `3020` (ou a porta que o Coolify mapeia) |
 | `NODE_ENV` | `production` |
+| `AUTH_ENABLED` | `true` |
+| `API_TOKEN` | senha longa aleatória (≥ 16 caracteres) |
 | `CORS_ORIGINS` | `https://abbroto.jwsoftware.com.br` |
+| `DB_SSL_MODE` | `require` ou `no-verify` (evite `disable` em produção) |
 | `PRISMA_CLIENT_ENGINE_TYPE` | `library` |
 | SMTP | se usar envio de e-mail |
 
@@ -102,9 +106,11 @@ Sem volume, PDFs de caminhões somem a cada redeploy.
 1. **Clear build cache** no redeploy após mudanças no Dockerfile.
 2. Build precisa de RAM (≥ 4 GB no servidor ajuda no export da imagem).
 3. Valide: `curl.exe -s https://api-abbroto.jwsoftware.com.br/health`  
-   - `status`: `healthy`  
-   - `pdf.chromiumPath`: caminho válido  
-   - `uploads.writable`: `true`
+   - HTTP **200** e `status`: `healthy`  
+   - `database.ok`: `true`  
+   - `pdf.ready`: `true`  
+   - `uploads.writable`: `true`  
+   - Se `status` for `degraded` ou HTTP **503**, veja o array `issues` na resposta.
 
 ### Migrações (se API sobe mas dá erro de tabela)
 
@@ -140,11 +146,20 @@ O app usa PWA com atualização automática; com `skipWaiting` no Workbox, a nov
 ## Checklist pós-deploy (copiar e marcar)
 
 - [ ] `curl.exe -sI https://abbroto.jwsoftware.com.br` → **200**
-- [ ] `curl.exe -s https://api-abbroto.jwsoftware.com.br/health` → `healthy`
+- [ ] `curl.exe -s https://api-abbroto.jwsoftware.com.br/health` → `status: "healthy"` (HTTP 200)
 - [ ] Login e uma tela crítica (ex.: caminhões, ordem de coleta)
 - [ ] Gerar/abrir um PDF de teste
 - [ ] Aba anônima mostra menus/funcionalidades novas
 - [ ] Um PC que estava “velho” testado após fechar todas as abas
+
+---
+
+## Backup (recomendado)
+
+| O quê | Como |
+|-------|------|
+| **PostgreSQL** | Snapshot automático no provedor do banco ou `pg_dump` agendado |
+| **PDFs em `/app/uploads`** | Backup do volume Coolify (caminhão documentos somem sem ele) |
 
 ---
 

@@ -4,6 +4,7 @@ export const queryKeys = {
     list: (params) => ["caminhoes", "list", params],
     byPlaca: (placa) => ["caminhoes", "by-placa", placa],
     detail: (placa) => ["caminhoes", "detail", placa],
+    documentos: (placa) => ["caminhoes", "documentos", placa],
     search: (term) => ["caminhoes", "search", term],
   },
   reports: {

@@ -26,6 +26,26 @@ const summarizeAuditBody = (body) => {
   return summary;
 };
 
+const tokensMatch = (provided, expected) => {
+  if (!provided || !expected) {
+    return false;
+  }
+
+  const providedBuf = Buffer.from(provided);
+  const expectedBuf = Buffer.from(expected);
+
+  if (providedBuf.length !== expectedBuf.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(providedBuf, expectedBuf);
+};
+
+/** Exportado para testes unitários (sem depender do cache do config). */
+export function verifyBearerToken(provided, expected) {
+  return tokensMatch(provided, expected);
+}
+
 export const attachRequestContext = (req, res, next) => {
   const requestId = req.headers["x-request-id"] || crypto.randomUUID();
 
@@ -60,7 +80,7 @@ export const requireAuth = (req, res, next) => {
   const authHeader = req.headers.authorization || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
 
-  if (!token || token !== config.auth.apiToken) {
+  if (!tokensMatch(token, config.auth.apiToken)) {
     return res.status(401).json({
       success: false,
       error: "Não autorizado",

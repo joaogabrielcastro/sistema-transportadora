@@ -49,3 +49,12 @@ test("attachRequestContext enriches request and sets x-request-id", async () => 
   assert.equal(req.context.user.role, "viewer");
   assert.equal(responseHeader, req.context.requestId);
 });
+
+test("verifyBearerToken rejeita token incorreto", async () => {
+  const { verifyBearerToken } = await importSecurity();
+  const token = "test-token-16-chars-min";
+
+  assert.equal(verifyBearerToken(token, token), true);
+  assert.equal(verifyBearerToken("wrong-token-16-chars", token), false);
+  assert.equal(verifyBearerToken("", token), false);
+});

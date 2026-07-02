@@ -36,9 +36,10 @@ const EditCaminhao = () => {
   const [carretas, setCarretas] = useState([""]);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
 
-  const error = queryError?.message || "";
+  const loadError = queryError?.message || "";
 
   useEffect(() => {
     if (!caminhaoData) return;
@@ -170,7 +171,7 @@ const EditCaminhao = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    setError("");
+    setSubmitError("");
     setFieldErrors({});
 
     if (!validateForm()) {
@@ -209,7 +210,7 @@ const EditCaminhao = () => {
       }, 1500);
     } catch (err) {
       console.error("Erro ao atualizar:", err);
-      setError(err.message || "Erro ao atualizar caminhão");
+      setSubmitError(err.message || "Erro ao atualizar caminhão");
       if (err?.fieldErrors) {
         setFieldErrors(err.fieldErrors);
       }
@@ -220,14 +221,14 @@ const EditCaminhao = () => {
 
   if (loading) return <LoadingSpinner fullScreen />;
 
-  if (error) {
+  if (loadError) {
     return (
       <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
         <div className="max-w-2xl mx-auto space-y-4">
           <Alert
             type="error"
             title="Caminhão não encontrado"
-            message={error}
+            message={loadError}
           />
           <div className="flex gap-3">
             <Button variant="secondary" onClick={() => navigate(-1)}>
@@ -249,6 +250,9 @@ const EditCaminhao = () => {
           className="shadow-lg"
         >
           <form onSubmit={handleSubmit} className="space-y-6">
+            {submitError && (
+              <Alert type="error" message={submitError} />
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 label="Placa do Veículo"

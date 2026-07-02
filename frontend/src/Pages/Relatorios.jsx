@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useApi } from "../hooks/useApi";
+import { extractApiArray, extractApiData } from "../utils/extractApiArray.js";
 import {
   Card,
   Button,
@@ -45,7 +46,7 @@ const Relatorios = () => {
   const fetchCaminhoes = useCallback(async () => {
     try {
       const res = await get("/caminhoes");
-      setCaminhoes(Array.isArray(res.data) ? res.data : []);
+      setCaminhoes(extractApiArray(res));
     } catch (error) {
       console.error("Erro ao carregar caminhões", error);
     }
@@ -68,7 +69,7 @@ const Relatorios = () => {
       }
 
       const res = await get(`/reports/cost-per-km?${params.toString()}`);
-      const payload = res.data || {};
+      const payload = extractApiData(res);
       const items = Array.isArray(payload.items) ? payload.items : [];
 
       const processed = items.map((item) => ({

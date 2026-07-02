@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
+import { extractApiArray } from "../utils/extractApiArray.js";
+import ConfirmModal from "../components/ConfirmModal";
 import {
   Card,
   LoadingSpinner,
@@ -229,6 +231,8 @@ const Pneus = () => {
   const [pneus, setPneus] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtroPlaca, setFiltroPlaca] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -240,11 +244,9 @@ const Pneus = () => {
         get("/pneus"),
       ]);
 
-      const extractData = (res) => (Array.isArray(res) ? res : res?.data || []);
+      setCaminhoes(extractApiArray(caminhoesRes));
 
-      setCaminhoes(extractData(caminhoesRes));
-
-      const allPneus = extractData(pneusRes);
+      const allPneus = extractApiArray(pneusRes);
       // Filtra apenas pneus que têm caminhão associado (Em uso)
       const pneusEmUso = allPneus.filter((p) => p.caminhao_id !== null);
 
@@ -260,19 +262,28 @@ const Pneus = () => {
     fetchData();
   }, [fetchData]);
 
-  const handleDelete = async (id) => {
-    if (
-      !window.confirm(
-        "ATENÇÃO: Deseja realmente excluir o cadastro deste pneu? Para apenas remover do caminhão, edite o pneu.",
-      )
-    )
-      return;
+  const handleDeleteClick = (id) => {
+    const pneu = pneus.find((p) => p.id === id);
+    setDeleteTarget({
+      id,
+      label: pneu
+        ? `${pneu.marca || ""} ${pneu.modelo || ""}`.trim() || `ID ${id}`
+        : `ID ${id}`,
+    });
+  };
 
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+
+    setDeleting(true);
     try {
-      await del(`/pneus/${id}`);
+      await del(`/pneus/${deleteTarget.id}`);
+      setDeleteTarget(null);
       fetchData();
     } catch (err) {
       console.error(err);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -298,12 +309,27 @@ const Pneus = () => {
         <PneusTable
           pneus={pneus}
           caminhoes={caminhoes}
-          onDelete={handleDelete}
+          onDelete={handleDeleteClick}
           loading={loading}
           filtroPlaca={filtroPlaca}
           onFiltroChange={(e) => setFiltroPlaca(e.target.value)}
         />
       </div>
+
+      <ConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => !deleting && setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        title="Excluir pneu"
+        message={
+          deleteTarget
+            ? `Deseja excluir permanentemente o pneu "${deleteTarget.label}"? Para apenas remover do caminhão, edite o pneu em vez de excluir.`
+            : ""
+        }
+        confirmText={deleting ? "Excluindo..." : "Excluir"}
+        cancelText="Cancelar"
+        warning
+      />
     </div>
   );
 };

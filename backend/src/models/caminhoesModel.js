@@ -225,10 +225,17 @@ export const caminhoesModel = {
       throw new Error("Caminhão não encontrado");
     }
 
-    const [gastos, checklists, pneus] = await prisma.$transaction([
+    const [gastos, checklists, pneus, documentos, ordensEnvio] =
+      await prisma.$transaction([
       prisma.gastos.count({ where: { caminhao_id: caminhao.id } }),
       prisma.checklist.count({ where: { caminhao_id: caminhao.id } }),
       prisma.pneus.count({ where: { caminhao_id: caminhao.id } }),
+      prisma.caminhao_documentos.count({
+        where: { caminhao_id: caminhao.id },
+      }),
+      prisma.ordens_coleta_envio.count({
+        where: { caminhao_id: caminhao.id },
+      }),
     ]);
 
     return {
@@ -236,8 +243,10 @@ export const caminhoesModel = {
         gastos,
         checklists,
         pneus,
+        documentos,
+        ordens_envio: ordensEnvio,
       },
-      total: gastos + checklists + pneus,
+      total: gastos + checklists + pneus + documentos + ordensEnvio,
     };
   },
 

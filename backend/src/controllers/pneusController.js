@@ -48,15 +48,6 @@ export const pneusController = {
     });
   }),
 
-  // Criar um pneu apenas para o estoque
-  createStockPneu: catchAsync(async (req, res) => {
-    const pneuValidado = pneuCreateInStockSchema.parse(req.body);
-    const novoPneu = await PneuService.createStockPneu(
-      normalizeDatesForDb(pneuValidado),
-    );
-    res.status(201).json({ success: true, data: novoPneu });
-  }),
-
   // Listar pneus em estoque
   getInStockPneus: catchAsync(async (req, res) => {
     const pneus = await PneuService.getInStock();

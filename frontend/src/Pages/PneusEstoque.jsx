@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { z } from "zod";
 import { useApi } from "../hooks/useApi.js";
+import { extractApiArray } from "../utils/extractApiArray.js";
+import ConfirmModal from "../components/ConfirmModal";
 import {
   Card,
   Button,
@@ -14,6 +16,7 @@ const PneusEstoque = () => {
   const [pneus, setPneus] = useState([]);
   const [statusList, setStatusList] = useState([]);
   const [deletingId, setDeletingId] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [pneusBulk, setPneusBulk] = useState([
     {
       id: Date.now(),
@@ -45,29 +48,35 @@ const PneusEstoque = () => {
   const fetchEstoque = useCallback(async () => {
     try {
       const res = await get("/pneus/in-stock");
-      setPneus(res.data || []);
+      setPneus(extractApiArray(res));
     } catch (err) {
       console.error(err);
     }
   }, [get]);
 
-  const handleDeletePneu = async (pneuId) => {
-    const pneu = pneus.find(p => p.id === pneuId);
-    const pneuInfo = pneu ? `${pneu.marca} ${pneu.modelo}` : `ID ${pneuId}`;
-    
-    if (!window.confirm(`Tem certeza que deseja excluir este pneu do estoque?\n\nPneu: ${pneuInfo}\nStatus: ${pneu?.status_pneus?.nome_status || 'N/A'}`)) {
-      return;
-    }
+  const handleDeleteClick = (pneuId) => {
+    const pneu = pneus.find((p) => p.id === pneuId);
+    const pneuInfo = pneu
+      ? `${pneu.marca} ${pneu.modelo}`.trim()
+      : `ID ${pneuId}`;
 
-    setDeletingId(pneuId);
+    setDeleteTarget({
+      id: pneuId,
+      label: pneuInfo,
+      status: pneu?.status_pneus?.nome_status || "N/A",
+    });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+
+    setDeletingId(deleteTarget.id);
     try {
-      console.log("Tentando deletar pneu:", { id: pneuId, pneu });
-      await del(`/pneus/${pneuId}`);
+      await del(`/pneus/${deleteTarget.id}`);
+      setDeleteTarget(null);
       fetchEstoque();
     } catch (err) {
-      console.error("Erro completo ao excluir pneu:", err);
-      console.error("Resposta do servidor:", err.response?.data);
-      console.error("Status HTTP:", err.response?.status);
+      console.error("Erro ao excluir pneu:", err);
     } finally {
       setDeletingId(null);
     }
@@ -115,7 +124,7 @@ const PneusEstoque = () => {
     const loadStatus = async () => {
       try {
         const res = await get("/status-pneus");
-        setStatusList(res.data || []);
+        setStatusList(extractApiArray(res));
       } catch (err) {
         console.error(err);
       }
@@ -436,7 +445,7 @@ const PneusEstoque = () => {
                         Atribuir
                       </Link>
                       <button
-                        onClick={() => handleDeletePneu(p.id)}
+                        onClick={() => handleDeleteClick(p.id)}
                         disabled={deletingId === p.id}
                         className="text-sm text-red-600 hover:text-red-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       >
@@ -450,6 +459,21 @@ const PneusEstoque = () => {
           )}
         </Card>
       </div>
+
+      <ConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => !deletingId && setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        title="Excluir pneu do estoque"
+        message={
+          deleteTarget
+            ? `Tem certeza que deseja excluir "${deleteTarget.label}" (status: ${deleteTarget.status})? Esta ação não pode ser desfeita.`
+            : ""
+        }
+        confirmText={deletingId ? "Excluindo..." : "Excluir"}
+        cancelText="Cancelar"
+        warning
+      />
     </div>
   );
 };

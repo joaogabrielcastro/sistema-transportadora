@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
-import { Card, Button, LoadingSpinner } from "../components/ui";
+import { Card, Button, LoadingSpinner, Alert } from "../components/ui";
 import CaminhaoDocumentos from "../components/CaminhaoDocumentos";
+import { extractApiArray, extractApiData } from "../utils/extractApiArray.js";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -65,13 +66,15 @@ const CaminhaoDetail = () => {
   const [pneus, setPneus] = useState([]);
   const [consumoKmPorLitro, setConsumoKmPorLitro] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setError(null);
 
     try {
       const caminhaoRes = await get(`/caminhoes/${placa}`);
-      const caminhaoData = caminhaoRes?.data || caminhaoRes;
+      const caminhaoData = extractApiData(caminhaoRes);
       setCaminhao(caminhaoData);
 
       if (caminhaoData && caminhaoData.id) {
@@ -83,18 +86,10 @@ const CaminhaoDetail = () => {
             get(`/gastos/consumo/${caminhaoData.id}`),
           ]);
 
-        const extractArray = (res) => {
-          if (Array.isArray(res)) return res;
-          if (res?.data && Array.isArray(res.data)) return res.data;
-          if (res?.data?.data && Array.isArray(res.data.data))
-            return res.data.data;
-          return [];
-        };
-
-        const gastosData = extractArray(gastosRes);
-        const checklistData = extractArray(checklistRes);
-        const pneusData = extractArray(pneusRes);
-        const consumoData = extractArray(consumoRes);
+        const gastosData = extractApiArray(gastosRes);
+        const checklistData = extractApiArray(checklistRes);
+        const pneusData = extractApiArray(pneusRes);
+        const consumoData = extractApiArray(consumoRes);
 
         setGastos(gastosData);
         setChecklists(checklistData);
@@ -113,6 +108,10 @@ const CaminhaoDetail = () => {
       }
     } catch (err) {
       console.error("Erro ao carregar dados:", err);
+      setCaminhao(null);
+      setError(
+        err?.message || "Não foi possível carregar os dados deste caminhão.",
+      );
     } finally {
       setLoading(false);
     }
@@ -310,7 +309,28 @@ const CaminhaoDetail = () => {
 
   if (loading) return <LoadingSpinner fullScreen />;
 
-  if (!caminhao) return null;
+  if (error || !caminhao) {
+    return (
+      <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
+        <div className="max-w-2xl mx-auto space-y-4">
+          <Alert
+            type="error"
+            title="Caminhão não encontrado"
+            message={
+              error ||
+              `Não encontramos um caminhão com a placa "${placa}".`
+            }
+          />
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={() => navigate(-1)}>
+              Voltar
+            </Button>
+            <Button onClick={() => navigate("/")}>Ir para início</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">

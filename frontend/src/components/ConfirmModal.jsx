@@ -89,6 +89,12 @@ const ConfirmModal = ({
                 {dependencias.total_pneus > 0 && (
                   <li>{dependencias.total_pneus} pneus</li>
                 )}
+                {dependencias.documentos > 0 && (
+                  <li>{dependencias.documentos} documentos</li>
+                )}
+                {dependencias.ordens_envio > 0 && (
+                  <li>{dependencias.ordens_envio} ordens de coleta</li>
+                )}
                 {dependencias.total_viagens > 0 && (
                   <li>{dependencias.total_viagens} viagens</li>
                 )}

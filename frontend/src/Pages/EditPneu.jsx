@@ -2,11 +2,13 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
+import { extractApiArray, extractApiData } from "../utils/extractApiArray.js";
 import {
   Card,
   Button,
   LoadingSpinner,
   FormField,
+  Alert,
 } from "../components/ui";
 
 const EditPneu = () => {
@@ -30,11 +32,13 @@ const EditPneu = () => {
   const [statusList, setStatusList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setLoadError(null);
 
       try {
         const [pneuRes, caminhoesRes, posicoesRes, statusRes] =
@@ -45,24 +49,10 @@ const EditPneu = () => {
             get("/status-pneus"),
           ]);
 
-        // Helper para extrair dados
-        const extractData = (res) => {
-          if (res?.data) return res.data;
-          return res;
-        };
-
-        const extractArray = (res) => {
-          if (Array.isArray(res)) return res;
-          if (res?.data && Array.isArray(res.data)) return res.data;
-          if (res?.data?.data && Array.isArray(res.data.data))
-            return res.data.data;
-          return [];
-        };
-
-        const pneuData = extractData(pneuRes);
-        const caminhoesData = extractArray(caminhoesRes);
-        const posicoesData = extractArray(posicoesRes);
-        const statusData = extractArray(statusRes);
+        const pneuData = extractApiData(pneuRes);
+        const caminhoesData = extractApiArray(caminhoesRes);
+        const posicoesData = extractApiArray(posicoesRes);
+        const statusData = extractApiArray(statusRes);
 
         setFormData({
           caminhao_id: pneuData.caminhao_id || "",
@@ -83,6 +73,9 @@ const EditPneu = () => {
         setStatusList(statusData);
       } catch (err) {
         console.error("Erro completo:", err);
+        setLoadError(
+          err?.message || "Não foi possível carregar os dados deste pneu.",
+        );
       } finally {
         setLoading(false);
       }
@@ -163,6 +156,22 @@ const EditPneu = () => {
   }));
 
   if (loading) return <LoadingSpinner fullScreen />;
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
+        <div className="max-w-2xl mx-auto space-y-4">
+          <Alert type="error" title="Pneu não encontrado" message={loadError} />
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={() => navigate(-1)}>
+              Voltar
+            </Button>
+            <Button onClick={() => navigate("/pneus")}>Ir para pneus</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">

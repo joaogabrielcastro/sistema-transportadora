@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
+import { extractApiArray, extractApiData } from "../utils/extractApiArray.js";
 import {
   Card,
   Button,
   LoadingSpinner,
   FormField,
+  Alert,
 } from "../components/ui";
 
 const EditGasto = () => {
@@ -27,6 +29,7 @@ const EditGasto = () => {
   const [caminhoes, setCaminhoes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
   // IDs dos tipos de gasto especiais
   const ID_TIPO_GASTO_COMBUSTIVEL = 9;
@@ -34,6 +37,7 @@ const EditGasto = () => {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setLoadError(null);
 
       try {
         const [gastoRes, tiposRes, caminhoesRes] = await Promise.all([
@@ -42,22 +46,9 @@ const EditGasto = () => {
           get("/caminhoes"),
         ]);
 
-        const extractData = (res) => {
-          if (res?.data) return res.data;
-          return res;
-        };
-
-        const extractArray = (res) => {
-          if (Array.isArray(res)) return res;
-          if (res?.data && Array.isArray(res.data)) return res.data;
-          if (res?.data?.data && Array.isArray(res.data.data))
-            return res.data.data;
-          return [];
-        };
-
-        const gastoData = extractData(gastoRes);
-        const tiposData = extractArray(tiposRes);
-        const caminhoesData = extractArray(caminhoesRes);
+        const gastoData = extractApiData(gastoRes);
+        const tiposData = extractApiArray(tiposRes);
+        const caminhoesData = extractApiArray(caminhoesRes);
 
         setCaminhaoPlaca(gastoData.caminhoes?.placa || "");
 
@@ -77,6 +68,9 @@ const EditGasto = () => {
         setCaminhoes(caminhoesData);
       } catch (err) {
         console.error("Erro completo:", err);
+        setLoadError(
+          err?.message || "Não foi possível carregar os dados deste gasto.",
+        );
       } finally {
         setLoading(false);
       }
@@ -160,6 +154,24 @@ const EditGasto = () => {
   }));
 
   if (loading) return <LoadingSpinner fullScreen />;
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
+        <div className="max-w-2xl mx-auto space-y-4">
+          <Alert type="error" title="Gasto não encontrado" message={loadError} />
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={() => navigate(-1)}>
+              Voltar
+            </Button>
+            <Button onClick={() => navigate("/manutencao-gastos")}>
+              Ir para manutenção
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">

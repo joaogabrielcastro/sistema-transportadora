@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
 import { useToast } from "../components/ui/useToast.js";
 import { extractApiArray } from "../utils/extractApiArray.js";
+import ConfirmModal from "../components/ConfirmModal";
 import {
   Card,
   Button,
@@ -567,6 +568,8 @@ const ManutencaoGastos = () => {
   });
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const ID_TIPO_GASTO_COMBUSTIVEL = 9;
 
@@ -787,9 +790,15 @@ const ManutencaoGastos = () => {
     navigate(`/gasto/editar/${registro.id}`);
   };
 
-  const handleDelete = async (tipo, id) => {
-    if (!window.confirm("Tem certeza que deseja excluir este registro?"))
-      return;
+  const handleDeleteClick = (tipo, id) => {
+    setDeleteTarget({ tipo, id });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+
+    const { tipo, id } = deleteTarget;
+    setDeleting(true);
 
     try {
       if (tipo === "Manutenção") {
@@ -799,17 +808,24 @@ const ManutencaoGastos = () => {
       }
 
       setRegistros((prev) =>
-        prev.filter((r) => !(r.id === id && r.tipo_registro === tipo))
+        prev.filter((r) => !(r.id === id && r.tipo_registro === tipo)),
       );
 
-      // Invalidar cache para forçar re-fetch em outras views
       try {
         clearCache();
       } catch (cErr) {
         console.warn("Erro ao limpar cache:", cErr);
       }
+
+      toast.success("Registro excluído com sucesso.");
+      setDeleteTarget(null);
     } catch (err) {
       console.error("Erro completo:", err);
+      if (!err?.response) {
+        toast.error(err.message || "Não foi possível excluir o registro.");
+      }
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -845,7 +861,7 @@ const ManutencaoGastos = () => {
         {/* Histórico */}
         <HistoricoRegistros
           registros={registros}
-          onDelete={handleDelete}
+          onDelete={handleDeleteClick}
           onEditar={handleEditar}
           onVerDetalhes={(registro) => setRegistroSelecionado(registro)}
           filtroPlaca={filtroPlaca}
@@ -860,6 +876,17 @@ const ManutencaoGastos = () => {
           onClose={() => setRegistroSelecionado(null)}
         />
       )}
+
+      <ConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => !deleting && setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        title="Excluir registro"
+        message="Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita."
+        confirmText={deleting ? "Excluindo..." : "Excluir"}
+        cancelText="Cancelar"
+        warning
+      />
     </div>
   );
 };

@@ -33,7 +33,6 @@ app.set("trust proxy", config.app.trustProxy);
 
 // Middleware de segurança
 app.use(helmet());
-app.use(apiRateLimiter);
 app.use(attachRequestContext);
 
 // CORS configurado via config
@@ -68,7 +67,9 @@ app.use((req, res, next) => {
 });
 
 app.use(auditLog);
-app.use("/api", requireAuth);
+
+// Rate limit e auth só na API (health check livre para monitoramento)
+app.use("/api", apiRateLimiter, requireAuth);
 
 // Health check endpoint
 app.get("/", (req, res) => {

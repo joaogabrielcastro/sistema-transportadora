@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
+import { extractApiData } from "../utils/extractApiArray.js";
 import {
   Card,
   Button,
@@ -39,7 +40,7 @@ const EditCaminhao = () => {
 
     try {
       const response = await get(`/caminhoes/${placa}`);
-      const data = response.data || response;
+      const data = extractApiData(response);
 
       setForm({
         placa: data.placa || "",

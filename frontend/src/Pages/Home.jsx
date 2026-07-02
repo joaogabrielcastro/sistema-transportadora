@@ -113,6 +113,10 @@ const Home = () => {
           mensagemDependencias += `• ${detalhes.checklists} manutenções\n`;
         if (detalhes.pneus > 0)
           mensagemDependencias += `• ${detalhes.pneus} pneus\n`;
+        if (detalhes.documentos > 0)
+          mensagemDependencias += `• ${detalhes.documentos} documentos\n`;
+        if (detalhes.ordens_envio > 0)
+          mensagemDependencias += `• ${detalhes.ordens_envio} ordens de coleta\n`;
         mensagemDependencias +=
           "\nDelete primeiro esses registros antes de excluir o caminhão.";
         setErrorMessage(mensagemDependencias);

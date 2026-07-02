@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
+import { extractApiArray, extractApiData } from "../utils/extractApiArray.js";
 import {
   Card,
   Button,
   LoadingSpinner,
   FormField,
+  Alert,
 } from "../components/ui";
 
 const EditChecklist = () => {
@@ -26,10 +28,12 @@ const EditChecklist = () => {
   const [itensChecklist, setItensChecklist] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setLoadError(null);
 
       try {
         const [checklistRes, caminhoesRes, itensRes] = await Promise.all([
@@ -38,22 +42,9 @@ const EditChecklist = () => {
           get("/itens-checklist"),
         ]);
 
-        const extractData = (res) => {
-          if (res?.data) return res.data;
-          return res;
-        };
-
-        const extractArray = (res) => {
-          if (Array.isArray(res)) return res;
-          if (res?.data && Array.isArray(res.data)) return res.data;
-          if (res?.data?.data && Array.isArray(res.data.data))
-            return res.data.data;
-          return [];
-        };
-
-        const checklistData = extractData(checklistRes);
-        const caminhoesData = extractArray(caminhoesRes);
-        const itensData = extractArray(itensRes);
+        const checklistData = extractApiData(checklistRes);
+        const caminhoesData = extractApiArray(caminhoesRes);
+        const itensData = extractApiArray(itensRes);
 
         setFormData({
           caminhao_id: checklistData.caminhao_id || "",
@@ -73,6 +64,10 @@ const EditChecklist = () => {
         setItensChecklist(itensData);
       } catch (err) {
         console.error("Erro completo:", err);
+        setLoadError(
+          err?.message ||
+            "Não foi possível carregar os dados desta manutenção.",
+        );
       } finally {
         setLoading(false);
       }
@@ -129,6 +124,28 @@ const EditChecklist = () => {
   }));
 
   if (loading) return <LoadingSpinner fullScreen />;
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
+        <div className="max-w-2xl mx-auto space-y-4">
+          <Alert
+            type="error"
+            title="Manutenção não encontrada"
+            message={loadError}
+          />
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={() => navigate(-1)}>
+              Voltar
+            </Button>
+            <Button onClick={() => navigate("/manutencao-gastos")}>
+              Ir para manutenção
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">

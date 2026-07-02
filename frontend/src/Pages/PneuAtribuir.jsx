@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useApi } from "../hooks/useApi.js";
+import { extractApiArray } from "../utils/extractApiArray.js";
 import {
   Card,
   Button,
@@ -44,12 +45,10 @@ const PneuAtribuir = () => {
         get("/status-pneus"),
       ]);
 
-      const extractData = (res) => (Array.isArray(res) ? res : res?.data || []);
-
-      setPneus(extractData(pRes));
-      setCaminhoes(extractData(cRes));
-      setPosicoes(extractData(posRes));
-      setStatusOptions(extractData(statusRes));
+      setPneus(extractApiArray(pRes));
+      setCaminhoes(extractApiArray(cRes));
+      setPosicoes(extractApiArray(posRes));
+      setStatusOptions(extractApiArray(statusRes));
     } catch (err) {
       console.error(err);
     } finally {

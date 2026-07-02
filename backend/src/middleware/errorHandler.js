@@ -211,7 +211,12 @@ export const errorHandler = (err, req, res, _next) => {
   }
 
   // Erro de recurso não encontrado
-  if (err.message === "Caminhão não encontrado") {
+  if (
+    err.message === "Caminhão não encontrado" ||
+    err.message === "Gasto não encontrado" ||
+    err.message === "Item de checklist não encontrado" ||
+    err.message === "Pneu não encontrado"
+  ) {
     return res.status(404).json({
       success: false,
       error: err.message,

@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useApi } from "../hooks";
+import { extractApiArray } from "../utils/extractApiArray.js";
+import ConfirmModal from "./ConfirmModal";
 import { Button } from "./ui";
 
 const formatBytes = (bytes) => {
@@ -13,6 +15,8 @@ const CaminhaoDocumentos = ({ placa }) => {
   const { get, request, delete: del, loading } = useApi();
   const [documentos, setDocumentos] = useState([]);
   const [carregandoLista, setCarregandoLista] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [removing, setRemoving] = useState(false);
   const inputRef = useRef(null);
 
   const carregar = useCallback(async () => {
@@ -22,7 +26,7 @@ const CaminhaoDocumentos = ({ placa }) => {
       const res = await get(`/caminhoes/${placa}/documentos`, {
         skipSuccessToast: true,
       });
-      setDocumentos(Array.isArray(res?.data) ? res.data : []);
+      setDocumentos(extractApiArray(res));
     } catch {
       setDocumentos([]);
     } finally {
@@ -80,16 +84,21 @@ const CaminhaoDocumentos = ({ placa }) => {
     }
   };
 
-  const handleRemover = async (doc) => {
-    if (
-      !window.confirm(
-        `Remover o documento "${doc.nome_original}"? Esta ação não pode ser desfeita.`,
-      )
-    ) {
-      return;
+  const handleRemoverClick = (doc) => {
+    setDeleteTarget(doc);
+  };
+
+  const confirmRemover = async () => {
+    if (!deleteTarget) return;
+
+    setRemoving(true);
+    try {
+      await del(`/caminhoes/${placa}/documentos/${deleteTarget.id}`);
+      setDeleteTarget(null);
+      await carregar();
+    } finally {
+      setRemoving(false);
     }
-    await del(`/caminhoes/${placa}/documentos/${doc.id}`);
-    await carregar();
   };
 
   return (
@@ -163,7 +172,7 @@ const CaminhaoDocumentos = ({ placa }) => {
                   variant="outline"
                   size="sm"
                   loading={loading}
-                  onClick={() => handleRemover(doc)}
+                  onClick={() => handleRemoverClick(doc)}
                   className="text-danger border-danger/30 hover:bg-red-50"
                 >
                   Remover
@@ -173,6 +182,20 @@ const CaminhaoDocumentos = ({ placa }) => {
           ))}
         </ul>
       )}
+      <ConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => !removing && setDeleteTarget(null)}
+        onConfirm={confirmRemover}
+        title="Remover documento"
+        message={
+          deleteTarget
+            ? `Remover o documento "${deleteTarget.nome_original}"? Esta ação não pode ser desfeita.`
+            : ""
+        }
+        confirmText={removing ? "Removendo..." : "Remover"}
+        cancelText="Cancelar"
+        warning
+      />
     </div>
   );
 };

@@ -5,3 +5,7 @@ dist
 !.env.example
 .git
 *.md
+playwright.config.js
+test-results
+playwright-report
+e2e

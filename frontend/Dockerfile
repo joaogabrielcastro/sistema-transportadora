@@ -3,8 +3,15 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
+# Playwright é só para testes e2e; evita download de browsers (~400MB) e OOM no build
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+ENV NPM_CONFIG_FUND=false
+ENV NPM_CONFIG_AUDIT=false
+ENV CI=true
+
 COPY package.json package-lock.json ./
-RUN npm ci
+# --ignore-scripts: pula postinstall do Playwright e reduz RAM no servidor
+RUN npm ci --ignore-scripts --no-audit --no-fund
 
 COPY . .
 
@@ -13,6 +20,7 @@ ARG VITE_API_URL=https://api-abbroto.jwsoftware.com.br
 ARG VITE_API_TOKEN=
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_API_TOKEN=$VITE_API_TOKEN
+ENV NODE_OPTIONS=--max-old-space-size=2048
 
 RUN npm run build
 

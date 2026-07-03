@@ -22,10 +22,55 @@ const buildDateWhere = ({ startDate, endDate }) => {
   }
 
   if (endDate) {
-    range.lte = new Date(endDate);
+    const end = new Date(endDate);
+    end.setUTCHours(23, 59, 59, 999);
+    range.lte = end;
   }
 
   return range;
+};
+
+const toKmNumber = (value) => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const mergeGroupedCosts = (merged, grouped) => {
+  for (const item of grouped) {
+    if (item.caminhao_id === null) {
+      continue;
+    }
+
+    const id = item.caminhao_id;
+    const entry = merged.get(id) || {
+      totalCost: 0,
+      expensesCount: 0,
+      kmMin: null,
+      kmMax: null,
+    };
+
+    entry.totalCost += Number(item._sum.valor || 0);
+    entry.expensesCount += item._count._all;
+
+    const kmMin = toKmNumber(item._min.km_registro);
+    const kmMax = toKmNumber(item._max.km_registro);
+
+    if (kmMin !== null) {
+      entry.kmMin =
+        entry.kmMin === null ? kmMin : Math.min(entry.kmMin, kmMin);
+    }
+
+    if (kmMax !== null) {
+      entry.kmMax =
+        entry.kmMax === null ? kmMax : Math.max(entry.kmMax, kmMax);
+    }
+
+    merged.set(id, entry);
+  }
 };
 
 export class ReportsService {
@@ -62,26 +107,46 @@ export class ReportsService {
     const parsedCaminhaoId = parseOptionalInt(caminhaoId);
     const dateWhere = buildDateWhere({ startDate, endDate });
 
-    const where = {
+    const baseWhere = {
       ...(parsedCaminhaoId ? { caminhao_id: parsedCaminhaoId } : {}),
-      ...(dateWhere ? { data_gasto: dateWhere } : {}),
     };
 
-    const grouped = await prisma.gastos.groupBy({
-      by: ["caminhao_id"],
-      where,
-      _sum: { valor: true },
-      _count: { _all: true },
-      _min: { km_registro: true },
-      _max: { km_registro: true },
-      orderBy: {
-        caminhao_id: "asc",
-      },
-    });
+    const [gastosGrouped, checklistGrouped] = await Promise.all([
+      prisma.gastos.groupBy({
+        by: ["caminhao_id"],
+        where: {
+          ...baseWhere,
+          ...(dateWhere ? { data_gasto: dateWhere } : {}),
+        },
+        _sum: { valor: true },
+        _count: { _all: true },
+        _min: { km_registro: true },
+        _max: { km_registro: true },
+        orderBy: {
+          caminhao_id: "asc",
+        },
+      }),
+      prisma.checklist.groupBy({
+        by: ["caminhao_id"],
+        where: {
+          ...baseWhere,
+          ...(dateWhere ? { data_manutencao: dateWhere } : {}),
+        },
+        _sum: { valor: true },
+        _count: { _all: true },
+        _min: { km_registro: true },
+        _max: { km_registro: true },
+        orderBy: {
+          caminhao_id: "asc",
+        },
+      }),
+    ]);
 
-    const caminhaoIds = grouped
-      .map((item) => item.caminhao_id)
-      .filter((id) => typeof id === "number");
+    const merged = new Map();
+    mergeGroupedCosts(merged, gastosGrouped);
+    mergeGroupedCosts(merged, checklistGrouped);
+
+    const caminhaoIds = [...merged.keys()];
 
     const caminhoes = caminhaoIds.length
       ? await prisma.caminhoes.findMany({
@@ -92,26 +157,26 @@ export class ReportsService {
 
     const placasMap = new Map(caminhoes.map((item) => [item.id, item.placa]));
 
-    const data = grouped
-      .filter((item) => item.caminhao_id !== null)
-      .map((item) => {
-        const kmMin = item._min.km_registro;
-        const kmMax = item._max.km_registro;
+    const data = caminhaoIds
+      .map((caminhao_id) => {
+        const item = merged.get(caminhao_id);
         const kmDriven =
-          kmMin !== null && kmMax !== null && kmMax >= kmMin
-            ? kmMax - kmMin
+          item.kmMin !== null &&
+          item.kmMax !== null &&
+          item.kmMax >= item.kmMin
+            ? item.kmMax - item.kmMin
             : null;
-        const totalCost = Number(item._sum.valor || 0);
+        const totalCost = item.totalCost;
         const costPerKm =
           kmDriven && kmDriven > 0 ? totalCost / kmDriven : null;
 
         return {
-          caminhaoId: item.caminhao_id,
-          placa: placasMap.get(item.caminhao_id) || "Sem placa",
+          caminhaoId: caminhao_id,
+          placa: placasMap.get(caminhao_id) || "Sem placa",
           totalCost,
           kmDriven,
           costPerKm,
-          expensesCount: item._count._all,
+          expensesCount: item.expensesCount,
         };
       })
       .sort((a, b) => b.totalCost - a.totalCost);

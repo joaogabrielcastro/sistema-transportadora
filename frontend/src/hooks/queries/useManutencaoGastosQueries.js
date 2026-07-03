@@ -53,7 +53,10 @@ export function useManutencaoGastosQueries() {
             url: "/caminhoes",
             params: listaParams,
           });
-          return extractApiArray(res);
+          return {
+            data: extractApiArray(res),
+            pagination: res.pagination || null,
+          };
         },
       },
       {
@@ -120,7 +123,7 @@ export function useManutencaoGastosQueries() {
   }, [gastosQ.data, checklistQ.data]);
 
   return {
-    caminhoes: caminhoesQ.data ?? [],
+    caminhoes: caminhoesQ.data?.data ?? [],
     itensChecklist: itensQ.data ?? [],
     tiposGastos: tiposQ.data ?? [],
     registros,

@@ -55,6 +55,18 @@ Não é obrigatório variável de runtime para o SPA; o que importa é o **build
 3. Confirme status **Running** (não Restarting).
 4. Abra **Logs**: deve aparecer nginx iniciando na porta 80, sem crash em loop.
 
+### Se o build falhar em `npm ci` (exit code 255)
+
+O log costuma cortar antes do erro real. Causas comuns no Coolify:
+
+| Sintoma | Ação |
+|---------|------|
+| Para em `RUN npm ci` com exit **255** | Servidor sem RAM (OOM). O Dockerfile já evita download do Playwright; confira **≥ 2 GB** livres no host durante o build. |
+| Build muito lento | **Clear build cache** e redeploy; primeira build baixa ~700 pacotes npm. |
+| `npm ci` com erro de lockfile | Commitar `package-lock.json` atualizado junto com `package.json`. |
+
+No deploy: marque **Clear build cache**, abra **Show Debug Logs** até o fim, e confira se `npm run build` e o estágio nginx completam.
+
 ### Se continuar 502
 
 1. **Logs** do container: OOM, “address already in use”, build falhou?

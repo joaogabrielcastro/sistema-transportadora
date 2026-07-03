@@ -185,19 +185,27 @@ const RegistroForm = ({
     form.tipo === "gasto" &&
     parseInt(form.tipo_id) === ID_TIPO_GASTO_COMBUSTIVEL;
 
-  const caminhaoSelecionado = caminhoes.find(
-    (c) => c.id === parseInt(form.caminhao_id)
+  const caminhoesList = Array.isArray(caminhoes) ? caminhoes : [];
+
+  const caminhaoSelecionado = caminhoesList.find(
+    (c) => c.id === parseInt(form.caminhao_id, 10),
   );
 
-  const caminhaoOptions = caminhoes.map((c) => ({
+  const caminhaoOptions = caminhoesList.map((c) => ({
     value: c.id,
     label: `${c.placa} - KM: ${c.km_atual?.toLocaleString("pt-BR")}`,
   }));
 
   const tipoOptions =
     form.tipo === "gasto"
-      ? tiposGastos.map((t) => ({ value: t.id, label: t.nome_tipo }))
-      : itensChecklist.map((i) => ({ value: i.id, label: i.nome_item }));
+      ? (Array.isArray(tiposGastos) ? tiposGastos : []).map((t) => ({
+          value: t.id,
+          label: t.nome_tipo,
+        }))
+      : (Array.isArray(itensChecklist) ? itensChecklist : []).map((i) => ({
+          value: i.id,
+          label: i.nome_item,
+        }));
 
   return (
     <Card title="Adicionar Novo Registro" className="mb-8">
@@ -604,8 +612,9 @@ const ManutencaoGastos = () => {
 
   const handleCaminhaoChange = (e) => {
     const caminhaoId = e.target.value;
-    const caminhaoSelecionado = caminhoes.find(
-      (c) => c.id === parseInt(caminhaoId)
+    const lista = Array.isArray(caminhoes) ? caminhoes : [];
+    const caminhaoSelecionado = lista.find(
+      (c) => c.id === parseInt(caminhaoId, 10),
     );
 
     setForm((prev) => ({

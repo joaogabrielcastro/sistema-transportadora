@@ -419,7 +419,37 @@ const OrdensColeta = () => {
             <p className="text-sm text-text-secondary p-5">Nenhum registro ainda.</p>
           ) : (
             <>
-              <DataTable>
+              <div className="md:hidden divide-y divide-border">
+                {historico.map((row) => (
+                  <div key={`${row.id}-m`} className="px-4 py-3 space-y-1">
+                    <div className="flex justify-between gap-2">
+                      <span className="font-medium text-text-primary">
+                        {labelTipoHistorico(row.tipo)}
+                      </span>
+                      <span className="text-xs text-text-secondary whitespace-nowrap">
+                        {row.criado_em
+                          ? new Date(row.criado_em).toLocaleString("pt-BR")
+                          : "—"}
+                      </span>
+                    </div>
+                    <p className="text-sm text-text-secondary truncate">
+                      {row.email_destinatario}
+                    </p>
+                    <div className="flex justify-between text-sm">
+                      <span>{row.caminhao_placa || "—"}</span>
+                      {row.status === "sent" || row.enviado_em ? (
+                        <span className="text-success font-medium">Enviado</span>
+                      ) : row.status === "failed" || row.erro_envio ? (
+                        <span className="text-danger font-medium">Falha</span>
+                      ) : (
+                        <span className="text-warning font-medium">Processando…</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <DataTable className="hidden md:table">
                 <DataTableHead>
                   <tr>
                     <DataTableTh width="16%">Data</DataTableTh>

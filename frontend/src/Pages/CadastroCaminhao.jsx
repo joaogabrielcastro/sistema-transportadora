@@ -1,11 +1,13 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApiMutation } from "../hooks";
+import PageLayout from "../components/layout/PageLayout.jsx";
+import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
 import {
   Card,
   Button,
   FormField,
-  LoadingSpinner,
+  PageHeader,
 } from "../components/ui";
 
 const CadastroCaminhao = () => {
@@ -207,13 +209,19 @@ const CadastroCaminhao = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8 flex justify-center">
-      <div className="w-full max-w-2xl animate-fade-in">
-        <Card
-          title="Cadastrar Novo Caminhão"
-          subtitle="Preencha os dados para adicionar um veículo à frota"
-          className="shadow-lg"
-        >
+    <PageLayout narrow className="space-y-6">
+      <Breadcrumbs
+        items={[
+          { label: "Início", to: "/" },
+          { label: "Novo caminhão" },
+        ]}
+      />
+      <PageHeader
+        title="Cadastrar novo caminhão"
+        subtitle="Preencha os dados para adicionar um veículo à frota"
+      />
+
+      <Card className="shadow-lg">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Dados Principais */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -580,8 +588,7 @@ const CadastroCaminhao = () => {
             </div>
           </form>
         </Card>
-      </div>
-    </div>
+    </PageLayout>
   );
 };
 

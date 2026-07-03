@@ -1,5 +1,8 @@
 // frontend/src/components/ui/index.js
 export { default as FormField } from "./FormField.jsx";
+export { default as SearchableSelect } from "./SearchableSelect.jsx";
+export { default as StatCard } from "./StatCard.jsx";
+export { Tabs, FilterChips } from "./Tabs.jsx";
 export { default as Button } from "./Button.jsx";
 export { default as Alert } from "./Alert.jsx";
 export { default as Card } from "./Card.jsx";

@@ -4,10 +4,10 @@ import { useApiMutation, useManutencaoGastosQueries } from "../hooks";
 import { useToast } from "../components/ui/useToast.js";
 import { API_CONFIG } from "../utils/constants.js";
 import ConfirmModal from "../components/ConfirmModal";
+import RegistroDetailModal from "../components/RegistroDetailModal.jsx";
 import {
   Card,
   Button,
-  LoadingSpinner,
   FormField,
   Alert,
   PageHeader,
@@ -18,156 +18,16 @@ import {
   DataTableTh,
   DataTableTd,
   TableRowActions,
+  StatusBadge,
 } from "../components/ui";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import EmptyState from "../components/EmptyState.jsx";
+import { TableSkeleton } from "../components/Skeleton.jsx";
 
-const StatusBadge = ({ tipo }) => {
-  const config =
-    {
-      Gasto: "bg-blue-100 text-blue-800 border-blue-200",
-      Manutenção: "bg-green-100 text-green-800 border-green-200",
-    }[tipo] || "bg-gray-100 text-gray-800 border-gray-200";
-
-  return (
-    <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${config}`}
-    >
-      {tipo}
-    </span>
-  );
-};
-
-const DetalhesModal = ({ registro, onClose }) => {
-  if (!registro) return null;
-
-  return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-          <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <StatusBadge tipo={registro.tipo_registro} />
-            Detalhes do Registro
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-
-        <div className="px-6 py-4 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">
-                Caminhão
-              </label>
-              <p className="text-base font-semibold text-gray-900">
-                {registro.placa || "N/A"}
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">
-                Data
-              </label>
-              <p className="text-base font-semibold text-gray-900">
-                {registro.dataFormatada}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">
-                Valor
-              </label>
-              <p className="text-lg font-bold text-blue-600">
-                {registro.valorFormatado}
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">
-                KM Registrado
-              </label>
-              <p className="text-base font-semibold text-gray-900">
-                {registro.kmFormatado}
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-500 mb-1">
-              Tipo/Descrição
-            </label>
-            <p className="text-base font-semibold text-gray-900">
-              {registro.nome_tipo || "N/A"}
-            </p>
-          </div>
-
-          {registro.observacao && (
-            <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">
-                Observações
-              </label>
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
-                  {registro.observacao}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {registro.oficina && registro.oficina !== "N/A" && (
-            <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">
-                Oficina
-              </label>
-              <p className="text-base font-semibold text-gray-900">
-                {registro.oficina}
-              </p>
-            </div>
-          )}
-
-          {registro.quantidade_combustivel && (
-            <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">
-                Quantidade de Combustível
-              </label>
-              <p className="text-base font-semibold text-gray-900">
-                {registro.quantidade_combustivel} L
-              </p>
-            </div>
-          )}
-        </div>
-
-        <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4">
-          <Button onClick={onClose} className="w-full">
-            Fechar
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-};
+const tipoToModal = (registro) => ({
+  ...registro,
+  tipo: registro.tipo_registro === "Manutenção" ? "manutencao" : "gasto",
+});
 
 const RegistroForm = ({
   form,
@@ -466,7 +326,10 @@ const HistoricoRegistros = ({
               >
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge tipo={registro.tipo_registro} />
+                    <StatusBadge
+                      status={registro.tipo_registro}
+                      type="record"
+                    />
                     <span className="font-semibold text-text-primary text-sm">
                       {registro.placa || "N/A"}
                     </span>
@@ -527,7 +390,10 @@ const HistoricoRegistros = ({
                 return (
                   <DataTableRow key={`${registro.tipo_registro}-${registro.id}`}>
                     <DataTableTd className="whitespace-nowrap">
-                      <StatusBadge tipo={registro.tipo_registro} />
+                      <StatusBadge
+                      status={registro.tipo_registro}
+                      type="record"
+                    />
                     </DataTableTd>
                     <DataTableTd className="font-semibold whitespace-nowrap">
                       {registro.placa || "N/A"}
@@ -714,6 +580,7 @@ const ManutencaoGastos = () => {
       }
 
       await refetch();
+      toast.success("Registro cadastrado com sucesso.");
 
       // Resetar formulário
       setForm({
@@ -774,7 +641,19 @@ const ManutencaoGastos = () => {
     }
   };
 
-  if (loading) return <LoadingSpinner fullScreen />;
+  if (loading) {
+    return (
+      <PageLayout className="space-y-6">
+        <PageHeader
+          title="Manutenção e Gastos"
+          subtitle="Controle completo de gastos e manutenções da frota"
+        />
+        <Card>
+          <TableSkeleton rows={8} columns={5} />
+        </Card>
+      </PageLayout>
+    );
+  }
 
   return (
     <PageLayout className="space-y-6">
@@ -813,8 +692,8 @@ const ManutencaoGastos = () => {
       />
 
       {registroSelecionado && (
-        <DetalhesModal
-          registro={registroSelecionado}
+        <RegistroDetailModal
+          registro={tipoToModal(registroSelecionado)}
           onClose={() => setRegistroSelecionado(null)}
         />
       )}

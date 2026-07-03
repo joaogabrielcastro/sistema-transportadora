@@ -3,11 +3,16 @@ import { z } from "zod";
 import { useApiMutation, usePneusEstoqueQuery, useStatusPneusQuery } from "../hooks";
 import ConfirmModal from "../components/ConfirmModal";
 import Pagination from "../components/Pagination.jsx";
+import PageLayout from "../components/layout/PageLayout.jsx";
+import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
+import { useToast } from "../components/ui/useToast.js";
 import {
   Card,
   Button,
   LoadingSpinner,
   FormField,
+  PageHeader,
+  StatusBadge,
 } from "../components/ui";
 import { Link } from "react-router-dom";
 
@@ -15,6 +20,7 @@ const ESTOQUE_PAGE_SIZE = 20;
 
 const PneusEstoque = () => {
   const { post, delete: del } = useApiMutation();
+  const toast = useToast();
   const [deletingId, setDeletingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -64,9 +70,11 @@ const PneusEstoque = () => {
     setDeletingId(deleteTarget.id);
     try {
       await del(`/pneus/${deleteTarget.id}`);
+      toast.success("Pneu removido do estoque.");
       setDeleteTarget(null);
     } catch (err) {
       console.error("Erro ao excluir pneu:", err);
+      toast.error("Não foi possível excluir o pneu.");
     } finally {
       setDeletingId(null);
     }
@@ -119,17 +127,29 @@ const PneusEstoque = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold mb-4">Estoque de Pneus</h1>
+    <PageLayout wide={false} className="space-y-6">
+      <Breadcrumbs
+        items={[
+          { label: "Início", to: "/" },
+          { label: "Pneus", to: "/pneus" },
+          { label: "Estoque" },
+        ]}
+      />
+      <PageHeader
+        title="Estoque de Pneus"
+        subtitle="Cadastre pneus em lote e gerencie o estoque disponível"
+        actions={
+          <Link to="/pneus/atribuir">
+            <Button variant="outline">Atribuir pneu</Button>
+          </Link>
+        }
+      />
 
-        {/* Formulário único removido: mantemos apenas o cadastro em lote abaixo */}
-
-        <Card title="Cadastro em Lote (estoque)" className="mt-6">
+        <Card title="Cadastro em Lote (estoque)">
           <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
             <p className="text-sm text-blue-800">
-              <strong>💡 Dica:</strong> Use o campo "Quantidade" para adicionar vários pneus idênticos de uma vez. 
-              Por exemplo: 70 pneus lisos, 16 borrachudos, etc.
+              <strong>Dica:</strong> use o campo Quantidade para cadastrar vários
+              pneus idênticos de uma vez (ex.: 70 lisos, 16 borrachudos).
             </p>
           </div>
           <form
@@ -415,9 +435,9 @@ const PneusEstoque = () => {
                       <div className="font-medium">
                         {p.marca} {p.modelo}
                       </div>
-                      <div className="text-sm text-gray-500">
-                        Status: {p.status_pneus?.nome_status || "N/A"}
-                      </div>
+                      <StatusBadge
+                        status={p.status_pneus?.nome_status || "N/A"}
+                      />
                     </div>
                     <div className="flex items-center gap-3">
                       <Link
@@ -448,7 +468,6 @@ const PneusEstoque = () => {
             />
           )}
         </Card>
-      </div>
 
       <ConfirmModal
         isOpen={Boolean(deleteTarget)}
@@ -464,7 +483,7 @@ const PneusEstoque = () => {
         cancelText="Cancelar"
         warning
       />
-    </div>
+    </PageLayout>
   );
 };
 

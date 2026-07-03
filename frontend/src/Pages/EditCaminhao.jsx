@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useApiMutation, useCaminhaoByPlacaQuery } from "../hooks";
+import PageLayout from "../components/layout/PageLayout.jsx";
+import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
+import { CardSkeleton } from "../components/Skeleton.jsx";
 import {
   Card,
   Button,
   FormField,
-  LoadingSpinner,
   Alert,
+  PageHeader,
 } from "../components/ui";
 
 const EditCaminhao = () => {
@@ -219,36 +222,47 @@ const EditCaminhao = () => {
     }
   };
 
-  if (loading) return <LoadingSpinner fullScreen />;
+  if (loading) {
+    return (
+      <PageLayout narrow className="space-y-6">
+        <CardSkeleton />
+      </PageLayout>
+    );
+  }
 
   if (loadError) {
     return (
-      <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
-        <div className="max-w-2xl mx-auto space-y-4">
-          <Alert
-            type="error"
-            title="Caminhão não encontrado"
-            message={loadError}
-          />
-          <div className="flex gap-3">
-            <Button variant="secondary" onClick={() => navigate(-1)}>
-              Voltar
-            </Button>
-            <Button onClick={() => navigate("/")}>Ir para início</Button>
-          </div>
+      <PageLayout narrow className="space-y-4">
+        <Alert
+          type="error"
+          title="Caminhão não encontrado"
+          message={loadError}
+        />
+        <div className="flex gap-3">
+          <Button variant="secondary" onClick={() => navigate(-1)}>
+            Voltar
+          </Button>
+          <Button onClick={() => navigate("/")}>Ir para início</Button>
         </div>
-      </div>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8 flex justify-center">
-      <div className="w-full max-w-2xl animate-fade-in">
-        <Card
-          title={`Editar Caminhão: ${placa}`}
-          subtitle="Atualize os dados do veículo"
-          className="shadow-lg"
-        >
+    <PageLayout narrow className="space-y-6">
+      <Breadcrumbs
+        items={[
+          { label: "Início", to: "/" },
+          { label: placa, to: `/caminhao/${placa}` },
+          { label: "Editar" },
+        ]}
+      />
+      <PageHeader
+        title={`Editar caminhão: ${placa}`}
+        subtitle="Atualize os dados do veículo"
+      />
+
+      <Card className="shadow-lg">
           <form onSubmit={handleSubmit} className="space-y-6">
             {submitError && (
               <Alert type="error" message={submitError} />
@@ -494,8 +508,7 @@ const EditCaminhao = () => {
             </div>
           </form>
         </Card>
-      </div>
-    </div>
+    </PageLayout>
   );
 };
 

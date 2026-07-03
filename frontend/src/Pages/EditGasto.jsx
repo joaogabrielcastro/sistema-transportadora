@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useApiMutation, useEditGastoQuery } from "../hooks";
+import PageLayout from "../components/layout/PageLayout.jsx";
+import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
+import { CardSkeleton } from "../components/Skeleton.jsx";
 import {
   Card,
   Button,
-  LoadingSpinner,
   FormField,
   Alert,
+  PageHeader,
 } from "../components/ui";
 
 const EditGasto = () => {
@@ -36,7 +39,7 @@ const EditGasto = () => {
 
   const loadError = queryError?.message || null;
 
-  // IDs dos tipos de gasto especiais
+  // IDs dos tipos de gasto
   const ID_TIPO_GASTO_COMBUSTIVEL = 9;
 
   useEffect(() => {
@@ -134,170 +137,162 @@ const EditGasto = () => {
     label: t.nome_tipo,
   }));
 
-  if (loading) return <LoadingSpinner fullScreen />;
+  const breadcrumbItems = [
+    { label: "Início", to: "/" },
+    { label: "Manutenção", to: "/manutencao-gastos" },
+    ...(caminhaoPlaca
+      ? [{ label: caminhaoPlaca, to: `/caminhao/${caminhaoPlaca}` }]
+      : []),
+    { label: "Editar gasto" },
+  ];
+
+  if (loading) {
+    return (
+      <PageLayout narrow className="space-y-6">
+        <CardSkeleton />
+      </PageLayout>
+    );
+  }
 
   if (loadError) {
     return (
-      <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
-        <div className="max-w-2xl mx-auto space-y-4">
-          <Alert type="error" title="Gasto não encontrado" message={loadError} />
-          <div className="flex gap-3">
-            <Button variant="secondary" onClick={() => navigate(-1)}>
-              Voltar
-            </Button>
-            <Button onClick={() => navigate("/manutencao-gastos")}>
-              Ir para manutenção
-            </Button>
-          </div>
+      <PageLayout narrow className="space-y-4">
+        <Alert type="error" title="Gasto não encontrado" message={loadError} />
+        <div className="flex gap-3">
+          <Button variant="secondary" onClick={() => navigate(-1)}>
+            Voltar
+          </Button>
+          <Button onClick={() => navigate("/manutencao-gastos")}>
+            Ir para manutenção
+          </Button>
         </div>
-      </div>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
-      <div className="max-w-2xl mx-auto animate-fade-in">
-        {/* Header */}
-        <div className="flex items-center mb-8">
-          <Link
-            to={
-              caminhaoPlaca
-                ? `/caminhao/${caminhaoPlaca}`
-                : "/manutencao-gastos"
-            }
-            className="flex items-center text-primary hover:text-primary-dark mr-4 transition-colors"
-          >
-            <svg
-              className="w-4 h-4 mr-1"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              />
-            </svg>
-            Voltar
-          </Link>
-          <h1 className="text-3xl font-bold text-text-primary">Editar Gasto</h1>
-        </div>
+    <PageLayout narrow className="space-y-6">
+      <Breadcrumbs items={breadcrumbItems} />
+      <PageHeader
+        title="Editar gasto"
+        subtitle={
+          caminhaoPlaca
+            ? `Atualize os dados do gasto do caminhão ${caminhaoPlaca}`
+            : "Atualize os dados do gasto"
+        }
+      />
 
-        {/* Formulário */}
-        <Card>
-          <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                label="Caminhão"
-                type="select"
-                name="caminhao_id"
-                value={formData.caminhao_id}
-                onChange={handleCaminhaoChange}
-                options={caminhaoOptions}
-                disabled
-                helperText={
-                  caminhaoSelecionado
-                    ? `KM atual: ${caminhaoSelecionado.km_atual?.toLocaleString(
-                        "pt-BR"
-                      )}`
-                    : ""
-                }
-              />
+      <Card>
+        <form onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              label="Caminhão"
+              type="select"
+              name="caminhao_id"
+              value={formData.caminhao_id}
+              onChange={handleCaminhaoChange}
+              options={caminhaoOptions}
+              disabled
+              helperText={
+                caminhaoSelecionado
+                  ? `KM atual: ${caminhaoSelecionado.km_atual?.toLocaleString(
+                      "pt-BR"
+                    )}`
+                  : ""
+              }
+            />
 
-              <FormField
-                label="Tipo de Gasto"
-                type="select"
-                name="tipo_gasto_id"
-                value={formData.tipo_gasto_id}
-                onChange={handleChange}
-                required
-                options={tipoOptions}
-              />
+            <FormField
+              label="Tipo de Gasto"
+              type="select"
+              name="tipo_gasto_id"
+              value={formData.tipo_gasto_id}
+              onChange={handleChange}
+              required
+              options={tipoOptions}
+            />
 
+            <FormField
+              label="Valor (R$)"
+              type="number"
+              name="valor"
+              value={formData.valor}
+              onChange={handleChange}
+              step="0.01"
+              min="0"
+              required
+              placeholder="0,00"
+              icon={<span className="text-gray-500 font-semibold">R$</span>}
+            />
+
+            <FormField
+              label="Data do Gasto"
+              type="date"
+              name="data_gasto"
+              value={formData.data_gasto}
+              onChange={handleChange}
+              required
+              max={new Date().toISOString().split("T")[0]}
+            />
+
+            <FormField
+              label="Quilometragem (KM)"
+              type="number"
+              name="km_registro"
+              value={formData.km_registro}
+              onChange={handleChange}
+              min="0"
+              placeholder="KM no momento do gasto"
+            />
+
+            {isCombustivel && (
               <FormField
-                label="Valor (R$)"
+                label="Quantidade (Litros)"
                 type="number"
-                name="valor"
-                value={formData.valor}
+                name="quantidade_combustivel"
+                value={formData.quantidade_combustivel}
                 onChange={handleChange}
                 step="0.01"
                 min="0"
                 required
                 placeholder="0,00"
-                icon={<span className="text-gray-500 font-semibold">R$</span>}
               />
+            )}
+          </div>
 
-              <FormField
-                label="Data do Gasto"
-                type="date"
-                name="data_gasto"
-                value={formData.data_gasto}
-                onChange={handleChange}
-                required
-                max={new Date().toISOString().split("T")[0]}
-              />
+          <FormField
+            label="Observação"
+            type="textarea"
+            name="descricao"
+            value={formData.descricao}
+            onChange={handleChange}
+            rows={4}
+            placeholder="Detalhes adicionais sobre o gasto..."
+          />
 
-              <FormField
-                label="Quilometragem (KM)"
-                type="number"
-                name="km_registro"
-                value={formData.km_registro}
-                onChange={handleChange}
-                min="0"
-                placeholder="KM no momento do gasto"
-              />
-
-              {isCombustivel && (
-                <FormField
-                  label="Quantidade (Litros)"
-                  type="number"
-                  name="quantidade_combustivel"
-                  value={formData.quantidade_combustivel}
-                  onChange={handleChange}
-                  step="0.01"
-                  min="0"
-                  required
-                  placeholder="0,00"
-                />
-              )}
-            </div>
-
-            <FormField
-              label="Observação"
-              type="textarea"
-              name="descricao"
-              value={formData.descricao}
-              onChange={handleChange}
-              rows={4}
-              placeholder="Detalhes adicionais sobre o gasto..."
-            />
-
-            <div className="flex gap-4 pt-4">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() =>
-                  navigate(
-                    caminhaoPlaca
-                      ? `/caminhao/${caminhaoPlaca}`
-                      : "/manutencao-gastos"
-                  )
-                }
-                disabled={submitting}
-                className="flex-1"
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" loading={submitting} className="flex-1">
-                Salvar Alterações
-              </Button>
-            </div>
-          </form>
-        </Card>
-      </div>
-    </div>
+          <div className="flex gap-4 pt-4">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() =>
+                navigate(
+                  caminhaoPlaca
+                    ? `/caminhao/${caminhaoPlaca}`
+                    : "/manutencao-gastos"
+                )
+              }
+              disabled={submitting}
+              className="flex-1"
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" loading={submitting} className="flex-1">
+              Salvar Alterações
+            </Button>
+          </div>
+        </form>
+      </Card>
+    </PageLayout>
   );
 };
 

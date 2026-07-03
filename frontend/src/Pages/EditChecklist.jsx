@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useApiMutation, useEditChecklistQuery } from "../hooks";
+import PageLayout from "../components/layout/PageLayout.jsx";
+import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
+import { CardSkeleton } from "../components/Skeleton.jsx";
 import {
   Card,
   Button,
-  LoadingSpinner,
   FormField,
   Alert,
+  PageHeader,
 } from "../components/ui";
 
 const EditChecklist = () => {
@@ -102,61 +105,59 @@ const EditChecklist = () => {
     label: item.nome_item,
   }));
 
-  if (loading) return <LoadingSpinner fullScreen />;
+  const caminhaoPlaca =
+    caminhoes.find((c) => c.id === parseInt(formData.caminhao_id))?.placa || "";
+
+  const breadcrumbItems = [
+    { label: "Início", to: "/" },
+    { label: "Manutenção", to: "/manutencao-gastos" },
+    ...(caminhaoPlaca
+      ? [{ label: caminhaoPlaca, to: `/caminhao/${caminhaoPlaca}` }]
+      : []),
+    { label: "Editar manutenção" },
+  ];
+
+  if (loading) {
+    return (
+      <PageLayout narrow className="space-y-6">
+        <CardSkeleton />
+      </PageLayout>
+    );
+  }
 
   if (loadError) {
     return (
-      <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
-        <div className="max-w-2xl mx-auto space-y-4">
-          <Alert
-            type="error"
-            title="Manutenção não encontrada"
-            message={loadError}
-          />
-          <div className="flex gap-3">
-            <Button variant="secondary" onClick={() => navigate(-1)}>
-              Voltar
-            </Button>
-            <Button onClick={() => navigate("/manutencao-gastos")}>
-              Ir para manutenção
-            </Button>
-          </div>
+      <PageLayout narrow className="space-y-4">
+        <Alert
+          type="error"
+          title="Manutenção não encontrada"
+          message={loadError}
+        />
+        <div className="flex gap-3">
+          <Button variant="secondary" onClick={() => navigate(-1)}>
+            Voltar
+          </Button>
+          <Button onClick={() => navigate("/manutencao-gastos")}>
+            Ir para manutenção
+          </Button>
         </div>
-      </div>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
-      <div className="max-w-2xl mx-auto animate-fade-in">
-        {/* Header */}
-        <div className="flex items-center mb-8">
-          <Link
-            to="/manutencao-gastos"
-            className="flex items-center text-primary hover:text-primary-dark mr-4 transition-colors"
-          >
-            <svg
-              className="w-4 h-4 mr-1"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              />
-            </svg>
-            Voltar
-          </Link>
-          <h1 className="text-3xl font-bold text-text-primary">
-            Editar Manutenção
-          </h1>
-        </div>
+    <PageLayout narrow className="space-y-6">
+      <Breadcrumbs items={breadcrumbItems} />
+      <PageHeader
+        title="Editar manutenção"
+        subtitle={
+          caminhaoPlaca
+            ? `Atualize os dados da manutenção do caminhão ${caminhaoPlaca}`
+            : "Atualize os dados da manutenção"
+        }
+      />
 
-        {/* Formulário */}
-        <Card>
+      <Card>
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
@@ -247,8 +248,7 @@ const EditChecklist = () => {
             </div>
           </form>
         </Card>
-      </div>
-    </div>
+    </PageLayout>
   );
 };
 

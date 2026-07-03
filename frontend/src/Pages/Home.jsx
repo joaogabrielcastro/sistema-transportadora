@@ -7,7 +7,9 @@ import {
   useCaminhoesListQuery,
   useReportsOverviewQuery,
 } from "../hooks";
-import { Card, Button, LoadingSpinner, Alert, PageHeader } from "../components/ui";
+import { Card, Button, LoadingSpinner, Alert, PageHeader, StatCard, StatusBadge } from "../components/ui";
+import { useToast } from "../components/ui/useToast.js";
+import PageLayout from "../components/layout/PageLayout.jsx";
 import { formatCurrency, formatNumber } from "../utils";
 import { extractApiArray, extractApiData } from "../utils/extractApiArray.js";
 import ConfirmModal from "../components/ConfirmModal";
@@ -16,6 +18,7 @@ import EmptyState from "../components/EmptyState.jsx";
 
 const Home = () => {
   const [currentPage, setCurrentPage] = useState(1);
+  const toast = useToast();
 
   const {
     data: caminhoesPage,
@@ -50,7 +53,6 @@ const Home = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   // Estados para o modal de confirmação
   const [modalOpen, setModalOpen] = useState(false);
@@ -132,9 +134,7 @@ const Home = () => {
     setExcluindo(true);
     try {
       await apiDelete(`/caminhoes/${caminhaoParaExcluir.placa}/cascade`);
-      setSuccessMessage(
-        `Caminhão ${caminhaoParaExcluir.placa} excluído com sucesso!`,
-      );
+      toast.success(`Caminhão ${caminhaoParaExcluir.placa} excluído com sucesso.`);
       handleCloseModal();
     } catch (err) {
       console.error("Erro ao excluir caminhão:", err);
@@ -153,49 +153,8 @@ const Home = () => {
     setCurrentPage(page);
   };
 
-  // Componente de Card de Estatística
-  const StatCard = ({ title, value, icon, trend, color }) => (
-    <div className="bg-white rounded-xl p-6 shadow-card border border-border hover:shadow-soft transition-all duration-300 group">
-      <div className="flex justify-between items-start">
-        <div>
-          <p className="text-sm font-medium text-text-secondary mb-1">
-            {title}
-          </p>
-          <h3 className="text-2xl font-bold text-text-primary">{value}</h3>
-        </div>
-        <div
-          className={`p-3 rounded-lg ${color} bg-opacity-10 group-hover:bg-opacity-20 transition-colors`}
-        >
-          {icon}
-        </div>
-      </div>
-      {trend && (
-        <div className="mt-4 flex items-center text-sm">
-          <span className="text-success font-medium flex items-center">
-            <svg
-              className="w-4 h-4 mr-1"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-              />
-            </svg>
-            {trend}
-          </span>
-          <span className="text-text-light ml-2">vs. mês anterior</span>
-        </div>
-      )}
-    </div>
-  );
-
   return (
-    <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <PageLayout wide={false} className="space-y-8">
         <PageHeader
           title="Dashboard"
           subtitle="Bem-vindo ao sistema de gestão ABroto."
@@ -225,17 +184,8 @@ const Home = () => {
           }
         />
 
-        {(successMessage || errorMessage) && (
+        {(errorMessage) && (
           <div className="space-y-3">
-            {successMessage && (
-              <Alert
-                type="success"
-                message={successMessage}
-                dismissible
-                autoClose
-                onClose={() => setSuccessMessage("")}
-              />
-            )}
             {errorMessage && (
               <Alert
                 type="error"
@@ -254,7 +204,7 @@ const Home = () => {
           <StatCard
             title="Total de Caminhões"
             value={formatNumber(stats.totalCaminhoes)}
-            color="bg-blue-500 text-blue-600"
+            color="blue"
             icon={
               <svg
                 className="w-6 h-6"
@@ -280,7 +230,7 @@ const Home = () => {
           <StatCard
             title="Gastos Totais"
             value={formatCurrency(stats.totalGastos)}
-            color="bg-emerald-500 text-emerald-600"
+            color="green"
             icon={
               <svg
                 className="w-6 h-6"
@@ -300,7 +250,7 @@ const Home = () => {
           <StatCard
             title="Manutenções"
             value={formatNumber(stats.totalManutencoes)}
-            color="bg-amber-500 text-amber-600"
+            color="amber"
             icon={
               <svg
                 className="w-6 h-6"
@@ -326,7 +276,7 @@ const Home = () => {
           <StatCard
             title="Média de Gastos"
             value={formatCurrency(stats.mediaGastos)}
-            color="bg-purple-500 text-purple-600"
+            color="purple"
             icon={
               <svg
                 className="w-6 h-6"
@@ -536,8 +486,7 @@ const Home = () => {
           cancelText="Cancelar"
           warning={true}
         />
-      </div>
-    </div>
+    </PageLayout>
   );
 };
 
@@ -562,9 +511,10 @@ const TruckCard = ({ caminhao, onDelete }) => (
             />
           </svg>
         </div>
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 capitalize">
-          {caminhao.status || "Ativo"}
-        </span>
+        <StatusBadge
+          status={caminhao.status || "Operacional"}
+          type="vehicle"
+        />
       </div>
 
       <h3 className="text-lg font-bold text-text-primary mb-1">
@@ -620,7 +570,11 @@ const TruckCard = ({ caminhao, onDelete }) => (
       </Link>
       <div className="flex gap-2">
         <Link to={`/caminhao/editar/${caminhao.placa}`}>
-          <button className="p-1.5 text-gray-400 hover:text-secondary transition-colors rounded-md hover:bg-blue-50">
+          <button
+            type="button"
+            aria-label={`Editar caminhão ${caminhao.placa}`}
+            className="p-1.5 text-gray-400 hover:text-secondary transition-colors rounded-md hover:bg-blue-50"
+          >
             <svg
               className="w-5 h-5"
               fill="none"
@@ -637,7 +591,9 @@ const TruckCard = ({ caminhao, onDelete }) => (
           </button>
         </Link>
         <button
+          type="button"
           onClick={onDelete}
+          aria-label={`Excluir caminhão ${caminhao.placa}`}
           className="p-1.5 text-gray-400 hover:text-danger transition-colors rounded-md hover:bg-red-50"
         >
           <svg

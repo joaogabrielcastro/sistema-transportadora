@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 const pneusSubLinks = [
@@ -19,6 +19,7 @@ const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pneusMenuOpen, setPneusMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const pneusMenuRef = useRef(null);
   const location = useLocation();
 
   useEffect(() => {
@@ -31,6 +32,23 @@ const Navbar = () => {
     setIsMobileMenuOpen(false);
     setPneusMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        pneusMenuRef.current &&
+        !pneusMenuRef.current.contains(event.target)
+      ) {
+        setPneusMenuOpen(false);
+      }
+    };
+
+    if (pneusMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [pneusMenuOpen]);
 
   const isActive = (path, exact = false) => {
     if (exact) return location.pathname === path;
@@ -85,16 +103,18 @@ const Navbar = () => {
             </Link>
           ))}
 
-          <div
-            className="relative"
-            onMouseEnter={() => setPneusMenuOpen(true)}
-            onMouseLeave={() => setPneusMenuOpen(false)}
-          >
+          <div className="relative" ref={pneusMenuRef}>
             <button
               type="button"
               className={`${linkClass(isPneusSection)} gap-1`}
               aria-expanded={pneusMenuOpen}
               aria-haspopup="true"
+              onClick={() => setPneusMenuOpen((open) => !open)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  setPneusMenuOpen(false);
+                }
+              }}
             >
               Pneus
               <svg

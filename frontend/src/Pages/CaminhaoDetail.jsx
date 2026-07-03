@@ -4,7 +4,10 @@ import { useCaminhaoDetailQuery, usePneuAtribuirQueries } from "../hooks";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../lib/queryKeys.js";
 import { API_CONFIG } from "../utils/constants.js";
-import { Card, Button, LoadingSpinner, Alert } from "../components/ui";
+import { Card, Button, Alert, PageHeader, StatCard, StatusBadge, Tabs } from "../components/ui";
+import PageLayout from "../components/layout/PageLayout.jsx";
+import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
+import { CardSkeleton } from "../components/Skeleton.jsx";
 import CaminhaoDocumentos from "../components/CaminhaoDocumentos";
 import RegistroDetailModal from "../components/RegistroDetailModal.jsx";
 import NovoPneuModal from "../components/NovoPneuModal.jsx";
@@ -36,28 +39,12 @@ ChartJS.register(
   Filler
 );
 
-const StatCard = ({ icon, value, label, color = "blue" }) => {
-  const colorClasses = {
-    blue: "bg-blue-50 text-blue-600 border-blue-200",
-    green: "bg-green-50 text-green-600 border-green-200",
-    purple: "bg-purple-50 text-purple-600 border-purple-200",
-    orange: "bg-orange-50 text-orange-600 border-orange-200",
-  };
-
-  return (
-    <div
-      className={`p-6 rounded-xl border ${colorClasses[color]} transition-all duration-200 hover:shadow-md`}
-    >
-      <div className="flex items-center gap-4">
-        <div className={`p-3 rounded-lg bg-white shadow-sm`}>{icon}</div>
-        <div>
-          <h3 className="text-2xl font-bold text-gray-900">{value}</h3>
-          <p className="text-sm font-medium opacity-80">{label}</p>
-        </div>
-      </div>
-    </div>
-  );
-};
+const DETAIL_TABS = [
+  { id: "resumo", label: "Resumo" },
+  { id: "analise", label: "Análise" },
+  { id: "registros", label: "Registros" },
+  { id: "documentos", label: "Documentos" },
+];
 
 const CaminhaoDetail = () => {
   const { placa } = useParams();
@@ -65,6 +52,7 @@ const CaminhaoDetail = () => {
   const queryClient = useQueryClient();
   const [registroModal, setRegistroModal] = useState(null);
   const [novoPneuOpen, setNovoPneuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("resumo");
 
   const { data, isLoading: loading, error } = useCaminhaoDetailQuery(placa);
   const {
@@ -274,58 +262,67 @@ const CaminhaoDetail = () => {
     };
   }, [gastos, checklists, pneus, todosRegistros]);
 
-  if (loading) return <LoadingSpinner fullScreen />;
+  if (loading) {
+    return (
+      <PageLayout wide={false} className="space-y-6">
+        <CardSkeleton />
+        <CardSkeleton />
+      </PageLayout>
+    );
+  }
 
   if (loadError || !caminhao) {
     return (
-      <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
-        <div className="max-w-2xl mx-auto space-y-4">
-          <Alert
-            type="error"
-            title="Caminhão não encontrado"
-            message={
-              loadError ||
-              `Não encontramos um caminhão com a placa "${placa}".`
-            }
-          />
-          <div className="flex gap-3">
-            <Button variant="secondary" onClick={() => navigate(-1)}>
-              Voltar
-            </Button>
-            <Button onClick={() => navigate("/")}>Ir para início</Button>
-          </div>
+      <PageLayout narrow className="space-y-4">
+        <Alert
+          type="error"
+          title="Caminhão não encontrado"
+          message={
+            loadError ||
+            `Não encontramos um caminhão com a placa "${placa}".`
+          }
+        />
+        <div className="flex gap-3">
+          <Button variant="secondary" onClick={() => navigate(-1)}>
+            Voltar
+          </Button>
+          <Button onClick={() => navigate("/")}>Ir para início</Button>
         </div>
-      </div>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
-      <div className="max-w-7xl mx-auto animate-fade-in">
-        {/* Header */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-text-primary flex items-center gap-3">
-              Caminhão {caminhao.placa}
-              <span className="text-sm font-normal px-3 py-1 bg-blue-100 text-blue-700 rounded-full">
-                {caminhao.status || "Ativo"}
-              </span>
-            </h1>
-            <p className="text-text-secondary mt-1">
-              Detalhes completos e análise de desempenho
-            </p>
-          </div>
-          <div className="flex gap-3">
+    <PageLayout wide={false} className="space-y-6">
+      <Breadcrumbs
+        items={[
+          { label: "Início", to: "/" },
+          { label: caminhao.placa },
+        ]}
+      />
+
+      <PageHeader
+        title={`Caminhão ${caminhao.placa}`}
+        subtitle="Detalhes completos e análise de desempenho"
+        actions={
+          <div className="flex items-center gap-3 flex-wrap">
+            <StatusBadge
+              status={caminhao.status || "Operacional"}
+              type="vehicle"
+            />
             <Button variant="outline" onClick={() => navigate("/")}>
               Voltar
             </Button>
             <Button
               onClick={() => navigate(`/caminhao/editar/${caminhao.placa}`)}
             >
-              Editar Veículo
+              Editar veículo
             </Button>
           </div>
-        </div>
+        }
+      />
+
+      <Tabs tabs={DETAIL_TABS} activeTab={activeTab} onChange={setActiveTab} />
 
         {(listTruncation.gastos || listTruncation.checklists) && (
           <Alert
@@ -345,9 +342,11 @@ const CaminhaoDetail = () => {
           />
         )}
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {activeTab === "resumo" && (
+        <div className="space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
+            layout="compact"
             icon={
               <svg
                 className="w-6 h-6"
@@ -367,10 +366,11 @@ const CaminhaoDetail = () => {
               style: "currency",
               currency: "BRL",
             })}
-            label="Total em Gastos"
+            title="Total em Gastos"
             color="blue"
           />
           <StatCard
+            layout="compact"
             icon={
               <svg
                 className="w-6 h-6"
@@ -390,10 +390,11 @@ const CaminhaoDetail = () => {
               style: "currency",
               currency: "BRL",
             })}
-            label="Gastos (30 dias)"
+            title="Gastos (30 dias)"
             color="green"
           />
           <StatCard
+            layout="compact"
             icon={
               <svg
                 className="w-6 h-6"
@@ -416,10 +417,11 @@ const CaminhaoDetail = () => {
               </svg>
             }
             value={estatisticas.totalManutencoes}
-            label="Manutenções"
+            title="Manutenções"
             color="purple"
           />
           <StatCard
+            layout="compact"
             icon={
               <svg
                 className="w-6 h-6"
@@ -436,13 +438,13 @@ const CaminhaoDetail = () => {
               </svg>
             }
             value={estatisticas.totalPneus}
-            label="Pneus"
+            title="Pneus"
             color="orange"
           />
         </div>
 
         {/* Info Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <Card title="Dados do Veículo" className="lg:col-span-2 h-full">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
               {[
@@ -510,13 +512,11 @@ const CaminhaoDetail = () => {
             </div>
           </Card>
         </div>
+        </div>
+        )}
 
-        <Card title="Documentos do veículo (PDF)" className="mb-8">
-          <CaminhaoDocumentos placa={caminhao.placa} />
-        </Card>
-
-        {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        {activeTab === "analise" && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <Card title="Gastos Mensais">
             <div className="h-80">
               <Bar options={chartOptions} data={gastosChartData} />
@@ -527,9 +527,27 @@ const CaminhaoDetail = () => {
               <Line options={chartOptions} data={gastosLineChartData} />
             </div>
           </Card>
+          {gastosPorTipoData.labels.length > 0 && (
+            <Card title="Distribuição por Tipo" className="lg:col-span-2">
+              <div className="h-80 max-w-xl mx-auto">
+                <Doughnut
+                  options={{
+                    ...chartOptions,
+                    scales: undefined,
+                    plugins: {
+                      ...chartOptions.plugins,
+                      legend: { position: "right" },
+                    },
+                  }}
+                  data={gastosPorTipoData}
+                />
+              </div>
+            </Card>
+          )}
         </div>
+        )}
 
-        {/* Lists */}
+        {activeTab === "registros" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <Card
             title="Últimos Gastos"
@@ -689,7 +707,13 @@ const CaminhaoDetail = () => {
             </div>
           </Card>
         </div>
-      </div>
+        )}
+
+        {activeTab === "documentos" && (
+          <Card title="Documentos do veículo (PDF)">
+            <CaminhaoDocumentos placa={caminhao.placa} />
+          </Card>
+        )}
 
       <RegistroDetailModal
         registro={registroModal}
@@ -711,7 +735,7 @@ const CaminhaoDetail = () => {
           queryClient.invalidateQueries({ queryKey: ["pneus"] });
         }}
       />
-    </div>
+    </PageLayout>
   );
 };
 

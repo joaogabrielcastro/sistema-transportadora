@@ -9,6 +9,7 @@ import {
   Button,
   Alert,
   FormField,
+  SearchableSelect,
   LoadingSpinner,
   PageHeader,
   DataTable,
@@ -17,6 +18,7 @@ import {
   DataTableRow,
   DataTableTh,
   DataTableTd,
+  FilterChips,
 } from "../components/ui";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import { exportToPDF, exportToExcel } from "../utils/exportUtils";
@@ -88,6 +90,57 @@ const Relatorios = () => {
         ? parseInt(selectedCaminhao, 10)
         : undefined,
     });
+  };
+
+  const activeFilterChips = useMemo(() => {
+    if (!submittedParams) return [];
+
+    const chips = [
+      {
+        key: "start",
+        label: "De",
+        value: formatDate(submittedParams.startDate),
+        removable: false,
+      },
+      {
+        key: "end",
+        label: "Até",
+        value: formatDate(submittedParams.endDate),
+        removable: false,
+      },
+    ];
+
+    if (submittedParams.caminhaoId) {
+      const caminhao = caminhoes.find((c) => c.id === submittedParams.caminhaoId);
+      chips.push({
+        key: "caminhao",
+        label: "Caminhão",
+        value: caminhao
+          ? `${caminhao.placa}${caminhao.modelo ? ` — ${caminhao.modelo}` : ""}`
+          : String(submittedParams.caminhaoId),
+      });
+    } else {
+      chips.push({
+        key: "caminhao",
+        label: "Caminhão",
+        value: "Todos",
+        removable: false,
+      });
+    }
+
+    return chips;
+  }, [submittedParams, caminhoes]);
+
+  const handleRemoveFilter = (key) => {
+    if (key === "caminhao") {
+      setSelectedCaminhao("");
+      if (submittedParams) {
+        setSubmittedParams({
+          ...submittedParams,
+          caminhaoId: undefined,
+        });
+      }
+    }
   };
 
   const handleExportPDF = async () => {
@@ -196,19 +249,27 @@ const Relatorios = () => {
                 setDateRange({ ...dateRange, end: e.target.value })
               }
             />
-            <FormField
+            <SearchableSelect
               label="Caminhão (opcional)"
-              type="select"
+              name="caminhao"
               value={selectedCaminhao}
-              onChange={(e) => setSelectedCaminhao(e.target.value)}
+              onChange={setSelectedCaminhao}
               disabled={loadingCaminhoes}
               options={caminhaoOptions}
+              placeholder="Buscar por placa ou modelo..."
             />
             <Button onClick={generateReport} loading={loading}>
               Gerar Relatório
             </Button>
           </div>
         </Card>
+
+        {submittedParams && (
+          <FilterChips
+            items={activeFilterChips}
+            onRemove={handleRemoveFilter}
+          />
+        )}
 
         {hasReport && (
           <div className="space-y-6">
@@ -276,7 +337,37 @@ const Relatorios = () => {
                 </Suspense>
               </div>
 
-              <DataTable>
+              <div className="md:hidden divide-y divide-border">
+                {reportData.map((row) => (
+                  <div key={row.placa} className="px-4 py-3 space-y-1">
+                    <p className="font-semibold text-text-primary">{row.placa}</p>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-text-secondary">Total gasto</span>
+                      <span className="font-medium tabular-nums">
+                        {formatCurrency(row.totalCost)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-text-secondary">KM rodado</span>
+                      <span>
+                        {row.kmDriven === "N/I"
+                          ? "Dados insuficientes"
+                          : `${formatNumber(row.kmDriven)} km`}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-text-secondary">Custo / KM</span>
+                      <span className="font-medium tabular-nums">
+                        {row.kmDriven === "N/I"
+                          ? "—"
+                          : formatCurrency(row.costPerKm)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <DataTable className="hidden md:table">
                 <DataTableHead>
                   <tr>
                     <DataTableTh width="20%">Placa</DataTableTh>
@@ -328,7 +419,38 @@ const Relatorios = () => {
                   </p>
                 </div>
 
-                <DataTable>
+                <div className="md:hidden divide-y divide-border">
+                  {reportEntries.map((entry) => (
+                    <div
+                      key={`${entry.tipo}-${entry.id}-m`}
+                      className="px-4 py-3 space-y-1"
+                    >
+                      <div className="flex justify-between gap-2">
+                        <span className="font-semibold text-text-primary">
+                          {entry.placa}
+                        </span>
+                        <span className="text-xs text-text-secondary">
+                          {formatDate(entry.data)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-text-secondary">
+                        {tipoLabels[entry.tipo] || entry.tipo} · {entry.descricao}
+                      </p>
+                      <div className="flex justify-between text-sm">
+                        <span className="font-medium tabular-nums">
+                          {formatCurrency(entry.valor)}
+                        </span>
+                        <span className="text-text-secondary">
+                          {entry.km != null
+                            ? `${formatNumber(entry.km)} km`
+                            : "—"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <DataTable className="hidden md:table">
                   <DataTableHead>
                     <tr>
                       <DataTableTh width="12%">Data</DataTableTh>

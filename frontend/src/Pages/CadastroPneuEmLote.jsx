@@ -1,12 +1,16 @@
 import React, { useState } from "react";
-import { useLocation, useNavigate, Link } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useApiMutation, useCadastroPneuLoteQueries } from "../hooks";
+import PageLayout from "../components/layout/PageLayout.jsx";
+import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
+import { CardSkeleton } from "../components/Skeleton.jsx";
 import {
   Card,
   Button,
   FormField,
-  LoadingSpinner,
+  Alert,
+  PageHeader,
 } from "../components/ui";
 
 // Schema de validação para um único pneu
@@ -163,15 +167,25 @@ const CadastroPneuEmLote = () => {
     }
   };
 
-  if (loading) return <LoadingSpinner fullScreen />;
+  if (loading) {
+    return (
+      <PageLayout wide={false} className="space-y-6">
+        <CardSkeleton />
+      </PageLayout>
+    );
+  }
 
   if (loadError) {
     return (
-      <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
-        <div className="max-w-4xl mx-auto text-center text-red-600">
-          {loadError}
+      <PageLayout wide={false} className="space-y-4">
+        <Alert type="error" title="Erro ao carregar" message={loadError} />
+        <div className="flex gap-3">
+          <Button variant="secondary" onClick={() => navigate(-1)}>
+            Voltar
+          </Button>
+          <Button onClick={() => navigate("/pneus")}>Ir para pneus</Button>
         </div>
-      </div>
+      </PageLayout>
     );
   }
 
@@ -191,35 +205,20 @@ const CadastroPneuEmLote = () => {
   }));
 
   return (
-    <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
-      <div className="max-w-4xl mx-auto animate-fade-in">
-        {/* Header */}
-        <div className="flex items-center mb-8">
-          <Link
-            to="/pneus"
-            className="flex items-center text-primary hover:text-primary-dark mr-4 transition-colors"
-          >
-            <svg
-              className="w-4 h-4 mr-1"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              />
-            </svg>
-            Voltar
-          </Link>
-          <h1 className="text-3xl font-bold text-text-primary">
-            Cadastro de Pneus em Lote
-          </h1>
-        </div>
+    <PageLayout wide={false} className="space-y-6">
+      <Breadcrumbs
+        items={[
+          { label: "Início", to: "/" },
+          { label: "Pneus", to: "/pneus" },
+          { label: "Cadastro em lote" },
+        ]}
+      />
+      <PageHeader
+        title="Cadastro de pneus em lote"
+        subtitle="Adicione vários pneus de uma vez para um caminhão"
+      />
 
-        <Card>
+      <Card>
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Seleção do Caminhão */}
             <FormField
@@ -392,8 +391,7 @@ const CadastroPneuEmLote = () => {
             </div>
           </form>
         </Card>
-      </div>
-    </div>
+    </PageLayout>
   );
 };
 

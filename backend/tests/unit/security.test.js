@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 const importSecurity = async () => {
-  const mod = await import(`../src/middleware/security.js?ts=${Date.now()}`);
+  const mod = await import(`../../src/middleware/security.js?ts=${Date.now()}`);
   return mod;
 };
 

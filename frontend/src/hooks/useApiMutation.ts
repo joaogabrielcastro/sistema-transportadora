@@ -2,8 +2,14 @@ import { useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "../components/ui/useToast.js";
 import { apiFetch, parseApiError } from "../lib/apiClient.js";
+import type {
+  ApiFetchConfig,
+  ApiSuccessResponse,
+  ParsedApiError,
+  UseApiMutationOptions,
+} from "../types/api.js";
 
-const defaultSuccessMessage = (method) => {
+const defaultSuccessMessage = (method: string): string => {
   if (method === "POST") return "Salvo com sucesso.";
   if (method === "DELETE") return "Excluído com sucesso.";
   return "Atualizado com sucesso.";
@@ -12,11 +18,14 @@ const defaultSuccessMessage = (method) => {
 /**
  * Mutações API com TanStack Query (loading, toast, invalidação via interceptor axios).
  */
-export function useApiMutation(options = {}) {
-  const toast = useToast();
+export function useApiMutation(options: UseApiMutationOptions = {}) {
+  const toast = useToast() as {
+    success: (message: string) => void;
+    error: (message: string) => void;
+  };
 
   const mutation = useMutation({
-    mutationFn: async (config) => {
+    mutationFn: async (config: ApiFetchConfig) => {
       try {
         return await apiFetch(config);
       } catch (err) {
@@ -25,46 +34,51 @@ export function useApiMutation(options = {}) {
     },
     onSuccess: (data, variables) => {
       const method = String(variables.method || "POST").toUpperCase();
+      const successData = data as ApiSuccessResponse;
 
       if (
         ["POST", "PUT", "PATCH", "DELETE"].includes(method) &&
         !variables.skipSuccessToast
       ) {
-        toast.success(data?.message || defaultSuccessMessage(method));
+        toast.success(
+          String(successData?.message || defaultSuccessMessage(method)),
+        );
       }
 
-      options.onSuccess?.(data, variables);
+      options.onSuccess?.(successData, variables);
     },
     onError: (err, variables) => {
+      const parsed = err as ParsedApiError;
       if (!variables?.skipErrorToast) {
-        toast.error(err.message || "Erro ao processar solicitação.");
+        toast.error(String(parsed.message || "Erro ao processar solicitação."));
       }
-      options.onError?.(err, variables);
+      options.onError?.(parsed, variables);
     },
   });
 
   const mutateAsync = mutation.mutateAsync;
 
   const post = useCallback(
-    (url, data, config = {}) =>
+    (url: string, data?: unknown, config: Partial<ApiFetchConfig> = {}) =>
       mutateAsync({ method: "POST", url, data, ...config }),
     [mutateAsync],
   );
 
   const put = useCallback(
-    (url, data, config = {}) =>
+    (url: string, data?: unknown, config: Partial<ApiFetchConfig> = {}) =>
       mutateAsync({ method: "PUT", url, data, ...config }),
     [mutateAsync],
   );
 
   const patch = useCallback(
-    (url, data, config = {}) =>
+    (url: string, data?: unknown, config: Partial<ApiFetchConfig> = {}) =>
       mutateAsync({ method: "PATCH", url, data, ...config }),
     [mutateAsync],
   );
 
   const del = useCallback(
-    (url, config = {}) => mutateAsync({ method: "DELETE", url, ...config }),
+    (url: string, config: Partial<ApiFetchConfig> = {}) =>
+      mutateAsync({ method: "DELETE", url, ...config }),
     [mutateAsync],
   );
 
@@ -79,7 +93,6 @@ export function useApiMutation(options = {}) {
     isError: mutation.isError,
     error: mutation.error,
     reset: mutation.reset,
-    /** @deprecated use isPending */
     loading: mutation.isPending,
   };
 }

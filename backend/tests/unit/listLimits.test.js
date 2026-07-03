@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseListLimit, MAX_LIST_LIMIT } from "../src/utils/listLimits.js";
+import { parseListLimit, MAX_LIST_LIMIT } from "../../src/utils/listLimits.js";
 
 test("parseListLimit usa default quando inválido", () => {
   assert.equal(parseListLimit(undefined, 10), 10);

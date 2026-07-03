@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   formatDateBr,
   finalizeOrdemVars,
-} from "../src/utils/ordemColetaFormat.js";
+} from "../../src/utils/ordemColetaFormat.js";
 
 test("formatDateBr converte ISO para dd/mm/aaaa", () => {
   assert.equal(formatDateBr("2026-05-19"), "19/05/2026");

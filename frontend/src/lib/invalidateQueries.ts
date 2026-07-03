@@ -2,7 +2,10 @@ import { queryClient } from "./queryClient.js";
 import { queryKeys } from "./queryKeys.js";
 
 /** Invalida caches do React Query após mutações na API. */
-export function invalidateQueriesFromMutation(url = "", method = "") {
+export function invalidateQueriesFromMutation(
+  url = "",
+  method = "",
+): void {
   const path = String(url || "").replace(/^\//, "");
   const m = String(method || "").toLowerCase();
 
@@ -33,7 +36,11 @@ export function invalidateQueriesFromMutation(url = "", method = "") {
     queryClient.invalidateQueries({ queryKey: queryKeys.manutencaoMeta.all });
   }
 
-  if (/^pneus/.test(path) || /^status-pneus/.test(path) || /^posicoes-pneus/.test(path)) {
+  if (
+    /^pneus/.test(path) ||
+    /^status-pneus/.test(path) ||
+    /^posicoes-pneus/.test(path)
+  ) {
     queryClient.invalidateQueries({ queryKey: queryKeys.pneus.all });
   }
 }

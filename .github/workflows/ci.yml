@@ -17,6 +17,20 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: transportadora_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,14 +48,25 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Migrate test database
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/transportadora_test
+          DB_SSL_MODE: disable
+
       - name: Test
         run: npm test
         env:
           AUTH_ENABLED: "false"
           NODE_ENV: test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/transportadora_test
+          DB_SSL_MODE: disable
 
   frontend:
-    name: Frontend (lint + build)
+    name: Frontend (lint + typecheck + build + e2e)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -60,10 +85,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
       - name: Lint
         run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
 
       - name: Build
         run: npm run build
         env:
           VITE_API_URL: http://localhost:3020
+          VITE_API_TOKEN: ci-test-token-min-16-ch
+
+      - name: E2E tests
+        run: npm run test:e2e
+        env:
+          CI: "true"
+          VITE_API_TOKEN: ci-test-token-min-16-ch

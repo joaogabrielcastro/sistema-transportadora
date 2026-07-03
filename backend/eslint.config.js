@@ -7,7 +7,7 @@ export default [
   },
   js.configs.recommended,
   {
-    files: ["src/**/*.js", "tests/**/*.js", "scripts/**/*.mjs"],
+    files: ["src/**/*.js", "src/types/**/*.ts", "tests/**/*.js", "scripts/**/*.mjs"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",

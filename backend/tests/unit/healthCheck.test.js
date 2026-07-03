@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildHealthPayload } from "../src/utils/healthCheck.js";
+import { buildHealthPayload } from "../../src/utils/healthCheck.js";
 
 test("buildHealthPayload retorna healthy quando todas as probes ok", () => {
   const payload = buildHealthPayload({

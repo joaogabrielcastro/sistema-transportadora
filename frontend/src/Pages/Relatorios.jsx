@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState } from "react";
+import React, { lazy, Suspense, useState, useMemo } from "react";
 import {
   useCaminhoesListQuery,
   useCostPerKmReportQuery,
@@ -10,7 +10,15 @@ import {
   Alert,
   FormField,
   LoadingSpinner,
+  PageHeader,
+  DataTable,
+  DataTableHead,
+  DataTableBody,
+  DataTableRow,
+  DataTableTh,
+  DataTableTd,
 } from "../components/ui";
+import PageLayout from "../components/layout/PageLayout.jsx";
 import { exportToPDF, exportToExcel } from "../utils/exportUtils";
 import { formatCurrency, formatNumber } from "../utils/formatters";
 
@@ -29,12 +37,27 @@ const Relatorios = () => {
   const [submittedParams, setSubmittedParams] = useState(null);
   const [exporting, setExporting] = useState(null);
 
-  const { data: caminhoesPage } = useCaminhoesListQuery({
+  const {
+    data: caminhoesPage,
+    isLoading: loadingCaminhoes,
+    error: erroCaminhoes,
+  } = useCaminhoesListQuery({
     page: 1,
     limit: API_CONFIG.LIST_MAX,
   });
 
   const caminhoes = caminhoesPage?.data ?? [];
+
+  const caminhaoOptions = useMemo(
+    () => [
+      { value: "", label: "Todos os caminhões" },
+      ...caminhoes.map((c) => ({
+        value: String(c.id),
+        label: `${c.placa}${c.modelo ? ` — ${c.modelo}` : ""}`,
+      })),
+    ],
+    [caminhoes],
+  );
 
   const {
     data: report,
@@ -53,7 +76,9 @@ const Relatorios = () => {
     setSubmittedParams({
       startDate: dateRange.start,
       endDate: dateRange.end,
-      caminhaoId: selectedCaminhao || undefined,
+      caminhaoId: selectedCaminhao
+        ? parseInt(selectedCaminhao, 10)
+        : undefined,
     });
   };
 
@@ -96,16 +121,11 @@ const Relatorios = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-24 pb-12 px-4 md:px-8">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">
-            Relatórios Gerenciais
-          </h1>
-          <p className="text-gray-600">
-            Análise de custos e eficiência da frota.
-          </p>
-        </div>
+    <PageLayout className="space-y-6">
+      <PageHeader
+        title="Relatórios Gerenciais"
+        subtitle="Análise de custos e eficiência da frota"
+      />
 
         <Card>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
@@ -126,14 +146,12 @@ const Relatorios = () => {
               }
             />
             <FormField
-              label="Caminhão (Opcional)"
+              label="Caminhão (opcional)"
               type="select"
               value={selectedCaminhao}
               onChange={(e) => setSelectedCaminhao(e.target.value)}
-              options={[
-                { value: "", label: "Todos" },
-                ...caminhoes.map((c) => ({ value: c.id, label: c.placa })),
-              ]}
+              disabled={loadingCaminhoes}
+              options={caminhaoOptions}
             />
             <Button onClick={generateReport} loading={loading}>
               Gerar Relatório
@@ -189,64 +207,71 @@ const Relatorios = () => {
               </Button>
             </div>
 
-            <Card>
-              <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                Custo por Caminhão
-              </h3>
-              <Suspense
-                fallback={
-                  <div className="h-64 mb-6 flex items-center justify-center">
-                    <LoadingSpinner text="Carregando gráfico..." />
-                  </div>
-                }
-              >
-                <CostPerKmBarChart reportData={reportData} />
-              </Suspense>
-
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Placa
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Total Gasto
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        KM Rodado (Est.)
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Custo / KM
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {reportData.map((row) => (
-                      <tr key={row.placa}>
-                        <td className="px-6 py-4 whitespace-nowrap font-medium">
-                          {row.placa}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {formatCurrency(row.totalCost)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {row.kmDriven === "N/I"
-                            ? "Dados Insuficientes"
-                            : `${formatNumber(row.kmDriven)} km`}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {row.kmDriven === "N/I"
-                            ? "-"
-                            : formatCurrency(row.costPerKm)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <Card noPadding>
+              <div className="px-5 py-4 border-b border-border">
+                <h3 className="text-lg font-semibold text-text-primary">
+                  Custo por Caminhão
+                </h3>
               </div>
+              <div className="p-5">
+                <Suspense
+                  fallback={
+                    <div className="h-64 mb-6 flex items-center justify-center">
+                      <LoadingSpinner text="Carregando gráfico..." />
+                    </div>
+                  }
+                >
+                  <CostPerKmBarChart reportData={reportData} />
+                </Suspense>
+              </div>
+
+              <DataTable>
+                <DataTableHead>
+                  <tr>
+                    <DataTableTh width="20%">Placa</DataTableTh>
+                    <DataTableTh width="25%" align="right">
+                      Total Gasto
+                    </DataTableTh>
+                    <DataTableTh width="30%" align="right">
+                      KM Rodado (Est.)
+                    </DataTableTh>
+                    <DataTableTh width="25%" align="right">
+                      Custo / KM
+                    </DataTableTh>
+                  </tr>
+                </DataTableHead>
+                <DataTableBody>
+                  {reportData.map((row) => (
+                    <DataTableRow key={row.placa}>
+                      <DataTableTd className="font-semibold whitespace-nowrap">
+                        {row.placa}
+                      </DataTableTd>
+                      <DataTableTd align="right" className="whitespace-nowrap tabular-nums">
+                        {formatCurrency(row.totalCost)}
+                      </DataTableTd>
+                      <DataTableTd align="right" className="whitespace-nowrap">
+                        {row.kmDriven === "N/I"
+                          ? "Dados insuficientes"
+                          : `${formatNumber(row.kmDriven)} km`}
+                      </DataTableTd>
+                      <DataTableTd align="right" className="font-medium whitespace-nowrap tabular-nums">
+                        {row.kmDriven === "N/I"
+                          ? "—"
+                          : formatCurrency(row.costPerKm)}
+                      </DataTableTd>
+                    </DataTableRow>
+                  ))}
+                </DataTableBody>
+              </DataTable>
             </Card>
           </div>
+        )}
+
+        {erroCaminhoes && (
+          <Alert
+            type="warning"
+            message="Não foi possível carregar a lista de caminhões para o filtro."
+          />
         )}
 
         {submittedParams && !loading && reportData.length === 0 && (
@@ -255,8 +280,7 @@ const Relatorios = () => {
             message="Nenhum dado encontrado para o período e filtros selecionados."
           />
         )}
-      </div>
-    </div>
+    </PageLayout>
   );
 };
 

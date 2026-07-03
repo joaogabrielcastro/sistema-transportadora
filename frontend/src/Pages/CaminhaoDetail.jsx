@@ -1,9 +1,13 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useCaminhaoDetailQuery } from "../hooks";
+import { useCaminhaoDetailQuery, usePneuAtribuirQueries } from "../hooks";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../lib/queryKeys.js";
 import { API_CONFIG } from "../utils/constants.js";
 import { Card, Button, LoadingSpinner, Alert } from "../components/ui";
 import CaminhaoDocumentos from "../components/CaminhaoDocumentos";
+import RegistroDetailModal from "../components/RegistroDetailModal.jsx";
+import NovoPneuModal from "../components/NovoPneuModal.jsx";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -58,8 +62,17 @@ const StatCard = ({ icon, value, label, color = "blue" }) => {
 const CaminhaoDetail = () => {
   const { placa } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [registroModal, setRegistroModal] = useState(null);
+  const [novoPneuOpen, setNovoPneuOpen] = useState(false);
 
   const { data, isLoading: loading, error } = useCaminhaoDetailQuery(placa);
+  const {
+    caminhoes,
+    pneus: stockPneus,
+    posicoes,
+    statusOptions,
+  } = usePneuAtribuirQueries();
 
   const caminhao = data?.caminhao ?? null;
   const gastos = useMemo(() => data?.gastos ?? [], [data?.gastos]);
@@ -532,9 +545,11 @@ const CaminhaoDetail = () => {
           >
             <div className="space-y-4">
               {gastos.slice(0, 5).map((gasto) => (
-                <div
+                <button
                   key={gasto.id}
-                  className="flex justify-between items-center p-3 hover:bg-gray-50 rounded-lg transition-colors border border-transparent hover:border-gray-100"
+                  type="button"
+                  onClick={() => setRegistroModal({ ...gasto, tipo: "gasto" })}
+                  className="w-full flex justify-between items-center p-3 hover:bg-gray-50 rounded-lg transition-colors border border-transparent hover:border-gray-100 text-left cursor-pointer"
                 >
                   <div>
                     <p className="font-medium text-gray-900">
@@ -550,7 +565,7 @@ const CaminhaoDetail = () => {
                       minimumFractionDigits: 2,
                     })}
                   </span>
-                </div>
+                </button>
               ))}
               {gastos.length === 0 && (
                 <p className="text-center text-gray-500 py-4">
@@ -574,9 +589,13 @@ const CaminhaoDetail = () => {
           >
             <div className="space-y-4">
               {checklists.slice(0, 5).map((item) => (
-                <div
+                <button
                   key={item.id}
-                  className="p-3 hover:bg-gray-50 rounded-lg transition-colors border border-transparent hover:border-gray-100"
+                  type="button"
+                  onClick={() =>
+                    setRegistroModal({ ...item, tipo: "manutencao" })
+                  }
+                  className="w-full p-3 hover:bg-gray-50 rounded-lg transition-colors border border-transparent hover:border-gray-100 text-left cursor-pointer"
                 >
                   <div className="flex justify-between mb-1">
                     <p className="font-medium text-gray-900">
@@ -592,7 +611,7 @@ const CaminhaoDetail = () => {
                   <p className="text-xs text-gray-500">
                     {new Date(item.data_manutencao).toLocaleDateString("pt-BR")}
                   </p>
-                </div>
+                </button>
               ))}
               {checklists.length === 0 && (
                 <p className="text-center text-gray-500 py-4">
@@ -605,7 +624,14 @@ const CaminhaoDetail = () => {
           <Card
             title="Pneus"
             action={
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap justify-end">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setNovoPneuOpen(true)}
+                >
+                  + Novo pneu
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -630,9 +656,11 @@ const CaminhaoDetail = () => {
           >
             <div className="space-y-4">
               {pneus.slice(0, 5).map((pneu) => (
-                <div
+                <button
                   key={pneu.id}
-                  className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors border border-transparent hover:border-gray-100"
+                  type="button"
+                  onClick={() => setRegistroModal({ ...pneu, tipo: "pneu" })}
+                  className="w-full flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors border border-transparent hover:border-gray-100 text-left cursor-pointer"
                 >
                   <div>
                     <p className="font-medium text-gray-900">
@@ -651,7 +679,7 @@ const CaminhaoDetail = () => {
                   >
                     {pneu.status_pneus?.nome_status}
                   </span>
-                </div>
+                </button>
               ))}
               {pneus.length === 0 && (
                 <p className="text-center text-gray-500 py-4">
@@ -662,6 +690,27 @@ const CaminhaoDetail = () => {
           </Card>
         </div>
       </div>
+
+      <RegistroDetailModal
+        registro={registroModal}
+        onClose={() => setRegistroModal(null)}
+      />
+
+      <NovoPneuModal
+        isOpen={novoPneuOpen}
+        onClose={() => setNovoPneuOpen(false)}
+        defaultCaminhaoId={caminhao?.id}
+        caminhoes={caminhoes}
+        posicoes={posicoes}
+        statusOptions={statusOptions}
+        stockPneus={stockPneus}
+        onSuccess={() => {
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.caminhoes.detail(placa),
+          });
+          queryClient.invalidateQueries({ queryKey: ["pneus"] });
+        }}
+      />
     </div>
   );
 };

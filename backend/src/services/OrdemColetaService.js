@@ -420,6 +420,16 @@ export class OrdemColetaService {
     return { id: row.id, status: "processing" };
   }
 
+  static async excluirEnviosComFalha() {
+    const result = await prisma.ordens_coleta_envio.deleteMany({
+      where: {
+        enviado_em: null,
+        erro_envio: { not: null },
+      },
+    });
+    return result.count;
+  }
+
   static async listarHistorico({ page, limit }) {
     const skip = (page - 1) * limit;
     const [rows, total] = await prisma.$transaction([

@@ -10,7 +10,17 @@ import {
   LoadingSpinner,
   FormField,
   Alert,
+  PageHeader,
+  DataTable,
+  DataTableHead,
+  DataTableBody,
+  DataTableRow,
+  DataTableTh,
+  DataTableTd,
+  TableRowActions,
 } from "../components/ui";
+import PageLayout from "../components/layout/PageLayout.jsx";
+import EmptyState from "../components/EmptyState.jsx";
 
 const StatusBadge = ({ tipo }) => {
   const config =
@@ -192,7 +202,7 @@ const RegistroForm = ({
   return (
     <Card title="Adicionar Novo Registro" className="mb-8">
       <form onSubmit={onSubmit}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-5">
           <FormField
             label="Tipo de Registro"
             type="select"
@@ -371,34 +381,34 @@ const HistoricoRegistros = ({
   }, [registrosFiltrados]);
 
   return (
-    <Card className="overflow-hidden">
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-gray-800">
+    <Card className="overflow-hidden" noPadding>
+      <div className="px-4 sm:px-5 py-4 border-b border-border flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-bold text-text-primary">
             Histórico de Registros
           </h2>
           <div className="flex flex-wrap gap-2 mt-2">
-            <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-medium border border-blue-100">
+            <span className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium border border-blue-100">
               {estatisticas.totalRegistros} registros
             </span>
-            <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-medium border border-green-100">
+            <span className="bg-green-50 text-green-700 px-2.5 py-0.5 rounded-md text-xs font-medium border border-green-100">
               {estatisticas.totalValorManutencoes.toLocaleString("pt-BR", {
                 style: "currency",
                 currency: "BRL",
               })}{" "}
-              em Manutenções
+              manutenções
             </span>
-            <span className="bg-purple-50 text-purple-700 px-3 py-1 rounded-full text-xs font-medium border border-purple-100">
+            <span className="bg-purple-50 text-purple-700 px-2.5 py-0.5 rounded-md text-xs font-medium border border-purple-100">
               {estatisticas.totalGastos.toLocaleString("pt-BR", {
                 style: "currency",
                 currency: "BRL",
               })}{" "}
-              em Gastos
+              gastos
             </span>
           </div>
         </div>
 
-        <div className="w-full lg:w-64">
+        <div className="w-full xl:w-72 shrink-0">
           <FormField
             placeholder="Filtrar por placa..."
             value={filtroPlaca}
@@ -424,123 +434,130 @@ const HistoricoRegistros = ({
       </div>
 
       {registrosFiltrados.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-          <div className="text-4xl mb-3 opacity-50">📊</div>
-          <h3 className="text-lg font-medium text-gray-900 mb-1">
-            {filtroPlaca
-              ? "Nenhum registro encontrado"
-              : "Nenhum registro cadastrado"}
-          </h3>
-          <p className="text-gray-500 text-sm">
-            {filtroPlaca
-              ? `Não foram encontrados registros para a placa "${filtroPlaca}"`
-              : "Comece cadastrando o primeiro registro no formulário acima."}
-          </p>
+        <div className="p-6">
+          <EmptyState
+            title={
+              filtroPlaca
+                ? "Nenhum registro encontrado"
+                : "Nenhum registro cadastrado"
+            }
+            description={
+              filtroPlaca
+                ? `Não há registros para a placa "${filtroPlaca}".`
+                : "Cadastre o primeiro registro no formulário acima."
+            }
+          />
         </div>
       ) : (
-        <div className="overflow-x-auto -mx-6">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tipo
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Caminhão
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Descrição
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Data
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Valor
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  KM
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ações
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {registrosFiltrados.map((registro) => (
-                <tr
-                  key={`${registro.tipo_registro}-${registro.id}`}
-                  className="hover:bg-gray-50 transition-colors"
-                >
-                  <td className="px-6 py-4 whitespace-nowrap">
+        <>
+          <div className="md:hidden divide-y divide-border">
+            {registrosFiltrados.map((registro) => (
+              <div
+                key={`${registro.tipo_registro}-${registro.id}-m`}
+                className="px-4 py-3 flex gap-3 items-start"
+              >
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge tipo={registro.tipo_registro} />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="font-medium text-gray-900">
+                    <span className="font-semibold text-text-primary text-sm">
                       {registro.placa || "N/A"}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900 font-medium">
-                      {registro.nome_tipo || "N/A"}
-                    </div>
-                    {registro.observacao && (
-                      <div
-                        className="text-xs text-gray-500 mt-0.5 truncate max-w-xs"
-                        title={registro.observacao}
-                      >
-                        {registro.observacao}
-                      </div>
-                    )}
-                    {registro.oficina && registro.oficina !== "N/A" && (
-                      <div className="text-xs text-gray-500 mt-0.5">
-                        Oficina: {registro.oficina}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {registro.dataFormatada}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="font-semibold text-gray-900">
+                    </span>
+                    <span className="text-xs text-text-secondary">
+                      {registro.dataFormatada}
+                    </span>
+                  </div>
+                  <p className="text-sm font-medium text-text-primary line-clamp-1">
+                    {registro.nome_tipo || "N/A"}
+                  </p>
+                  <div className="flex flex-wrap gap-x-3 text-xs text-text-secondary">
+                    <span className="font-semibold text-text-primary">
                       {registro.valorFormatado}
                     </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {registro.kmFormatado}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end gap-3">
-                      <button
-                        type="button"
-                        onClick={() => onEditar(registro)}
-                        className="text-gray-600 hover:text-gray-900 transition-colors text-xs font-medium uppercase tracking-wide"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onVerDetalhes(registro)}
-                        className="text-blue-600 hover:text-blue-900 transition-colors text-xs font-medium uppercase tracking-wide"
-                        title="Ver detalhes completos"
-                      >
-                        Ver Detalhes
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
+                    <span>KM {registro.kmFormatado}</span>
+                  </div>
+                </div>
+                <TableRowActions
+                  onEdit={() => onEditar(registro)}
+                  onView={() => onVerDetalhes(registro)}
+                  onDelete={() =>
+                    onDelete(registro.tipo_registro, registro.id)
+                  }
+                />
+              </div>
+            ))}
+          </div>
+
+          <DataTable className="hidden md:block">
+            <DataTableHead>
+              <tr>
+                <DataTableTh width="9%">Tipo</DataTableTh>
+                <DataTableTh width="8%">Caminhão</DataTableTh>
+                <DataTableTh width="38%">Descrição</DataTableTh>
+                <DataTableTh width="10%">Data</DataTableTh>
+                <DataTableTh width="11%" align="right">
+                  Valor
+                </DataTableTh>
+                <DataTableTh width="10%" align="right">
+                  KM
+                </DataTableTh>
+                <DataTableTh width="14%" align="right">
+                  Ações
+                </DataTableTh>
+              </tr>
+            </DataTableHead>
+            <DataTableBody>
+              {registrosFiltrados.map((registro) => {
+                const subtexto = [
+                  registro.observacao,
+                  registro.oficina && registro.oficina !== "N/A"
+                    ? `Oficina: ${registro.oficina}`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
+
+                return (
+                  <DataTableRow key={`${registro.tipo_registro}-${registro.id}`}>
+                    <DataTableTd className="whitespace-nowrap">
+                      <StatusBadge tipo={registro.tipo_registro} />
+                    </DataTableTd>
+                    <DataTableTd className="font-semibold whitespace-nowrap">
+                      {registro.placa || "N/A"}
+                    </DataTableTd>
+                    <DataTableTd truncate title={subtexto || registro.nome_tipo}>
+                      <div className="font-medium line-clamp-1">
+                        {registro.nome_tipo || "N/A"}
+                      </div>
+                      {subtexto && (
+                        <div className="text-xs text-text-secondary line-clamp-1 mt-0.5">
+                          {subtexto}
+                        </div>
+                      )}
+                    </DataTableTd>
+                    <DataTableTd className="text-text-secondary whitespace-nowrap">
+                      {registro.dataFormatada}
+                    </DataTableTd>
+                    <DataTableTd align="right" className="font-semibold whitespace-nowrap">
+                      {registro.valorFormatado}
+                    </DataTableTd>
+                    <DataTableTd align="right" className="text-text-secondary whitespace-nowrap tabular-nums">
+                      {registro.kmFormatado}
+                    </DataTableTd>
+                    <DataTableTd align="right">
+                      <TableRowActions
+                        onEdit={() => onEditar(registro)}
+                        onView={() => onVerDetalhes(registro)}
+                        onDelete={() =>
                           onDelete(registro.tipo_registro, registro.id)
                         }
-                        className="text-red-600 hover:text-red-900 transition-colors text-xs font-medium uppercase tracking-wide"
-                      >
-                        Excluir
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                      />
+                    </DataTableTd>
+                  </DataTableRow>
+                );
+              })}
+            </DataTableBody>
+          </DataTable>
+        </>
       )}
     </Card>
   );
@@ -751,28 +768,20 @@ const ManutencaoGastos = () => {
   if (loading) return <LoadingSpinner fullScreen />;
 
   return (
-    <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
-      <div className="max-w-7xl mx-auto animate-fade-in">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-text-primary mb-2">
-            Manutenção e Gastos
-          </h1>
-          <p className="text-text-secondary text-lg">
-            Controle completo de gastos e manutenções da frota
-          </p>
-        </div>
+    <PageLayout className="space-y-6">
+      <PageHeader
+        title="Manutenção e Gastos"
+        subtitle="Controle completo de gastos e manutenções da frota"
+      />
 
-        {listaTruncada && (
-          <Alert
-            type="warning"
-            className="mb-6"
-            message={`O histórico completo tem mais de ${API_CONFIG.LIST_MAX} registros. Exibindo os ${API_CONFIG.LIST_MAX} mais recentes de gastos e manutenções.`}
-          />
-        )}
+      {listaTruncada && (
+        <Alert
+          type="warning"
+          message={`O histórico completo tem mais de ${API_CONFIG.LIST_MAX} registros. Exibindo os ${API_CONFIG.LIST_MAX} mais recentes de gastos e manutenções.`}
+        />
+      )}
 
-        {/* Formulário */}
-        <RegistroForm
+      <RegistroForm
           form={form}
           caminhoes={caminhoes}
           itensChecklist={itensChecklist}
@@ -785,18 +794,15 @@ const ManutencaoGastos = () => {
           ID_TIPO_GASTO_COMBUSTIVEL={ID_TIPO_GASTO_COMBUSTIVEL}
         />
 
-        {/* Histórico */}
-        <HistoricoRegistros
-          registros={registros}
-          onDelete={handleDeleteClick}
-          onEditar={handleEditar}
-          onVerDetalhes={(registro) => setRegistroSelecionado(registro)}
-          filtroPlaca={filtroPlaca}
-          onFiltroChange={(e) => setFiltroPlaca(e.target.value)}
-        />
-      </div>
+      <HistoricoRegistros
+        registros={registros}
+        onDelete={handleDeleteClick}
+        onEditar={handleEditar}
+        onVerDetalhes={(registro) => setRegistroSelecionado(registro)}
+        filtroPlaca={filtroPlaca}
+        onFiltroChange={(e) => setFiltroPlaca(e.target.value)}
+      />
 
-      {/* Modal de Detalhes */}
       {registroSelecionado && (
         <DetalhesModal
           registro={registroSelecionado}
@@ -814,7 +820,7 @@ const ManutencaoGastos = () => {
         cancelText="Cancelar"
         warning
       />
-    </div>
+    </PageLayout>
   );
 };
 

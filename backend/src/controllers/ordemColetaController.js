@@ -76,4 +76,16 @@ export const ordemColetaController = {
     const status = await OrdemColetaService.consultarStatusEnvio(req.params.id);
     res.status(200).json({ success: true, data: status });
   }),
+
+  excluirFalhas: catchAsync(async (req, res) => {
+    const removidos = await OrdemColetaService.excluirEnviosComFalha();
+    res.status(200).json({
+      success: true,
+      data: { removidos },
+      message:
+        removidos > 0
+          ? `${removidos} registro(s) com falha removido(s).`
+          : "Nenhum registro com falha encontrado.",
+    });
+  }),
 };

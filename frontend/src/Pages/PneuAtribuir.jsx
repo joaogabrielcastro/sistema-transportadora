@@ -6,6 +6,8 @@ import {
   LoadingSpinner,
   FormField,
 } from "../components/ui";
+import PneuPositionPicker from "../components/pneus/PneuPositionPicker.jsx";
+import PageLayout from "../components/layout/PageLayout.jsx";
 import { useSearchParams, useNavigate } from "react-router-dom";
 
 const PneuAtribuir = () => {
@@ -30,13 +32,13 @@ const PneuAtribuir = () => {
   const [fieldErrors, setFieldErrors] = useState({});
 
   const handleCaminhaoChange = (e) => {
-    const caminhaoId = parseInt(e.target.value);
-    const caminhao = caminhoes.find((c) => c.id === caminhaoId);
+    const caminhaoId = e.target.value;
+    const caminhao = caminhoes.find((c) => String(c.id) === caminhaoId);
 
     setForm((prev) => ({
       ...prev,
       caminhao_id: caminhaoId,
-      km_instalacao: caminhao ? caminhao.km_atual : prev.km_instalacao,
+      km_instalacao: caminhao ? String(caminhao.km_atual ?? "") : prev.km_instalacao,
     }));
   };
 
@@ -101,19 +103,18 @@ const PneuAtribuir = () => {
     );
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-24 pb-12 px-4 md:px-8">
-      <div className="max-w-3xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">
-            Atribuir Pneu do Estoque
-          </h1>
-          <p className="text-gray-600">
-            Selecione um pneu do estoque e instale em um caminhão.
-          </p>
-        </div>
+    <PageLayout wide={false} className="space-y-6 max-w-3xl">
+      <div>
+        <h1 className="text-2xl font-bold text-text-primary">
+          Atribuir Pneu do Estoque
+        </h1>
+        <p className="text-text-secondary">
+          Selecione o pneu, o caminhão e toque na posição no desenho.
+        </p>
+      </div>
 
-        <Card>
-          <form onSubmit={handleSubmit} className="space-y-4">
+      <Card>
+        <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               label="Pneu (em estoque)"
@@ -149,23 +150,18 @@ const PneuAtribuir = () => {
                 placeholder="Selecione o caminhão"
                 error={fieldErrors.caminhao_id}
                 options={caminhoes.map((c) => ({
-                  value: c.id,
+                  value: String(c.id),
                   label: `${c.placa} - ${c.modelo || "Modelo N/A"}`,
                 }))}
               />
 
-              <FormField
-                label="Posição"
-                name="posicao_id"
-                type="select"
+              <PneuPositionPicker
+                posicoes={posicoes}
                 value={form.posicao_id}
-                onChange={handleChange}
-                placeholder="Selecione a posição"
+                onChange={(id) =>
+                  setForm((prev) => ({ ...prev, posicao_id: id }))
+                }
                 error={fieldErrors.posicao_id}
-                options={posicoes.map((p) => ({
-                  value: p.id,
-                  label: p.nome_posicao,
-                }))}
               />
             </div>
 
@@ -211,8 +207,7 @@ const PneuAtribuir = () => {
             </div>
           </form>
         </Card>
-      </div>
-    </div>
+    </PageLayout>
   );
 };
 

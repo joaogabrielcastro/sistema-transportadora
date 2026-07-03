@@ -1,6 +1,6 @@
 // src/pages/Pneus.jsx
 import React, { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   useApiMutation,
   useCaminhoesListQuery,
@@ -19,7 +19,17 @@ import {
   Button,
   Alert,
   PageHeader,
+  DataTable,
+  DataTableHead,
+  DataTableBody,
+  DataTableRow,
+  DataTableTh,
+  DataTableTd,
+  TableRowActions,
 } from "../components/ui";
+import PageLayout from "../components/layout/PageLayout.jsx";
+import NovoPneuModal from "../components/NovoPneuModal.jsx";
+import { usePneuAtribuirQueries } from "../hooks";
 
 const PneuVidaUtilBar = ({ percentualVidaUtil }) => {
   if (percentualVidaUtil === null) {
@@ -116,6 +126,7 @@ const PneusTable = ({
   filtroPlaca,
   onFiltroChange,
 }) => {
+  const navigate = useNavigate();
   const pneusComCalculos = useMemo(() => {
     return pneus.map((pneu) => {
       const caminhao = caminhoes.find((c) => c.id === pneu.caminhao_id);
@@ -143,19 +154,19 @@ const PneusTable = ({
   if (loading) return <LoadingSpinner />;
 
   return (
-    <Card className="overflow-hidden">
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-gray-800">
-            Controle de Frota - Pneus em Uso
+    <Card className="overflow-hidden" noPadding>
+      <div className="px-4 sm:px-5 py-4 border-b border-border flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="text-lg font-bold text-text-primary">
+            Pneus em uso na frota
           </h2>
-          <p className="text-sm text-gray-500 mt-1">
-            Visualize e gerencie os pneus instalados nos caminhões
+          <p className="text-sm text-text-secondary mt-0.5">
+            Visualize e gerencie pneus instalados nos caminhões
           </p>
         </div>
 
-        <div className="flex gap-3 w-full lg:w-auto">
-          <div className="w-full lg:w-64">
+        <div className="flex gap-3 w-full xl:w-auto shrink-0">
+          <div className="w-full xl:w-64">
             <FormField
               placeholder="Filtrar por placa..."
               value={filtroPlaca}
@@ -185,68 +196,58 @@ const PneusTable = ({
       </div>
 
       {pneusComCalculos.length === 0 ? (
-        <EmptyState
-          title="Nenhum pneu em uso encontrado"
-          description='Use o botão "Atribuir Pneu" para montar pneus do estoque nos caminhões.'
-          action={
-            <Link to="/pneus/atribuir">
-              <Button variant="primary">Atribuir Pneu</Button>
-            </Link>
-          }
-        />
+        <div className="p-6">
+          <EmptyState
+            title="Nenhum pneu em uso encontrado"
+            description='Use o botão "Atribuir Pneu" para montar pneus do estoque nos caminhões.'
+            action={
+              <Link to="/pneus/atribuir">
+                <Button variant="primary">Atribuir Pneu</Button>
+              </Link>
+            }
+          />
+        </div>
       ) : (
         <>
-          <div className="md:hidden grid gap-4">
+          <div className="md:hidden divide-y divide-border">
             {pneusComCalculos.map((pneu) => (
-              <PneuMobileCard key={pneu.id} pneu={pneu} onDelete={onDelete} />
+              <div key={pneu.id} className="p-4">
+                <PneuMobileCard pneu={pneu} onDelete={onDelete} />
+              </div>
             ))}
           </div>
-          <div className="hidden md:block overflow-x-auto -mx-6">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <DataTable className="hidden md:block">
+            <DataTableHead>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Caminhão
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Pneu
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Posição/Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  KM Rodado
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Vida Útil
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <DataTableTh width="10%">Caminhão</DataTableTh>
+                <DataTableTh width="22%">Pneu</DataTableTh>
+                <DataTableTh width="18%">Posição/Status</DataTableTh>
+                <DataTableTh width="14%" align="right">
+                  KM rodado
+                </DataTableTh>
+                <DataTableTh width="24%">Vida útil</DataTableTh>
+                <DataTableTh width="12%" align="right">
                   Ações
-                </th>
+                </DataTableTh>
               </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            </DataTableHead>
+            <DataTableBody>
               {pneusComCalculos.map((pneu) => (
-                <tr
-                  key={pneu.id}
-                  className="hover:bg-gray-50 transition-colors"
-                >
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="font-medium text-gray-900">
-                      {pneu.caminhao?.placa || "N/A"}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="font-medium text-gray-900">
+                <DataTableRow key={pneu.id}>
+                  <DataTableTd className="font-semibold whitespace-nowrap">
+                    {pneu.caminhao?.placa || "N/A"}
+                  </DataTableTd>
+                  <DataTableTd truncate title={`${pneu.marca} ${pneu.modelo}`}>
+                    <div className="font-medium line-clamp-1">
                       {pneu.marca} {pneu.modelo}
                     </div>
                     {pneu.dot && (
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-text-secondary">
                         DOT: {pneu.dot}
                       </div>
                     )}
-                  </td>
-                  <td className="px-6 py-4">
+                  </DataTableTd>
+                  <DataTableTd>
                     <div className="flex flex-col gap-1 items-start">
                       <StatusBadge
                         status={pneu.posicoes_pneus?.nome_posicao}
@@ -254,34 +255,25 @@ const PneusTable = ({
                       />
                       <StatusBadge status={pneu.status_pneus?.nome_status} />
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  </DataTableTd>
+                  <DataTableTd align="right" className="text-text-secondary whitespace-nowrap tabular-nums">
                     {pneu.kmRodado !== null
                       ? `${pneu.kmRodado.toLocaleString("pt-BR")} km`
                       : "N/A"}
-                  </td>
-                  <td className="px-6 py-4">
+                  </DataTableTd>
+                  <DataTableTd>
                     <PneuVidaUtilBar percentualVidaUtil={pneu.percentualVidaUtil} />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <Link
-                      to={`/pneu/editar/${pneu.id}`}
-                      className="text-blue-600 hover:text-blue-900 mr-4 text-xs uppercase tracking-wide"
-                    >
-                      Editar
-                    </Link>
-                    <button
-                      onClick={() => onDelete(pneu.id)}
-                      className="text-red-600 hover:text-red-900 text-xs uppercase tracking-wide"
-                    >
-                      Excluir
-                    </button>
-                  </td>
-                </tr>
+                  </DataTableTd>
+                  <DataTableTd align="right">
+                    <TableRowActions
+                      onEdit={() => navigate(`/pneu/editar/${pneu.id}`)}
+                      onDelete={() => onDelete(pneu.id)}
+                    />
+                  </DataTableTd>
+                </DataTableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </DataTableBody>
+          </DataTable>
         </>
       )}
     </Card>
@@ -298,6 +290,9 @@ const Pneus = () => {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [novoPneuOpen, setNovoPneuOpen] = useState(false);
+
+  const modalData = usePneuAtribuirQueries();
 
   const { data: caminhoesPage } = useCaminhoesListQuery({
     page: 1,
@@ -349,17 +344,21 @@ const Pneus = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <PageHeader
-          title="Controle de Pneus"
-          subtitle="Gerencie a atribuição de pneus aos caminhões da frota"
-          actions={
+    <PageLayout className="space-y-6">
+      <PageHeader
+        title="Controle de Pneus"
+        subtitle="Gerencie a atribuição de pneus aos caminhões da frota"
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button variant="primary" onClick={() => setNovoPneuOpen(true)}>
+              + Novo pneu
+            </Button>
             <Link to="/pneus/estoque">
               <Button variant="outline">Ir para Estoque de Pneus</Button>
             </Link>
-          }
-        />
+          </div>
+        }
+      />
 
         {deleteError && (
           <Alert
@@ -396,7 +395,6 @@ const Pneus = () => {
             )}
           </>
         )}
-      </div>
 
       <ConfirmModal
         isOpen={Boolean(deleteTarget)}
@@ -412,7 +410,17 @@ const Pneus = () => {
         cancelText="Cancelar"
         warning
       />
-    </div>
+
+      <NovoPneuModal
+        isOpen={novoPneuOpen}
+        onClose={() => setNovoPneuOpen(false)}
+        caminhoes={modalData.caminhoes}
+        posicoes={modalData.posicoes}
+        statusOptions={modalData.statusOptions}
+        stockPneus={modalData.pneus}
+        onSuccess={() => setCurrentPage(1)}
+      />
+    </PageLayout>
   );
 };
 

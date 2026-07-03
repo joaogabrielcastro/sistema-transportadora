@@ -8,7 +8,21 @@ import {
 } from "../hooks";
 import { extractApiData } from "../utils/extractApiArray.js";
 import Pagination from "../components/Pagination.jsx";
-import { Card, Button, Alert, FormField } from "../components/ui";
+import {
+  Card,
+  Button,
+  Alert,
+  FormField,
+  PageHeader,
+  DataTable,
+  DataTableHead,
+  DataTableBody,
+  DataTableRow,
+  DataTableTh,
+  DataTableTd,
+} from "../components/ui";
+import PageLayout from "../components/layout/PageLayout.jsx";
+import ConfirmModal from "../components/ConfirmModal.jsx";
 import { useToast } from "../components/ui/useToast.js";
 import {
   buildEmptyDadosVariaveis,
@@ -33,7 +47,7 @@ const labelTipoHistorico = (tipoApi) => {
 
 const OrdensColeta = () => {
   const { get, request } = useApi();
-  const { post } = useApiMutation();
+  const { post, delete: del } = useApiMutation();
   const toast = useToast();
 
   const {
@@ -56,6 +70,8 @@ const OrdensColeta = () => {
   const [historicoPage, setHistoricoPage] = useState(1);
   const [actionLoading, setActionLoading] = useState(null);
   const [localError, setLocalError] = useState("");
+  const [confirmClearFalhas, setConfirmClearFalhas] = useState(false);
+  const [clearingFalhas, setClearingFalhas] = useState(false);
 
   const {
     data: historicoData,
@@ -64,6 +80,29 @@ const OrdensColeta = () => {
 
   const historico = historicoData?.rows ?? [];
   const pagination = historicoData?.pagination ?? null;
+  const totalFalhas = useMemo(
+    () => historico.filter((r) => r.status === "failed" || r.erro_envio).length,
+    [historico],
+  );
+
+  const handleClearFalhas = async () => {
+    setClearingFalhas(true);
+    try {
+      const res = await del("/ordem-coleta/historico/falhas", {
+        skipSuccessToast: true,
+      });
+      toast.success(
+        res?.message || "Registros com falha removidos com sucesso.",
+      );
+      setConfirmClearFalhas(false);
+      setHistoricoPage(1);
+      refetchHistorico();
+    } catch (err) {
+      toast.error(err?.message || "Não foi possível remover os registros.");
+    } finally {
+      setClearingFalhas(false);
+    }
+  };
 
   const camposFormulario = useMemo(
     () => camposFormularioPorTipo(tipo),
@@ -211,13 +250,11 @@ const OrdensColeta = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-24 pb-12 px-4 md:px-8">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">
-            Ordens de coleta e autorizações
-          </h1>
-        </div>
+    <PageLayout className="space-y-6">
+      <PageHeader
+        title="Ordens de coleta e autorizações"
+        subtitle="Gere PDFs, envie por e-mail e consulte o histórico de envios"
+      />
 
         {localError && (
           <Alert
@@ -360,53 +397,76 @@ const OrdensColeta = () => {
           </Card>
         )}
 
-        <Card title="Últimos envios registrados">
+        <Card title="Últimos envios registrados" noPadding>
+          <div className="px-5 py-3 border-b border-border flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-text-secondary">
+              {totalFalhas > 0
+                ? `${totalFalhas} com falha nesta página`
+                : "Histórico de envios por e-mail"}
+            </p>
+            {totalFalhas > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmClearFalhas(true)}
+                className="text-danger border-danger/30 hover:bg-red-50"
+              >
+                Apagar todas com falha
+              </Button>
+            )}
+          </div>
           {historico.length === 0 ? (
-            <p className="text-sm text-gray-600">Nenhum registro ainda.</p>
+            <p className="text-sm text-text-secondary p-5">Nenhum registro ainda.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left text-text-secondary">
-                    <th className="py-2 pr-4">Data</th>
-                    <th className="py-2 pr-4">Tipo</th>
-                    <th className="py-2 pr-4">E-mail</th>
-                    <th className="py-2 pr-4">Placa</th>
-                    <th className="py-2 pr-4">Status</th>
+            <>
+              <DataTable>
+                <DataTableHead>
+                  <tr>
+                    <DataTableTh width="16%">Data</DataTableTh>
+                    <DataTableTh width="18%">Tipo</DataTableTh>
+                    <DataTableTh width="32%">E-mail</DataTableTh>
+                    <DataTableTh width="12%">Placa</DataTableTh>
+                    <DataTableTh width="22%">Status</DataTableTh>
                   </tr>
-                </thead>
-                <tbody>
+                </DataTableHead>
+                <DataTableBody>
                   {historico.map((row) => (
-                    <tr key={row.id} className="border-b border-gray-100">
-                      <td className="py-2 pr-4 whitespace-nowrap">
+                    <DataTableRow key={row.id}>
+                      <DataTableTd className="whitespace-nowrap text-text-secondary">
                         {row.criado_em
                           ? new Date(row.criado_em).toLocaleString("pt-BR")
                           : "—"}
-                      </td>
-                      <td className="py-2 pr-4">{labelTipoHistorico(row.tipo)}</td>
-                      <td className="py-2 pr-4">{row.email_destinatario}</td>
-                      <td className="py-2 pr-4">{row.caminhao_placa || "—"}</td>
-                      <td className="py-2 pr-4">
+                      </DataTableTd>
+                      <DataTableTd className="whitespace-nowrap">
+                        {labelTipoHistorico(row.tipo)}
+                      </DataTableTd>
+                      <DataTableTd truncate title={row.email_destinatario}>
+                        {row.email_destinatario}
+                      </DataTableTd>
+                      <DataTableTd className="font-medium whitespace-nowrap">
+                        {row.caminhao_placa || "—"}
+                      </DataTableTd>
+                      <DataTableTd>
                         {row.status === "sent" || row.enviado_em ? (
-                          <span className="text-green-700">Enviado</span>
+                          <span className="text-success font-medium">Enviado</span>
                         ) : row.status === "failed" || row.erro_envio ? (
                           <span
-                            className="text-red-600"
+                            className="text-danger font-medium line-clamp-1"
                             title={row.erro_envio || ""}
                           >
                             Falha
                           </span>
                         ) : (
-                          <span className="text-amber-700">Processando…</span>
+                          <span className="text-warning font-medium">Processando…</span>
                         )}
-                      </td>
-                    </tr>
+                      </DataTableTd>
+                    </DataTableRow>
                   ))}
-                </tbody>
-              </table>
+                </DataTableBody>
+              </DataTable>
               {pagination && (
-                <>
-                  <p className="mt-3 text-xs text-text-light">
+                <div className="px-5 py-3 border-t border-border">
+                  <p className="text-xs text-text-light mb-2">
                     Total: {pagination.totalItems} registro(s).
                   </p>
                   <Pagination
@@ -414,13 +474,23 @@ const OrdensColeta = () => {
                     totalPages={pagination.totalPages || 1}
                     onPageChange={(page) => setHistoricoPage(page)}
                   />
-                </>
+                </div>
               )}
-            </div>
+            </>
           )}
         </Card>
-      </div>
-    </div>
+
+      <ConfirmModal
+        isOpen={confirmClearFalhas}
+        onClose={() => !clearingFalhas && setConfirmClearFalhas(false)}
+        onConfirm={handleClearFalhas}
+        title="Apagar envios com falha"
+        message="Remove todos os registros de ordem de coleta que falharam no envio (testes em produção). Esta ação não pode ser desfeita."
+        confirmText={clearingFalhas ? "Apagando..." : "Apagar falhas"}
+        cancelText="Cancelar"
+        warning
+      />
+    </PageLayout>
   );
 };
 

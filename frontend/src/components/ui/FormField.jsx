@@ -51,11 +51,15 @@ const FormField = ({
             }`}
             {...props}
           >
-            <option value="" disabled>
-              {placeholder || "Selecione uma opção"}
-            </option>
+            {!options.some(
+              (o) => o.value === "" || o.value === null || o.value === undefined,
+            ) && (
+              <option value="" disabled={required}>
+                {placeholder || "Selecione uma opção"}
+              </option>
+            )}
             {options.map((option) => (
-              <option key={option.value} value={option.value}>
+              <option key={String(option.value)} value={String(option.value)}>
                 {option.label}
               </option>
             ))}

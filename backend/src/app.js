@@ -35,17 +35,39 @@ app.use(helmet());
 app.use(attachRequestContext);
 
 // CORS configurado via config
+const normalizeOrigin = (origin) =>
+  String(origin || "")
+    .trim()
+    .replace(/\/$/, "");
+
+const isOriginAllowed = (origin) => {
+  if (!origin) {
+    return true;
+  }
+
+  const normalized = normalizeOrigin(origin);
+  return config.app.corsOrigins.some(
+    (allowed) => normalizeOrigin(allowed) === normalized,
+  );
+};
+
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || config.app.corsOrigins.indexOf(origin) !== -1) {
+      if (isOriginAllowed(origin)) {
         callback(null, true);
       } else {
+        logger.warn("CORS origin rejeitada", {
+          origin,
+          allowedOrigins: config.app.corsOrigins,
+        });
         callback(null, false);
       }
     },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"],
     credentials: true,
+    optionsSuccessStatus: 204,
   }),
 );
 

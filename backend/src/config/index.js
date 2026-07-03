@@ -8,7 +8,12 @@ const parseCsv = (value, fallback = []) => {
 
   return value
     .split(",")
-    .map((entry) => entry.trim())
+    .map((entry) =>
+      entry
+        .trim()
+        .replace(/^["']|["']$/g, "")
+        .replace(/\/$/, ""),
+    )
     .filter(Boolean);
 };
 

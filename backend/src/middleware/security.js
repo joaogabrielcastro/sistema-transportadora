@@ -73,6 +73,11 @@ export const apiRateLimiter = rateLimit({
 });
 
 export const requireAuth = (req, res, next) => {
+  // Preflight CORS não envia Authorization; não bloquear OPTIONS.
+  if (req.method === "OPTIONS") {
+    return next();
+  }
+
   if (!config.auth.enabled) {
     return next();
   }

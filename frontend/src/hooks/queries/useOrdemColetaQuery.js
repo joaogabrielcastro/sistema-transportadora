@@ -15,6 +15,7 @@ export function useOrdemColetaHistoricoQuery(page = 1) {
       return {
         rows: Array.isArray(res.data) ? res.data : [],
         pagination: res.pagination || null,
+        totalFalhas: res.totalFalhas ?? 0,
       };
     },
     refetchInterval: (query) => {

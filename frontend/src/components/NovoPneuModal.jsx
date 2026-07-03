@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { useApiMutation } from "../hooks";
 import { Modal, Button, FormField, Alert } from "./ui";
 import PneuPositionPicker from "./pneus/PneuPositionPicker.jsx";
+import { isPosicaoAllowedForCaminhao } from "../utils/pneuPosicaoMap.js";
 
 const NovoPneuModal = ({
   isOpen,
@@ -74,7 +75,21 @@ const NovoPneuModal = ({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [name]: value };
+
+      if (name === "caminhao_id") {
+        const nextCaminhao = caminhoes.find((c) => String(c.id) === String(value));
+        if (
+          prev.posicao_id &&
+          !isPosicaoAllowedForCaminhao(prev.posicao_id, posicoes, nextCaminhao)
+        ) {
+          next.posicao_id = "";
+        }
+      }
+
+      return next;
+    });
     if (fieldErrors[name]) {
       setFieldErrors((prev) => {
         const next = { ...prev };
@@ -223,6 +238,17 @@ const NovoPneuModal = ({
                 .join(" ") || "Modelo não informado"}
             </p>
             <p className="text-xs text-text-light mt-1">
+              {caminhaoSelecionado.qtd_pneus
+                ? `${caminhaoSelecionado.qtd_pneus} pneus`
+                : "Qtd. de pneus não informada"}
+              {caminhaoSelecionado.placa_carreta_1
+                ? ` • Carreta ${caminhaoSelecionado.placa_carreta_1}`
+                : ""}
+              {caminhaoSelecionado.placa_carreta_2
+                ? ` • Carreta ${caminhaoSelecionado.placa_carreta_2}`
+                : ""}
+            </p>
+            <p className="text-xs text-text-light mt-1">
               Toque nos pneus do desenho para escolher a posição.
             </p>
           </div>
@@ -246,6 +272,7 @@ const NovoPneuModal = ({
 
         <PneuPositionPicker
           posicoes={posicoes}
+          caminhao={caminhaoSelecionado}
           value={form.posicao_id}
           onChange={(id) =>
             setForm((prev) => ({ ...prev, posicao_id: id }))

@@ -430,9 +430,18 @@ export class OrdemColetaService {
     return result.count;
   }
 
+  static async contarEnviosComFalha() {
+    return prisma.ordens_coleta_envio.count({
+      where: {
+        enviado_em: null,
+        erro_envio: { not: null },
+      },
+    });
+  }
+
   static async listarHistorico({ page, limit }) {
     const skip = (page - 1) * limit;
-    const [rows, total] = await prisma.$transaction([
+    const [rows, total, totalFalhas] = await prisma.$transaction([
       prisma.ordens_coleta_envio.findMany({
         orderBy: { criado_em: "desc" },
         skip,
@@ -442,6 +451,12 @@ export class OrdemColetaService {
         },
       }),
       prisma.ordens_coleta_envio.count(),
+      prisma.ordens_coleta_envio.count({
+        where: {
+          enviado_em: null,
+          erro_envio: { not: null },
+        },
+      }),
     ]);
 
     return {
@@ -467,6 +482,7 @@ export class OrdemColetaService {
         totalItems: total,
         itemsPerPage: limit,
       },
+      totalFalhas,
     };
   }
 

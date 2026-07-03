@@ -80,10 +80,7 @@ const OrdensColeta = () => {
 
   const historico = historicoData?.rows ?? [];
   const pagination = historicoData?.pagination ?? null;
-  const totalFalhas = useMemo(
-    () => historico.filter((r) => r.status === "failed" || r.erro_envio).length,
-    [historico],
-  );
+  const totalFalhas = historicoData?.totalFalhas ?? 0;
 
   const handleClearFalhas = async () => {
     setClearingFalhas(true);
@@ -401,7 +398,7 @@ const OrdensColeta = () => {
           <div className="px-5 py-3 border-b border-border flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-text-secondary">
               {totalFalhas > 0
-                ? `${totalFalhas} com falha nesta página`
+                ? `${totalFalhas} envio(s) com falha no total`
                 : "Histórico de envios por e-mail"}
             </p>
             {totalFalhas > 0 && (
@@ -411,7 +408,7 @@ const OrdensColeta = () => {
                 onClick={() => setConfirmClearFalhas(true)}
                 className="text-danger border-danger/30 hover:bg-red-50"
               >
-                Apagar todas com falha
+                Apagar todas com falha ({totalFalhas})
               </Button>
             )}
           </div>

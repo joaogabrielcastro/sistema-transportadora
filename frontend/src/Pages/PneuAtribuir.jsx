@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useApiMutation, usePneuAtribuirQueries } from "../hooks";
 import {
   Card,
@@ -8,6 +8,7 @@ import {
 } from "../components/ui";
 import PneuPositionPicker from "../components/pneus/PneuPositionPicker.jsx";
 import PageLayout from "../components/layout/PageLayout.jsx";
+import { isPosicaoAllowedForCaminhao } from "../utils/pneuPosicaoMap.js";
 import { useSearchParams, useNavigate } from "react-router-dom";
 
 const PneuAtribuir = () => {
@@ -31,15 +32,31 @@ const PneuAtribuir = () => {
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
 
+  const caminhaoSelecionado = useMemo(
+    () => caminhoes.find((c) => String(c.id) === String(form.caminhao_id)),
+    [caminhoes, form.caminhao_id],
+  );
+
   const handleCaminhaoChange = (e) => {
     const caminhaoId = e.target.value;
     const caminhao = caminhoes.find((c) => String(c.id) === caminhaoId);
 
-    setForm((prev) => ({
-      ...prev,
-      caminhao_id: caminhaoId,
-      km_instalacao: caminhao ? String(caminhao.km_atual ?? "") : prev.km_instalacao,
-    }));
+    setForm((prev) => {
+      const next = {
+        ...prev,
+        caminhao_id: caminhaoId,
+        km_instalacao: caminhao ? String(caminhao.km_atual ?? "") : prev.km_instalacao,
+      };
+
+      if (
+        prev.posicao_id &&
+        !isPosicaoAllowedForCaminhao(prev.posicao_id, posicoes, caminhao)
+      ) {
+        next.posicao_id = "";
+      }
+
+      return next;
+    });
   };
 
   const handleChange = (e) => {
@@ -157,6 +174,7 @@ const PneuAtribuir = () => {
 
               <PneuPositionPicker
                 posicoes={posicoes}
+                caminhao={caminhaoSelecionado}
                 value={form.posicao_id}
                 onChange={(id) =>
                   setForm((prev) => ({ ...prev, posicao_id: id }))

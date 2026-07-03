@@ -1,6 +1,6 @@
-// src/pages/Home.jsx
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useApi,
   useApiMutation,
@@ -12,6 +12,7 @@ import { useToast } from "../components/ui/useToast.js";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import { formatCurrency, formatNumber } from "../utils";
 import { extractApiArray, extractApiData } from "../utils/extractApiArray.js";
+import { queryKeys } from "../lib/queryKeys.ts";
 import ConfirmModal from "../components/ConfirmModal";
 import Pagination from "../components/Pagination.jsx";
 import EmptyState from "../components/EmptyState.jsx";
@@ -19,6 +20,7 @@ import EmptyState from "../components/EmptyState.jsx";
 const Home = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const toast = useToast();
+  const queryClient = useQueryClient();
 
   const {
     data: caminhoesPage,
@@ -57,6 +59,7 @@ const Home = () => {
   // Estados para o modal de confirmação
   const [modalOpen, setModalOpen] = useState(false);
   const [caminhaoParaExcluir, setCaminhaoParaExcluir] = useState(null);
+  const [ordensHistoricoCount, setOrdensHistoricoCount] = useState(0);
   const [excluindo, setExcluindo] = useState(false);
 
   // Função de busca
@@ -106,15 +109,16 @@ const Home = () => {
           mensagemDependencias += `• ${detalhes.pneus} pneus\n`;
         if (detalhes.documentos > 0)
           mensagemDependencias += `• ${detalhes.documentos} documentos\n`;
-        if (detalhes.ordens_envio > 0)
-          mensagemDependencias += `• ${detalhes.ordens_envio} ordens de coleta\n`;
         mensagemDependencias +=
-          "\nDelete primeiro esses registros antes de excluir o caminhão.";
+          "\nRemova esses registros antes de excluir o caminhão.";
         setErrorMessage(mensagemDependencias);
+        toast.error("Este caminhão possui registros vinculados e não pode ser excluído.");
+        window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
 
       setCaminhaoParaExcluir(caminhao);
+      setOrdensHistoricoCount(detalhes?.ordens_envio ?? 0);
       setModalOpen(true);
     } catch (err) {
       console.error("Erro ao verificar dependências:", err);
@@ -126,6 +130,7 @@ const Home = () => {
   const handleCloseModal = () => {
     setModalOpen(false);
     setCaminhaoParaExcluir(null);
+    setOrdensHistoricoCount(0);
   };
 
   const handleDeleteCaminhao = async () => {
@@ -135,17 +140,21 @@ const Home = () => {
     try {
       await apiDelete(`/caminhoes/${caminhaoParaExcluir.placa}/cascade`);
       toast.success(`Caminhão ${caminhaoParaExcluir.placa} excluído com sucesso.`);
+      setSearchResults((prev) =>
+        prev.filter((c) => c.placa !== caminhaoParaExcluir.placa),
+      );
+      await queryClient.invalidateQueries({ queryKey: queryKeys.caminhoes.all });
       handleCloseModal();
     } catch (err) {
       console.error("Erro ao excluir caminhão:", err);
-      let errorMessage = "Erro ao excluir caminhão. ";
-      if (err.message.includes("registros vinculados")) {
-        errorMessage = `Não é possível excluir o caminhão ${caminhaoParaExcluir.placa}. Existem registros vinculados.`;
-      }
+      const errorMessage =
+        err.message?.includes("registros vinculados")
+          ? `Não é possível excluir o caminhão ${caminhaoParaExcluir.placa}. Existem registros vinculados.`
+          : err.message || "Erro ao excluir caminhão. Tente novamente.";
       setErrorMessage(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setExcluindo(false);
-      handleCloseModal();
     }
   };
 
@@ -481,7 +490,11 @@ const Home = () => {
           onClose={handleCloseModal}
           onConfirm={handleDeleteCaminhao}
           title="Excluir Caminhão"
-          message={`Tem certeza que deseja excluir o caminhão ${caminhaoParaExcluir?.placa}? Esta ação não pode ser desfeita.`}
+          message={
+            ordensHistoricoCount > 0
+              ? `Tem certeza que deseja excluir o caminhão ${caminhaoParaExcluir?.placa}? ${ordensHistoricoCount} registro(s) de ordem de coleta no histórico também serão removidos. Esta ação não pode ser desfeita.`
+              : `Tem certeza que deseja excluir o caminhão ${caminhaoParaExcluir?.placa}? Esta ação não pode ser desfeita.`
+          }
           confirmText={excluindo ? "Excluindo..." : "Excluir"}
           cancelText="Cancelar"
           warning={true}

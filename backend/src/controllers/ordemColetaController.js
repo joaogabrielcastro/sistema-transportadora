@@ -27,6 +27,7 @@ export const ordemColetaController = {
       success: true,
       data: result.data,
       pagination: result.pagination,
+      totalFalhas: result.totalFalhas,
     });
   }),
 

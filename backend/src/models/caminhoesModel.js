@@ -246,7 +246,8 @@ export const caminhoesModel = {
         documentos,
         ordens_envio: ordensEnvio,
       },
-      total: gastos + checklists + pneus + documentos + ordensEnvio,
+      // Ordens de coleta usam onDelete SetNull — não impedem exclusão do caminhão.
+      total: gastos + checklists + pneus + documentos,
     };
   },
 
@@ -281,6 +282,9 @@ export const caminhoesModel = {
       await tx.gastos.deleteMany({ where: { caminhao_id: caminhao.id } });
       await tx.checklist.deleteMany({ where: { caminhao_id: caminhao.id } });
       await tx.pneus.deleteMany({ where: { caminhao_id: caminhao.id } });
+      await tx.ordens_coleta_envio.deleteMany({
+        where: { caminhao_id: caminhao.id },
+      });
 
       return tx.caminhoes.delete({ where: { placa } });
     });

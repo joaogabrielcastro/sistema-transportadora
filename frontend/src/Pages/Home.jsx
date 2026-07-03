@@ -7,10 +7,12 @@ import {
   useCaminhoesListQuery,
   useReportsOverviewQuery,
 } from "../hooks";
-import { Card, Button, LoadingSpinner, Alert } from "../components/ui";
+import { Card, Button, LoadingSpinner, Alert, PageHeader } from "../components/ui";
 import { formatCurrency, formatNumber } from "../utils";
 import { extractApiArray, extractApiData } from "../utils/extractApiArray.js";
 import ConfirmModal from "../components/ConfirmModal";
+import Pagination from "../components/Pagination.jsx";
+import EmptyState from "../components/EmptyState.jsx";
 
 const Home = () => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -194,17 +196,10 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
       <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade-in">
-          <div>
-            <h1 className="text-3xl font-bold text-text-primary tracking-tight">
-              Dashboard
-            </h1>
-            <p className="text-text-secondary mt-1">
-              Bem-vindo ao sistema de gestão ABroto.
-            </p>
-          </div>
-          <div className="flex gap-3">
+        <PageHeader
+          title="Dashboard"
+          subtitle="Bem-vindo ao sistema de gestão ABroto."
+          actions={
             <Link to="/cadastro-caminhao">
               <Button
                 variant="primary"
@@ -227,8 +222,32 @@ const Home = () => {
                 Novo Caminhão
               </Button>
             </Link>
+          }
+        />
+
+        {(successMessage || errorMessage) && (
+          <div className="space-y-3">
+            {successMessage && (
+              <Alert
+                type="success"
+                message={successMessage}
+                dismissible
+                autoClose
+                onClose={() => setSuccessMessage("")}
+              />
+            )}
+            {errorMessage && (
+              <Alert
+                type="error"
+                message={
+                  <span className="whitespace-pre-line">{errorMessage}</span>
+                }
+                dismissible
+                onClose={() => setErrorMessage("")}
+              />
+            )}
           </div>
-        </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-slide-up">
@@ -257,7 +276,6 @@ const Home = () => {
                 />
               </svg>
             }
-            trend="+2.5%"
           />
           <StatCard
             title="Gastos Totais"
@@ -328,31 +346,34 @@ const Home = () => {
         </div>
 
         {/* Search Section */}
-        <div className="relative max-w-2xl mx-auto">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <svg
-              className="h-5 w-5 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-          </div>
-          <form onSubmit={handleSearch}>
+        <form
+          onSubmit={handleSearch}
+          className="flex flex-col sm:block gap-3 max-w-2xl mx-auto w-full"
+        >
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <svg
+                className="h-5 w-5 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
             <input
               type="text"
-              className="block w-full pl-11 pr-4 py-4 bg-white border border-border rounded-xl text-text-primary placeholder-text-light focus:ring-2 focus:ring-secondary focus:border-transparent shadow-sm transition-all"
+              className="block w-full pl-11 pr-4 sm:pr-28 py-4 bg-white border border-border rounded-xl text-text-primary placeholder-text-light focus:ring-2 focus:ring-secondary focus:border-transparent shadow-sm transition-all"
               placeholder="Buscar por placa, motorista ou modelo..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
+            <div className="hidden sm:flex absolute inset-y-0 right-0 pr-2 items-center">
               <Button
                 type="submit"
                 variant="primary"
@@ -363,8 +384,16 @@ const Home = () => {
                 Buscar
               </Button>
             </div>
-          </form>
-        </div>
+          </div>
+          <Button
+            type="submit"
+            variant="primary"
+            loading={searchLoading}
+            className="sm:hidden w-full"
+          >
+            Buscar
+          </Button>
+        </form>
 
         {/* Content Area */}
         {errorCaminhoes ? (
@@ -400,27 +429,25 @@ const Home = () => {
                 </div>
 
                 {searchResults.length === 0 ? (
-                  <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
-                    <svg
-                      className="mx-auto h-12 w-12 text-gray-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">
-                      Nenhum resultado encontrado
-                    </h3>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Tente buscar por outro termo.
-                    </p>
-                  </div>
+                  <EmptyState
+                    title="Nenhum resultado encontrado"
+                    description="Tente buscar por outro termo ou limpe o filtro."
+                    icon={
+                      <svg
+                        className="w-7 h-7"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                    }
+                  />
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {searchResults.map((caminhao) => (
@@ -438,63 +465,24 @@ const Home = () => {
             {/* Main Fleet List */}
             {!hasSearched && (
               <div className="space-y-6">
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center flex-wrap gap-3">
                   <h2 className="text-xl font-bold text-text-primary">
                     Frota Recente
                   </h2>
-                  <div className="flex gap-2">
-                    {/* Pagination Controls */}
-                    <div className="flex items-center bg-white rounded-lg border border-border p-1">
-                      <button
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        disabled={currentPage === 1}
-                        className="p-2 hover:bg-gray-100 rounded-md disabled:opacity-50 transition-colors"
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 19l-7-7 7-7"
-                          />
-                        </svg>
-                      </button>
-                      <span className="px-4 text-sm font-medium text-text-secondary">
-                        Página {currentPage} de {pagination?.totalPages || 1}
-                      </span>
-                      <button
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage === (pagination?.totalPages || 1)}
-                        className="p-2 hover:bg-gray-100 rounded-md disabled:opacity-50 transition-colors"
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 5l7 7-7 7"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
+                  {pagination?.totalPages > 1 && (
+                    <p className="text-sm text-text-secondary">
+                      Página {currentPage} de {pagination.totalPages}
+                    </p>
+                  )}
                 </div>
 
                 {!caminhoes || caminhoes.length === 0 ? (
-                  <div className="text-center py-16 bg-white rounded-xl border border-dashed border-gray-300">
-                    <div className="mx-auto h-16 w-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+                  <EmptyState
+                    title="Nenhum caminhão cadastrado"
+                    description="Comece cadastrando seu primeiro veículo para gerenciar sua frota."
+                    icon={
                       <svg
-                        className="h-8 w-8 text-blue-500"
+                        className="w-7 h-7"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -503,33 +491,35 @@ const Home = () => {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"
                         />
                       </svg>
-                    </div>
-                    <h3 className="text-lg font-medium text-gray-900">
-                      Nenhum caminhão cadastrado
-                    </h3>
-                    <p className="mt-1 text-gray-500 max-w-sm mx-auto">
-                      Comece cadastrando seu primeiro veículo para gerenciar sua
-                      frota.
-                    </p>
-                    <div className="mt-6">
+                    }
+                    action={
                       <Link to="/cadastro-caminhao">
                         <Button variant="primary">Cadastrar Caminhão</Button>
                       </Link>
-                    </div>
-                  </div>
+                    }
+                  />
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {caminhoes.map((caminhao) => (
-                      <TruckCard
-                        key={caminhao.id}
-                        caminhao={caminhao}
-                        onDelete={() => handleOpenDeleteModal(caminhao)}
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {caminhoes.map((caminhao) => (
+                        <TruckCard
+                          key={caminhao.id}
+                          caminhao={caminhao}
+                          onDelete={() => handleOpenDeleteModal(caminhao)}
+                        />
+                      ))}
+                    </div>
+                    {pagination?.totalPages > 1 && (
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={pagination.totalPages}
+                        onPageChange={handlePageChange}
                       />
-                    ))}
-                  </div>
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -572,8 +562,8 @@ const TruckCard = ({ caminhao, onDelete }) => (
             />
           </svg>
         </div>
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-          Ativo
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 capitalize">
+          {caminhao.status || "Ativo"}
         </span>
       </div>
 

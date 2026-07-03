@@ -10,13 +10,103 @@ import {
 import { API_CONFIG } from "../utils/constants.js";
 import ConfirmModal from "../components/ConfirmModal";
 import Pagination from "../components/Pagination.jsx";
+import EmptyState from "../components/EmptyState.jsx";
 import {
   Card,
   LoadingSpinner,
   FormField,
   StatusBadge,
   Button,
+  Alert,
+  PageHeader,
 } from "../components/ui";
+
+const PneuVidaUtilBar = ({ percentualVidaUtil }) => {
+  if (percentualVidaUtil === null) {
+    return <span className="text-xs text-gray-400">N/A</span>;
+  }
+  return (
+    <div className="w-full max-w-xs">
+      <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
+        <div
+          className={`h-1.5 rounded-full ${
+            percentualVidaUtil > 50
+              ? "bg-green-500"
+              : percentualVidaUtil > 20
+                ? "bg-yellow-500"
+                : "bg-red-500"
+          }`}
+          style={{ width: `${Math.min(100, percentualVidaUtil)}%` }}
+        />
+      </div>
+      <div className="text-xs text-gray-500">
+        {Math.round(percentualVidaUtil)}% restante
+      </div>
+    </div>
+  );
+};
+
+const PneuMobileCard = ({ pneu, onDelete }) => (
+  <div className="bg-white border border-border rounded-xl p-4 shadow-sm space-y-3">
+    <div className="flex justify-between items-start gap-3">
+      <div>
+        <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">
+          Caminhão
+        </p>
+        <p className="font-semibold text-text-primary">
+          {pneu.caminhao?.placa || "N/A"}
+        </p>
+      </div>
+      <div className="flex flex-col gap-1 items-end">
+        <StatusBadge
+          status={pneu.posicoes_pneus?.nome_posicao}
+          type="position"
+        />
+        <StatusBadge status={pneu.status_pneus?.nome_status} />
+      </div>
+    </div>
+    <div>
+      <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">
+        Pneu
+      </p>
+      <p className="font-medium text-text-primary">
+        {pneu.marca} {pneu.modelo}
+      </p>
+      {pneu.dot && (
+        <p className="text-xs text-text-secondary mt-0.5">DOT: {pneu.dot}</p>
+      )}
+    </div>
+    <div className="grid grid-cols-2 gap-3 text-sm">
+      <div>
+        <p className="text-xs text-text-secondary">KM rodado</p>
+        <p className="font-medium text-text-primary">
+          {pneu.kmRodado !== null
+            ? `${pneu.kmRodado.toLocaleString("pt-BR")} km`
+            : "N/A"}
+        </p>
+      </div>
+      <div>
+        <p className="text-xs text-text-secondary mb-1">Vida útil</p>
+        <PneuVidaUtilBar percentualVidaUtil={pneu.percentualVidaUtil} />
+      </div>
+    </div>
+    <div className="flex gap-3 pt-2 border-t border-border">
+      <Link
+        to={`/pneu/editar/${pneu.id}`}
+        className="flex-1 text-center py-2 text-sm font-medium text-primary hover:text-primary-dark rounded-lg hover:bg-primary/5 transition-colors"
+      >
+        Editar
+      </Link>
+      <button
+        type="button"
+        onClick={() => onDelete(pneu.id)}
+        className="flex-1 text-center py-2 text-sm font-medium text-danger hover:bg-red-50 rounded-lg transition-colors"
+      >
+        Excluir
+      </button>
+    </div>
+  </div>
+);
 
 const PneusTable = ({
   pneus,
@@ -95,18 +185,23 @@ const PneusTable = ({
       </div>
 
       {pneusComCalculos.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900 mb-1">
-            {" "}
-            Nenhum pneu em uso encontrado{" "}
-          </h3>
-          <p className="text-gray-500 text-sm">
-            Use o botão "Atribuir Pneu" para montar pneus do estoque nos
-            caminhões.
-          </p>
-        </div>
+        <EmptyState
+          title="Nenhum pneu em uso encontrado"
+          description='Use o botão "Atribuir Pneu" para montar pneus do estoque nos caminhões.'
+          action={
+            <Link to="/pneus/atribuir">
+              <Button variant="primary">Atribuir Pneu</Button>
+            </Link>
+          }
+        />
       ) : (
-        <div className="overflow-x-auto -mx-6">
+        <>
+          <div className="md:hidden grid gap-4">
+            {pneusComCalculos.map((pneu) => (
+              <PneuMobileCard key={pneu.id} pneu={pneu} onDelete={onDelete} />
+            ))}
+          </div>
+          <div className="hidden md:block overflow-x-auto -mx-6">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -166,32 +261,7 @@ const PneusTable = ({
                       : "N/A"}
                   </td>
                   <td className="px-6 py-4">
-                    {pneu.percentualVidaUtil !== null ? (
-                      <div className="w-32">
-                        <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
-                          <div
-                            className={`h-1.5 rounded-full ${
-                              pneu.percentualVidaUtil > 50
-                                ? "bg-green-500"
-                                : pneu.percentualVidaUtil > 20
-                                  ? "bg-yellow-500"
-                                  : "bg-red-500"
-                            }`}
-                            style={{
-                              width: `${Math.min(
-                                100,
-                                pneu.percentualVidaUtil,
-                              )}%`,
-                            }}
-                          ></div>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {Math.round(pneu.percentualVidaUtil)}% restante
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-gray-400">N/A</span>
-                    )}
+                    <PneuVidaUtilBar percentualVidaUtil={pneu.percentualVidaUtil} />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <Link
@@ -212,6 +282,7 @@ const PneusTable = ({
             </tbody>
           </table>
         </div>
+        </>
       )}
     </Card>
   );
@@ -225,6 +296,7 @@ const Pneus = () => {
   const placaDebounced = useDebouncedValue(filtroPlaca.trim(), 400);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
   const { data: caminhoesPage } = useCaminhoesListQuery({
@@ -235,6 +307,7 @@ const Pneus = () => {
   const {
     data: pneusPage,
     isLoading: loading,
+    error: loadError,
   } = usePneusEmUsoQuery({
     page: currentPage,
     limit: PNEUS_PAGE_SIZE,
@@ -262,50 +335,66 @@ const Pneus = () => {
     if (!deleteTarget) return;
 
     setDeleting(true);
+    setDeleteError("");
     try {
       await del(`/pneus/${deleteTarget.id}`);
       setDeleteTarget(null);
     } catch (err) {
-      console.error(err);
+      setDeleteError(
+        err?.message || "Não foi possível excluir o pneu. Tente novamente.",
+      );
     } finally {
       setDeleting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-24 pb-12 px-4 md:px-8">
+    <div className="min-h-screen bg-background pt-24 pb-12 px-4 md:px-8">
       <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">
-              Controle de Pneus
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Gerencie a atribuição de pneus aos caminhões da frota
-            </p>
-          </div>
-          <div className="flex gap-3">
+        <PageHeader
+          title="Controle de Pneus"
+          subtitle="Gerencie a atribuição de pneus aos caminhões da frota"
+          actions={
             <Link to="/pneus/estoque">
               <Button variant="outline">Ir para Estoque de Pneus</Button>
             </Link>
-          </div>
-        </div>
-
-        <PneusTable
-          pneus={pneus}
-          caminhoes={caminhoes}
-          onDelete={handleDeleteClick}
-          loading={loading}
-          filtroPlaca={filtroPlaca}
-          onFiltroChange={(e) => setFiltroPlaca(e.target.value)}
+          }
         />
 
-        {pagination && pagination.totalPages > 1 && (
-          <Pagination
-            currentPage={pagination.currentPage}
-            totalPages={pagination.totalPages}
-            onPageChange={setCurrentPage}
+        {deleteError && (
+          <Alert
+            type="error"
+            message={deleteError}
+            dismissible
+            onClose={() => setDeleteError("")}
           />
+        )}
+
+        {loadError ? (
+          <Alert
+            type="error"
+            title="Erro ao carregar pneus"
+            message={loadError.message || "Tente recarregar a página."}
+          />
+        ) : (
+          <>
+            <PneusTable
+              pneus={pneus}
+              caminhoes={caminhoes}
+              onDelete={handleDeleteClick}
+              loading={loading}
+              filtroPlaca={filtroPlaca}
+              onFiltroChange={(e) => setFiltroPlaca(e.target.value)}
+            />
+
+            {pagination && pagination.totalPages > 1 && (
+              <Pagination
+                currentPage={pagination.currentPage}
+                totalPages={pagination.totalPages}
+                onPageChange={setCurrentPage}
+              />
+            )}
+          </>
         )}
       </div>
 

@@ -252,7 +252,7 @@ const CadastroCaminhao = () => {
                   handleInputChange("numero_cavalo", e.target.value)
                 }
                 placeholder="Opcional"
-                helpText="Deixe em branco se o cavalo ainda não foi numerado."
+                helperText="Deixe em branco se o cavalo ainda não foi numerado."
                 error={errors.numero_cavalo || fieldErrors.numero_cavalo}
                 icon={
                   <svg
@@ -477,7 +477,7 @@ const CadastroCaminhao = () => {
                     onChange={(e) => handleCarretaChange(0, e.target.value)}
                     error={errors.carreta_0}
                     placeholder="Opcional (0–99)"
-                    helpText="Deixe em branco se a carreta ainda não foi numerada."
+                    helperText="Deixe em branco se a carreta ainda não foi numerada."
                   />
                   <FormField
                     label="Placa Carreta 1"
@@ -523,7 +523,7 @@ const CadastroCaminhao = () => {
                         onChange={(e) => handleCarretaChange(1, e.target.value)}
                         error={errors.carreta_1}
                         placeholder="Opcional (0–99)"
-                        helpText="Deixe em branco se a carreta ainda não foi numerada."
+                        helperText="Deixe em branco se a carreta ainda não foi numerada."
                       />
                       <FormField
                         label="Placa Carreta 2"

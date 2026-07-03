@@ -260,7 +260,7 @@ const EditCaminhao = () => {
                 value={form.placa}
                 disabled
                 className="bg-gray-100"
-                helpText="A placa não pode ser alterada"
+                helperText="A placa não pode ser alterada"
               />
 
               <FormField
@@ -272,7 +272,7 @@ const EditCaminhao = () => {
                   handleInputChange("numero_cavalo", e.target.value)
                 }
                 placeholder="Opcional"
-                helpText="Deixe em branco se o cavalo ainda não foi numerado."
+                helperText="Deixe em branco se o cavalo ainda não foi numerado."
                 error={errors.numero_cavalo || fieldErrors.numero_cavalo}
               />
             </div>
@@ -391,7 +391,7 @@ const EditCaminhao = () => {
                     onChange={(e) => handleCarretaChange(0, e.target.value)}
                     error={errors.carreta_0 || fieldErrors.carreta_0}
                     placeholder="Opcional (0–99)"
-                    helpText="Deixe em branco se a carreta ainda não foi numerada."
+                    helperText="Deixe em branco se a carreta ainda não foi numerada."
                   />
                   <FormField
                     label="Placa Carreta 1"
@@ -437,7 +437,7 @@ const EditCaminhao = () => {
                         onChange={(e) => handleCarretaChange(1, e.target.value)}
                         error={errors.carreta_1 || fieldErrors.carreta_1}
                         placeholder="Opcional (0–99)"
-                        helpText="Deixe em branco se a carreta ainda não foi numerada."
+                        helperText="Deixe em branco se a carreta ainda não foi numerada."
                       />
                       <FormField
                         label="Placa Carreta 2"

@@ -20,7 +20,12 @@ import {
 } from "../components/ui";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import { exportToPDF, exportToExcel } from "../utils/exportUtils";
-import { formatCurrency, formatNumber } from "../utils/formatters";
+import { formatCurrency, formatNumber, formatDate } from "../utils/formatters";
+
+const tipoLabels = {
+  gasto: "Gasto",
+  manutencao: "Manutenção",
+};
 
 const CostPerKmBarChart = lazy(
   () => import("../components/relatorios/CostPerKmBarChart.jsx"),
@@ -65,11 +70,14 @@ const Relatorios = () => {
   } = useCostPerKmReportQuery(submittedParams ?? {}, Boolean(submittedParams));
 
   const reportData = report?.items ?? [];
+  const reportEntries = report?.entries ?? [];
+  const hasReport = reportData.length > 0 || reportEntries.length > 0;
   const stats = report?.stats ?? {
     grandTotal: 0,
     totalKm: 0,
     avgCostPerKm: 0,
     truckCount: 0,
+    entryCount: 0,
   };
 
   const generateReport = () => {
@@ -83,34 +91,77 @@ const Relatorios = () => {
   };
 
   const handleExportPDF = async () => {
-    const columns = [
+    const summaryColumns = [
       "Placa",
       "Total Gasto",
       "KM Rodado (Estimado)",
       "Custo Médio / KM",
     ];
-    const rows = reportData.map((r) => [
+    const summaryRows = reportData.map((r) => [
       r.placa,
       formatCurrency(r.totalCost),
       r.kmDriven === "N/I" ? "Dados Insuf." : `${r.kmDriven} km`,
       r.kmDriven === "N/I" ? "-" : formatCurrency(r.costPerKm),
     ]);
+    const detailColumns = [
+      "Data",
+      "Placa",
+      "Tipo",
+      "Descrição",
+      "Valor",
+      "KM",
+    ];
+    const detailRows = reportEntries.map((entry) => [
+      formatDate(entry.data),
+      entry.placa,
+      tipoLabels[entry.tipo] || entry.tipo,
+      entry.descricao,
+      formatCurrency(entry.valor),
+      entry.km ?? "—",
+    ]);
 
     setExporting("pdf");
     try {
-      await exportToPDF("Relatório de Custo Operacional", columns, rows);
+      await exportToPDF(
+        "Relatório de Custo Operacional — Resumo",
+        summaryColumns,
+        summaryRows,
+      );
+      if (detailRows.length > 0) {
+        await exportToPDF(
+          "Relatório de Custo Operacional — Detalhamento",
+          detailColumns,
+          detailRows,
+          "relatorio_detalhamento.pdf",
+        );
+      }
     } finally {
       setExporting(null);
     }
   };
 
   const handleExportExcel = async () => {
-    const data = reportData.map((r) => ({
+    const summary = reportData.map((r) => ({
       Placa: r.placa,
       "Total Gasto": r.totalCost,
       "KM Rodado (Estimado)": r.kmDriven,
       "Custo / KM": r.costPerKm,
     }));
+    const detail = reportEntries.map((entry) => ({
+      Data: formatDate(entry.data),
+      Placa: entry.placa,
+      Tipo: tipoLabels[entry.tipo] || entry.tipo,
+      Descrição: entry.descricao,
+      Valor: entry.valor,
+      KM: entry.km ?? "",
+    }));
+    const data =
+      detail.length > 0
+        ? [
+            ...summary.map((row) => ({ Aba: "Resumo", ...row })),
+            ...detail.map((row) => ({ Aba: "Detalhamento", ...row })),
+          ]
+        : summary;
 
     setExporting("excel");
     try {
@@ -159,7 +210,7 @@ const Relatorios = () => {
           </div>
         </Card>
 
-        {reportData.length > 0 && (
+        {hasReport && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="bg-blue-50 border-blue-100">
@@ -264,6 +315,69 @@ const Relatorios = () => {
                 </DataTableBody>
               </DataTable>
             </Card>
+
+            {reportEntries.length > 0 && (
+              <Card noPadding>
+                <div className="px-5 py-4 border-b border-border">
+                  <h3 className="text-lg font-semibold text-text-primary">
+                    Detalhamento dos lançamentos
+                  </h3>
+                  <p className="text-sm text-text-secondary mt-1">
+                    {stats.entryCount} registro(s) no período. Manutenções com
+                    R$ 0,00 aparecem aqui, mas não entram no custo total.
+                  </p>
+                </div>
+
+                <DataTable>
+                  <DataTableHead>
+                    <tr>
+                      <DataTableTh width="12%">Data</DataTableTh>
+                      <DataTableTh width="12%">Placa</DataTableTh>
+                      <DataTableTh width="14%">Tipo</DataTableTh>
+                      <DataTableTh width="34%">Descrição</DataTableTh>
+                      <DataTableTh width="14%" align="right">
+                        Valor
+                      </DataTableTh>
+                      <DataTableTh width="14%" align="right">
+                        KM
+                      </DataTableTh>
+                    </tr>
+                  </DataTableHead>
+                  <DataTableBody>
+                    {reportEntries.map((entry) => (
+                      <DataTableRow
+                        key={`${entry.tipo}-${entry.id}`}
+                      >
+                        <DataTableTd className="whitespace-nowrap">
+                          {formatDate(entry.data)}
+                        </DataTableTd>
+                        <DataTableTd className="font-semibold whitespace-nowrap">
+                          {entry.placa}
+                        </DataTableTd>
+                        <DataTableTd className="whitespace-nowrap">
+                          {tipoLabels[entry.tipo] || entry.tipo}
+                        </DataTableTd>
+                        <DataTableTd>{entry.descricao}</DataTableTd>
+                        <DataTableTd
+                          align="right"
+                          className="whitespace-nowrap tabular-nums"
+                        >
+                          {formatCurrency(entry.valor)}
+                        </DataTableTd>
+                        <DataTableTd
+                          align="right"
+                          className="whitespace-nowrap tabular-nums"
+                        >
+                          {entry.km != null
+                            ? `${formatNumber(entry.km)} km`
+                            : "—"}
+                        </DataTableTd>
+                      </DataTableRow>
+                    ))}
+                  </DataTableBody>
+                </DataTable>
+              </Card>
+            )}
           </div>
         )}
 
@@ -274,7 +388,7 @@ const Relatorios = () => {
           />
         )}
 
-        {submittedParams && !loading && reportData.length === 0 && (
+        {submittedParams && !loading && !hasReport && (
           <Alert
             type="info"
             message="Nenhum dado encontrado para o período e filtros selecionados."

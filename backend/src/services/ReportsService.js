@@ -111,7 +111,8 @@ export class ReportsService {
       ...(parsedCaminhaoId ? { caminhao_id: parsedCaminhaoId } : {}),
     };
 
-    const [gastosGrouped, checklistGrouped] = await Promise.all([
+    const [gastosGrouped, checklistGrouped, gastosRecords, checklistRecords] =
+      await Promise.all([
       prisma.gastos.groupBy({
         by: ["caminhao_id"],
         where: {
@@ -139,6 +140,39 @@ export class ReportsService {
         orderBy: {
           caminhao_id: "asc",
         },
+      }),
+      prisma.gastos.findMany({
+        where: {
+          ...baseWhere,
+          ...(dateWhere ? { data_gasto: dateWhere } : {}),
+        },
+        select: {
+          id: true,
+          caminhao_id: true,
+          valor: true,
+          data_gasto: true,
+          descricao: true,
+          km_registro: true,
+          tipos_gastos: { select: { nome_tipo: true } },
+          caminhoes: { select: { placa: true } },
+        },
+        orderBy: { data_gasto: "desc" },
+      }),
+      prisma.checklist.findMany({
+        where: {
+          ...baseWhere,
+          ...(dateWhere ? { data_manutencao: dateWhere } : {}),
+        },
+        select: {
+          id: true,
+          caminhao_id: true,
+          valor: true,
+          data_manutencao: true,
+          km_registro: true,
+          itens_checklist: { select: { nome_item: true } },
+          caminhoes: { select: { placa: true } },
+        },
+        orderBy: { data_manutencao: "desc" },
       }),
     ]);
 
@@ -181,6 +215,30 @@ export class ReportsService {
       })
       .sort((a, b) => b.totalCost - a.totalCost);
 
+    const entries = [
+      ...gastosRecords.map((gasto) => ({
+        tipo: "gasto",
+        id: gasto.id,
+        caminhaoId: gasto.caminhao_id,
+        placa: gasto.caminhoes?.placa || "Sem placa",
+        descricao:
+          gasto.tipos_gastos?.nome_tipo || gasto.descricao || "Gasto",
+        data: gasto.data_gasto,
+        valor: Number(gasto.valor),
+        km: toKmNumber(gasto.km_registro),
+      })),
+      ...checklistRecords.map((manutencao) => ({
+        tipo: "manutencao",
+        id: manutencao.id,
+        caminhaoId: manutencao.caminhao_id,
+        placa: manutencao.caminhoes?.placa || "Sem placa",
+        descricao: manutencao.itens_checklist?.nome_item || "Manutenção",
+        data: manutencao.data_manutencao,
+        valor: Number(manutencao.valor || 0),
+        km: toKmNumber(manutencao.km_registro),
+      })),
+    ].sort((a, b) => new Date(b.data) - new Date(a.data));
+
     const totals = data.reduce(
       (acc, current) => {
         acc.grandTotal += current.totalCost;
@@ -204,8 +262,10 @@ export class ReportsService {
         avgCostPerKm:
           totals.totalKm > 0 ? totals.grandTotal / totals.totalKm : 0,
         truckCount: data.length,
+        entryCount: entries.length,
       },
       items: data,
+      entries,
     });
   }
 }

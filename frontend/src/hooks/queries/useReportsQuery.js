@@ -34,17 +34,20 @@ export function useCostPerKmReportQuery(params, enabled = false) {
 
       const payload = extractApiData(res);
       const items = Array.isArray(payload.items) ? payload.items : [];
+      const entries = Array.isArray(payload.entries) ? payload.entries : [];
 
       return {
         items: items.map((item) => ({
           ...item,
           kmDriven: typeof item.kmDriven === "number" ? item.kmDriven : "N/I",
         })),
+        entries,
         stats: {
           grandTotal: payload.stats?.grandTotal || 0,
           totalKm: payload.stats?.totalKm || 0,
           avgCostPerKm: payload.stats?.avgCostPerKm || 0,
           truckCount: payload.stats?.truckCount || items.length,
+          entryCount: payload.stats?.entryCount || entries.length,
         },
       };
     },

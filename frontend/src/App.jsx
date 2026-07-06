@@ -1,6 +1,11 @@
 // frontend/src/App.jsx
 import React, { Suspense, lazy } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useLocation,
+} from "react-router-dom";
 import Navbar from "./components/Navbar.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
@@ -22,20 +27,22 @@ const CadastroPneuEmLote = lazy(() => import("./Pages/CadastroPneuEmLote.jsx"));
 const Relatorios = lazy(() => import("./Pages/Relatorios.jsx"));
 const OrdensColeta = lazy(() => import("./Pages/OrdensColeta.jsx"));
 
-function App() {
+function AppRoutes() {
+  const location = useLocation();
+  const isLoginPage = location.pathname === "/login";
+
   return (
-    <ErrorBoundary>
-      <Router>
-        <Navbar />
-        <Suspense
-          fallback={
-            <div className="flex items-center justify-center min-h-screen">
-              <LoadingSpinner size="lg" />
-            </div>
-          }
-        >
-          <Routes>
-            <Route path="/login" element={<Login />} />
+    <>
+      {!isLoginPage && <Navbar />}
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center min-h-screen">
+            <LoadingSpinner size="lg" />
+          </div>
+        }
+      >
+        <Routes>
+          <Route path="/login" element={<Login />} />
             <Route
               path="/"
               element={
@@ -149,7 +156,16 @@ function App() {
               }
             />
           </Routes>
-        </Suspense>
+      </Suspense>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <ErrorBoundary>
+      <Router>
+        <AppRoutes />
       </Router>
     </ErrorBoundary>
   );

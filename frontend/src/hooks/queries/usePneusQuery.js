@@ -34,11 +34,12 @@ export function usePneusEmUsoQuery({
   });
 }
 
-export function usePneusEstoqueQuery({ page = 1, limit = 20 } = {}) {
+export function usePneusEstoqueQuery({ page = 1, limit = 20, enabled = true } = {}) {
   const params = { page, limit };
 
   return useQuery({
     queryKey: queryKeys.pneus.estoque(params),
+    enabled,
     queryFn: async () => {
       const res = await apiFetch({
         method: "GET",
@@ -55,9 +56,10 @@ export function usePneusEstoqueQuery({ page = 1, limit = 20 } = {}) {
   });
 }
 
-export function useStatusPneusQuery() {
+export function useStatusPneusQuery({ enabled = true } = {}) {
   return useQuery({
     queryKey: queryKeys.pneus.status,
+    enabled,
     queryFn: async () =>
       extractApiArray(
         await apiFetch({ method: "GET", url: "/status-pneus" }),
@@ -65,9 +67,10 @@ export function useStatusPneusQuery() {
   });
 }
 
-export function usePosicoesPneusQuery() {
+export function usePosicoesPneusQuery({ enabled = true } = {}) {
   return useQuery({
     queryKey: queryKeys.pneus.posicoes,
+    enabled,
     queryFn: async () =>
       extractApiArray(
         await apiFetch({ method: "GET", url: "/posicoes-pneus" }),
@@ -77,11 +80,14 @@ export function usePosicoesPneusQuery() {
 
 const listAllParams = { page: 1, limit: API_CONFIG.LIST_MAX };
 
-export function usePneuAtribuirQueries() {
-  const estoque = usePneusEstoqueQuery(listAllParams);
-  const caminhoes = useCaminhoesListQuery(listAllParams);
-  const posicoes = usePosicoesPneusQuery();
-  const status = useStatusPneusQuery();
+export function usePneuAtribuirQueries({ enabled = true } = {}) {
+  const estoque = usePneusEstoqueQuery({ ...listAllParams, enabled });
+  const caminhoes = useCaminhoesListQuery(
+    { ...listAllParams, page: 1, limit: API_CONFIG.LIST_MAX },
+    { enabled },
+  );
+  const posicoes = usePosicoesPneusQuery({ enabled });
+  const status = useStatusPneusQuery({ enabled });
 
   return {
     pneus: estoque.data?.data ?? [],
@@ -89,15 +95,19 @@ export function usePneuAtribuirQueries() {
     posicoes: posicoes.data ?? [],
     statusOptions: status.data ?? [],
     isLoading:
-      estoque.isLoading ||
-      caminhoes.isLoading ||
-      posicoes.isLoading ||
-      status.isLoading,
+      enabled &&
+      (estoque.isLoading ||
+        caminhoes.isLoading ||
+        posicoes.isLoading ||
+        status.isLoading),
   };
 }
 
 export function useCadastroPneuLoteQueries() {
-  const caminhoes = useCaminhoesListQuery({ page: 1, limit: 1000 });
+  const caminhoes = useCaminhoesListQuery({
+    page: 1,
+    limit: API_CONFIG.CAMINHOES_SELECT_MAX,
+  });
   const posicoes = usePosicoesPneusQuery();
   const status = useStatusPneusQuery();
 

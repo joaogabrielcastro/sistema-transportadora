@@ -1,33 +1,60 @@
-import React from "react";
+import React, { useId } from "react";
 import PropTypes from "prop-types";
 
-export const Tabs = ({ tabs, activeTab, onChange, className = "" }) => (
-  <div
-    className={`flex flex-wrap gap-2 border-b border-border ${className}`}
-    role="tablist"
-  >
-    {tabs.map((tab) => {
-      const isActive = activeTab === tab.id;
+export const Tabs = ({
+  tabs,
+  activeTab,
+  onChange,
+  className = "",
+  panelClassName = "",
+  children,
+}) => {
+  const baseId = useId();
 
-      return (
-        <button
-          key={tab.id}
-          type="button"
-          role="tab"
-          aria-selected={isActive}
-          onClick={() => onChange(tab.id)}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-            isActive
-              ? "border-secondary text-secondary"
-              : "border-transparent text-text-secondary hover:text-text-primary hover:border-border"
-          }`}
+  return (
+    <div className={className}>
+      <div className="flex flex-wrap gap-2 border-b border-border" role="tablist">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.id;
+          const tabId = `${baseId}-tab-${tab.id}`;
+          const panelId = `${baseId}-panel-${tab.id}`;
+
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              id={tabId}
+              role="tab"
+              aria-selected={isActive}
+              aria-controls={panelId}
+              tabIndex={isActive ? 0 : -1}
+              onClick={() => onChange(tab.id)}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                isActive
+                  ? "border-secondary text-secondary"
+                  : "border-transparent text-text-secondary hover:text-text-primary hover:border-border"
+              }`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {children && (
+        <div
+          id={`${baseId}-panel-${activeTab}`}
+          role="tabpanel"
+          aria-labelledby={`${baseId}-tab-${activeTab}`}
+          className={panelClassName}
+          tabIndex={0}
         >
-          {tab.label}
-        </button>
-      );
-    })}
-  </div>
-);
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
 
 Tabs.propTypes = {
   tabs: PropTypes.arrayOf(
@@ -39,6 +66,8 @@ Tabs.propTypes = {
   activeTab: PropTypes.string.isRequired,
   onChange: PropTypes.func.isRequired,
   className: PropTypes.string,
+  panelClassName: PropTypes.string,
+  children: PropTypes.node,
 };
 
 export const FilterChips = ({ items = [], onRemove, className = "" }) => {

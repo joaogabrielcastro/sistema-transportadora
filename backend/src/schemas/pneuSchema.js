@@ -11,7 +11,11 @@ export const pneuSchema = z.object({
   marca: z.string().min(1).optional().nullable(),
   modelo: z.string().min(1).optional().nullable(),
   observacao: z.string().optional().nullable(),
+  stock_pneu_id: z.coerce.number().int().positive().optional(),
+  consume_from_stock: z.coerce.boolean().optional(),
 });
+
+export const pneuCreateSchema = pneuSchema;
 
 export const pneuUpdateSchema = pneuSchema.partial();
 

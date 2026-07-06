@@ -13,6 +13,8 @@ import {
   str,
   finalizeOrdemVars,
 } from "../utils/ordemColetaFormat.js";
+
+const MAX_ENVIO_RETRIES = 3;
 import { enqueueOrdemEnvio } from "../queues/ordemColetaJobQueue.js";
 
 const pickTemplate = (tipo) => {
@@ -304,7 +306,7 @@ export class OrdemColetaService {
   static async processarEnvioPorId(envioId, parsed) {
     const registro = await prisma.ordens_coleta_envio.findUnique({
       where: { id: Number(envioId) },
-      select: { enviado_em: true, erro_envio: true },
+      select: { enviado_em: true, erro_envio: true, retry_count: true },
     });
 
     if (!registro) {
@@ -316,6 +318,10 @@ export class OrdemColetaService {
     }
 
     if (registro.erro_envio) {
+      return { id: envioId, status: "failed", skipped: true };
+    }
+
+    if ((registro.retry_count ?? 0) >= MAX_ENVIO_RETRIES) {
       return { id: envioId, status: "failed", skipped: true };
     }
 
@@ -370,6 +376,7 @@ export class OrdemColetaService {
         dados: dadosGravar,
         enviado_em: new Date(),
         erro_envio: null,
+        retry_count: 0,
       });
 
       logger.info("Ordem de coleta enviada por e-mail", {
@@ -385,13 +392,25 @@ export class OrdemColetaService {
         err: err?.message,
       });
 
+      const nextRetry = (registro.retry_count ?? 0) + 1;
+      const permanentFailure = nextRetry >= MAX_ENVIO_RETRIES;
+
       await OrdemColetaService.atualizarRegistroEnvio(envioId, {
         assunto,
         dados: dadosGravar,
-        erro_envio: err?.message || String(err),
+        erro_envio: permanentFailure ? err?.message || String(err) : null,
+        retry_count: nextRetry,
       }).catch((e) =>
         logger.error("Falha ao registrar erro do envio", { err: e?.message }),
       );
+
+      if (!permanentFailure) {
+        logger.warn("Envio falhou — será reenfileirado na próxima tentativa", {
+          id: envioId,
+          retry: nextRetry,
+          max: MAX_ENVIO_RETRIES,
+        });
+      }
 
       throw err;
     }
@@ -420,13 +439,19 @@ export class OrdemColetaService {
     return { id: row.id, status: "processing" };
   }
 
-  static async excluirEnviosComFalha() {
-    const result = await prisma.ordens_coleta_envio.deleteMany({
-      where: {
-        enviado_em: null,
-        erro_envio: { not: null },
-      },
-    });
+  static async excluirEnviosComFalha({ dias = 30 } = {}) {
+    const where = {
+      enviado_em: null,
+      erro_envio: { not: null },
+    };
+
+    if (dias && Number(dias) > 0) {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - Number(dias));
+      where.criado_em = { gte: cutoff };
+    }
+
+    const result = await prisma.ordens_coleta_envio.deleteMany({ where });
     return result.count;
   }
 
@@ -506,6 +531,7 @@ export class OrdemColetaService {
       where: {
         enviado_em: null,
         erro_envio: null,
+        retry_count: { lt: MAX_ENVIO_RETRIES },
       },
       orderBy: { criado_em: "asc" },
       take: 50,

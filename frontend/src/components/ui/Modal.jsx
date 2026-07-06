@@ -24,24 +24,45 @@ const Modal = ({
   };
 
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleEscape = (e) => {
       if (closeOnEscape && e.key === "Escape" && onClose) {
         onClose();
       }
     };
 
-    if (isOpen) {
-      document.addEventListener("keydown", handleEscape);
-      document.body.style.overflow = "hidden";
+    const handleTabTrap = (e) => {
+      if (e.key !== "Tab" || !modalRef.current) return;
 
-      // Focus modal for accessibility
-      if (modalRef.current) {
-        modalRef.current.focus();
+      const focusable = modalRef.current.querySelectorAll(
+        'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusable.length) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
       }
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    document.addEventListener("keydown", handleTabTrap);
+    document.body.style.overflow = "hidden";
+
+    if (modalRef.current) {
+      modalRef.current.focus();
     }
 
     return () => {
       document.removeEventListener("keydown", handleEscape);
+      document.removeEventListener("keydown", handleTabTrap);
       document.body.style.overflow = "unset";
     };
   }, [isOpen, closeOnEscape, onClose]);

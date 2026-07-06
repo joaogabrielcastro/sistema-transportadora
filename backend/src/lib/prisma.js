@@ -26,6 +26,10 @@ function resolvePgSsl() {
     return { rejectUnauthorized: false };
   }
 
+  if (["verify", "strict"].includes(mode)) {
+    return { rejectUnauthorized: true };
+  }
+
   // auto: respeita sslmode na URL ou hosts gerenciados comuns
   if (/sslmode=(require|verify-full|verify-ca|prefer)/i.test(databaseUrl)) {
     return { rejectUnauthorized: false };

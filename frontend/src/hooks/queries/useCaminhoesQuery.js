@@ -3,9 +3,12 @@ import { apiFetch } from "../../lib/apiClient.js";
 import { queryKeys } from "../../lib/queryKeys.js";
 import { extractApiArray, extractApiData } from "../../utils/extractApiArray.js";
 
-export function useCaminhoesListQuery(params = { page: 1, limit: 10 }) {
+export function useCaminhoesListQuery(params = { page: 1, limit: 10 }, options = {}) {
+  const { enabled = true } = options;
+
   return useQuery({
     queryKey: queryKeys.caminhoes.list(params),
+    enabled,
     queryFn: async () => {
       const res = await apiFetch({
         method: "GET",

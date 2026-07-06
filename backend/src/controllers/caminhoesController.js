@@ -25,7 +25,7 @@ export const caminhoesController = {
     const filtro = req.query.filtro || null;
     const termo = req.query.termo || null;
 
-    // Se nenhum parâmetro de paginação for fornecido, retornar TODOS os caminhões
+    // Sem paginação explícita: retorna até 200 registros (evita carregar frota inteira)
     let page;
     let limit;
     const pageParam = req.query.page;
@@ -33,10 +33,10 @@ export const caminhoesController = {
 
     if (pageParam === undefined && limitParam === undefined) {
       page = 1;
-      limit = null;
+      limit = 200;
     } else {
       page = Math.max(1, parseInt(req.query.page, 10) || 1);
-      limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
+      limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
     }
 
     const resultado = await CaminhaoService.buscarTodos({
@@ -45,11 +45,6 @@ export const caminhoesController = {
       filtro,
       termo,
     });
-
-    // Se não houve paginação, retornar apenas os dados (compatível com chamadas que esperam array)
-    if (limit === null) {
-      return res.status(200).json({ success: true, data: resultado.data });
-    }
 
     res.status(200).json({
       success: true,

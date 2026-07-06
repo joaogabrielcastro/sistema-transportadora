@@ -1,6 +1,6 @@
 import { pneusModel } from "../models/pneusModel.js";
-import { caminhoesModel } from "../models/caminhoesModel.js";
-import { logger } from "../utils/logger.js"; // Supondo que exista, já que CaminhaoService usa
+import { syncKmFromRegistro, recalculateKmAtual } from "./KmCaminhaoService.js";
+import { logger } from "../utils/logger.js";
 
 export class PneuService {
   /**
@@ -10,17 +10,14 @@ export class PneuService {
     if (!caminhaoId || !kmInstalacao) return;
 
     try {
-      const caminhao = await caminhoesModel.getById(caminhaoId);
-      // Evita regressão de KM
-      if (caminhao && kmInstalacao > caminhao.km_atual) {
-        await caminhoesModel.updateById(caminhaoId, { km_atual: kmInstalacao });
+      const updated = await syncKmFromRegistro(caminhaoId, kmInstalacao);
+      if (updated) {
         logger.info(
           `KM do caminhão ${caminhaoId} atualizado para ${kmInstalacao}`,
         );
       }
     } catch (error) {
       logger.error(`Erro ao atualizar KM do caminhão ${caminhaoId}`, error);
-      // Não lança erro para não parar o fluxo principal (side-effect)
     }
   }
 
@@ -103,17 +100,37 @@ export class PneuService {
 
     const pneuAtualizado = await pneusModel.update(id, data);
 
-    if (data.km_instalacao) {
-      // Se o retorno não tiver caminhao_id, busca no banco
-      let caminhaoId = pneuAtualizado?.caminhao_id;
-      if (!caminhaoId) {
-        const current = await pneusModel.getById(id);
-        caminhaoId = current?.caminhao_id;
+    const caminhaoId =
+      pneuAtualizado?.caminhao_id ??
+      (await pneusModel.getById(id))?.caminhao_id;
+
+    if (caminhaoId && data.km_instalacao !== undefined) {
+      if (data.km_instalacao != null && data.km_instalacao !== "") {
+        await this.atualizarKmCaminhao(caminhaoId, data.km_instalacao);
+      } else {
+        await recalculateKmAtual(caminhaoId);
       }
-      await this.atualizarKmCaminhao(caminhaoId, data.km_instalacao);
     }
 
     return pneuAtualizado;
+  }
+
+  static async deletePneu(id) {
+    const existing = await pneusModel.getById(id);
+    if (!existing) {
+      throw new Error("Pneu não encontrado");
+    }
+
+    const caminhaoId = existing.caminhao_id;
+    await pneusModel.delete(id);
+
+    if (caminhaoId) {
+      await recalculateKmAtual(caminhaoId);
+    }
+  }
+
+  static async delete(id) {
+    return this.deletePneu(id);
   }
 
   static async getAll(params = {}) {
@@ -143,13 +160,5 @@ export class PneuService {
 
   static async getById(id) {
     return await pneusModel.getById(id);
-  }
-
-  static async delete(id) {
-    const existing = await pneusModel.getById(id);
-    if (!existing) {
-      throw new Error("Pneu não encontrado");
-    }
-    return await pneusModel.delete(id);
   }
 }

@@ -1,5 +1,9 @@
 import prisma from "../lib/prisma.js";
 import { checklistModel } from "../models/checklistModel.js";
+import {
+  syncKmFromRegistro,
+  recalculateKmAtual,
+} from "./KmCaminhaoService.js";
 
 export class ChecklistService {
   static async createWithCaminhaoUpdate(checklistData) {
@@ -19,11 +23,8 @@ export class ChecklistService {
         },
       });
 
-      if (caminhaoId && kmManutencao) {
-        await tx.caminhoes.update({
-          where: { id: Number(caminhaoId) },
-          data: { km_atual: Number(kmManutencao) },
-        });
+      if (caminhaoId && kmManutencao != null) {
+        await syncKmFromRegistro(caminhaoId, kmManutencao, { tx });
       }
 
       return checklistCriado;
@@ -40,10 +41,8 @@ export class ChecklistService {
 
     const parsedId = Number(id);
     const caminhaoId = checklistData.caminhao_id ?? existing.caminhao_id;
-    const novoKm =
-      checklistData.km_manutencao !== undefined
-        ? checklistData.km_manutencao
-        : undefined;
+    const kmAlterado = checklistData.km_manutencao !== undefined;
+    const novoKm = kmAlterado ? checklistData.km_manutencao : undefined;
 
     await prisma.$transaction(async (tx) => {
       await tx.checklist.update({
@@ -51,14 +50,31 @@ export class ChecklistService {
         data: checklistData,
       });
 
-      if (caminhaoId && novoKm != null && novoKm !== "") {
-        await tx.caminhoes.update({
-          where: { id: Number(caminhaoId) },
-          data: { km_atual: Number(novoKm) },
-        });
+      if (!caminhaoId) return;
+
+      if (kmAlterado && novoKm != null && novoKm !== "") {
+        await syncKmFromRegistro(caminhaoId, novoKm, { tx });
+      } else if (kmAlterado) {
+        await recalculateKmAtual(caminhaoId, { tx });
       }
     });
 
     return checklistModel.getById(parsedId);
+  }
+
+  static async deleteWithKmSync(id) {
+    const existing = await checklistModel.getById(id);
+    if (!existing) {
+      throw new Error("Item de checklist não encontrado");
+    }
+
+    const caminhaoId = existing.caminhao_id;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.checklist.delete({ where: { id: Number(id) } });
+      if (caminhaoId) {
+        await recalculateKmAtual(caminhaoId, { tx });
+      }
+    });
   }
 }

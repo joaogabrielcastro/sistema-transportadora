@@ -15,11 +15,11 @@ RUN npm ci --ignore-scripts --no-audit --no-fund
 
 COPY . .
 
-# Defina no Coolify (Build Arguments): VITE_API_URL, VITE_API_TOKEN
+# Defina no Coolify (Build Arguments): VITE_API_URL, VITE_AUTH_REQUIRED
 ARG VITE_API_URL=https://api-abbroto.jwsoftware.com.br
-ARG VITE_API_TOKEN=
+ARG VITE_AUTH_REQUIRED=true
 ENV VITE_API_URL=$VITE_API_URL
-ENV VITE_API_TOKEN=$VITE_API_TOKEN
+ENV VITE_AUTH_REQUIRED=$VITE_AUTH_REQUIRED
 ENV NODE_OPTIONS=--max-old-space-size=2048
 
 RUN npm run build

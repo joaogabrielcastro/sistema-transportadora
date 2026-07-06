@@ -35,16 +35,26 @@ Aplicação fullstack para gestão de frota, manutenção, pneus e gastos operac
 - `RATE_LIMIT_WINDOW_MS`: janela de rate limit em ms.
 - `RATE_LIMIT_MAX`: limite de requests por janela.
 - `AUTH_ENABLED`: `true`/`false` para exigir token.
-- `API_TOKEN`: token esperado no header `Authorization: Bearer ...`.
+- `JWT_SECRET`: chave para assinar tokens JWT (obrigatório em produção, ≥16 caracteres).
+- `API_TOKEN`: opcional — token fixo para scripts/CI (não use no frontend).
+- `ADMIN_EMAIL` / `ADMIN_PASSWORD`: primeiro usuário admin criado automaticamente se a tabela `users` estiver vazia.
 
 ### Frontend (`frontend/.env`)
 
 - `VITE_API_URL`: URL base da API sem `/api`.
+- `VITE_AUTH_REQUIRED`: `true` em produção para exigir login JWT.
 
-Exemplo:
+Exemplo (desenvolvimento local):
 
 ```bash
 VITE_API_URL=http://localhost:3020
+```
+
+Exemplo (build de produção):
+
+```bash
+VITE_API_URL=https://api.seudominio.com.br
+VITE_AUTH_REQUIRED=true
 ```
 
 Desenvolvimento local com Postgres via Docker: na raiz do projeto, `docker compose up -d` (porta **5433** no host; veja `backend/.env.example`).
@@ -70,11 +80,13 @@ Variáveis mínimas: `DATABASE_URL`, `PORT` (ex.: 3020), SMTP se for enviar e-ma
 | Backend (Coolify) | Frontend (build arg) |
 |-------------------|----------------------|
 | `NODE_ENV=production` | `VITE_API_URL` |
-| `AUTH_ENABLED=true` | `VITE_API_TOKEN` (= mesmo valor de `API_TOKEN`) |
-| `API_TOKEN=` senha longa aleatória (≥16 chars) | |
+| `AUTH_ENABLED=true` | `VITE_AUTH_REQUIRED=true` |
+| `JWT_SECRET=` senha longa aleatória (≥16 chars) | |
 | `CORS_ORIGINS=https://abbroto.jwsoftware.com.br` | |
 
-Sem `VITE_API_TOKEN` no build do frontend, a API retorna **401** quando auth está ativa.
+O frontend **não** embute token no bundle. Usuários fazem login em `/login` e o JWT fica no `localStorage`.
+
+`API_TOKEN` no backend é opcional (scripts/CI); não configure `VITE_API_TOKEN`.
 
 ### Ordens de coleta (envio assíncrono)
 
@@ -89,7 +101,7 @@ Sem `VITE_API_TOKEN` no build do frontend, a API retorna **401** quando auth est
 2. **Base Directory:** `frontend` · **Dockerfile:** `Dockerfile`
 3. **Porta exposta no container:** `80` (nginx)
 4. **Build argument** (obrigatório em produção): `VITE_API_URL=https://api-abbroto.jwsoftware.com.br` (URL da API **sem** `/api` no final)
-5. **Build argument:** `VITE_API_TOKEN` — mesmo valor de `API_TOKEN` do backend
+5. **Build argument:** `VITE_AUTH_REQUIRED=true`
 6. Redeploy com **Clear build cache**
 
 Se aparecer `open Dockerfile: no such file or directory`, a base directory não é `frontend` ou o Dockerfile ainda não foi enviado ao repositório.
@@ -160,6 +172,6 @@ Em cada push/PR para `main` ou `master`, o workflow `.github/workflows/ci.yml` e
 
 - Defina `DB_SSL_MODE=require` para validar certificado.
 - Evite `DB_SSL_MODE=no-verify` fora de cenário temporário.
-- Ative `AUTH_ENABLED=true` e configure `API_TOKEN` em produção.
+- Ative `AUTH_ENABLED=true`, defina `JWT_SECRET` e faça login em `/login` em produção.
 - O endpoint `/health` retorna **503** com `status: "degraded"` se banco, PDF ou uploads falharem — use no monitoramento do Coolify.
 - Faça backup periódico do Postgres e do volume `/app/uploads` (ver `docs/COOLIFY-CHECKLIST.md`).

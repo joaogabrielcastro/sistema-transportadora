@@ -1,28 +1,16 @@
 {
   "name": "sistema-transportadora",
   "version": "1.0.0",
-  "description": "Sistema completo de gestão de frotas desenvolvido especificamente para a transportadora ABroto. A aplicação oferece controle total sobre caminhões, gastos operacionais, manutenções preventivas/corretivas e gerenciamento detalhado de pneus, com dashboards analíticos e relatórios em tempo real.",
-  "main": "test-backend.js",
+  "private": true,
+  "description": "Sistema de gestão de frotas ABroto — monorepo (backend + frontend).",
   "scripts": {
     "backend": "cd backend && npm start",
-    "frontend": "cd frontend && npm run dev"
+    "frontend": "cd frontend && npm run dev",
+    "build": "cd backend && npm test && cd ../frontend && npm run build"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/joaogabrielcastro/sistema-transportadora.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/joaogabrielcastro/sistema-transportadora/issues"
-  },
-  "homepage": "https://github.com/joaogabrielcastro/sistema-transportadora#readme",
-  "dependencies": {
-    "file-saver": "^2.0.5",
-    "jspdf": "^4.1.0",
-    "jspdf-autotable": "^5.0.7",
-    "xlsx": "^0.18.5"
-  }
+  "license": "ISC"
 }

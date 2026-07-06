@@ -68,6 +68,8 @@ export const config = {
   auth: {
     enabled: parseBoolean(process.env.AUTH_ENABLED, false),
     apiToken: process.env.API_TOKEN || "",
+    jwtSecret: process.env.JWT_SECRET || process.env.API_TOKEN || "",
+    jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
   },
   security: {
     rateLimitWindowMs: Number(

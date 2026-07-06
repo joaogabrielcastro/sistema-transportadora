@@ -52,10 +52,23 @@ model ordens_coleta_envio {
   criado_em          DateTime   @default(now()) @db.Timestamptz(6)
   enviado_em         DateTime?  @db.Timestamptz(6)
   erro_envio         String?
+  retry_count        Int        @default(0)
   caminhoes          caminhoes? @relation(fields: [caminhao_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([criado_em])
   @@index([tipo])
+}
+
+model users {
+  id            Int      @id @default(autoincrement())
+  email         String   @unique @db.VarChar(255)
+  nome          String   @db.VarChar(120)
+  password_hash String   @db.VarChar(255)
+  role          String   @default("operator") @db.VarChar(32)
+  ativo         Boolean  @default(true)
+  criado_em     DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([role])
 }
 
 model checklist {

@@ -1,20 +1,10 @@
-// backend/src/services/CaminhaoService.js
 import { caminhoesModel } from "../models/caminhoesModel.js";
 import { CaminhaoDocumentoService } from "./CaminhaoDocumentoService.js";
 import { logger } from "../utils/logger.js";
+import { normalizePlaca, samePlaca } from "../utils/placa.js";
+import { setKmManual } from "./KmCaminhaoService.js";
 
-const normalizePlaca = (value) => {
-  if (value == null || value === "") return null;
-  const s = String(value).trim().toUpperCase().replace(/-/g, "");
-  return s || null;
-};
-
-const samePlaca = (a, b) => {
-  const na = normalizePlaca(a);
-  const nb = normalizePlaca(b);
-  if (!na || !nb) return false;
-  return na === nb;
-};
+const samePlacaLocal = samePlaca;
 
 /** Inteiro opcional (null se vazio); preserva 0 quando informado. */
 const normalizeOptionalInt = (value) => {
@@ -119,13 +109,19 @@ export class CaminhaoService {
     logger.info("Atualizando caminhão", { placa });
 
     try {
-      // Validar existência
-      await this.buscarPorPlaca(placa);
-
-      // Validar duplicatas (excluindo o próprio caminhão)
+      const caminhao = await this.buscarPorPlaca(placa);
       await this.validateUniqueness(normalized, placa);
 
-      const caminhaoAtualizado = await caminhoesModel.update(placa, normalized);
+      const { km_atual, ...rest } = normalized;
+
+      if (km_atual !== undefined) {
+        await setKmManual(caminhao.id, km_atual);
+      }
+
+      const caminhaoAtualizado =
+        Object.keys(rest).length > 0
+          ? await caminhoesModel.update(placa, rest)
+          : await caminhoesModel.getByPlaca(placa);
 
       logger.info("Caminhão atualizado com sucesso", { placa });
 
@@ -147,7 +143,16 @@ export class CaminhaoService {
 
     await this.validateUniqueness(normalized, caminhao.placa);
 
-    const caminhaoAtualizado = await caminhoesModel.updateById(id, normalized);
+    const { km_atual, ...rest } = normalized;
+
+    if (km_atual !== undefined) {
+      await setKmManual(caminhao.id, km_atual);
+    }
+
+    const caminhaoAtualizado =
+      Object.keys(rest).length > 0
+        ? await caminhoesModel.updateById(id, rest)
+        : await caminhoesModel.getById(id);
 
     logger.info("Caminhão atualizado por id com sucesso", {
       id: caminhaoAtualizado.id,
@@ -242,7 +247,7 @@ export class CaminhaoService {
     // Filtrar o próprio caminhão se estivermos atualizando (placa case-insensitive)
     const excludeNorm = excludePlaca ? normalizePlaca(excludePlaca) : null;
     const conflitos = excludeNorm
-      ? existentes.filter((item) => normalizePlaca(item.placa) !== excludeNorm)
+      ? existentes.filter((item) => !samePlacaLocal(item.placa, excludePlaca))
       : existentes;
 
     if (conflitos.length > 0) {

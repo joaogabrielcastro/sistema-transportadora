@@ -1,13 +1,35 @@
 import { test, expect } from "@playwright/test";
 
-test.describe("Auth API (Bearer token)", () => {
-  test("requisição à API inclui Authorization quando VITE_API_TOKEN está definido", async ({
+test.describe("Auth JWT", () => {
+  test("rota protegida redireciona para /login quando não autenticado", async ({
     page,
   }) => {
-    let capturedAuth = null;
+    await page.goto("/");
+    await expect(page).toHaveURL(/\/login/);
+    await expect(page.getByRole("heading", { name: "Entrar" })).toBeVisible();
+  });
+
+  test("após login, requisições à API incluem Bearer JWT", async ({ page }) => {
+    const fakeToken = "e2e-jwt-token";
 
     await page.route("**/api/**", async (route) => {
-      capturedAuth = route.request().headers()["authorization"] ?? null;
+      const url = route.request().url();
+
+      if (url.includes("/auth/login")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            success: true,
+            data: {
+              token: fakeToken,
+              user: { id: 1, email: "test@example.com", role: "admin" },
+            },
+          }),
+        });
+        return;
+      }
+
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -24,14 +46,19 @@ test.describe("Auth API (Bearer token)", () => {
       });
     });
 
-    await page.goto("/");
-    await page.waitForTimeout(1500);
+    await page.goto("/login");
+    await page.getByLabel("E-mail").fill("test@example.com");
+    await page.getByLabel("Senha").fill("senha-segura");
 
-    const token = process.env.VITE_API_TOKEN || "";
-    if (token.trim()) {
-      expect(capturedAuth).toBe(`Bearer ${token.trim()}`);
-    } else {
-      expect(capturedAuth).toBeNull();
-    }
+    const apiRequest = page.waitForRequest(
+      (req) =>
+        req.url().includes("/api/") && !req.url().includes("/auth/login"),
+    );
+
+    await page.getByRole("button", { name: "Entrar" }).click();
+    await expect(page).toHaveURL("/");
+
+    const req = await apiRequest;
+    expect(req.headers()["authorization"]).toBe(`Bearer ${fakeToken}`);
   });
 });

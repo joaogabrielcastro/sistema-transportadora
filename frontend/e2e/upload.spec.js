@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/auth.js";
 
 test.describe("Upload de documentos (mock API)", () => {
   test("input de PDF dispara POST multipart ao selecionar arquivo", async ({
@@ -69,6 +69,7 @@ test.describe("Upload de documentos (mock API)", () => {
     });
 
     await page.goto("/caminhao/ABC1D23");
+    await page.getByRole("tab", { name: "Documentos" }).click();
     await expect(page.getByRole("button", { name: /adicionar pdfs/i })).toBeVisible({
       timeout: 15_000,
     });

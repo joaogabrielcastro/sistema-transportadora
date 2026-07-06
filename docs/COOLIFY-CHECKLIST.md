@@ -40,7 +40,7 @@ curl.exe -s https://api-abbroto.jwsoftware.com.br/health
 | **Base Directory** | `frontend` |
 | **Dockerfile** | `Dockerfile` |
 | **Build Arguments** | `VITE_API_URL=https://api-abbroto.jwsoftware.com.br` |
-| | `VITE_API_TOKEN=` mesmo valor de `API_TOKEN` do backend |
+| | `VITE_AUTH_REQUIRED=true` |
 
 A URL da API **não** deve terminar com `/api`.
 
@@ -97,7 +97,8 @@ Alternativa: Base Directory `.` e Dockerfile na raiz (copia `backend/`).
 | `PORT` | `3020` (ou a porta que o Coolify mapeia) |
 | `NODE_ENV` | `production` |
 | `AUTH_ENABLED` | `true` |
-| `API_TOKEN` | senha longa aleatória (≥ 16 caracteres) |
+| `JWT_SECRET` | senha longa aleatória (≥ 16 caracteres) |
+| `API_TOKEN` | opcional — só para scripts/CI (não embutir no frontend) |
 | `CORS_ORIGINS` | `https://abbroto.jwsoftware.com.br` |
 | `DB_SSL_MODE` | `require` ou `no-verify` (evite `disable` em produção) |
 | `PRISMA_CLIENT_ENGINE_TYPE` | `library` |

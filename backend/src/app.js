@@ -9,7 +9,9 @@ import {
   attachRequestContext,
   auditLog,
   requireAuth,
+  requireRole,
 } from "./middleware/security.js";
+import { authController } from "./controllers/authController.js";
 import caminhoesRoutes from "./routes/caminhoesRoutes.js";
 import pneusRoutes from "./routes/pneusRoutes.js";
 import posicoesPneusRoutes from "./routes/posicoesPneusRoutes.js";
@@ -20,6 +22,7 @@ import itensChecklistRoutes from "./routes/itensChecklistRoutes.js";
 import tiposGastosRoutes from "./routes/tiposGastosRoutes.js";
 import reportsRoutes from "./routes/reportsRoutes.js";
 import ordemColetaRoutes from "./routes/ordemColetaRoutes.js";
+import registrosRoutes from "./routes/registrosRoutes.js";
 import { ensureUploadDirs } from "./utils/uploadPaths.js";
 import { runHealthCheck } from "./utils/healthCheck.js";
 
@@ -27,14 +30,11 @@ ensureUploadDirs();
 
 const app = express();
 
-// Necessário em ambientes atrás de proxy/reverse-proxy (Coolify/Caddy/Nginx)
 app.set("trust proxy", config.app.trustProxy);
 
-// Middleware de segurança
 app.use(helmet());
 app.use(attachRequestContext);
 
-// CORS configurado via config
 const normalizeOrigin = (origin) =>
   String(origin || "")
     .trim()
@@ -71,11 +71,9 @@ app.use(
   }),
 );
 
-// Middleware para parsing JSON
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Middleware de logging estruturado
 app.use((req, res, next) => {
   logger.info("Request received", {
     requestId: req.context?.requestId,
@@ -87,10 +85,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Rate limit, auth e auditoria só na API (health check livre para monitoramento)
-app.use("/api", apiRateLimiter, requireAuth, auditLog);
-
-// Health check endpoint
 app.get("/", (req, res) => {
   res.json({
     message: "API do Sistema de Transportadora está funcionando!",
@@ -105,22 +99,36 @@ app.get("/health", async (req, res) => {
   res.status(httpStatus).json(payload);
 });
 
-// Define as rotas da API
-app.use("/api/caminhoes", caminhoesRoutes);
-app.use("/api/pneus", pneusRoutes);
-app.use("/api/posicoes-pneus", posicoesPneusRoutes);
-app.use("/api/status-pneus", statusPneusRoutes);
-app.use("/api/gastos", gastosRoutes);
-app.use("/api/checklist", checklistRoutes);
-app.use("/api/itens-checklist", itensChecklistRoutes);
-app.use("/api/tipos-gastos", tiposGastosRoutes);
-app.use("/api/reports", reportsRoutes);
-app.use("/api/ordem-coleta", ordemColetaRoutes);
+const apiRouter = express.Router();
+apiRouter.use(apiRateLimiter);
+apiRouter.post("/auth/login", authController.login);
+apiRouter.use(requireAuth);
+apiRouter.use(auditLog);
+apiRouter.get("/auth/me", authController.me);
+apiRouter.use("/caminhoes", caminhoesRoutes);
+apiRouter.use("/pneus", pneusRoutes);
+apiRouter.use("/posicoes-pneus", posicoesPneusRoutes);
+apiRouter.use("/status-pneus", statusPneusRoutes);
+apiRouter.use("/gastos", gastosRoutes);
+apiRouter.use("/checklist", checklistRoutes);
+apiRouter.use("/itens-checklist", itensChecklistRoutes);
+apiRouter.use("/tipos-gastos", tiposGastosRoutes);
+apiRouter.use("/reports", reportsRoutes);
+apiRouter.use("/registros", registrosRoutes);
+apiRouter.use(
+  "/ordem-coleta",
+  (req, res, next) => {
+    if (req.method === "DELETE" && req.path === "/historico/falhas") {
+      return requireRole("admin")(req, res, next);
+    }
+    return next();
+  },
+  ordemColetaRoutes,
+);
 
-// Middleware de tratamento de rotas não encontradas
+app.use("/api", apiRouter);
+
 app.use(notFound);
-
-// Middleware de tratamento de erros (deve ser o último)
 app.use(errorHandler);
 
 export default app;

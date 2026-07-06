@@ -11,6 +11,7 @@ import {
   Alert,
   PageHeader,
 } from "../components/ui";
+import { isCombustivelTipo } from "../utils/tipoGastoUtils.js";
 
 const EditGasto = () => {
   const { id } = useParams();
@@ -38,9 +39,6 @@ const EditGasto = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const loadError = queryError?.message || null;
-
-  // IDs dos tipos de gasto
-  const ID_TIPO_GASTO_COMBUSTIVEL = 9;
 
   useEffect(() => {
     if (!data) return;
@@ -88,8 +86,10 @@ const EditGasto = () => {
     setSubmitting(true);
 
     try {
-      const isCombustivel =
-        parseInt(formData.tipo_gasto_id) === ID_TIPO_GASTO_COMBUSTIVEL;
+      const isCombustivel = isCombustivelTipo(
+        formData.tipo_gasto_id,
+        tiposGastos,
+      );
 
       const payload = {
         caminhao_id: parseInt(formData.caminhao_id),
@@ -121,8 +121,7 @@ const EditGasto = () => {
     }
   };
 
-  const isCombustivel =
-    parseInt(formData.tipo_gasto_id) === ID_TIPO_GASTO_COMBUSTIVEL;
+  const isCombustivel = isCombustivelTipo(formData.tipo_gasto_id, tiposGastos);
   const caminhaoSelecionado = caminhoes.find(
     (c) => c.id === parseInt(formData.caminhao_id)
   );

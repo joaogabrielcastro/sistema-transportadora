@@ -1,5 +1,9 @@
 import prisma from "../lib/prisma.js";
 import { gastosModel } from "../models/gastosModel.js";
+import {
+  syncKmFromRegistro,
+  recalculateKmAtual,
+} from "./KmCaminhaoService.js";
 
 export class GastoService {
   static async createWithCaminhaoUpdate(gastoData) {
@@ -19,11 +23,8 @@ export class GastoService {
         },
       });
 
-      if (caminhaoId && novoKm) {
-        await tx.caminhoes.update({
-          where: { id: Number(caminhaoId) },
-          data: { km_atual: Number(novoKm) },
-        });
+      if (caminhaoId && novoKm != null) {
+        await syncKmFromRegistro(caminhaoId, novoKm, { tx });
       }
 
       return gastoCriado;
@@ -40,10 +41,8 @@ export class GastoService {
 
     const parsedId = Number(id);
     const caminhaoId = gastoData.caminhao_id ?? existing.caminhao_id;
-    const novoKm =
-      gastoData.km_registro !== undefined
-        ? gastoData.km_registro
-        : undefined;
+    const kmAlterado = gastoData.km_registro !== undefined;
+    const novoKm = kmAlterado ? gastoData.km_registro : undefined;
 
     await prisma.$transaction(async (tx) => {
       await tx.gastos.update({
@@ -51,14 +50,31 @@ export class GastoService {
         data: gastoData,
       });
 
-      if (caminhaoId && novoKm != null && novoKm !== "") {
-        await tx.caminhoes.update({
-          where: { id: Number(caminhaoId) },
-          data: { km_atual: Number(novoKm) },
-        });
+      if (!caminhaoId) return;
+
+      if (kmAlterado && novoKm != null && novoKm !== "") {
+        await syncKmFromRegistro(caminhaoId, novoKm, { tx });
+      } else if (kmAlterado) {
+        await recalculateKmAtual(caminhaoId, { tx });
       }
     });
 
     return gastosModel.getById(parsedId);
+  }
+
+  static async deleteWithKmSync(id) {
+    const existing = await gastosModel.getById(id);
+    if (!existing) {
+      throw new Error("Gasto não encontrado");
+    }
+
+    const caminhaoId = existing.caminhao_id;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.gastos.delete({ where: { id: Number(id) } });
+      if (caminhaoId) {
+        await recalculateKmAtual(caminhaoId, { tx });
+      }
+    });
   }
 }

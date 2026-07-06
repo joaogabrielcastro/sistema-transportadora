@@ -22,6 +22,7 @@ import {
   DataTableTd,
 } from "../components/ui";
 import PageLayout from "../components/layout/PageLayout.jsx";
+import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
 import ConfirmModal from "../components/ConfirmModal.jsx";
 import { useToast } from "../components/ui/useToast.js";
 import {
@@ -69,6 +70,7 @@ const OrdensColeta = () => {
   const [previewHtml, setPreviewHtml] = useState("");
   const [historicoPage, setHistoricoPage] = useState(1);
   const [actionLoading, setActionLoading] = useState(null);
+  const [sendProgress, setSendProgress] = useState("");
   const [localError, setLocalError] = useState("");
   const [confirmClearFalhas, setConfirmClearFalhas] = useState(false);
   const [clearingFalhas, setClearingFalhas] = useState(false);
@@ -125,6 +127,13 @@ const OrdensColeta = () => {
 
   const handleCampoChange = (key, value) => {
     setDadosVariaveis((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleTipoChange = (nextTipo) => {
+    if (nextTipo === tipo) return;
+    setDadosVariaveis(buildEmptyDadosVariaveis());
+    setPreviewHtml("");
+    setTipo(nextTipo);
   };
 
   const handlePreview = async () => {
@@ -202,6 +211,7 @@ const OrdensColeta = () => {
 
       const maxAttempts = 90;
       for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        setSendProgress(`Processando envio… (${attempt + 1}/${maxAttempts})`);
         await new Promise((resolve) => setTimeout(resolve, 2000));
         const statusRes = await get(`/ordem-coleta/envio/${jobId}`, {
           skipLoading: true,
@@ -234,6 +244,7 @@ const OrdensColeta = () => {
       }
     } finally {
       setActionLoading(null);
+      setSendProgress("");
     }
   };
 
@@ -248,6 +259,9 @@ const OrdensColeta = () => {
 
   return (
     <PageLayout className="space-y-6">
+      <Breadcrumbs
+        items={[{ label: "Início", to: "/" }, { label: "Ordem de coleta" }]}
+      />
       <PageHeader
         title="Ordens de coleta e autorizações"
         subtitle="Gere PDFs, envie por e-mail e consulte o histórico de envios"
@@ -267,7 +281,8 @@ const OrdensColeta = () => {
               <button
                 key={t.id}
                 type="button"
-                onClick={() => setTipo(t.id)}
+                aria-pressed={tipo === t.id}
+                onClick={() => handleTipoChange(t.id)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   tipo === t.id
                     ? "bg-secondary text-white shadow"
@@ -378,9 +393,14 @@ const OrdensColeta = () => {
               loading={actionLoading === "enviar"}
               disabled={Boolean(actionLoading)}
             >
-              Gerar PDF e enviar por e-mail
+              {actionLoading === "enviar" && sendProgress
+                ? sendProgress
+                : "Gerar PDF e enviar por e-mail"}
             </Button>
           </div>
+          {sendProgress && actionLoading === "enviar" && (
+            <p className="text-sm text-text-secondary mt-3">{sendProgress}</p>
+          )}
         </Card>
 
         {previewHtml && (

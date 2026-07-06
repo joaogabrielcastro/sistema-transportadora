@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, lazy, Suspense } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useCaminhaoDetailQuery, usePneuAtribuirQueries } from "../hooks";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../lib/queryKeys.js";
-import { API_CONFIG } from "../utils/constants.js";
+import { formatCaminhaoRegistros } from "../utils/formatRegistro.js";
 import { Card, Button, Alert, PageHeader, StatCard, StatusBadge, Tabs } from "../components/ui";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
@@ -11,32 +11,9 @@ import { CardSkeleton } from "../components/Skeleton.jsx";
 import CaminhaoDocumentos from "../components/CaminhaoDocumentos";
 import RegistroDetailModal from "../components/RegistroDetailModal.jsx";
 import NovoPneuModal from "../components/NovoPneuModal.jsx";
-import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  PointElement,
-  LineElement,
-  Filler,
-} from "chart.js";
-import { Bar, Line, Doughnut } from "react-chartjs-2";
 
-ChartJS.register(
-  ArcElement,
-  Tooltip,
-  Legend,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  PointElement,
-  LineElement,
-  Filler
+const CaminhaoAnalysisCharts = lazy(
+  () => import("../components/caminhao/CaminhaoAnalysisCharts.jsx"),
 );
 
 const DETAIL_TABS = [
@@ -60,7 +37,7 @@ const CaminhaoDetail = () => {
     pneus: stockPneus,
     posicoes,
     statusOptions,
-  } = usePneuAtribuirQueries();
+  } = usePneuAtribuirQueries({ enabled: novoPneuOpen });
 
   const caminhao = data?.caminhao ?? null;
   const gastos = useMemo(() => data?.gastos ?? [], [data?.gastos]);
@@ -76,161 +53,14 @@ const CaminhaoDetail = () => {
 
   const loadError = error?.message || null;
 
-  const todosRegistros = useMemo(() => {
-    const gastosFormatados = gastos.map((g) => ({
-      ...g,
-      tipo: "gasto",
-      valor: parseFloat(g.valor),
-      data: g.data_gasto,
-      descricao: g.tipos_gastos?.nome_tipo,
-    }));
-
-    const manutencoesFormatadas = checklists.map((c) => ({
-      ...c,
-      tipo: "manutencao",
-      valor: c.valor ? parseFloat(c.valor) : 0,
-      data: c.data_manutencao,
-      descricao: c.itens_checklist?.nome_item,
-    }));
-
-    return [...gastosFormatados, ...manutencoesFormatadas].sort(
-      (a, b) => new Date(b.data) - new Date(a.data)
-    );
-  }, [gastos, checklists]);
-
-  const gastosChartData = useMemo(() => {
-    const monthlyData = {};
-    todosRegistros.forEach((registro) => {
-      if (registro.valor > 0) {
-        const date = new Date(registro.data);
-        const month = date.toLocaleString("pt-BR", {
-          month: "short",
-          year: "numeric",
-        });
-        monthlyData[month] = (monthlyData[month] || 0) + registro.valor;
-      }
-    });
-
-    return {
-      labels: Object.keys(monthlyData),
-      datasets: [
-        {
-          label: "Gastos Mensais (R$)",
-          data: Object.values(monthlyData),
-          backgroundColor: "rgba(59, 130, 246, 0.6)",
-          borderColor: "rgba(59, 130, 246, 1)",
-          borderWidth: 2,
-          borderRadius: 6,
-        },
-      ],
-    };
-  }, [todosRegistros]);
-
-  const gastosLineChartData = useMemo(() => {
-    const sortedRegistros = [...todosRegistros]
-      .filter((r) => r.valor > 0)
-      .sort((a, b) => new Date(a.data) - new Date(b.data));
-
-    const dates = sortedRegistros.map((r) =>
-      new Date(r.data).toLocaleDateString("pt-BR")
-    );
-    const cumulativeData = [];
-    let cumulativeTotal = 0;
-
-    sortedRegistros.forEach((registro) => {
-      cumulativeTotal += registro.valor;
-      cumulativeData.push(cumulativeTotal);
-    });
-
-    return {
-      labels: dates,
-      datasets: [
-        {
-          label: "Gastos Acumulados (R$)",
-          data: cumulativeData,
-          fill: true,
-          backgroundColor: "rgba(59, 130, 246, 0.1)",
-          borderColor: "rgba(59, 130, 246, 1)",
-          borderWidth: 2,
-          tension: 0.3,
-          pointBackgroundColor: "rgba(59, 130, 246, 1)",
-          pointBorderColor: "#fff",
-          pointBorderWidth: 2,
-          pointRadius: 4,
-        },
-      ],
-    };
-  }, [todosRegistros]);
-
-  const gastosPorTipoData = useMemo(() => {
-    const tipoData = {};
-
-    gastos.forEach((gasto) => {
-      if (gasto.valor) {
-        const tipo = `Gasto: ${gasto.tipos_gastos?.nome_tipo || "Outros"}`;
-        tipoData[tipo] = (tipoData[tipo] || 0) + parseFloat(gasto.valor);
-      }
-    });
-
-    checklists.forEach((checklist) => {
-      if (checklist.valor) {
-        const tipo = `Manutenção: ${
-          checklist.itens_checklist?.nome_item || "Outros"
-        }`;
-        tipoData[tipo] = (tipoData[tipo] || 0) + parseFloat(checklist.valor);
-      }
-    });
-
-    const cores = [
-      "rgba(59, 130, 246, 0.8)",
-      "rgba(16, 185, 129, 0.8)",
-      "rgba(245, 158, 11, 0.8)",
-      "rgba(239, 68, 68, 0.8)",
-      "rgba(139, 92, 246, 0.8)",
-      "rgba(14, 165, 233, 0.8)",
-    ];
-
-    return {
-      labels: Object.keys(tipoData),
-      datasets: [
-        {
-          data: Object.values(tipoData),
-          backgroundColor: cores.slice(0, Object.keys(tipoData).length),
-          borderWidth: 0,
-        },
-      ],
-    };
-  }, [gastos, checklists]);
-
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { position: "top", labels: { usePointStyle: true, padding: 20 } },
-      tooltip: {
-        callbacks: {
-          label: (context) => {
-            const value = context.raw || 0;
-            return `R$ ${Number(value).toLocaleString("pt-BR", {
-              minimumFractionDigits: 2,
-            })}`;
-          },
-        },
-      },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        ticks: {
-          callback: (value) => {
-            return "R$ " + Number(value || 0).toLocaleString("pt-BR");
-          },
-        },
-        grid: { color: "rgba(0, 0, 0, 0.05)" },
-      },
-      x: { grid: { display: false } },
-    },
-  };
+  const todosRegistros = useMemo(
+    () =>
+      formatCaminhaoRegistros(gastos, checklists).map((r) => ({
+        ...r,
+        valor: parseFloat(r.valor || 0),
+      })),
+    [gastos, checklists],
+  );
 
   const estatisticas = useMemo(() => {
     const totalGastos = gastos.reduce(
@@ -516,35 +346,13 @@ const CaminhaoDetail = () => {
         )}
 
         {activeTab === "analise" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Card title="Gastos Mensais">
-            <div className="h-80">
-              <Bar options={chartOptions} data={gastosChartData} />
-            </div>
-          </Card>
-          <Card title="Evolução de Gastos">
-            <div className="h-80">
-              <Line options={chartOptions} data={gastosLineChartData} />
-            </div>
-          </Card>
-          {gastosPorTipoData.labels.length > 0 && (
-            <Card title="Distribuição por Tipo" className="lg:col-span-2">
-              <div className="h-80 max-w-xl mx-auto">
-                <Doughnut
-                  options={{
-                    ...chartOptions,
-                    scales: undefined,
-                    plugins: {
-                      ...chartOptions.plugins,
-                      legend: { position: "right" },
-                    },
-                  }}
-                  data={gastosPorTipoData}
-                />
-              </div>
-            </Card>
-          )}
-        </div>
+        <Suspense fallback={<CardSkeleton lines={4} />}>
+          <CaminhaoAnalysisCharts
+            gastos={gastos}
+            checklists={checklists}
+            registros={todosRegistros}
+          />
+        </Suspense>
         )}
 
         {activeTab === "registros" && (

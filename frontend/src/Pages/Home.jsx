@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useApi,
   useApiMutation,
@@ -13,6 +13,7 @@ import PageLayout from "../components/layout/PageLayout.jsx";
 import { formatCurrency, formatNumber } from "../utils";
 import { extractApiArray, extractApiData } from "../utils/extractApiArray.js";
 import { queryKeys } from "../lib/queryKeys.ts";
+import { apiFetch } from "../lib/apiClient.js";
 import ConfirmModal from "../components/ConfirmModal";
 import Pagination from "../components/Pagination.jsx";
 import EmptyState from "../components/EmptyState.jsx";
@@ -50,11 +51,8 @@ const Home = () => {
     [overview, pagination?.totalItems, caminhoes?.length],
   );
 
-  // Estados da aplicação
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   // Estados para o modal de confirmação
   const [modalOpen, setModalOpen] = useState(false);
@@ -62,32 +60,30 @@ const Home = () => {
   const [ordensHistoricoCount, setOrdensHistoricoCount] = useState(0);
   const [excluindo, setExcluindo] = useState(false);
 
-  // Função de busca
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!searchTerm.trim()) {
-      setSearchResults([]);
-      setHasSearched(false);
-      return;
-    }
+  const isSearching = debouncedSearch.trim().length >= 2;
 
-    setSearchLoading(true);
-    setErrorMessage("");
-    setHasSearched(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 350);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
-    try {
-      const results = await apiGet(
-        `/caminhoes/search?term=${encodeURIComponent(searchTerm.trim())}`,
-        { skipLoading: true },
-      );
-      setSearchResults(extractApiArray(results));
-    } catch (err) {
-      setErrorMessage("Erro ao buscar caminhões. Tente novamente.");
-      setSearchResults([]);
-    } finally {
-      setSearchLoading(false);
-    }
-  };
+  const searchQuery = useQuery({
+    queryKey: queryKeys.caminhoes.search(debouncedSearch),
+    queryFn: async () => {
+      const res = await apiFetch({
+        method: "GET",
+        url: `/caminhoes/search?term=${encodeURIComponent(debouncedSearch.trim())}`,
+      });
+      return extractApiArray(res);
+    },
+    enabled: isSearching,
+  });
+
+  const displayedCaminhoes = isSearching
+    ? (searchQuery.data ?? [])
+    : caminhoes;
+
+  const listLoading = isSearching ? searchQuery.isLoading : loadingCaminhoes;
 
   // Função para verificar dependências ANTES de excluir
   const handleOpenDeleteModal = async (caminhao) => {
@@ -122,8 +118,7 @@ const Home = () => {
       setModalOpen(true);
     } catch (err) {
       console.error("Erro ao verificar dependências:", err);
-      setCaminhaoParaExcluir(caminhao);
-      setModalOpen(true);
+      toast.error("Não foi possível verificar dependências. Tente novamente.");
     }
   };
 
@@ -138,11 +133,10 @@ const Home = () => {
 
     setExcluindo(true);
     try {
-      await apiDelete(`/caminhoes/${caminhaoParaExcluir.placa}/cascade`);
+      await apiDelete(`/caminhoes/${caminhaoParaExcluir.placa}/cascade`, {
+        skipSuccessToast: true,
+      });
       toast.success(`Caminhão ${caminhaoParaExcluir.placa} excluído com sucesso.`);
-      setSearchResults((prev) =>
-        prev.filter((c) => c.placa !== caminhaoParaExcluir.placa),
-      );
       await queryClient.invalidateQueries({ queryKey: queryKeys.caminhoes.all });
       handleCloseModal();
     } catch (err) {
@@ -283,7 +277,7 @@ const Home = () => {
             }
           />
           <StatCard
-            title="Média de Gastos"
+            title="Média por lançamento"
             value={formatCurrency(stats.mediaGastos)}
             color="purple"
             icon={
@@ -304,11 +298,10 @@ const Home = () => {
           />
         </div>
 
-        {/* Search Section */}
-        <form
-          onSubmit={handleSearch}
-          className="flex flex-col sm:block gap-3 max-w-2xl mx-auto w-full"
-        >
+        <div className="max-w-2xl mx-auto w-full">
+          <label htmlFor="home-search" className="sr-only">
+            Buscar caminhão por placa, motorista ou modelo
+          </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <svg
@@ -326,163 +319,90 @@ const Home = () => {
               </svg>
             </div>
             <input
-              type="text"
-              className="block w-full pl-11 pr-4 sm:pr-28 py-4 bg-white border border-border rounded-xl text-text-primary placeholder-text-light focus:ring-2 focus:ring-secondary focus:border-transparent shadow-sm transition-all"
+              id="home-search"
+              type="search"
+              className="block w-full pl-11 pr-4 py-4 bg-white border border-border rounded-xl text-text-primary placeholder-text-light focus:ring-2 focus:ring-secondary focus:border-transparent shadow-sm transition-all"
               placeholder="Buscar por placa, motorista ou modelo..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <div className="hidden sm:flex absolute inset-y-0 right-0 pr-2 items-center">
-              <Button
-                type="submit"
-                variant="primary"
-                size="sm"
-                loading={searchLoading}
-                className="rounded-lg"
-              >
-                Buscar
-              </Button>
-            </div>
           </div>
-          <Button
-            type="submit"
-            variant="primary"
-            loading={searchLoading}
-            className="sm:hidden w-full"
-          >
-            Buscar
-          </Button>
-        </form>
+        </div>
 
-        {/* Content Area */}
         {errorCaminhoes ? (
           <Alert
             type="error"
             title="Erro ao carregar frota"
             message={errorCaminhoes.message || "Tente recarregar a página."}
           />
-        ) : loadingCaminhoes ? (
+        ) : listLoading ? (
           <div className="flex justify-center py-20">
             <LoadingSpinner size="lg" text="Carregando frota..." />
           </div>
         ) : (
-          <>
-            {/* Search Results */}
-            {hasSearched && (
-              <div className="space-y-6 animate-fade-in">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-bold text-text-primary">
-                    Resultados da Busca
-                  </h2>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setHasSearched(false);
-                      setSearchTerm("");
-                      setSearchResults([]);
-                    }}
-                  >
-                    Limpar busca
-                  </Button>
+          <div className="space-y-6">
+            <div className="flex justify-between items-center flex-wrap gap-3">
+              <h2 className="text-xl font-bold text-text-primary">
+                {isSearching ? "Resultados da busca" : "Frota recente"}
+              </h2>
+              {isSearching ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSearchTerm("")}
+                >
+                  Limpar busca
+                </Button>
+              ) : (
+                pagination?.totalPages > 1 && (
+                  <p className="text-sm text-text-secondary">
+                    Página {currentPage} de {pagination.totalPages}
+                  </p>
+                )
+              )}
+            </div>
+
+            {displayedCaminhoes.length === 0 ? (
+              <EmptyState
+                title={
+                  isSearching
+                    ? "Nenhum resultado encontrado"
+                    : "Nenhum caminhão cadastrado"
+                }
+                description={
+                  isSearching
+                    ? "Tente outro termo de busca."
+                    : "Comece cadastrando seu primeiro veículo."
+                }
+                action={
+                  !isSearching ? (
+                    <Link to="/cadastro-caminhao">
+                      <Button variant="primary">Cadastrar Caminhão</Button>
+                    </Link>
+                  ) : null
+                }
+              />
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {displayedCaminhoes.map((caminhao) => (
+                    <TruckCard
+                      key={caminhao.id}
+                      caminhao={caminhao}
+                      onDelete={() => handleOpenDeleteModal(caminhao)}
+                    />
+                  ))}
                 </div>
-
-                {searchResults.length === 0 ? (
-                  <EmptyState
-                    title="Nenhum resultado encontrado"
-                    description="Tente buscar por outro termo ou limpe o filtro."
-                    icon={
-                      <svg
-                        className="w-7 h-7"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                        />
-                      </svg>
-                    }
+                {!isSearching && pagination?.totalPages > 1 && (
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={pagination.totalPages}
+                    onPageChange={handlePageChange}
                   />
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {searchResults.map((caminhao) => (
-                      <TruckCard
-                        key={caminhao.id}
-                        caminhao={caminhao}
-                        onDelete={() => handleOpenDeleteModal(caminhao)}
-                      />
-                    ))}
-                  </div>
                 )}
-              </div>
+              </>
             )}
-
-            {/* Main Fleet List */}
-            {!hasSearched && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center flex-wrap gap-3">
-                  <h2 className="text-xl font-bold text-text-primary">
-                    Frota Recente
-                  </h2>
-                  {pagination?.totalPages > 1 && (
-                    <p className="text-sm text-text-secondary">
-                      Página {currentPage} de {pagination.totalPages}
-                    </p>
-                  )}
-                </div>
-
-                {!caminhoes || caminhoes.length === 0 ? (
-                  <EmptyState
-                    title="Nenhum caminhão cadastrado"
-                    description="Comece cadastrando seu primeiro veículo para gerenciar sua frota."
-                    icon={
-                      <svg
-                        className="w-7 h-7"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"
-                        />
-                      </svg>
-                    }
-                    action={
-                      <Link to="/cadastro-caminhao">
-                        <Button variant="primary">Cadastrar Caminhão</Button>
-                      </Link>
-                    }
-                  />
-                ) : (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {caminhoes.map((caminhao) => (
-                        <TruckCard
-                          key={caminhao.id}
-                          caminhao={caminhao}
-                          onDelete={() => handleOpenDeleteModal(caminhao)}
-                        />
-                      ))}
-                    </div>
-                    {pagination?.totalPages > 1 && (
-                      <Pagination
-                        currentPage={currentPage}
-                        totalPages={pagination.totalPages}
-                        onPageChange={handlePageChange}
-                      />
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </>
+          </div>
         )}
 
         <ConfirmModal
@@ -525,7 +445,7 @@ const TruckCard = ({ caminhao, onDelete }) => (
           </svg>
         </div>
         <StatusBadge
-          status={caminhao.status || "Operacional"}
+          status={caminhao.motorista ? "Com motorista" : "Sem motorista"}
           type="vehicle"
         />
       </div>

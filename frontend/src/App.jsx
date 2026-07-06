@@ -3,10 +3,11 @@ import React, { Suspense, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 import { LoadingSpinner } from "./components/ui";
 
-// Lazy loading das páginas
 const Home = lazy(() => import("./Pages/Home.jsx"));
+const Login = lazy(() => import("./Pages/Login.jsx"));
 const CadastroCaminhao = lazy(() => import("./Pages/CadastroCaminhao.jsx"));
 const CaminhaoDetail = lazy(() => import("./Pages/CaminhaoDetail.jsx"));
 const Pneus = lazy(() => import("./Pages/Pneus.jsx"));
@@ -34,23 +35,119 @@ function App() {
           }
         >
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/cadastro-caminhao" element={<CadastroCaminhao />} />
-            <Route path="/pneus" element={<Pneus />} />
-            <Route path="/pneus/estoque" element={<PneusEstoque />} />
-            <Route path="/pneus/atribuir" element={<PneuAtribuir />} />
-            <Route path="/caminhao/:placa" element={<CaminhaoDetail />} />
-            <Route path="/caminhao/editar/:placa" element={<EditCaminhao />} />
-            <Route path="/pneu/editar/:id" element={<EditPneu />} />
-            <Route path="/manutencao-gastos" element={<ManutencaoGastos />} />
-            <Route path="/gasto/editar/:id" element={<EditGasto />} />
-            <Route path="/checklist/editar/:id" element={<EditChecklist />} />
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Home />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/cadastro-caminhao"
+              element={
+                <ProtectedRoute>
+                  <CadastroCaminhao />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pneus"
+              element={
+                <ProtectedRoute>
+                  <Pneus />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pneus/estoque"
+              element={
+                <ProtectedRoute>
+                  <PneusEstoque />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pneus/atribuir"
+              element={
+                <ProtectedRoute>
+                  <PneuAtribuir />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/caminhao/:placa"
+              element={
+                <ProtectedRoute>
+                  <CaminhaoDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/caminhao/editar/:placa"
+              element={
+                <ProtectedRoute>
+                  <EditCaminhao />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pneu/editar/:id"
+              element={
+                <ProtectedRoute>
+                  <EditPneu />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/manutencao-gastos"
+              element={
+                <ProtectedRoute>
+                  <ManutencaoGastos />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/gasto/editar/:id"
+              element={
+                <ProtectedRoute>
+                  <EditGasto />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/checklist/editar/:id"
+              element={
+                <ProtectedRoute>
+                  <EditChecklist />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/pneus/cadastro-em-lote"
-              element={<CadastroPneuEmLote />}
+              element={
+                <ProtectedRoute>
+                  <CadastroPneuEmLote />
+                </ProtectedRoute>
+              }
             />
-            <Route path="/relatorios" element={<Relatorios />} />
-            <Route path="/ordem-coleta" element={<OrdensColeta />} />
+            <Route
+              path="/relatorios"
+              element={
+                <ProtectedRoute>
+                  <Relatorios />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ordem-coleta"
+              element={
+                <ProtectedRoute>
+                  <OrdensColeta />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </Suspense>
       </Router>

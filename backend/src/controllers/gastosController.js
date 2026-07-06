@@ -83,7 +83,7 @@ export const gastosController = {
   }),
 
   deleteGasto: catchAsync(async (req, res) => {
-    await gastosModel.delete(req.params.id);
+    await GastoService.deleteWithKmSync(req.params.id);
     res.status(204).send();
   }),
 

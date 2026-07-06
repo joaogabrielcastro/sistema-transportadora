@@ -48,4 +48,8 @@ export const queryKeys = {
     all: ["ordem-coleta"] as const,
     historico: (page: number) => ["ordem-coleta", "historico", page] as const,
   },
+  registros: {
+    all: ["registros"] as const,
+    list: (params: ListParams) => ["registros", "list", params] as const,
+  },
 };

@@ -1,5 +1,6 @@
 import prisma from "../lib/prisma.js";
 import { serializePrisma } from "../utils/prismaSerialization.js";
+import { normalizePlaca } from "../utils/placa.js";
 
 const parseId = (value) => {
   const parsed = Number(value);
@@ -182,8 +183,11 @@ export const caminhoesModel = {
   },
 
   getByPlaca: async (placa) => {
+    const normalized = normalizePlaca(placa);
+    if (!normalized) return null;
+
     const data = await prisma.caminhoes.findUnique({
-      where: { placa },
+      where: { placa: normalized },
     });
 
     return serializePrisma(data);
@@ -216,27 +220,26 @@ export const caminhoesModel = {
   },
 
   checkDependencies: async (placa) => {
-    const caminhao = await prisma.caminhoes.findUnique({
-      where: { placa },
-      select: { id: true },
-    });
+    const caminhao = await caminhoesModel.getByPlaca(placa);
 
     if (!caminhao) {
       throw new Error("Caminhão não encontrado");
     }
 
+    const caminhaoId = caminhao.id;
+
     const [gastos, checklists, pneus, documentos, ordensEnvio] =
       await prisma.$transaction([
-      prisma.gastos.count({ where: { caminhao_id: caminhao.id } }),
-      prisma.checklist.count({ where: { caminhao_id: caminhao.id } }),
-      prisma.pneus.count({ where: { caminhao_id: caminhao.id } }),
-      prisma.caminhao_documentos.count({
-        where: { caminhao_id: caminhao.id },
-      }),
-      prisma.ordens_coleta_envio.count({
-        where: { caminhao_id: caminhao.id },
-      }),
-    ]);
+        prisma.gastos.count({ where: { caminhao_id: caminhaoId } }),
+        prisma.checklist.count({ where: { caminhao_id: caminhaoId } }),
+        prisma.pneus.count({ where: { caminhao_id: caminhaoId } }),
+        prisma.caminhao_documentos.count({
+          where: { caminhao_id: caminhaoId },
+        }),
+        prisma.ordens_coleta_envio.count({
+          where: { caminhao_id: caminhaoId },
+        }),
+      ]);
 
     return {
       detalhes: {
@@ -252,27 +255,21 @@ export const caminhoesModel = {
   },
 
   delete: async (placa) => {
-    const caminhaoExistente = await prisma.caminhoes.findUnique({
-      where: { placa },
-      select: { id: true },
-    });
+    const caminhaoExistente = await caminhoesModel.getByPlaca(placa);
 
     if (!caminhaoExistente) {
       throw new Error("Caminhão não encontrado");
     }
 
     const data = await prisma.caminhoes.delete({
-      where: { placa },
+      where: { placa: caminhaoExistente.placa },
     });
 
     return serializePrisma(data);
   },
 
   deleteWithCascade: async (placa) => {
-    const caminhao = await prisma.caminhoes.findUnique({
-      where: { placa },
-      select: { id: true },
-    });
+    const caminhao = await caminhoesModel.getByPlaca(placa);
 
     if (!caminhao) {
       throw new Error("Caminhão não encontrado");
@@ -286,7 +283,7 @@ export const caminhoesModel = {
         where: { caminhao_id: caminhao.id },
       });
 
-      return tx.caminhoes.delete({ where: { placa } });
+      return tx.caminhoes.delete({ where: { placa: caminhao.placa } });
     });
 
     return serializePrisma(data);

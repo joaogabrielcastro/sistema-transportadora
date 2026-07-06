@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/auth.js";
 
 test.describe("Ordem de coleta", () => {
   test.beforeEach(async ({ page }) => {

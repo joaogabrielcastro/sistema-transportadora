@@ -150,10 +150,45 @@ export const pneusModel = {
   },
 
   assignFromStock: async (pneuId, updates) => {
-    const safeUpdates = normalizePneuData(updates);
+    const existing = await prisma.pneus.findUnique({
+      where: { id: parseId(pneuId) },
+      select: { id: true, caminhao_id: true },
+    });
 
+    if (!existing) {
+      throw new Error("Pneu não encontrado");
+    }
+
+    if (existing.caminhao_id != null) {
+      const err = new Error(
+        "Este pneu já está instalado em um caminhão. Remova-o antes de reatribuir.",
+      );
+      err.code = "PNEU_NOT_IN_STOCK";
+      throw err;
+    }
+
+    const safeUpdates = normalizePneuData(updates);
     delete safeUpdates.id;
     delete safeUpdates.stock_pneu_id;
+
+    if (safeUpdates.caminhao_id && safeUpdates.posicao_id) {
+      const duplicate = await prisma.pneus.findFirst({
+        where: {
+          caminhao_id: safeUpdates.caminhao_id,
+          posicao_id: safeUpdates.posicao_id,
+          NOT: { id: parseId(pneuId) },
+        },
+        select: { id: true },
+      });
+
+      if (duplicate) {
+        const err = new Error(
+          "Já existe um pneu nesta posição para o caminhão selecionado.",
+        );
+        err.code = "PNEU_DUPLICATE_POSITION";
+        throw err;
+      }
+    }
 
     const data = await prisma.pneus.update({
       where: { id: parseId(pneuId) },

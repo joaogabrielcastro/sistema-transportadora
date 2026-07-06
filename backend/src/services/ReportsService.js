@@ -36,10 +36,10 @@ const toKmNumber = (value) => {
   }
 
   const parsed = Number(value);
-  return Number.isNaN(parsed) ? null : parsed;
+  return Number.isNaN(parsed) || parsed < 0 ? null : parsed;
 };
 
-const mergeGroupedCosts = (merged, grouped) => {
+const mergeGroupedCosts = (merged, grouped, { kmMinField, kmMaxField }) => {
   for (const item of grouped) {
     if (item.caminhao_id === null) {
       continue;
@@ -49,29 +49,41 @@ const mergeGroupedCosts = (merged, grouped) => {
     const entry = merged.get(id) || {
       totalCost: 0,
       expensesCount: 0,
-      kmMin: null,
-      kmMax: null,
     };
 
     entry.totalCost += Number(item._sum.valor || 0);
     entry.expensesCount += item._count._all;
 
-    const kmMin = toKmNumber(item._min.km_registro);
-    const kmMax = toKmNumber(item._max.km_registro);
-
-    if (kmMin !== null) {
-      entry.kmMin =
-        entry.kmMin === null ? kmMin : Math.min(entry.kmMin, kmMin);
-    }
-
-    if (kmMax !== null) {
-      entry.kmMax =
-        entry.kmMax === null ? kmMax : Math.max(entry.kmMax, kmMax);
-    }
-
     merged.set(id, entry);
   }
 };
+
+/** KM percorrido = último KM cronológico − primeiro KM (mín. 2 lançamentos com KM). */
+export function computeKmDrivenFromTimeline(records) {
+  const withKm = records
+    .map((row) => ({
+      date: new Date(row.date),
+      km: toKmNumber(row.km),
+    }))
+    .filter((row) => row.km != null)
+    .sort((a, b) => a.date - b.date);
+
+  if (withKm.length < 2) {
+    return { kmDriven: null, kmDataInsufficient: true };
+  }
+
+  const first = withKm[0].km;
+  const last = withKm[withKm.length - 1].km;
+
+  if (last < first) {
+    return { kmDriven: null, kmDataInsufficient: true };
+  }
+
+  return {
+    kmDriven: last - first,
+    kmDataInsufficient: false,
+  };
+}
 
 export class ReportsService {
   static async getOverview() {
@@ -100,52 +112,51 @@ export class ReportsService {
         totalRegistros > 0
           ? (gastosTotal + manutencoesTotal) / totalRegistros
           : 0,
+      mediaPorLancamento:
+        totalRegistros > 0
+          ? (gastosTotal + manutencoesTotal) / totalRegistros
+          : 0,
     };
   }
 
-  static async getCostPerKm({ startDate, endDate, caminhaoId }) {
+  static async getCostPerKm({ startDate, endDate, caminhaoId, entriesLimit = 500 }) {
     const parsedCaminhaoId = parseOptionalInt(caminhaoId);
     const dateWhere = buildDateWhere({ startDate, endDate });
+    const limit = Math.min(Math.max(Number(entriesLimit) || 500, 1), 1000);
 
     const baseWhere = {
       ...(parsedCaminhaoId ? { caminhao_id: parsedCaminhaoId } : {}),
     };
 
-    const [gastosGrouped, checklistGrouped, gastosRecords, checklistRecords] =
-      await Promise.all([
+    const gastosDateWhere = dateWhere ? { data_gasto: dateWhere } : {};
+    const checklistDateWhere = dateWhere ? { data_manutencao: dateWhere } : {};
+
+    const [
+      gastosGrouped,
+      checklistGrouped,
+      gastosRecords,
+      checklistRecords,
+      gastosTotalCount,
+      checklistTotalCount,
+      gastosKmTimeline,
+      checklistKmTimeline,
+    ] = await Promise.all([
       prisma.gastos.groupBy({
         by: ["caminhao_id"],
-        where: {
-          ...baseWhere,
-          ...(dateWhere ? { data_gasto: dateWhere } : {}),
-        },
+        where: { ...baseWhere, ...gastosDateWhere },
         _sum: { valor: true },
         _count: { _all: true },
-        _min: { km_registro: true },
-        _max: { km_registro: true },
-        orderBy: {
-          caminhao_id: "asc",
-        },
+        orderBy: { caminhao_id: "asc" },
       }),
       prisma.checklist.groupBy({
         by: ["caminhao_id"],
-        where: {
-          ...baseWhere,
-          ...(dateWhere ? { data_manutencao: dateWhere } : {}),
-        },
+        where: { ...baseWhere, ...checklistDateWhere },
         _sum: { valor: true },
         _count: { _all: true },
-        _min: { km_registro: true },
-        _max: { km_registro: true },
-        orderBy: {
-          caminhao_id: "asc",
-        },
+        orderBy: { caminhao_id: "asc" },
       }),
       prisma.gastos.findMany({
-        where: {
-          ...baseWhere,
-          ...(dateWhere ? { data_gasto: dateWhere } : {}),
-        },
+        where: { ...baseWhere, ...gastosDateWhere },
         select: {
           id: true,
           caminhao_id: true,
@@ -157,28 +168,80 @@ export class ReportsService {
           caminhoes: { select: { placa: true } },
         },
         orderBy: { data_gasto: "desc" },
+        take: limit,
       }),
       prisma.checklist.findMany({
-        where: {
-          ...baseWhere,
-          ...(dateWhere ? { data_manutencao: dateWhere } : {}),
-        },
+        where: { ...baseWhere, ...checklistDateWhere },
         select: {
           id: true,
           caminhao_id: true,
           valor: true,
           data_manutencao: true,
+          km_manutencao: true,
           km_registro: true,
           itens_checklist: { select: { nome_item: true } },
           caminhoes: { select: { placa: true } },
         },
         orderBy: { data_manutencao: "desc" },
+        take: limit,
+      }),
+      prisma.gastos.count({ where: { ...baseWhere, ...gastosDateWhere } }),
+      prisma.checklist.count({ where: { ...baseWhere, ...checklistDateWhere } }),
+      prisma.gastos.findMany({
+        where: {
+          ...baseWhere,
+          ...gastosDateWhere,
+          km_registro: { not: null },
+        },
+        select: {
+          caminhao_id: true,
+          data_gasto: true,
+          km_registro: true,
+        },
+        orderBy: [{ caminhao_id: "asc" }, { data_gasto: "asc" }],
+      }),
+      prisma.checklist.findMany({
+        where: {
+          ...baseWhere,
+          ...checklistDateWhere,
+          OR: [{ km_manutencao: { not: null } }, { km_registro: { not: null } }],
+        },
+        select: {
+          caminhao_id: true,
+          data_manutencao: true,
+          km_manutencao: true,
+          km_registro: true,
+        },
+        orderBy: [{ caminhao_id: "asc" }, { data_manutencao: "asc" }],
       }),
     ]);
 
     const merged = new Map();
-    mergeGroupedCosts(merged, gastosGrouped);
-    mergeGroupedCosts(merged, checklistGrouped);
+    mergeGroupedCosts(merged, gastosGrouped, {
+      kmMinField: "km_registro",
+      kmMaxField: "km_registro",
+    });
+    mergeGroupedCosts(merged, checklistGrouped, {
+      kmMinField: "km_manutencao",
+      kmMaxField: "km_manutencao",
+    });
+
+    const kmTimelineByTruck = new Map();
+
+    for (const row of gastosKmTimeline) {
+      if (row.caminhao_id == null) continue;
+      const list = kmTimelineByTruck.get(row.caminhao_id) || [];
+      list.push({ date: row.data_gasto, km: row.km_registro });
+      kmTimelineByTruck.set(row.caminhao_id, list);
+    }
+
+    for (const row of checklistKmTimeline) {
+      if (row.caminhao_id == null) continue;
+      const list = kmTimelineByTruck.get(row.caminhao_id) || [];
+      const km = row.km_manutencao ?? row.km_registro;
+      list.push({ date: row.data_manutencao, km });
+      kmTimelineByTruck.set(row.caminhao_id, list);
+    }
 
     const caminhaoIds = [...merged.keys()];
 
@@ -194,12 +257,9 @@ export class ReportsService {
     const data = caminhaoIds
       .map((caminhao_id) => {
         const item = merged.get(caminhao_id);
-        const kmDriven =
-          item.kmMin !== null &&
-          item.kmMax !== null &&
-          item.kmMax >= item.kmMin
-            ? item.kmMax - item.kmMin
-            : null;
+        const timeline = kmTimelineByTruck.get(caminhao_id) || [];
+        const { kmDriven, kmDataInsufficient } =
+          computeKmDrivenFromTimeline(timeline);
         const totalCost = item.totalCost;
         const costPerKm =
           kmDriven && kmDriven > 0 ? totalCost / kmDriven : null;
@@ -211,6 +271,7 @@ export class ReportsService {
           kmDriven,
           costPerKm,
           expensesCount: item.expensesCount,
+          kmDataInsufficient,
         };
       })
       .sort((a, b) => b.totalCost - a.totalCost);
@@ -235,7 +296,7 @@ export class ReportsService {
         descricao: manutencao.itens_checklist?.nome_item || "Manutenção",
         data: manutencao.data_manutencao,
         valor: Number(manutencao.valor || 0),
-        km: toKmNumber(manutencao.km_registro),
+        km: toKmNumber(manutencao.km_manutencao ?? manutencao.km_registro),
       })),
     ].sort((a, b) => new Date(b.data) - new Date(a.data));
 
@@ -245,9 +306,12 @@ export class ReportsService {
         if (typeof current.kmDriven === "number") {
           acc.totalKm += current.kmDriven;
         }
+        if (current.kmDataInsufficient) {
+          acc.trucksWithInsufficientKm += 1;
+        }
         return acc;
       },
-      { grandTotal: 0, totalKm: 0 },
+      { grandTotal: 0, totalKm: 0, trucksWithInsufficientKm: 0 },
     );
 
     return serializePrisma({
@@ -263,6 +327,14 @@ export class ReportsService {
           totals.totalKm > 0 ? totals.grandTotal / totals.totalKm : 0,
         truckCount: data.length,
         entryCount: entries.length,
+        trucksWithInsufficientKm: totals.trucksWithInsufficientKm,
+        entriesTruncated:
+          gastosRecords.length >= limit ||
+          checklistRecords.length >= limit,
+        gastosEntriesTruncated: gastosRecords.length >= limit,
+        checklistEntriesTruncated: checklistRecords.length >= limit,
+        gastosTotalCount,
+        checklistTotalCount,
       },
       items: data,
       entries,

@@ -2,6 +2,7 @@ import rateLimit from "express-rate-limit";
 import crypto from "node:crypto";
 import { config } from "../config/index.js";
 import { logger } from "../utils/logger.js";
+import { verifyAccessToken } from "../utils/jwt.js";
 
 const SENSITIVE_KEY = /pass|password|token|secret|authorization|smtp/i;
 
@@ -72,32 +73,66 @@ export const apiRateLimiter = rateLimit({
   },
 });
 
+function applyAuthUser(req, user) {
+  if (req.context?.user) {
+    req.context.user = user;
+  }
+}
+
 export const requireAuth = (req, res, next) => {
-  // Preflight CORS não envia Authorization; não bloquear OPTIONS.
   if (req.method === "OPTIONS") {
     return next();
   }
 
   if (!config.auth.enabled) {
+    applyAuthUser(req, { id: "dev", role: "admin", email: "dev@local" });
     return next();
   }
 
   const authHeader = req.headers.authorization || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
 
-  if (!tokensMatch(token, config.auth.apiToken)) {
+  if (!token) {
     return res.status(401).json({
       success: false,
       error: "Não autorizado",
     });
   }
 
-  if (req.context?.user) {
-    req.context.user = { id: "api-token", role: "admin" };
+  const jwtPayload = verifyAccessToken(token);
+  if (jwtPayload?.sub) {
+    applyAuthUser(req, {
+      id: String(jwtPayload.sub),
+      role: jwtPayload.role || "operator",
+      email: jwtPayload.email,
+      nome: jwtPayload.nome,
+    });
+    return next();
   }
 
-  return next();
+  if (tokensMatch(token, config.auth.apiToken)) {
+    applyAuthUser(req, { id: "api-token", role: "admin", email: "api-token" });
+    return next();
+  }
+
+  return res.status(401).json({
+    success: false,
+    error: "Não autorizado",
+  });
 };
+
+export const requireRole =
+  (...roles) =>
+  (req, res, next) => {
+    const role = req.context?.user?.role || "viewer";
+    if (!roles.includes(role)) {
+      return res.status(403).json({
+        success: false,
+        error: "Sem permissão para esta operação",
+      });
+    }
+    return next();
+  };
 
 export const auditLog = (req, res, next) => {
   const method = req.method.toUpperCase();

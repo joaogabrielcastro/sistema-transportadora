@@ -109,6 +109,14 @@ export const errorHandler = (err, req, res, _next) => {
   }
 
   // Erro de validação customizado
+  if (err.code === "PNEU_NOT_IN_STOCK" || err.code === "PNEU_DUPLICATE_POSITION") {
+    return res.status(400).json({
+      success: false,
+      error: err.message,
+      code: err.code,
+    });
+  }
+
   if (err.code === "DEPENDENCIES_EXIST") {
     return res.status(409).json({
       success: false,

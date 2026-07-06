@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useMemo, useEffect } from "react";
 import { useApiMutation, useManutencaoGastosQueries } from "../hooks";
 import { useToast } from "../components/ui/useToast.js";
-import { API_CONFIG } from "../utils/constants.js";
 import ConfirmModal from "../components/ConfirmModal";
 import RegistroDetailModal from "../components/RegistroDetailModal.jsx";
+import RegistroEditModal from "../components/RegistroEditModal.jsx";
+import Pagination from "../components/Pagination.jsx";
 import {
   Card,
   Button,
@@ -21,8 +21,10 @@ import {
   StatusBadge,
 } from "../components/ui";
 import PageLayout from "../components/layout/PageLayout.jsx";
+import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import { TableSkeleton } from "../components/Skeleton.jsx";
+import { isCombustivelTipo } from "../utils/tipoGastoUtils.js";
 
 const tipoToModal = (registro) => ({
   ...registro,
@@ -39,11 +41,9 @@ const RegistroForm = ({
   onTipoChange,
   onSubmit,
   loading,
-  ID_TIPO_GASTO_COMBUSTIVEL,
 }) => {
   const isCombustivel =
-    form.tipo === "gasto" &&
-    parseInt(form.tipo_id) === ID_TIPO_GASTO_COMBUSTIVEL;
+    form.tipo === "gasto" && isCombustivelTipo(form.tipo_id, tiposGastos);
 
   const caminhoesList = Array.isArray(caminhoes) ? caminhoes : [];
 
@@ -198,6 +198,8 @@ const HistoricoRegistros = ({
   onEditar,
   filtroPlaca,
   onFiltroChange,
+  pagination,
+  onPageChange,
 }) => {
   const registrosFormatados = useMemo(() => {
     return registros.map((registro) => ({
@@ -219,16 +221,8 @@ const HistoricoRegistros = ({
     }));
   }, [registros]);
 
-  const registrosFiltrados = useMemo(() => {
-    if (!filtroPlaca.trim()) return registrosFormatados;
-
-    return registrosFormatados.filter((registro) =>
-      registro.placa?.toLowerCase().includes(filtroPlaca.toLowerCase())
-    );
-  }, [registrosFormatados, filtroPlaca]);
-
   const estatisticas = useMemo(() => {
-    const base = registrosFiltrados;
+    const base = registrosFormatados;
     const gastos = base.filter(
       (r) => r.tipo_registro === "Gasto" && r.valor !== "N/A",
     );
@@ -246,7 +240,7 @@ const HistoricoRegistros = ({
       totalValorManutencoes,
       totalRegistros: base.length,
     };
-  }, [registrosFiltrados]);
+  }, [registrosFormatados]);
 
   return (
     <Card className="overflow-hidden" noPadding>
@@ -278,7 +272,9 @@ const HistoricoRegistros = ({
 
         <div className="w-full xl:w-72 shrink-0">
           <FormField
-            placeholder="Filtrar por placa..."
+            label="Filtrar por placa"
+            name="filtro_placa"
+            placeholder="Ex.: ABC1D23"
             value={filtroPlaca}
             onChange={onFiltroChange}
             className="mb-0"
@@ -301,7 +297,7 @@ const HistoricoRegistros = ({
         </div>
       </div>
 
-      {registrosFiltrados.length === 0 ? (
+      {registrosFormatados.length === 0 ? (
         <div className="p-6">
           <EmptyState
             title={
@@ -319,7 +315,7 @@ const HistoricoRegistros = ({
       ) : (
         <>
           <div className="md:hidden divide-y divide-border">
-            {registrosFiltrados.map((registro) => (
+            {registrosFormatados.map((registro) => (
               <div
                 key={`${registro.tipo_registro}-${registro.id}-m`}
                 className="px-4 py-3 flex gap-3 items-start"
@@ -377,7 +373,7 @@ const HistoricoRegistros = ({
               </tr>
             </DataTableHead>
             <DataTableBody>
-              {registrosFiltrados.map((registro) => {
+              {registrosFormatados.map((registro) => {
                 const subtexto = [
                   registro.observacao,
                   registro.oficina && registro.oficina !== "N/A"
@@ -431,6 +427,15 @@ const HistoricoRegistros = ({
               })}
             </DataTableBody>
           </DataTable>
+          {pagination && pagination.totalPages > 1 && (
+            <div className="px-4 py-3 border-t border-border">
+              <Pagination
+                currentPage={pagination.currentPage}
+                totalPages={pagination.totalPages}
+                onPageChange={onPageChange}
+              />
+            </div>
+          )}
         </>
       )}
     </Card>
@@ -438,22 +443,38 @@ const HistoricoRegistros = ({
 };
 
 const ManutencaoGastos = () => {
-  const navigate = useNavigate();
-  const { post, put, delete: del } = useApiMutation();
+  const { post, delete: del } = useApiMutation();
   const toast = useToast();
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [filtroPlaca, setFiltroPlaca] = useState("");
+  const [debouncedPlaca, setDebouncedPlaca] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedPlaca(filtroPlaca), 350);
+    return () => clearTimeout(timer);
+  }, [filtroPlaca]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedPlaca]);
 
   const {
     caminhoes,
     itensChecklist,
     tiposGastos,
     registros,
-    listaTruncada,
+    pagination,
     isLoading: loading,
     refetch,
-  } = useManutencaoGastosQueries();
+  } = useManutencaoGastosQueries({
+    page: currentPage,
+    limit: 20,
+    placa: debouncedPlaca,
+  });
 
-  const [filtroPlaca, setFiltroPlaca] = useState("");
   const [registroSelecionado, setRegistroSelecionado] = useState(null);
+  const [registroEmEdicao, setRegistroEmEdicao] = useState(null);
   const [form, setForm] = useState({
     tipo: "gasto",
     caminhao_id: "",
@@ -468,8 +489,6 @@ const ManutencaoGastos = () => {
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
-
-  const ID_TIPO_GASTO_COMBUSTIVEL = 9;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -546,7 +565,7 @@ const ManutencaoGastos = () => {
             ? parseFloat(String(form.quantidade_combustivel).replace(",", "."))
             : null,
         };
-        await post("/gastos", payload);
+        await post("/gastos", payload, { skipSuccessToast: true });
       } else {
         const itemId = parseInt(form.tipo_id, 10);
         if (!Number.isFinite(itemId) || itemId <= 0) {
@@ -561,22 +580,7 @@ const ManutencaoGastos = () => {
           oficina: form.oficina,
           km_manutencao: newKm,
         };
-        await post("/checklist", payload);
-      }
-
-      // Atualizar KM do caminhão se necessário (rota por id)
-      if (newKm !== null) {
-        const caminhao = caminhoes.find((c) => c.id === caminhaoId);
-        if (caminhao && newKm > caminhao.km_atual) {
-          try {
-            await put(`/caminhoes/id/${caminhaoId}`, {
-              km_atual: newKm,
-            });
-          } catch (kmErr) {
-            // Não bloquear o fluxo principal se a atualização de KM falhar
-            console.warn("Não foi possível atualizar KM do caminhão:", kmErr);
-          }
-        }
+        await post("/checklist", payload, { skipSuccessToast: true });
       }
 
       await refetch();
@@ -596,20 +600,14 @@ const ManutencaoGastos = () => {
       });
     } catch (err) {
       console.error("Erro ao cadastrar registro:", err);
-      if (!err?.response) {
-        toast.error(err.message || "Não foi possível salvar o registro.");
-      }
+      toast.error(err.message || "Não foi possível salvar o registro.");
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleEditar = (registro) => {
-    if (registro.tipo_registro === "Manutenção") {
-      navigate(`/checklist/editar/${registro.id}`);
-      return;
-    }
-    navigate(`/gasto/editar/${registro.id}`);
+    setRegistroEmEdicao(registro);
   };
 
   const handleDeleteClick = (tipo, id) => {
@@ -624,18 +622,17 @@ const ManutencaoGastos = () => {
 
     try {
       if (tipo === "Manutenção") {
-        await del(`/checklist/${id}`);
+        await del(`/checklist/${id}`, { skipSuccessToast: true });
       } else {
-        await del(`/gastos/${id}`);
+        await del(`/gastos/${id}`, { skipSuccessToast: true });
       }
 
       toast.success("Registro excluído com sucesso.");
+      await refetch();
       setDeleteTarget(null);
     } catch (err) {
       console.error("Erro completo:", err);
-      if (!err?.response) {
-        toast.error(err.message || "Não foi possível excluir o registro.");
-      }
+      toast.error(err.message || "Não foi possível excluir o registro.");
     } finally {
       setDeleting(false);
     }
@@ -657,16 +654,21 @@ const ManutencaoGastos = () => {
 
   return (
     <PageLayout className="space-y-6">
+      <Breadcrumbs
+        items={[{ label: "Início", to: "/" }, { label: "Manutenção e gastos" }]}
+      />
       <PageHeader
         title="Manutenção e Gastos"
         subtitle="Controle completo de gastos e manutenções da frota"
       />
 
-      {listaTruncada && (
-        <Alert
-          type="warning"
-          message={`O histórico completo tem mais de ${API_CONFIG.LIST_MAX} registros. Exibindo os ${API_CONFIG.LIST_MAX} mais recentes de gastos e manutenções.`}
-        />
+      {pagination && pagination.totalItems > 0 && (
+        <p className="text-sm text-text-secondary">
+          {pagination.totalItems.toLocaleString("pt-BR")} registros no total
+          {pagination.totalPages > 1
+            ? ` · página ${pagination.currentPage} de ${pagination.totalPages}`
+            : ""}
+        </p>
       )}
 
       <RegistroForm
@@ -679,7 +681,6 @@ const ManutencaoGastos = () => {
           onTipoChange={handleTipoChange}
           onSubmit={handleSubmit}
           loading={submitting}
-          ID_TIPO_GASTO_COMBUSTIVEL={ID_TIPO_GASTO_COMBUSTIVEL}
         />
 
       <HistoricoRegistros
@@ -689,7 +690,23 @@ const ManutencaoGastos = () => {
         onVerDetalhes={(registro) => setRegistroSelecionado(registro)}
         filtroPlaca={filtroPlaca}
         onFiltroChange={(e) => setFiltroPlaca(e.target.value)}
+        pagination={pagination}
+        onPageChange={setCurrentPage}
       />
+
+      {registroEmEdicao && (
+        <RegistroEditModal
+          registro={registroEmEdicao}
+          tiposGastos={tiposGastos}
+          itensChecklist={itensChecklist}
+          caminhoes={caminhoes}
+          onClose={() => setRegistroEmEdicao(null)}
+          onSaved={async () => {
+            toast.success("Registro atualizado com sucesso.");
+            await refetch();
+          }}
+        />
+      )}
 
       {registroSelecionado && (
         <RegistroDetailModal

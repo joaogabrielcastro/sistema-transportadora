@@ -86,7 +86,7 @@ export const checklistController = {
   }),
 
   deleteChecklist: catchAsync(async (req, res) => {
-    await checklistModel.delete(req.params.id);
+    await ChecklistService.deleteWithKmSync(req.params.id);
     res.status(204).send();
   }),
 };

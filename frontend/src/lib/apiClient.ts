@@ -1,6 +1,7 @@
 import axios, { type AxiosResponse } from "axios";
 import logger from "../utils/logger.js";
 import { invalidateQueriesFromMutation } from "./invalidateQueries.js";
+import { getAuthHeaderToken } from "./authStorage.js";
 import type {
   ApiFetchConfig,
   ApiResponse,
@@ -12,7 +13,6 @@ const apiBaseUrlRaw =
   import.meta.env.VITE_API_URL ||
   `${window.location.protocol}//${window.location.hostname}:3000`;
 
-const apiToken = (import.meta.env.VITE_API_TOKEN || "").trim();
 const apiBaseUrl = String(apiBaseUrlRaw).replace(/\/api\/?$/i, "");
 
 export const getApiBaseUrl = (): string => apiBaseUrl;
@@ -25,8 +25,9 @@ export const api = axios.create({
 api.interceptors.request.use((config) => {
   const headers = axios.AxiosHeaders.from(config.headers || {});
 
-  if (apiToken) {
-    headers.set("Authorization", `Bearer ${apiToken}`);
+  const bearer = getAuthHeaderToken();
+  if (bearer) {
+    headers.set("Authorization", `Bearer ${bearer}`);
   }
 
   const isFormData =

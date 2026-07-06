@@ -15,9 +15,15 @@ export function validateProductionConfig() {
     errors.push("AUTH_ENABLED=true é obrigatório em produção.");
   }
 
-  if (!config.auth.apiToken || config.auth.apiToken.length < 16) {
+  if (!config.auth.jwtSecret || config.auth.jwtSecret.length < 16) {
     errors.push(
-      "API_TOKEN deve estar definido em produção (mínimo 16 caracteres).",
+      "JWT_SECRET deve estar definido em produção (mínimo 16 caracteres).",
+    );
+  }
+
+  if (!config.auth.apiToken) {
+    warnings.push(
+      "API_TOKEN não definido — opcional; use apenas para scripts/CI. O SPA usa login JWT.",
     );
   }
 

@@ -6,6 +6,7 @@ import App from "./App.jsx";
 import "./index.css";
 import { ToastProvider } from "./components/ui/ToastProvider.jsx";
 import { queryClient } from "./lib/queryClient.js";
+import { AuthProvider } from "./context/AuthContext.jsx";
 
 const rootElement = document.getElementById("root");
 
@@ -13,9 +14,11 @@ if (rootElement) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>
-        <ToastProvider>
-          <App />
-        </ToastProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <App />
+          </ToastProvider>
+        </AuthProvider>
         {import.meta.env.DEV && (
           <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
         )}

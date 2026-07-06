@@ -7,21 +7,9 @@ import {
   ordemColetaHistoricoQuerySchema,
 } from "../schemas/ordemColetaSchema.js";
 
-const badRequest = (res, issues) => {
-  return res.status(400).json({
-    success: false,
-    error: "Dados inválidos",
-    details: issues.map((i) => `${i.path.join(".")}: ${i.message}`),
-  });
-};
-
 export const ordemColetaController = {
   historico: catchAsync(async (req, res) => {
-    const parsed = ordemColetaHistoricoQuerySchema.safeParse(req.query);
-    if (!parsed.success) {
-      return badRequest(res, parsed.error.issues);
-    }
-    const { page, limit } = parsed.data;
+    const { page, limit } = ordemColetaHistoricoQuerySchema.parse(req.query);
     const result = await OrdemColetaService.listarHistorico({ page, limit });
     res.status(200).json({
       success: true,
@@ -32,12 +20,9 @@ export const ordemColetaController = {
   }),
 
   preview: catchAsync(async (req, res) => {
-    const parsed = ordemColetaPreviewSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return badRequest(res, parsed.error.issues);
-    }
-    const vars = await OrdemColetaService.mergeVars(parsed.data);
-    const html = OrdemColetaService.buildHtml(parsed.data.tipo, vars);
+    const parsed = ordemColetaPreviewSchema.parse(req.body);
+    const vars = await OrdemColetaService.mergeVars(parsed);
+    const html = OrdemColetaService.buildHtml(parsed.tipo, vars);
     res.status(200).json({
       success: true,
       data: { html },
@@ -45,14 +30,11 @@ export const ordemColetaController = {
   }),
 
   pdf: catchAsync(async (req, res) => {
-    const parsed = ordemColetaPdfSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return badRequest(res, parsed.error.issues);
-    }
-    const vars = await OrdemColetaService.mergeVars(parsed.data);
-    const html = OrdemColetaService.buildHtml(parsed.data.tipo, vars);
+    const parsed = ordemColetaPdfSchema.parse(req.body);
+    const vars = await OrdemColetaService.mergeVars(parsed);
+    const html = OrdemColetaService.buildHtml(parsed.tipo, vars);
     const pdfBuffer = await OrdemColetaService.htmlToPdfBuffer(html);
-    const prefix = OrdemColetaService.filenamePrefix(parsed.data.tipo);
+    const prefix = OrdemColetaService.filenamePrefix(parsed.tipo);
     const filename = `${prefix}.pdf`;
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
@@ -60,11 +42,8 @@ export const ordemColetaController = {
   }),
 
   enviar: catchAsync(async (req, res) => {
-    const parsed = ordemColetaEnviarSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return badRequest(res, parsed.error.issues);
-    }
-    const result = await OrdemColetaService.iniciarEnvioAssincrono(parsed.data);
+    const parsed = ordemColetaEnviarSchema.parse(req.body);
+    const result = await OrdemColetaService.iniciarEnvioAssincrono(parsed);
     res.status(202).json({
       success: true,
       data: result,
@@ -79,7 +58,8 @@ export const ordemColetaController = {
   }),
 
   excluirFalhas: catchAsync(async (req, res) => {
-    const removidos = await OrdemColetaService.excluirEnviosComFalha();
+    const dias = req.query.dias ? Number(req.query.dias) : 30;
+    const removidos = await OrdemColetaService.excluirEnviosComFalha({ dias });
     res.status(200).json({
       success: true,
       data: { removidos },

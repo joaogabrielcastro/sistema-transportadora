@@ -98,10 +98,9 @@ jobs:
         run: npm run build
         env:
           VITE_API_URL: http://localhost:3020
-          VITE_API_TOKEN: ci-test-token-min-16-ch
+          VITE_AUTH_REQUIRED: "true"
 
       - name: E2E tests
         run: npm run test:e2e
         env:
           CI: "true"
-          VITE_API_TOKEN: ci-test-token-min-16-ch

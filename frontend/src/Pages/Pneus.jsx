@@ -28,6 +28,7 @@ import {
   TableRowActions,
 } from "../components/ui";
 import PageLayout from "../components/layout/PageLayout.jsx";
+import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
 import NovoPneuModal from "../components/NovoPneuModal.jsx";
 import { usePneuAtribuirQueries } from "../hooks";
 
@@ -292,7 +293,7 @@ const Pneus = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [novoPneuOpen, setNovoPneuOpen] = useState(false);
 
-  const modalData = usePneuAtribuirQueries();
+  const modalData = usePneuAtribuirQueries({ enabled: novoPneuOpen });
 
   const { data: caminhoesPage } = useCaminhoesListQuery({
     page: 1,
@@ -345,6 +346,9 @@ const Pneus = () => {
 
   return (
     <PageLayout className="space-y-6">
+      <Breadcrumbs
+        items={[{ label: "Início", to: "/" }, { label: "Pneus em uso" }]}
+      />
       <PageHeader
         title="Controle de Pneus"
         subtitle="Gerencie a atribuição de pneus aos caminhões da frota"

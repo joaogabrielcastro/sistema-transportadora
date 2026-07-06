@@ -1,6 +1,7 @@
 import prisma from "../lib/prisma.js";
 import { serializePrisma } from "../utils/prismaSerialization.js";
 import { MAX_LIST_LIMIT } from "../utils/listLimits.js";
+import { resolveCombustivelTipoId } from "../utils/tiposGastos.js";
 
 const gastoInclude = {
   caminhoes: {
@@ -103,12 +104,15 @@ export const gastosModel = {
   },
 
   getConsumoCombustivel: async (id) => {
-    const ID_TIPO_GASTO_COMBUSTIVEL = 9;
+    const tipoCombustivelId = await resolveCombustivelTipoId();
+    if (!tipoCombustivelId) {
+      return [];
+    }
 
     const data = await prisma.gastos.findMany({
       where: {
         caminhao_id: parseId(id),
-        tipo_gasto_id: ID_TIPO_GASTO_COMBUSTIVEL,
+        tipo_gasto_id: tipoCombustivelId,
         km_registro: { not: null },
         quantidade_combustivel: { not: null },
       },

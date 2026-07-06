@@ -21,6 +21,7 @@ import {
   FilterChips,
 } from "../components/ui";
 import PageLayout from "../components/layout/PageLayout.jsx";
+import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
 import { exportToPDF, exportToExcel } from "../utils/exportUtils";
 import { formatCurrency, formatNumber, formatDate } from "../utils/formatters";
 
@@ -226,6 +227,9 @@ const Relatorios = () => {
 
   return (
     <PageLayout className="space-y-6">
+      <Breadcrumbs
+        items={[{ label: "Início", to: "/" }, { label: "Relatórios" }]}
+      />
       <PageHeader
         title="Relatórios Gerenciais"
         subtitle="Análise de custos e eficiência da frota"

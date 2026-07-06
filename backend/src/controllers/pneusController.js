@@ -4,6 +4,7 @@ import {
   pneuSchema,
   pneuUpdateSchema,
   pneuCreateInStockSchema,
+  pneuCreateSchema,
 } from "../schemas/pneuSchema.js";
 import { z } from "zod";
 import { catchAsync } from "../utils/catchAsync.js";
@@ -12,16 +13,14 @@ import { parseListLimit } from "../utils/listLimits.js";
 
 export const pneusController = {
   createPneu: catchAsync(async (req, res) => {
-    // Validação Schema Básico
-    let dados;
-    if (req.body.stock_pneu_id) {
-      dados = pneuSchema.partial().parse(req.body);
-    } else {
-      dados = pneuSchema.parse(req.body);
-    }
-    const novoPneu = await PneuService.createPneu(normalizeDatesForDb(dados), {
-      stock_pneu_id: req.body.stock_pneu_id,
-      consume_from_stock: req.body.consume_from_stock,
+    const body = pneuCreateSchema.parse(req.body);
+    const { stock_pneu_id, consume_from_stock, ...dados } = body;
+    const payload =
+      stock_pneu_id != null ? pneuSchema.partial().parse(dados) : pneuSchema.parse(dados);
+
+    const novoPneu = await PneuService.createPneu(normalizeDatesForDb(payload), {
+      stock_pneu_id,
+      consume_from_stock,
     });
     res.status(201).json({
       success: true,

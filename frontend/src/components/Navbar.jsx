@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx";
 
 const pneusSubLinks = [
   { path: "/pneus", label: "Pneus em uso" },
   { path: "/pneus/estoque", label: "Estoque" },
-  { path: "/pneus/atribuir", label: "Atribuir pneu" },
   { path: "/pneus/cadastro-em-lote", label: "Cadastro em lote" },
 ];
 
@@ -21,6 +21,8 @@ const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const pneusMenuRef = useRef(null);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, isAuthenticated, logout } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -156,6 +158,19 @@ const Navbar = () => {
           >
             + Caminhão
           </Link>
+          {isAuthenticated && (
+            <button
+              type="button"
+              onClick={() => {
+                logout();
+                navigate("/login");
+              }}
+              className="ml-2 px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/10"
+              title={user?.email || "Sair"}
+            >
+              Sair
+            </button>
+          )}
         </div>
 
         {/* Mobile toggle */}

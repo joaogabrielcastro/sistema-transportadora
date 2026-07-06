@@ -462,13 +462,13 @@ const CaminhaoDetail = () => {
                   variant="ghost"
                   size="sm"
                   onClick={() =>
-                    navigate("/pneus/cadastro-em-lote", {
+                    navigate("/pneus/atribuir", {
                       state: { caminhaoId: caminhao.id },
                     })
                   }
-                  title="Cadastrar em Lote"
+                  title="Instalar pneus"
                 >
-                  + Lote
+                  + Instalar
                 </Button>
                 <Button
                   variant="ghost"

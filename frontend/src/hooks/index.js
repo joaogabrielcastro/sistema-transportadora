@@ -15,7 +15,6 @@ export {
   useStatusPneusQuery,
   usePosicoesPneusQuery,
   usePneuAtribuirQueries,
-  useCadastroPneuLoteQueries,
   useCaminhaoDetailQuery,
   useEditGastoQuery,
   useEditChecklistQuery,

@@ -191,7 +191,7 @@ const PneusTable = ({
             />
           </div>
           <Link to="/pneus/atribuir">
-            <Button variant="primary">Atribuir Pneu</Button>
+            <Button variant="primary">Instalar pneus</Button>
           </Link>
         </div>
       </div>
@@ -200,10 +200,10 @@ const PneusTable = ({
         <div className="p-6">
           <EmptyState
             title="Nenhum pneu em uso encontrado"
-            description='Use o botão "Atribuir Pneu" para montar pneus do estoque nos caminhões.'
+            description='Use "Instalar pneus" para montar pneus do estoque ou cadastrar novos no caminhão.'
             action={
               <Link to="/pneus/atribuir">
-                <Button variant="primary">Atribuir Pneu</Button>
+                <Button variant="primary">Instalar pneus</Button>
               </Link>
             }
           />

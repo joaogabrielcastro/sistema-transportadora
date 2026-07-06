@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 const pneusSubLinks = [
   { path: "/pneus", label: "Pneus em uso" },
   { path: "/pneus/estoque", label: "Estoque" },
-  { path: "/pneus/cadastro-em-lote", label: "Cadastro em lote" },
+  { path: "/pneus/atribuir", label: "Instalar pneus" },
 ];
 
 const mainLinks = [

@@ -5,6 +5,7 @@ import {
   Routes,
   Route,
   useLocation,
+  Navigate,
 } from "react-router-dom";
 import Navbar from "./components/Navbar.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
@@ -23,9 +24,13 @@ const EditPneu = lazy(() => import("./Pages/EditPneu.jsx"));
 const ManutencaoGastos = lazy(() => import("./Pages/ManutencaoGastos.jsx"));
 const EditGasto = lazy(() => import("./Pages/EditGasto.jsx"));
 const EditChecklist = lazy(() => import("./Pages/EditChecklist.jsx"));
-const CadastroPneuEmLote = lazy(() => import("./Pages/CadastroPneuEmLote.jsx"));
 const Relatorios = lazy(() => import("./Pages/Relatorios.jsx"));
 const OrdensColeta = lazy(() => import("./Pages/OrdensColeta.jsx"));
+
+function RedirectCadastroLote() {
+  const location = useLocation();
+  return <Navigate to="/pneus/atribuir" replace state={location.state} />;
+}
 
 function AppRoutes() {
   const location = useLocation();
@@ -135,7 +140,7 @@ function AppRoutes() {
               path="/pneus/cadastro-em-lote"
               element={
                 <ProtectedRoute>
-                  <CadastroPneuEmLote />
+                  <RedirectCadastroLote />
                 </ProtectedRoute>
               }
             />

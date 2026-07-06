@@ -8,7 +8,6 @@ export {
   useStatusPneusQuery,
   usePosicoesPneusQuery,
   usePneuAtribuirQueries,
-  useCadastroPneuLoteQueries,
 } from "./usePneusQuery.js";
 export { useCaminhaoDetailQuery } from "./useCaminhaoDetailQuery.js";
 export {

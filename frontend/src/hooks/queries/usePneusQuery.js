@@ -102,24 +102,3 @@ export function usePneuAtribuirQueries({ enabled = true } = {}) {
         status.isLoading),
   };
 }
-
-export function useCadastroPneuLoteQueries() {
-  const caminhoes = useCaminhoesListQuery({
-    page: 1,
-    limit: API_CONFIG.CAMINHOES_SELECT_MAX,
-  });
-  const posicoes = usePosicoesPneusQuery();
-  const status = useStatusPneusQuery();
-
-  return {
-    caminhoes: caminhoes.data?.data ?? [],
-    posicoes: posicoes.data ?? [],
-    status: status.data ?? [],
-    isLoading:
-      caminhoes.isLoading || posicoes.isLoading || status.isLoading,
-    error:
-      caminhoes.error || posicoes.error || status.error
-        ? "Erro ao carregar dados iniciais."
-        : null,
-  };
-}

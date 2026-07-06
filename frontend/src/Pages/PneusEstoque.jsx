@@ -140,7 +140,7 @@ const PneusEstoque = () => {
         subtitle="Cadastre pneus em lote e gerencie o estoque disponível"
         actions={
           <Link to="/pneus/atribuir">
-            <Button variant="outline">Atribuir pneu</Button>
+            <Button variant="outline">Instalar pneu</Button>
           </Link>
         }
       />
@@ -444,7 +444,7 @@ const PneusEstoque = () => {
                         to={`/pneus/atribuir?pneu_id=${p.id}`}
                         className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                       >
-                        Atribuir
+                        Instalar
                       </Link>
                       <button
                         onClick={() => handleDeleteClick(p.id)}

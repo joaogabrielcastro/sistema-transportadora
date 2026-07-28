@@ -105,13 +105,53 @@ function applyAuthUser(req, user) {
   }
 }
 
+function applyJwtUser(req, jwtPayload) {
+  const tenantId = Number(jwtPayload.tenantId);
+  if (!Number.isInteger(tenantId) || tenantId <= 0) {
+    return { ok: false, error: "Token sem tenant. Faça login novamente." };
+  }
+
+  applyAuthUser(req, {
+    id: String(jwtPayload.sub),
+    role: jwtPayload.role || "operator",
+    email: jwtPayload.email,
+    nome: jwtPayload.nome,
+    tenantId,
+  });
+  return { ok: true };
+}
+
+function readBearerToken(req) {
+  const authHeader = req.headers.authorization || "";
+  return authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+}
+
 export const requireAuth = async (req, res, next) => {
   try {
     if (req.method === "OPTIONS") {
       return next();
     }
 
+    const token = readBearerToken(req);
+
+    // Mesmo com AUTH_ENABLED=false: se o browser envia JWT (login/register),
+    // respeita o tenantId do token. Evita vazamento: navbar de uma empresa
+    // e dados do tenant seed (abbroto) quando auth está desligada em produção.
     if (!config.auth.enabled) {
+      if (token) {
+        const jwtPayload = verifyAccessToken(token);
+        if (jwtPayload?.sub) {
+          const applied = applyJwtUser(req, jwtPayload);
+          if (!applied.ok) {
+            return res.status(401).json({
+              success: false,
+              error: applied.error,
+            });
+          }
+          return next();
+        }
+      }
+
       const tenantId = await getDefaultTenantId();
       applyAuthUser(req, {
         id: "dev",
@@ -122,9 +162,6 @@ export const requireAuth = async (req, res, next) => {
       return next();
     }
 
-    const authHeader = req.headers.authorization || "";
-    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-
     if (!token) {
       return res.status(401).json({
         success: false,
@@ -134,21 +171,13 @@ export const requireAuth = async (req, res, next) => {
 
     const jwtPayload = verifyAccessToken(token);
     if (jwtPayload?.sub) {
-      const tenantId = Number(jwtPayload.tenantId);
-      if (!Number.isInteger(tenantId) || tenantId <= 0) {
+      const applied = applyJwtUser(req, jwtPayload);
+      if (!applied.ok) {
         return res.status(401).json({
           success: false,
-          error: "Token sem tenant. Faça login novamente.",
+          error: applied.error,
         });
       }
-
-      applyAuthUser(req, {
-        id: String(jwtPayload.sub),
-        role: jwtPayload.role || "operator",
-        email: jwtPayload.email,
-        nome: jwtPayload.nome,
-        tenantId,
-      });
       return next();
     }
 

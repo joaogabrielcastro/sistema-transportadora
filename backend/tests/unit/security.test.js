@@ -27,6 +27,45 @@ test("requireAuth allows request when AUTH_ENABLED is false", async () => {
   assert.equal(req.context.user.tenantId, 1);
 });
 
+test("requireAuth com AUTH off respeita JWT do tenant (anti-vazamento)", async () => {
+  process.env.AUTH_ENABLED = "false";
+  process.env.JWT_SECRET = "integration-test-jwt-secret-ok";
+  process.env.DEFAULT_TENANT_ID = "1";
+
+  const jwt = await import("jsonwebtoken");
+  const { requireAuth } = await importSecurity();
+  const token = jwt.default.sign(
+    {
+      sub: "55",
+      email: "nova@empresa.local",
+      role: "admin",
+      tenantId: 42,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: "1h" },
+  );
+
+  let nextCalled = false;
+  const req = {
+    method: "GET",
+    headers: { authorization: `Bearer ${token}` },
+    context: { user: { id: "anonymous", role: "viewer" } },
+  };
+  const res = {
+    status() {
+      throw new Error("status should not be called");
+    },
+  };
+
+  await requireAuth(req, res, () => {
+    nextCalled = true;
+  });
+
+  assert.equal(nextCalled, true);
+  assert.equal(req.context.user.tenantId, 42);
+  assert.equal(req.context.user.id, "55");
+});
+
 test("requireAuth rejeita JWT sem tenantId", async () => {
   process.env.AUTH_ENABLED = "true";
   process.env.JWT_SECRET = "integration-test-jwt-secret-ok";

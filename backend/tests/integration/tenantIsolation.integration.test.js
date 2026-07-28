@@ -228,3 +228,154 @@ test(
     }
   },
 );
+
+test(
+  "manutenção do tenant B não vaza para o tenant A",
+  { skip: shouldRunDbTests ? false : "Defina RUN_DB_TESTS=1 ou rode no CI" },
+  async () => {
+    const { ensureRegistroLookups } = await import(
+      "../helpers/dbTestFixtures.js"
+    );
+    const tenantA = await loginAsAdmin(app);
+    const secondary = await createSecondaryTenantAdmin({
+      slug: `manut-${Date.now().toString(36)}`,
+      email: `manut-${Date.now().toString(36)}@tenant.local`,
+    });
+    const tenantB = await loginWithCredentials(
+      app,
+      secondary.email,
+      secondary.password,
+    );
+    const { itemChecklistId } = await ensureRegistroLookups();
+
+    let caminhaoA;
+    let caminhaoB;
+    let checklistBId;
+
+    try {
+      caminhaoA = await createCaminhaoViaApi(app, tenantA.authHeader, {
+        placa: `MA${Date.now().toString().slice(-5)}`,
+      });
+      caminhaoB = await createCaminhaoViaApi(app, tenantB.authHeader, {
+        placa: `MB${Date.now().toString().slice(-5)}`,
+      });
+
+      const createB = await request(app)
+        .post("/api/checklist")
+        .set(tenantB.authHeader)
+        .send({
+          caminhao_id: caminhaoB.id,
+          item_id: itemChecklistId,
+          data_manutencao: "2026-07-10",
+          km_manutencao: 51000,
+          valor: 250,
+          observacao: "Manutenção exclusiva tenant B",
+        });
+
+      assert.equal(createB.status, 201, createB.body?.error);
+      checklistBId = createB.body.data.id;
+      assert.equal(createB.body.data.tenant_id, tenantB.tenantId);
+
+      const getByIdA = await request(app)
+        .get(`/api/checklist/${checklistBId}`)
+        .set(tenantA.authHeader);
+      assert.notEqual(
+        getByIdA.status,
+        200,
+        "tenant A não deve abrir manutenção do tenant B por id",
+      );
+
+      const listA = await request(app)
+        .get("/api/checklist")
+        .query({ page: 1, limit: 100 })
+        .set(tenantA.authHeader);
+      assert.equal(listA.status, 200);
+      assert.ok(
+        !listA.body.data.some((row) => row.id === checklistBId),
+        "lista geral de manutenção do tenant A não pode incluir item do B",
+      );
+
+      const byCaminhaoA = await request(app)
+        .get(`/api/checklist/caminhao/${caminhaoB.id}`)
+        .set(tenantA.authHeader);
+      assert.equal(byCaminhaoA.status, 200);
+      assert.ok(
+        !byCaminhaoA.body.data.some((row) => row.id === checklistBId),
+        "tenant A não deve listar manutenção pelo caminhão do tenant B",
+      );
+
+      const registrosA = await request(app)
+        .get("/api/registros")
+        .query({ page: 1, limit: 100 })
+        .set(tenantA.authHeader);
+      assert.equal(registrosA.status, 200);
+      const rows = Array.isArray(registrosA.body.data)
+        ? registrosA.body.data
+        : registrosA.body.data?.items || [];
+      assert.ok(
+        !rows.some(
+          (row) =>
+            row.id === checklistBId ||
+            row.observacao === "Manutenção exclusiva tenant B",
+        ),
+        "registros do tenant A não podem trazer manutenção do tenant B",
+      );
+
+      const overviewA = await request(app)
+        .get("/api/reports/overview")
+        .set(tenantA.authHeader);
+      assert.equal(overviewA.status, 200);
+
+      const createCross = await request(app)
+        .post("/api/checklist")
+        .set(tenantA.authHeader)
+        .send({
+          caminhao_id: caminhaoB.id,
+          item_id: itemChecklistId,
+          data_manutencao: "2026-07-11",
+          km_manutencao: 52000,
+          valor: 10,
+        });
+      assert.notEqual(
+        createCross.status,
+        201,
+        "tenant A não pode criar manutenção no caminhão do tenant B",
+      );
+
+      const updateCross = await request(app)
+        .put(`/api/checklist/${checklistBId}`)
+        .set(tenantA.authHeader)
+        .send({ valor: 9999 });
+      assert.notEqual(
+        updateCross.status,
+        200,
+        "tenant A não pode editar manutenção do tenant B",
+      );
+
+      const deleteCross = await request(app)
+        .delete(`/api/checklist/${checklistBId}`)
+        .set(tenantA.authHeader);
+      assert.notEqual(
+        deleteCross.status,
+        200,
+        "tenant A não pode apagar manutenção do tenant B",
+      );
+
+      const stillB = await request(app)
+        .get(`/api/checklist/${checklistBId}`)
+        .set(tenantB.authHeader);
+      assert.equal(stillB.status, 200);
+      assert.equal(stillB.body.data.id, checklistBId);
+      assert.equal(Number(stillB.body.data.valor), 250);
+    } finally {
+      if (checklistBId) {
+        await prisma.checklist
+          .delete({ where: { id: checklistBId } })
+          .catch(() => {});
+      }
+      await cleanupCaminhao(caminhaoA?.id);
+      await cleanupCaminhao(caminhaoB?.id);
+      await cleanupTenant(secondary.tenant.id);
+    }
+  },
+);

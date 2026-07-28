@@ -12,8 +12,14 @@ import {
   getStoredUser,
   setStoredAuth,
 } from "../lib/authStorage.js";
+import { queryClient } from "../lib/queryClient.js";
 
 const AuthContext = createContext(null);
+
+/** Evita dados de um tenant aparecerem após login em outro (sem hard refresh). */
+function resetSessionCaches() {
+  queryClient.clear();
+}
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => getStoredToken());
@@ -31,6 +37,7 @@ export function AuthProvider({ children }) {
       throw new Error("Resposta de login inválida");
     }
 
+    resetSessionCaches();
     setStoredAuth({ token: payload.token, user: payload.user });
     setToken(payload.token);
     setUser(payload.user);
@@ -49,6 +56,7 @@ export function AuthProvider({ children }) {
       throw new Error("Resposta de cadastro inválida");
     }
 
+    resetSessionCaches();
     setStoredAuth({ token: payload.token, user: payload.user });
     setToken(payload.token);
     setUser(payload.user);
@@ -59,6 +67,7 @@ export function AuthProvider({ children }) {
     clearStoredAuth();
     setToken("");
     setUser(null);
+    resetSessionCaches();
   }, []);
 
   const value = useMemo(

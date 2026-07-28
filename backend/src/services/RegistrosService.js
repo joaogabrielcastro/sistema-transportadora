@@ -42,31 +42,34 @@ function mapChecklistRow(c) {
   };
 }
 
-function buildCaminhaoFilter({ caminhaoId, placa }) {
+function buildCaminhaoFilter(tenantId, { caminhaoId, placa }) {
+  const base = { tenant_id: Number(tenantId) };
+
   if (caminhaoId) {
-    return { caminhao_id: Number(caminhaoId) };
+    return { ...base, caminhao_id: Number(caminhaoId) };
   }
 
   if (placa?.trim()) {
     const normalized = normalizePlaca(placa);
     return {
+      ...base,
       caminhoes: {
         placa: { contains: normalized, mode: "insensitive" },
       },
     };
   }
 
-  return {};
+  return base;
 }
 
 export class RegistrosService {
-  static async list({ page = 1, limit = 20, caminhaoId, placa } = {}) {
+  static async list(tenantId, { page = 1, limit = 20, caminhaoId, placa } = {}) {
     const parsedPage = Math.max(1, Number(page) || 1);
     const parsedLimit = parseListLimit(limit, 20);
     const skip = (parsedPage - 1) * parsedLimit;
     const fetchSize = skip + parsedLimit;
 
-    const caminhaoFilter = buildCaminhaoFilter({ caminhaoId, placa });
+    const caminhaoFilter = buildCaminhaoFilter(tenantId, { caminhaoId, placa });
 
     const [gastosCount, checklistCount, gastos, checklists] =
       await Promise.all([

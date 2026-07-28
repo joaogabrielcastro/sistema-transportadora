@@ -37,6 +37,24 @@ export function AuthProvider({ children }) {
     return payload.user;
   }, []);
 
+  const register = useCallback(async ({ empresaNome, email, password, nome }) => {
+    const res = await apiFetch({
+      method: "POST",
+      url: "/auth/register",
+      data: { empresaNome, email, password, nome },
+    });
+
+    const payload = res.data;
+    if (!payload?.token) {
+      throw new Error("Resposta de cadastro inválida");
+    }
+
+    setStoredAuth({ token: payload.token, user: payload.user });
+    setToken(payload.token);
+    setUser(payload.user);
+    return payload.user;
+  }, []);
+
   const logout = useCallback(() => {
     clearStoredAuth();
     setToken("");
@@ -49,9 +67,10 @@ export function AuthProvider({ children }) {
       user,
       isAuthenticated: Boolean(token),
       login,
+      register,
       logout,
     }),
-    [token, user, login, logout],
+    [token, user, login, register, logout],
   );
 
   return (

@@ -1,21 +1,32 @@
 import { catchAsync } from "../utils/catchAsync.js";
 import { CaminhaoDocumentoService } from "../services/CaminhaoDocumentoService.js";
+import { requireTenantId } from "../utils/tenant.js";
 
 export const loadCaminhaoForUpload = catchAsync(async (req, _res, next) => {
-  const caminhao = await CaminhaoDocumentoService.resolveCaminhao(req.params.placa);
+  const tenantId = requireTenantId(req);
+  const caminhao = await CaminhaoDocumentoService.resolveCaminhao(
+    tenantId,
+    req.params.placa,
+  );
   req.caminhaoUpload = { id: caminhao.id };
   next();
 });
 
 export const caminhaoDocumentosController = {
   listar: catchAsync(async (req, res) => {
-    const data = await CaminhaoDocumentoService.listar(req.params.placa);
+    const tenantId = requireTenantId(req);
+    const data = await CaminhaoDocumentoService.listar(tenantId, req.params.placa);
     res.status(200).json({ success: true, data });
   }),
 
   upload: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
     const files = Array.isArray(req.files) ? req.files : [];
-    const criados = await CaminhaoDocumentoService.upload(req.params.placa, files);
+    const criados = await CaminhaoDocumentoService.upload(
+      tenantId,
+      req.params.placa,
+      files,
+    );
     res.status(201).json({
       success: true,
       data: criados,
@@ -27,7 +38,9 @@ export const caminhaoDocumentosController = {
   }),
 
   download: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
     const { doc, absolute } = await CaminhaoDocumentoService.obterArquivo(
+      tenantId,
       req.params.placa,
       req.params.docId,
     );
@@ -40,7 +53,8 @@ export const caminhaoDocumentosController = {
   }),
 
   remover: catchAsync(async (req, res) => {
-    await CaminhaoDocumentoService.remover(req.params.placa, req.params.docId);
+    const tenantId = requireTenantId(req);
+    await CaminhaoDocumentoService.remover(tenantId, req.params.placa, req.params.docId);
     res.status(200).json({
       success: true,
       message: "Documento removido com sucesso",

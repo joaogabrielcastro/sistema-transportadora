@@ -1,6 +1,7 @@
 import { ReportsService } from "../services/ReportsService.js";
 import { catchAsync } from "../utils/catchAsync.js";
 import { costPerKmQuerySchema } from "../schemas/reportsSchema.js";
+import { requireTenantId } from "../utils/tenant.js";
 
 function converterDatasQuery(query) {
   const dataRegex = /^\d{2}\/\d{2}\/\d{4}$/;
@@ -19,7 +20,8 @@ function converterDatasQuery(query) {
 
 export const reportsController = {
   getOverview: catchAsync(async (req, res) => {
-    const data = await ReportsService.getOverview();
+    const tenantId = requireTenantId(req);
+    const data = await ReportsService.getOverview(tenantId);
 
     res.status(200).json({
       success: true,
@@ -28,9 +30,10 @@ export const reportsController = {
   }),
 
   getCostPerKm: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
     converterDatasQuery(req.query);
     const parsed = costPerKmQuerySchema.parse(req.query);
-    const data = await ReportsService.getCostPerKm(parsed);
+    const data = await ReportsService.getCostPerKm(tenantId, parsed);
     res.status(200).json({
       success: true,
       data,

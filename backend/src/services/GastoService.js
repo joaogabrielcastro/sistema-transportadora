@@ -1,18 +1,34 @@
 import prisma from "../lib/prisma.js";
 import { gastosModel } from "../models/gastosModel.js";
+import { caminhoesModel } from "../models/caminhoesModel.js";
 import {
   syncKmFromRegistro,
   recalculateKmAtual,
 } from "./KmCaminhaoService.js";
 
+const assertCaminhaoPertenceAoTenant = async (tenantId, caminhaoId) => {
+  const caminhao = await caminhoesModel.getById(tenantId, caminhaoId);
+  if (!caminhao) {
+    throw new Error("Caminhão não encontrado");
+  }
+  return caminhao;
+};
+
 export class GastoService {
-  static async createWithCaminhaoUpdate(gastoData) {
+  static async createWithCaminhaoUpdate(tenantId, gastoData) {
     const novoKm = gastoData.km_registro;
     const caminhaoId = gastoData.caminhao_id;
 
+    if (caminhaoId) {
+      await assertCaminhaoPertenceAoTenant(tenantId, caminhaoId);
+    }
+
     const novoGasto = await prisma.$transaction(async (tx) => {
       const gastoCriado = await tx.gastos.create({
-        data: gastoData,
+        data: {
+          ...gastoData,
+          tenant_id: Number(tenantId),
+        },
         include: {
           caminhoes: {
             select: { placa: true },
@@ -30,13 +46,17 @@ export class GastoService {
       return gastoCriado;
     });
 
-    return gastosModel.getById(novoGasto.id);
+    return gastosModel.getById(tenantId, novoGasto.id);
   }
 
-  static async updateWithCaminhaoUpdate(id, gastoData) {
-    const existing = await gastosModel.getById(id);
+  static async updateWithCaminhaoUpdate(tenantId, id, gastoData) {
+    const existing = await gastosModel.getById(tenantId, id);
     if (!existing) {
       throw new Error("Gasto não encontrado");
+    }
+
+    if (gastoData.caminhao_id) {
+      await assertCaminhaoPertenceAoTenant(tenantId, gastoData.caminhao_id);
     }
 
     const parsedId = Number(id);
@@ -59,11 +79,11 @@ export class GastoService {
       }
     });
 
-    return gastosModel.getById(parsedId);
+    return gastosModel.getById(tenantId, parsedId);
   }
 
-  static async deleteWithKmSync(id) {
-    const existing = await gastosModel.getById(id);
+  static async deleteWithKmSync(tenantId, id) {
+    const existing = await gastosModel.getById(tenantId, id);
     if (!existing) {
       throw new Error("Gasto não encontrado");
     }

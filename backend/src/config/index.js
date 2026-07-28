@@ -66,10 +66,23 @@ export const config = {
     trustProxy: parseTrustProxy(process.env.TRUST_PROXY, 1),
   },
   auth: {
-    enabled: parseBoolean(process.env.AUTH_ENABLED, false),
-    apiToken: process.env.API_TOKEN || "",
-    jwtSecret: process.env.JWT_SECRET || process.env.API_TOKEN || "",
-    jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
+    get enabled() {
+      return parseBoolean(process.env.AUTH_ENABLED, false);
+    },
+    get apiToken() {
+      return process.env.API_TOKEN || "";
+    },
+    get jwtSecret() {
+      return process.env.JWT_SECRET || process.env.API_TOKEN || "";
+    },
+    get jwtExpiresIn() {
+      return process.env.JWT_EXPIRES_IN || "7d";
+    },
+    get defaultTenantId() {
+      return process.env.DEFAULT_TENANT_ID
+        ? Number(process.env.DEFAULT_TENANT_ID)
+        : null;
+    },
   },
   security: {
     rateLimitWindowMs: Number(

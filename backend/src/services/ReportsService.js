@@ -86,14 +86,17 @@ export function computeKmDrivenFromTimeline(records) {
 }
 
 export class ReportsService {
-  static async getOverview() {
+  static async getOverview(tenantId) {
+    const tenantWhere = { tenant_id: Number(tenantId) };
     const [totalCaminhoes, gastosAgg, checklistAgg] = await Promise.all([
-      prisma.caminhoes.count(),
+      prisma.caminhoes.count({ where: tenantWhere }),
       prisma.gastos.aggregate({
+        where: tenantWhere,
         _count: { id: true },
         _sum: { valor: true },
       }),
       prisma.checklist.aggregate({
+        where: tenantWhere,
         _count: { id: true },
         _sum: { valor: true },
       }),
@@ -119,12 +122,16 @@ export class ReportsService {
     };
   }
 
-  static async getCostPerKm({ startDate, endDate, caminhaoId, entriesLimit = 500 }) {
+  static async getCostPerKm(
+    tenantId,
+    { startDate, endDate, caminhaoId, entriesLimit = 500 },
+  ) {
     const parsedCaminhaoId = parseOptionalInt(caminhaoId);
     const dateWhere = buildDateWhere({ startDate, endDate });
     const limit = Math.min(Math.max(Number(entriesLimit) || 500, 1), 1000);
 
     const baseWhere = {
+      tenant_id: Number(tenantId),
       ...(parsedCaminhaoId ? { caminhao_id: parsedCaminhaoId } : {}),
     };
 
@@ -247,7 +254,7 @@ export class ReportsService {
 
     const caminhoes = caminhaoIds.length
       ? await prisma.caminhoes.findMany({
-          where: { id: { in: caminhaoIds } },
+          where: { id: { in: caminhaoIds }, tenant_id: Number(tenantId) },
           select: { id: true, placa: true },
         })
       : [];

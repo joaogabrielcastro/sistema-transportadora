@@ -28,8 +28,8 @@ const formatDoc = (row, arquivo_disponivel = true) => ({
 });
 
 export class CaminhaoDocumentoService {
-  static async resolveCaminhao(placa) {
-    const caminhao = await caminhoesModel.getByPlaca(placa);
+  static async resolveCaminhao(tenantId, placa) {
+    const caminhao = await caminhoesModel.getByPlaca(tenantId, placa);
     if (!caminhao) {
       const err = new Error("Caminhão não encontrado");
       err.statusCode = 404;
@@ -38,10 +38,10 @@ export class CaminhaoDocumentoService {
     return caminhao;
   }
 
-  static async listar(placa) {
-    const caminhao = await this.resolveCaminhao(placa);
+  static async listar(tenantId, placa) {
+    const caminhao = await this.resolveCaminhao(tenantId, placa);
     const rows = await prisma.caminhao_documentos.findMany({
-      where: { caminhao_id: caminhao.id },
+      where: { caminhao_id: caminhao.id, tenant_id: Number(tenantId) },
       orderBy: { criado_em: "desc" },
     });
     const comDisponibilidade = await Promise.all(
@@ -53,7 +53,7 @@ export class CaminhaoDocumentoService {
     return comDisponibilidade;
   }
 
-  static async upload(placa, files = []) {
+  static async upload(tenantId, placa, files = []) {
     if (!files.length) {
       const err = new Error(
         "Nenhum arquivo recebido. Envie PDFs pelo botão Adicionar PDFs (formato multipart).",
@@ -62,9 +62,9 @@ export class CaminhaoDocumentoService {
       throw err;
     }
 
-    const caminhao = await this.resolveCaminhao(placa);
+    const caminhao = await this.resolveCaminhao(tenantId, placa);
     const atual = await prisma.caminhao_documentos.count({
-      where: { caminhao_id: caminhao.id },
+      where: { caminhao_id: caminhao.id, tenant_id: Number(tenantId) },
     });
 
     if (atual + files.length > MAX_DOCS_PER_CAMINHAO) {
@@ -85,6 +85,7 @@ export class CaminhaoDocumentoService {
 
         const row = await prisma.caminhao_documentos.create({
           data: {
+            tenant_id: Number(tenantId),
             caminhao_id: caminhao.id,
             nome_original: file.originalname.slice(0, 255),
             arquivo_path: relPath,
@@ -103,10 +104,14 @@ export class CaminhaoDocumentoService {
     return criados;
   }
 
-  static async obterArquivo(placa, docId) {
-    const caminhao = await this.resolveCaminhao(placa);
+  static async obterArquivo(tenantId, placa, docId) {
+    const caminhao = await this.resolveCaminhao(tenantId, placa);
     const doc = await prisma.caminhao_documentos.findFirst({
-      where: { id: Number(docId), caminhao_id: caminhao.id },
+      where: {
+        id: Number(docId),
+        caminhao_id: caminhao.id,
+        tenant_id: Number(tenantId),
+      },
     });
 
     if (!doc) {
@@ -130,10 +135,14 @@ export class CaminhaoDocumentoService {
     return { doc, absolute };
   }
 
-  static async remover(placa, docId) {
-    const caminhao = await this.resolveCaminhao(placa);
+  static async remover(tenantId, placa, docId) {
+    const caminhao = await this.resolveCaminhao(tenantId, placa);
     const doc = await prisma.caminhao_documentos.findFirst({
-      where: { id: Number(docId), caminhao_id: caminhao.id },
+      where: {
+        id: Number(docId),
+        caminhao_id: caminhao.id,
+        tenant_id: Number(tenantId),
+      },
     });
 
     if (!doc) {
@@ -156,14 +165,11 @@ export class CaminhaoDocumentoService {
     return { id: doc.id };
   }
 
-  static async purgeCaminhao(caminhaoId) {
-    const rows = await prisma.caminhao_documentos.findMany({
-      where: { caminhao_id: caminhaoId },
-    });
+  static async purgeCaminhao(tenantId, caminhaoId) {
+    const where = { caminhao_id: caminhaoId, tenant_id: Number(tenantId) };
+    const rows = await prisma.caminhao_documentos.findMany({ where });
 
-    await prisma.caminhao_documentos.deleteMany({
-      where: { caminhao_id: caminhaoId },
-    });
+    await prisma.caminhao_documentos.deleteMany({ where });
 
     for (const row of rows) {
       const absolute = absoluteFromRel(row.arquivo_path);

@@ -160,7 +160,7 @@ const Home = () => {
     <PageLayout wide={false} className="space-y-8">
         <PageHeader
           title="Dashboard"
-          subtitle="Bem-vindo ao sistema de gestão ABroto."
+          subtitle="Bem-vindo ao sistema de gestão de frotas."
           actions={
             <Link to="/cadastro-caminhao">
               <Button

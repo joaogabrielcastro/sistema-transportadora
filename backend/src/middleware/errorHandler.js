@@ -193,6 +193,27 @@ export const errorHandler = (err, req, res, _next) => {
     });
   }
 
+  if (err.statusCode === 401) {
+    return res.status(401).json({
+      success: false,
+      error: err.message || "Não autorizado",
+    });
+  }
+
+  if (err.statusCode === 403) {
+    return res.status(403).json({
+      success: false,
+      error: err.message || "Sem permissão",
+    });
+  }
+
+  if (err.statusCode === 409) {
+    return res.status(409).json({
+      success: false,
+      error: err.message || "Conflito",
+    });
+  }
+
   if (err.statusCode === 404) {
     return res.status(404).json({
       success: false,

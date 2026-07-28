@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import {
+  PRODUCT_LOGO_ALT,
+  PRODUCT_LOGO_SRC,
+  PRODUCT_NAME,
+  PRODUCT_TAGLINE,
+} from "../brand.js";
 
 const pneusSubLinks = [
   { path: "/pneus", label: "Pneus em uso" },
@@ -79,16 +85,16 @@ const Navbar = () => {
       <div className="container mx-auto px-4 md:px-6 flex justify-between items-center">
         <Link to="/" className="flex items-center group min-w-0">
           <img
-            src="/images/ABrotto.png"
-            alt="Abbroto Transportadora"
+            src={PRODUCT_LOGO_SRC}
+            alt={PRODUCT_LOGO_ALT}
             className="h-10 w-10 object-contain rounded-lg bg-white p-1 mr-3 flex-shrink-0 group-hover:opacity-90 transition-opacity"
           />
           <div className="flex flex-col min-w-0">
             <span className="text-lg md:text-xl font-bold text-white tracking-tight truncate">
-              ABroto
+              {PRODUCT_NAME}
             </span>
             <span className="text-[10px] md:text-xs text-gray-400 font-medium uppercase tracking-wider truncate">
-              Transportadora
+              {user?.tenantNome || PRODUCT_TAGLINE}
             </span>
           </div>
         </Link>
@@ -158,6 +164,14 @@ const Navbar = () => {
           >
             + Caminhão
           </Link>
+          {isAuthenticated && user?.role === "admin" && (
+            <Link
+              to="/usuarios"
+              className={linkClass(isActive("/usuarios"))}
+            >
+              Usuários
+            </Link>
+          )}
           {isAuthenticated && (
             <button
               type="button"
@@ -239,6 +253,31 @@ const Navbar = () => {
           >
             Cadastrar caminhão
           </Link>
+          {isAuthenticated && user?.role === "admin" && (
+            <Link
+              to="/usuarios"
+              className={`mx-4 mt-2 px-4 py-3 rounded-lg transition-colors ${
+                isActive("/usuarios")
+                  ? "bg-secondary text-white"
+                  : "text-gray-300 hover:bg-white/5 hover:text-white"
+              }`}
+            >
+              Usuários
+            </Link>
+          )}
+          {isAuthenticated && (
+            <button
+              type="button"
+              onClick={() => {
+                logout();
+                navigate("/login");
+                setIsMobileMenuOpen(false);
+              }}
+              className="mt-2 mx-4 py-3 rounded-lg text-center text-gray-300 hover:text-white hover:bg-white/10"
+            >
+              Sair{user?.email ? ` (${user.email})` : ""}
+            </button>
+          )}
         </div>
       </div>
     </nav>

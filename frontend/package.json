@@ -10,6 +10,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "preview": "vite preview",
+    "test": "node --test src/**/*.test.js",
+    "test:coverage": "node --experimental-test-coverage --test-coverage-include=\"src/utils/**/*.js\" --test-coverage-include=\"src/lib/**/*.js\" --test src/**/*.test.js",
     "test:e2e": "playwright test"
   },
   "dependencies": {

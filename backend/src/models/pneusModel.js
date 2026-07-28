@@ -45,21 +45,32 @@ const parseId = (value) => {
   return Number.isNaN(parsed) ? value : parsed;
 };
 
+const withTenant = (tenantId, where = {}) => ({
+  ...where,
+  tenant_id: Number(tenantId),
+});
+
 export const pneusModel = {
-  create: async (pneuData) => {
+  create: async (tenantId, pneuData) => {
     const data = await prisma.pneus.create({
-      data: normalizePneuData(pneuData),
+      data: {
+        ...normalizePneuData(pneuData),
+        tenant_id: Number(tenantId),
+      },
       include: pneuInclude,
     });
 
     return serializePrisma(data);
   },
 
-  createBulk: async (pneusData) => {
+  createBulk: async (tenantId, pneusData) => {
     const created = await prisma.$transaction(
       pneusData.map((pneuData) =>
         prisma.pneus.create({
-          data: normalizePneuData(pneuData),
+          data: {
+            ...normalizePneuData(pneuData),
+            tenant_id: Number(tenantId),
+          },
           include: pneuInclude,
         }),
       ),
@@ -68,8 +79,9 @@ export const pneusModel = {
     return serializePrisma(created);
   },
 
-  getAll: async ({ limit = MAX_LIST_LIMIT } = {}) => {
+  getAll: async (tenantId, { limit = MAX_LIST_LIMIT } = {}) => {
     const data = await prisma.pneus.findMany({
+      where: withTenant(tenantId),
       include: pneuInclude,
       orderBy: { id: "desc" },
       take: limit,
@@ -78,18 +90,18 @@ export const pneusModel = {
     return serializePrisma(data);
   },
 
-  getById: async (id) => {
-    const data = await prisma.pneus.findUnique({
-      where: { id: parseId(id) },
+  getById: async (tenantId, id) => {
+    const data = await prisma.pneus.findFirst({
+      where: withTenant(tenantId, { id: parseId(id) }),
       include: pneuInclude,
     });
 
     return serializePrisma(data);
   },
 
-  getInStock: async ({ limit = MAX_LIST_LIMIT } = {}) => {
+  getInStock: async (tenantId, { limit = MAX_LIST_LIMIT } = {}) => {
     const data = await prisma.pneus.findMany({
-      where: { caminhao_id: null },
+      where: withTenant(tenantId, { caminhao_id: null }),
       include: {
         posicoes_pneus: {
           select: {
@@ -109,9 +121,9 @@ export const pneusModel = {
     return serializePrisma(data);
   },
 
-  getByCaminhaoId: async (caminhaoId, { limit = MAX_LIST_LIMIT } = {}) => {
+  getByCaminhaoId: async (tenantId, caminhaoId, { limit = MAX_LIST_LIMIT } = {}) => {
     const data = await prisma.pneus.findMany({
-      where: { caminhao_id: parseId(caminhaoId) },
+      where: withTenant(tenantId, { caminhao_id: parseId(caminhaoId) }),
       include: {
         posicoes_pneus: {
           select: {
@@ -131,7 +143,7 @@ export const pneusModel = {
     return serializePrisma(data);
   },
 
-  update: async (id, pneuData) => {
+  update: async (tenantId, id, pneuData) => {
     const data = await prisma.pneus.update({
       where: { id: parseId(id) },
       data: normalizePneuData(pneuData),
@@ -141,7 +153,7 @@ export const pneusModel = {
     return serializePrisma(data);
   },
 
-  delete: async (id) => {
+  delete: async (tenantId, id) => {
     const data = await prisma.pneus.delete({
       where: { id: parseId(id) },
     });
@@ -149,9 +161,9 @@ export const pneusModel = {
     return serializePrisma(data);
   },
 
-  assignFromStock: async (pneuId, updates) => {
-    const existing = await prisma.pneus.findUnique({
-      where: { id: parseId(pneuId) },
+  assignFromStock: async (tenantId, pneuId, updates) => {
+    const existing = await prisma.pneus.findFirst({
+      where: withTenant(tenantId, { id: parseId(pneuId) }),
       select: { id: true, caminhao_id: true },
     });
 
@@ -173,11 +185,11 @@ export const pneusModel = {
 
     if (safeUpdates.caminhao_id && safeUpdates.posicao_id) {
       const duplicate = await prisma.pneus.findFirst({
-        where: {
+        where: withTenant(tenantId, {
           caminhao_id: safeUpdates.caminhao_id,
           posicao_id: safeUpdates.posicao_id,
           NOT: { id: parseId(pneuId) },
-        },
+        }),
         select: { id: true },
       });
 
@@ -199,13 +211,13 @@ export const pneusModel = {
     return serializePrisma(data);
   },
 
-  findAndAssignStock: async (criteria, updates) => {
+  findAndAssignStock: async (tenantId, criteria, updates) => {
     const candidate = await prisma.pneus.findFirst({
-      where: {
+      where: withTenant(tenantId, {
         caminhao_id: null,
         marca: criteria.marca,
         modelo: criteria.modelo,
-      },
+      }),
       orderBy: [{ criado_em: "asc" }, { id: "asc" }],
       select: { id: true },
     });
@@ -214,11 +226,11 @@ export const pneusModel = {
       return null;
     }
 
-    return pneusModel.assignFromStock(candidate.id, updates);
+    return pneusModel.assignFromStock(tenantId, candidate.id, updates);
   },
 
-  buildListWhere({ caminhaoId, emUso, placa } = {}) {
-    const where = {};
+  buildListWhere(tenantId, { caminhaoId, emUso, placa } = {}) {
+    const where = withTenant(tenantId);
 
     if (caminhaoId != null && caminhaoId !== "") {
       where.caminhao_id = parseId(caminhaoId);
@@ -244,15 +256,18 @@ export const pneusModel = {
     return where;
   },
 
-  listPaginated: async ({
-    page = 1,
-    limit = 20,
-    caminhaoId,
-    emUso,
-    placa,
-    includeStockStatusCounts = false,
-  } = {}) => {
-    const where = pneusModel.buildListWhere({ caminhaoId, emUso, placa });
+  listPaginated: async (
+    tenantId,
+    {
+      page = 1,
+      limit = 20,
+      caminhaoId,
+      emUso,
+      placa,
+      includeStockStatusCounts = false,
+    } = {},
+  ) => {
+    const where = pneusModel.buildListWhere(tenantId, { caminhaoId, emUso, placa });
     const skip = (page - 1) * limit;
 
     const queries = [
@@ -270,7 +285,7 @@ export const pneusModel = {
       queries.push(
         prisma.pneus.groupBy({
           by: ["status_id"],
-          where: { caminhao_id: null },
+          where: withTenant(tenantId, { caminhao_id: null }),
           _count: { _all: true },
         }),
       );

@@ -3,31 +3,24 @@ import { config } from "./index.js";
 /**
  * Em produção exige API protegida. Falha no boot evita deploy acidental aberto.
  */
-export function validateProductionConfig() {
-  if (config.app.env !== "production") {
-    return;
+export function getProductionConfigErrors(cfg = config) {
+  if (cfg.app.env !== "production") {
+    return [];
   }
 
   const errors = [];
-  const warnings = [];
 
-  if (!config.auth.enabled) {
+  if (!cfg.auth.enabled) {
     errors.push("AUTH_ENABLED=true é obrigatório em produção.");
   }
 
-  if (!config.auth.jwtSecret || config.auth.jwtSecret.length < 16) {
+  if (!cfg.auth.jwtSecret || cfg.auth.jwtSecret.length < 16) {
     errors.push(
       "JWT_SECRET deve estar definido em produção (mínimo 16 caracteres).",
     );
   }
 
-  if (!config.auth.apiToken) {
-    warnings.push(
-      "API_TOKEN não definido — opcional; use apenas para scripts/CI. O SPA usa login JWT.",
-    );
-  }
-
-  if (!config.database.url) {
+  if (!cfg.database.url) {
     errors.push("DATABASE_URL é obrigatório em produção.");
   }
 
@@ -37,11 +30,34 @@ export function validateProductionConfig() {
     );
   }
 
-  if (config.database.sslMode === "disable") {
+  return errors;
+}
+
+export function getProductionConfigWarnings(cfg = config) {
+  if (cfg.app.env !== "production") {
+    return [];
+  }
+
+  const warnings = [];
+
+  if (!cfg.auth.apiToken) {
+    warnings.push(
+      "API_TOKEN não definido — opcional; use apenas para scripts/CI. O SPA usa login JWT.",
+    );
+  }
+
+  if (cfg.database.sslMode === "disable") {
     warnings.push(
       "DB_SSL_MODE=disable em produção — use require ou no-verify se o provedor exigir TLS.",
     );
   }
+
+  return warnings;
+}
+
+export function validateProductionConfig() {
+  const errors = getProductionConfigErrors();
+  const warnings = getProductionConfigWarnings();
 
   if (warnings.length > 0) {
     console.warn("[boot] Avisos de produção:");

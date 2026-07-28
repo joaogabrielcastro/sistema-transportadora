@@ -23,6 +23,7 @@ import tiposGastosRoutes from "./routes/tiposGastosRoutes.js";
 import reportsRoutes from "./routes/reportsRoutes.js";
 import ordemColetaRoutes from "./routes/ordemColetaRoutes.js";
 import registrosRoutes from "./routes/registrosRoutes.js";
+import usersRoutes from "./routes/usersRoutes.js";
 import { ensureUploadDirs } from "./utils/uploadPaths.js";
 import { runHealthCheck } from "./utils/healthCheck.js";
 
@@ -87,7 +88,7 @@ app.use((req, res, next) => {
 
 app.get("/", (req, res) => {
   res.json({
-    message: "API do Sistema de Transportadora está funcionando!",
+    message: "API ATrack — Gestão de Frotas",
     version: "1.0.0",
     environment: config.app.env,
     timestamp: new Date().toISOString(),
@@ -102,6 +103,7 @@ app.get("/health", async (req, res) => {
 const apiRouter = express.Router();
 apiRouter.use(apiRateLimiter);
 apiRouter.post("/auth/login", authController.login);
+apiRouter.post("/auth/register", authController.register);
 apiRouter.use(requireAuth);
 apiRouter.use(auditLog);
 apiRouter.get("/auth/me", authController.me);
@@ -115,6 +117,7 @@ apiRouter.use("/itens-checklist", itensChecklistRoutes);
 apiRouter.use("/tipos-gastos", tiposGastosRoutes);
 apiRouter.use("/reports", reportsRoutes);
 apiRouter.use("/registros", registrosRoutes);
+apiRouter.use("/users", usersRoutes);
 apiRouter.use(
   "/ordem-coleta",
   (req, res, next) => {

@@ -57,3 +57,17 @@ test("caminhão com 16 pneus inclui estepes após os eixos", () => {
   assert.equal(diagram.spares.length, 2);
   assert.equal(diagram.allowedIds.size, 16);
 });
+
+test("filterPosicoesForCaminhao e isPosicaoAllowedForCaminhao", async () => {
+  const { filterPosicoesForCaminhao, isPosicaoAllowedForCaminhao, mapPosicoesToSlots } =
+    await import("./pneuPosicaoMap.js");
+
+  const filtered = filterPosicoesForCaminhao(posicoes, { qtd_pneus: 6 });
+  assert.equal(filtered.length, 6);
+  assert.equal(isPosicaoAllowedForCaminhao(1, posicoes, { qtd_pneus: 6 }), true);
+  assert.equal(isPosicaoAllowedForCaminhao(13, posicoes, { qtd_pneus: 6 }), false);
+  assert.equal(isPosicaoAllowedForCaminhao(null, posicoes, { qtd_pneus: 6 }), true);
+
+  const mapped = mapPosicoesToSlots(posicoes);
+  assert.ok(mapped.bySlot["front-left"]);
+});

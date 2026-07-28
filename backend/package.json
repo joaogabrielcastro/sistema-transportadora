@@ -11,11 +11,14 @@
     "db:up": "docker compose -f ../docker-compose.yml up -d",
     "db:down": "docker compose -f ../docker-compose.yml down",
     "db:migrate": "node scripts/baseline-and-deploy.mjs",
+    "tenant:create": "node scripts/create-tenant.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node --test tests/unit/**/*.test.js tests/integration/**/*.test.js",
     "test:unit": "node --test tests/unit/**/*.test.js",
     "test:integration": "node --test tests/integration/**/*.test.js",
+    "test:coverage": "node --experimental-test-coverage --test-coverage-include=\"src/**/*.js\" --test tests/unit/**/*.test.js tests/integration/**/*.test.js",
+    "test:coverage:unit": "node --experimental-test-coverage --test-coverage-include=\"src/**/*.js\" --test tests/unit/**/*.test.js",
     "start": "node server.js"
   },
   "keywords": [

@@ -8,14 +8,16 @@ import { catchAsync } from "../utils/catchAsync.js";
 import { ChecklistService } from "../services/ChecklistService.js";
 import { normalizeDatesForDb } from "../utils/dates.js";
 import { parseListLimit } from "../utils/listLimits.js";
+import { requireTenantId } from "../utils/tenant.js";
 
 export const checklistController = {
   createChecklist: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
     const checklistValidado = checklistSchema.parse(req.body);
-    const novoChecklist =
-      await ChecklistService.createWithCaminhaoUpdate(
-        normalizeDatesForDb(checklistValidado),
-      );
+    const novoChecklist = await ChecklistService.createWithCaminhaoUpdate(
+      tenantId,
+      normalizeDatesForDb(checklistValidado),
+    );
     res.status(201).json({
       success: true,
       data: novoChecklist,
@@ -24,11 +26,12 @@ export const checklistController = {
   }),
 
   getAllChecklists: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseListLimit(req.query.limit, 10);
     const { caminhaoId } = req.query;
 
-    const { data, count } = await checklistModel.getAll({
+    const { data, count } = await checklistModel.getAll(tenantId, {
       page,
       limit,
       caminhaoId,
@@ -47,7 +50,8 @@ export const checklistController = {
   }),
 
   getChecklistById: catchAsync(async (req, res) => {
-    const checklist = await checklistModel.getById(req.params.id);
+    const tenantId = requireTenantId(req);
+    const checklist = await checklistModel.getById(tenantId, req.params.id);
     if (!checklist) {
       return res
         .status(404)
@@ -58,9 +62,10 @@ export const checklistController = {
   }),
 
   getChecklistsByCaminhao: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
     const { id } = req.params;
     const limit = parseListLimit(req.query.limit);
-    const result = await checklistModel.getByCaminhaoId(id, { limit });
+    const result = await checklistModel.getByCaminhaoId(tenantId, id, { limit });
     res.status(200).json({
       success: true,
       data: result.data,
@@ -73,8 +78,10 @@ export const checklistController = {
   }),
 
   updateChecklist: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
     const checklistValidado = checklistUpdateSchema.parse(req.body);
     const checklistAtualizado = await ChecklistService.updateWithCaminhaoUpdate(
+      tenantId,
       req.params.id,
       normalizeDatesForDb(checklistValidado),
     );
@@ -86,7 +93,8 @@ export const checklistController = {
   }),
 
   deleteChecklist: catchAsync(async (req, res) => {
-    await ChecklistService.deleteWithKmSync(req.params.id);
+    const tenantId = requireTenantId(req);
+    await ChecklistService.deleteWithKmSync(tenantId, req.params.id);
     res.status(204).send();
   }),
 };

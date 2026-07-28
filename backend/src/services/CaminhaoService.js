@@ -40,20 +40,22 @@ const normalizeCaminhaoPayload = (data) => {
 };
 
 export class CaminhaoService {
-  static async criarCaminhao(data) {
+  static async criarCaminhao(tenantId, data) {
     const normalized = normalizeCaminhaoPayload(data);
-    logger.info("Iniciando criação de caminhão", { placa: normalized.placa });
+    logger.info("Iniciando criação de caminhão", {
+      placa: normalized.placa,
+      tenantId,
+    });
 
     try {
-      // Validar duplicatas
-      await this.validateUniqueness(normalized);
+      await this.validateUniqueness(tenantId, normalized);
 
-      // Criar caminhão
-      const novoCaminhao = await caminhoesModel.create(normalized);
+      const novoCaminhao = await caminhoesModel.create(tenantId, normalized);
 
       logger.info("Caminhão criado com sucesso", {
         id: novoCaminhao.id,
         placa: novoCaminhao.placa,
+        tenantId,
       });
 
       return novoCaminhao;
@@ -63,11 +65,12 @@ export class CaminhaoService {
     }
   }
 
-  static async buscarTodos({ page, limit, filtro, termo }) {
-    logger.debug("Buscando caminhões", { page, limit, filtro, termo });
+  static async buscarTodos({ tenantId, page, limit, filtro, termo }) {
+    logger.debug("Buscando caminhões", { tenantId, page, limit, filtro, termo });
 
     try {
       const resultado = await caminhoesModel.getAll({
+        tenantId,
         page,
         limit,
         filtro,
@@ -77,6 +80,7 @@ export class CaminhaoService {
       logger.info("Caminhões encontrados", {
         total: resultado.count,
         pagina: page,
+        tenantId,
       });
 
       return resultado;
@@ -86,14 +90,14 @@ export class CaminhaoService {
     }
   }
 
-  static async buscarPorPlaca(placa) {
-    logger.debug("Buscando caminhão por placa", { placa });
+  static async buscarPorPlaca(tenantId, placa) {
+    logger.debug("Buscando caminhão por placa", { placa, tenantId });
 
     try {
-      const caminhao = await caminhoesModel.getByPlaca(placa);
+      const caminhao = await caminhoesModel.getByPlaca(tenantId, placa);
 
       if (!caminhao) {
-        logger.warn("Caminhão não encontrado", { placa });
+        logger.warn("Caminhão não encontrado", { placa, tenantId });
         throw new Error("Caminhão não encontrado");
       }
 
@@ -104,13 +108,13 @@ export class CaminhaoService {
     }
   }
 
-  static async atualizarCaminhao(placa, data) {
+  static async atualizarCaminhao(tenantId, placa, data) {
     const normalized = normalizeCaminhaoPayload(data);
-    logger.info("Atualizando caminhão", { placa });
+    logger.info("Atualizando caminhão", { placa, tenantId });
 
     try {
-      const caminhao = await this.buscarPorPlaca(placa);
-      await this.validateUniqueness(normalized, placa);
+      const caminhao = await this.buscarPorPlaca(tenantId, placa);
+      await this.validateUniqueness(tenantId, normalized, placa);
 
       const { km_atual, ...rest } = normalized;
 
@@ -120,10 +124,10 @@ export class CaminhaoService {
 
       const caminhaoAtualizado =
         Object.keys(rest).length > 0
-          ? await caminhoesModel.update(placa, rest)
-          : await caminhoesModel.getByPlaca(placa);
+          ? await caminhoesModel.update(tenantId, placa, rest)
+          : await caminhoesModel.getByPlaca(tenantId, placa);
 
-      logger.info("Caminhão atualizado com sucesso", { placa });
+      logger.info("Caminhão atualizado com sucesso", { placa, tenantId });
 
       return caminhaoAtualizado;
     } catch (error) {
@@ -132,16 +136,16 @@ export class CaminhaoService {
     }
   }
 
-  static async atualizarCaminhaoPorId(id, data) {
+  static async atualizarCaminhaoPorId(tenantId, id, data) {
     const normalized = normalizeCaminhaoPayload(data);
-    logger.info("Atualizando caminhão por id", { id });
+    logger.info("Atualizando caminhão por id", { id, tenantId });
 
-    const caminhao = await caminhoesModel.getById(id);
+    const caminhao = await caminhoesModel.getById(tenantId, id);
     if (!caminhao) {
       throw new Error("Caminhão não encontrado");
     }
 
-    await this.validateUniqueness(normalized, caminhao.placa);
+    await this.validateUniqueness(tenantId, normalized, caminhao.placa);
 
     const { km_atual, ...rest } = normalized;
 
@@ -151,73 +155,73 @@ export class CaminhaoService {
 
     const caminhaoAtualizado =
       Object.keys(rest).length > 0
-        ? await caminhoesModel.updateById(id, rest)
-        : await caminhoesModel.getById(id);
+        ? await caminhoesModel.updateById(tenantId, id, rest)
+        : await caminhoesModel.getById(tenantId, id);
 
     logger.info("Caminhão atualizado por id com sucesso", {
       id: caminhaoAtualizado.id,
       placa: caminhaoAtualizado.placa,
+      tenantId,
     });
 
     return caminhaoAtualizado;
   }
 
-  static async deletarCaminhao(placa) {
-    logger.info("Iniciando deleção de caminhão", { placa });
+  static async deletarCaminhao(tenantId, placa) {
+    logger.info("Iniciando deleção de caminhão", { placa, tenantId });
 
     try {
-      // Verificar dependências
-      const dependencias = await this.verificarDependencias(placa);
+      const dependencias = await this.verificarDependencias(tenantId, placa);
 
       if (dependencias.total > 0) {
         const erro = new Error(
           "Não é possível excluir o caminhão pois existem registros vinculados. " +
-            "Exclua primeiro todos os registros relacionados ou use a opção de exclusão em cascata."
+            "Exclua primeiro todos os registros relacionados ou use a opção de exclusão em cascata.",
         );
         erro.code = "DEPENDENCIES_EXIST";
         erro.dependencies = dependencias;
         throw erro;
       }
 
-      const caminhao = await caminhoesModel.getByPlaca(placa);
+      const caminhao = await caminhoesModel.getByPlaca(tenantId, placa);
       if (caminhao?.id) {
-        await CaminhaoDocumentoService.purgeCaminhao(caminhao.id);
+        await CaminhaoDocumentoService.purgeCaminhao(tenantId, caminhao.id);
       }
 
-      await caminhoesModel.delete(placa);
+      await caminhoesModel.delete(tenantId, placa);
 
-      logger.info("Caminhão deletado com sucesso", { placa });
+      logger.info("Caminhão deletado com sucesso", { placa, tenantId });
     } catch (error) {
       logger.error("Erro ao deletar caminhão", error);
       throw error;
     }
   }
 
-  static async verificarDependencias(placa) {
-    logger.debug("Verificando dependências", { placa });
+  static async verificarDependencias(tenantId, placa) {
+    logger.debug("Verificando dependências", { placa, tenantId });
 
     try {
-      const dependencias = await caminhoesModel.checkDependencies(placa);
-      return dependencias;
+      return await caminhoesModel.checkDependencies(tenantId, placa);
     } catch (error) {
       logger.error("Erro ao verificar dependências", error);
       throw error;
     }
   }
 
-  static async pesquisarCaminhoes(termo) {
-    logger.debug("Pesquisando caminhões", { termo });
+  static async pesquisarCaminhoes(tenantId, termo) {
+    logger.debug("Pesquisando caminhões", { termo, tenantId });
 
     if (!termo || termo.trim().length < 2) {
       throw new Error("O termo de busca deve ter pelo menos 2 caracteres");
     }
 
     try {
-      const resultados = await caminhoesModel.search(termo.trim());
+      const resultados = await caminhoesModel.search(tenantId, termo.trim());
 
       logger.info("Pesquisa realizada", {
         termo: termo.trim(),
         resultados: resultados.length,
+        tenantId,
       });
 
       return resultados;
@@ -227,7 +231,7 @@ export class CaminhaoService {
     }
   }
 
-  static async validateUniqueness(data, excludePlaca = null) {
+  static async validateUniqueness(tenantId, data, excludePlaca = null) {
     const {
       numero_carreta_1,
       placa_carreta_1,
@@ -237,14 +241,14 @@ export class CaminhaoService {
     } = data;
 
     const existentes = await caminhoesModel.checkUniqueness(
+      tenantId,
       numero_carreta_1,
       placa_carreta_1,
       numero_carreta_2,
       placa_carreta_2,
-      numero_cavalo
+      numero_cavalo,
     );
 
-    // Filtrar o próprio caminhão se estivermos atualizando (placa case-insensitive)
     const excludeNorm = excludePlaca ? normalizePlaca(excludePlaca) : null;
     const conflitos = excludeNorm
       ? existentes.filter((item) => !samePlacaLocal(item.placa, excludePlaca))
@@ -257,7 +261,7 @@ export class CaminhaoService {
       }
       const placas = conflitos.map((c) => c.placa).join(", ");
       const err = new Error(
-        `Conflito com o(s) caminhão(ões): ${placas}. Ajuste número ou placa de carreta, ou número do cavalo, no outro cadastro antes de vincular aqui.`
+        `Conflito com o(s) caminhão(ões): ${placas}. Ajuste número ou placa de carreta, ou número do cavalo, no outro cadastro antes de vincular aqui.`,
       );
       err.code = "DUPLICATE_CAMINHAO_FIELDS";
       err.conflicts = conflitos.map((c) => ({ placa: c.placa }));
@@ -276,58 +280,53 @@ export class CaminhaoService {
     } = data;
 
     conflitos.forEach((item) => {
-      // Verificações para numero_carreta_1
       if (numero_carreta_1 != null) {
         if (
           sameInt(item.numero_carreta_1, numero_carreta_1) ||
           sameInt(item.numero_carreta_2, numero_carreta_1)
         ) {
           erros.add(
-            `Número de carreta ${numero_carreta_1} já está em uso no caminhão ${item.placa}`
+            `Número de carreta ${numero_carreta_1} já está em uso no caminhão ${item.placa}`,
           );
         }
       }
 
-      // Verificações para placa_carreta_1
       if (placa_carreta_1) {
         if (
           samePlaca(item.placa_carreta_1, placa_carreta_1) ||
           samePlaca(item.placa_carreta_2, placa_carreta_1)
         ) {
           erros.add(
-            `Placa de carreta ${normalizePlaca(placa_carreta_1)} já está em uso no caminhão ${item.placa}`
+            `Placa de carreta ${normalizePlaca(placa_carreta_1)} já está em uso no caminhão ${item.placa}`,
           );
         }
       }
 
-      // Verificações para numero_carreta_2
       if (numero_carreta_2 != null) {
         if (
           sameInt(item.numero_carreta_1, numero_carreta_2) ||
           sameInt(item.numero_carreta_2, numero_carreta_2)
         ) {
           erros.add(
-            `Número de carreta ${numero_carreta_2} já está em uso no caminhão ${item.placa}`
+            `Número de carreta ${numero_carreta_2} já está em uso no caminhão ${item.placa}`,
           );
         }
       }
 
-      // Verificações para placa_carreta_2
       if (placa_carreta_2) {
         if (
           samePlaca(item.placa_carreta_1, placa_carreta_2) ||
           samePlaca(item.placa_carreta_2, placa_carreta_2)
         ) {
           erros.add(
-            `Placa de carreta ${normalizePlaca(placa_carreta_2)} já está em uso no caminhão ${item.placa}`
+            `Placa de carreta ${normalizePlaca(placa_carreta_2)} já está em uso no caminhão ${item.placa}`,
           );
         }
       }
 
-      // Verificação para número do cavalo (mesmo padrão das carretas: mostra o outro caminhão)
       if (numero_cavalo != null && sameInt(item.numero_cavalo, numero_cavalo)) {
         erros.add(
-          `Número do cavalo ${numero_cavalo} já está em uso no caminhão ${item.placa}`
+          `Número do cavalo ${numero_cavalo} já está em uso no caminhão ${item.placa}`,
         );
       }
     });

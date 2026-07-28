@@ -64,6 +64,7 @@ jobs:
           NODE_ENV: test
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/transportadora_test
           DB_SSL_MODE: disable
+          CI: "true"
 
   frontend:
     name: Frontend (lint + typecheck + build + e2e)
@@ -93,6 +94,9 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
 
       - name: Build
         run: npm run build

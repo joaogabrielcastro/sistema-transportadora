@@ -32,7 +32,7 @@ const defaultAssunto = (tipo, placaLabel) => {
 };
 
 export class OrdemColetaService {
-  static async mergeVars({ placa, dadosVariaveis }) {
+  static async mergeVars({ tenantId, placa, dadosVariaveis }) {
     const now = new Date();
     const dataEmissao = now.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
     const horaEmissao = now.toLocaleTimeString("pt-BR", {
@@ -43,7 +43,7 @@ export class OrdemColetaService {
 
     let caminhao = null;
     if (placa) {
-      caminhao = await caminhoesModel.getByPlaca(placa);
+      caminhao = await caminhoesModel.getByPlaca(tenantId, placa);
     }
 
     const fromTruck = caminhao
@@ -134,18 +134,27 @@ export class OrdemColetaService {
       throw err;
     }
 
+    const isLinuxContainer =
+      process.platform === "linux" || Boolean(process.env.PUPPETEER_ARGS_DOCKER);
+
+    const args = [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--font-render-hinting=none",
+    ];
+
+    // --single-process/--no-zygote ajudam em containers Linux, mas no Windows
+    // costumam derrubar a página durante Page.printToPDF (Target closed).
+    if (isLinuxContainer) {
+      args.push("--single-process", "--no-zygote");
+    }
+
     const launchOpts = {
       headless: true,
       executablePath,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-        "--font-render-hinting=none",
-        "--single-process",
-        "--no-zygote",
-      ],
+      args,
     };
 
     let browser;
@@ -231,6 +240,7 @@ export class OrdemColetaService {
   }
 
   static async registrarEnvio({
+    tenantId,
     tipo,
     caminhaoId,
     dados,
@@ -241,6 +251,7 @@ export class OrdemColetaService {
   }) {
     return prisma.ordens_coleta_envio.create({
       data: {
+        tenant_id: Number(tenantId),
         tipo,
         caminhao_id: caminhaoId,
         dados,
@@ -259,9 +270,9 @@ export class OrdemColetaService {
     });
   }
 
-  static async consultarStatusEnvio(id) {
-    const row = await prisma.ordens_coleta_envio.findUnique({
-      where: { id: Number(id) },
+  static async consultarStatusEnvio(tenantId, id) {
+    const row = await prisma.ordens_coleta_envio.findFirst({
+      where: { id: Number(id), tenant_id: Number(tenantId) },
       select: {
         id: true,
         assunto: true,
@@ -306,7 +317,12 @@ export class OrdemColetaService {
   static async processarEnvioPorId(envioId, parsed) {
     const registro = await prisma.ordens_coleta_envio.findUnique({
       where: { id: Number(envioId) },
-      select: { enviado_em: true, erro_envio: true, retry_count: true },
+      select: {
+        tenant_id: true,
+        enviado_em: true,
+        erro_envio: true,
+        retry_count: true,
+      },
     });
 
     if (!registro) {
@@ -332,7 +348,11 @@ export class OrdemColetaService {
       id: envioId,
       tipo: parsed.tipo,
     });
-    const vars = await OrdemColetaService.mergeVars(parsed);
+    const vars = await OrdemColetaService.mergeVars({
+      tenantId: registro.tenant_id,
+      placa: parsed.placa,
+      dadosVariaveis: parsed.dadosVariaveis,
+    });
     const html = OrdemColetaService.buildHtml(parsed.tipo, vars);
 
     logger.info("Ordem enviar: gerando PDF", { id: envioId });
@@ -416,11 +436,15 @@ export class OrdemColetaService {
     }
   }
 
-  static async iniciarEnvioAssincrono(parsed) {
+  static async iniciarEnvioAssincrono(tenantId, parsed) {
     OrdemColetaService.assertMailConfigured();
 
-    const caminhaoId = await OrdemColetaService.resolverCaminhaoId(parsed.placa);
+    const caminhaoId = await OrdemColetaService.resolverCaminhaoId(
+      tenantId,
+      parsed.placa,
+    );
     const row = await OrdemColetaService.registrarEnvio({
+      tenantId,
       tipo: parsed.tipo,
       caminhaoId,
       dados: {
@@ -439,8 +463,9 @@ export class OrdemColetaService {
     return { id: row.id, status: "processing" };
   }
 
-  static async excluirEnviosComFalha({ dias = 30 } = {}) {
+  static async excluirEnviosComFalha(tenantId, { dias = 30 } = {}) {
     const where = {
+      tenant_id: Number(tenantId),
       enviado_em: null,
       erro_envio: { not: null },
     };
@@ -455,19 +480,22 @@ export class OrdemColetaService {
     return result.count;
   }
 
-  static async contarEnviosComFalha() {
+  static async contarEnviosComFalha(tenantId) {
     return prisma.ordens_coleta_envio.count({
       where: {
+        tenant_id: Number(tenantId),
         enviado_em: null,
         erro_envio: { not: null },
       },
     });
   }
 
-  static async listarHistorico({ page, limit }) {
+  static async listarHistorico(tenantId, { page, limit }) {
     const skip = (page - 1) * limit;
+    const tenantWhere = { tenant_id: Number(tenantId) };
     const [rows, total, totalFalhas] = await prisma.$transaction([
       prisma.ordens_coleta_envio.findMany({
+        where: tenantWhere,
         orderBy: { criado_em: "desc" },
         skip,
         take: limit,
@@ -475,9 +503,10 @@ export class OrdemColetaService {
           caminhoes: { select: { placa: true, motorista: true } },
         },
       }),
-      prisma.ordens_coleta_envio.count(),
+      prisma.ordens_coleta_envio.count({ where: tenantWhere }),
       prisma.ordens_coleta_envio.count({
         where: {
+          ...tenantWhere,
           enviado_em: null,
           erro_envio: { not: null },
         },
@@ -511,9 +540,9 @@ export class OrdemColetaService {
     };
   }
 
-  static async resolverCaminhaoId(placa) {
+  static async resolverCaminhaoId(tenantId, placa) {
     if (!placa) return null;
-    const c = await caminhoesModel.getByPlaca(placa);
+    const c = await caminhoesModel.getByPlaca(tenantId, placa);
     return c?.id ?? null;
   }
 

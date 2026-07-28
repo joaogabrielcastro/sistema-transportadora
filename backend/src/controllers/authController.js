@@ -1,5 +1,5 @@
 import { AuthService } from "../services/AuthService.js";
-import { loginSchema } from "../schemas/authSchema.js";
+import { loginSchema, registerSchema } from "../schemas/authSchema.js";
 import { catchAsync } from "../utils/catchAsync.js";
 
 export const authController = {
@@ -11,6 +11,22 @@ export const authController = {
       success: true,
       data: result,
       message: "Login realizado com sucesso",
+    });
+  }),
+
+  register: catchAsync(async (req, res) => {
+    const parsed = registerSchema.parse(req.body);
+    const result = await AuthService.register({
+      empresaNome: parsed.empresaNome,
+      email: parsed.email,
+      password: parsed.password,
+      nome: parsed.nome || undefined,
+    });
+
+    res.status(201).json({
+      success: true,
+      data: result,
+      message: "Conta criada com sucesso",
     });
   }),
 

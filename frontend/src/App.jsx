@@ -14,6 +14,7 @@ import { LoadingSpinner } from "./components/ui";
 
 const Home = lazy(() => import("./Pages/Home.jsx"));
 const Login = lazy(() => import("./Pages/Login.jsx"));
+const Register = lazy(() => import("./Pages/Register.jsx"));
 const CadastroCaminhao = lazy(() => import("./Pages/CadastroCaminhao.jsx"));
 const CaminhaoDetail = lazy(() => import("./Pages/CaminhaoDetail.jsx"));
 const Pneus = lazy(() => import("./Pages/Pneus.jsx"));
@@ -26,6 +27,7 @@ const EditGasto = lazy(() => import("./Pages/EditGasto.jsx"));
 const EditChecklist = lazy(() => import("./Pages/EditChecklist.jsx"));
 const Relatorios = lazy(() => import("./Pages/Relatorios.jsx"));
 const OrdensColeta = lazy(() => import("./Pages/OrdensColeta.jsx"));
+const Usuarios = lazy(() => import("./Pages/Usuarios.jsx"));
 
 function RedirectCadastroLote() {
   const location = useLocation();
@@ -35,10 +37,12 @@ function RedirectCadastroLote() {
 function AppRoutes() {
   const location = useLocation();
   const isLoginPage = location.pathname === "/login";
+  const isRegisterPage = location.pathname === "/register";
+  const hideChrome = isLoginPage || isRegisterPage;
 
   return (
     <>
-      {!isLoginPage && <Navbar />}
+      {!hideChrome && <Navbar />}
       <Suspense
         fallback={
           <div className="flex items-center justify-center min-h-screen">
@@ -48,6 +52,7 @@ function AppRoutes() {
       >
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
             <Route
               path="/"
               element={
@@ -157,6 +162,14 @@ function AppRoutes() {
               element={
                 <ProtectedRoute>
                   <OrdensColeta />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/usuarios"
+              element={
+                <ProtectedRoute>
+                  <Usuarios />
                 </ProtectedRoute>
               }
             />

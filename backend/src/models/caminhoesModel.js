@@ -77,8 +77,14 @@ const normalizeCaminhaoData = (caminhaoData) => {
   );
 };
 
+const withTenant = (tenantId, where = {}) => ({
+  ...where,
+  tenant_id: Number(tenantId),
+});
+
 export const caminhoesModel = {
   checkUniqueness: async (
+    tenantId,
     numero_carreta_1,
     placa_carreta_1,
     numero_carreta_2,
@@ -98,7 +104,7 @@ export const caminhoesModel = {
     }
 
     const data = await prisma.caminhoes.findMany({
-      where: { OR: or },
+      where: withTenant(tenantId, { OR: or }),
       select: {
         placa: true,
         numero_carreta_1: true,
@@ -112,22 +118,31 @@ export const caminhoesModel = {
     return serializePrisma(data);
   },
 
-  create: async (caminhaoData) => {
+  create: async (tenantId, caminhaoData) => {
     const data = await prisma.caminhoes.create({
-      data: normalizeCaminhaoData(caminhaoData),
+      data: {
+        ...normalizeCaminhaoData(caminhaoData),
+        tenant_id: Number(tenantId),
+      },
     });
 
     return serializePrisma(data);
   },
 
-  getAll: async ({ page = 1, limit = 10, filtro = null, termo = null }) => {
+  getAll: async ({
+    tenantId,
+    page = 1,
+    limit = 10,
+    filtro = null,
+    termo = null,
+  }) => {
     const noPagination = limit === null || limit === undefined;
     const termoNormalizado = termo?.trim();
-    let where;
+    let where = withTenant(tenantId);
 
     if (termoNormalizado) {
       if (filtro === "placa") {
-        where = {
+        where = withTenant(tenantId, {
           OR: [
             { placa: { contains: termoNormalizado, mode: "insensitive" } },
             {
@@ -143,13 +158,13 @@ export const caminhoesModel = {
               },
             },
           ],
-        };
+        });
       } else if (filtro === "motorista") {
-        where = {
+        where = withTenant(tenantId, {
           motorista: { contains: termoNormalizado, mode: "insensitive" },
-        };
+        });
       } else {
-        where = {
+        where = withTenant(tenantId, {
           OR: [
             { placa: { contains: termoNormalizado, mode: "insensitive" } },
             { motorista: { contains: termoNormalizado, mode: "insensitive" } },
@@ -166,7 +181,7 @@ export const caminhoesModel = {
               },
             },
           ],
-        };
+        });
       }
     }
 
@@ -182,45 +197,60 @@ export const caminhoesModel = {
     return { data: serializePrisma(data), count };
   },
 
-  getByPlaca: async (placa) => {
+  getByPlaca: async (tenantId, placa) => {
     const normalized = normalizePlaca(placa);
     if (!normalized) return null;
 
     const data = await prisma.caminhoes.findUnique({
-      where: { placa: normalized },
+      where: {
+        tenant_id_placa: {
+          tenant_id: Number(tenantId),
+          placa: normalized,
+        },
+      },
     });
 
     return serializePrisma(data);
   },
 
-  getById: async (id) => {
-    const data = await prisma.caminhoes.findUnique({
-      where: { id: parseId(id) },
+  getById: async (tenantId, id) => {
+    const data = await prisma.caminhoes.findFirst({
+      where: withTenant(tenantId, { id: parseId(id) }),
     });
 
     return serializePrisma(data);
   },
 
-  update: async (placa, caminhaoData) => {
+  update: async (tenantId, placa, caminhaoData) => {
+    const existing = await caminhoesModel.getByPlaca(tenantId, placa);
+    if (!existing) {
+      throw new Error("Caminhão não encontrado");
+    }
+
     const data = await prisma.caminhoes.update({
-      where: { placa },
+      where: { id: existing.id },
       data: normalizeCaminhaoData(caminhaoData),
     });
 
     return serializePrisma(data);
   },
 
-  updateById: async (id, caminhaoData) => {
+  updateById: async (tenantId, id, caminhaoData) => {
+    const existing = await caminhoesModel.getById(tenantId, id);
+    if (!existing) {
+      throw new Error("Caminhão não encontrado");
+    }
+
     const data = await prisma.caminhoes.update({
-      where: { id: parseId(id) },
+      where: { id: existing.id },
       data: normalizeCaminhaoData(caminhaoData),
     });
 
     return serializePrisma(data);
   },
 
-  checkDependencies: async (placa) => {
-    const caminhao = await caminhoesModel.getByPlaca(placa);
+  checkDependencies: async (tenantId, placa) => {
+    const caminhao = await caminhoesModel.getByPlaca(tenantId, placa);
 
     if (!caminhao) {
       throw new Error("Caminhão não encontrado");
@@ -230,14 +260,20 @@ export const caminhoesModel = {
 
     const [gastos, checklists, pneus, documentos, ordensEnvio] =
       await prisma.$transaction([
-        prisma.gastos.count({ where: { caminhao_id: caminhaoId } }),
-        prisma.checklist.count({ where: { caminhao_id: caminhaoId } }),
-        prisma.pneus.count({ where: { caminhao_id: caminhaoId } }),
+        prisma.gastos.count({
+          where: withTenant(tenantId, { caminhao_id: caminhaoId }),
+        }),
+        prisma.checklist.count({
+          where: withTenant(tenantId, { caminhao_id: caminhaoId }),
+        }),
+        prisma.pneus.count({
+          where: withTenant(tenantId, { caminhao_id: caminhaoId }),
+        }),
         prisma.caminhao_documentos.count({
-          where: { caminhao_id: caminhaoId },
+          where: withTenant(tenantId, { caminhao_id: caminhaoId }),
         }),
         prisma.ordens_coleta_envio.count({
-          where: { caminhao_id: caminhaoId },
+          where: withTenant(tenantId, { caminhao_id: caminhaoId }),
         }),
       ]);
 
@@ -249,54 +285,59 @@ export const caminhoesModel = {
         documentos,
         ordens_envio: ordensEnvio,
       },
-      // Ordens de coleta usam onDelete SetNull — não impedem exclusão do caminhão.
       total: gastos + checklists + pneus + documentos,
     };
   },
 
-  delete: async (placa) => {
-    const caminhaoExistente = await caminhoesModel.getByPlaca(placa);
+  delete: async (tenantId, placa) => {
+    const caminhaoExistente = await caminhoesModel.getByPlaca(tenantId, placa);
 
     if (!caminhaoExistente) {
       throw new Error("Caminhão não encontrado");
     }
 
     const data = await prisma.caminhoes.delete({
-      where: { placa: caminhaoExistente.placa },
+      where: { id: caminhaoExistente.id },
     });
 
     return serializePrisma(data);
   },
 
-  deleteWithCascade: async (placa) => {
-    const caminhao = await caminhoesModel.getByPlaca(placa);
+  deleteWithCascade: async (tenantId, placa) => {
+    const caminhao = await caminhoesModel.getByPlaca(tenantId, placa);
 
     if (!caminhao) {
       throw new Error("Caminhão não encontrado");
     }
 
     const data = await prisma.$transaction(async (tx) => {
-      await tx.gastos.deleteMany({ where: { caminhao_id: caminhao.id } });
-      await tx.checklist.deleteMany({ where: { caminhao_id: caminhao.id } });
-      await tx.pneus.deleteMany({ where: { caminhao_id: caminhao.id } });
+      await tx.gastos.deleteMany({
+        where: withTenant(tenantId, { caminhao_id: caminhao.id }),
+      });
+      await tx.checklist.deleteMany({
+        where: withTenant(tenantId, { caminhao_id: caminhao.id }),
+      });
+      await tx.pneus.deleteMany({
+        where: withTenant(tenantId, { caminhao_id: caminhao.id }),
+      });
       await tx.ordens_coleta_envio.deleteMany({
-        where: { caminhao_id: caminhao.id },
+        where: withTenant(tenantId, { caminhao_id: caminhao.id }),
       });
 
-      return tx.caminhoes.delete({ where: { placa: caminhao.placa } });
+      return tx.caminhoes.delete({ where: { id: caminhao.id } });
     });
 
     return serializePrisma(data);
   },
 
-  search: async (term) => {
+  search: async (tenantId, term) => {
     const data = await prisma.caminhoes.findMany({
-      where: {
+      where: withTenant(tenantId, {
         OR: [
           { placa: { contains: term, mode: "insensitive" } },
           { motorista: { contains: term, mode: "insensitive" } },
         ],
-      },
+      }),
       orderBy: { placa: "asc" },
     });
 

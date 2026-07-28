@@ -3,8 +3,34 @@ import crypto from "node:crypto";
 import { config } from "../config/index.js";
 import { logger } from "../utils/logger.js";
 import { verifyAccessToken } from "../utils/jwt.js";
+import { resolveDefaultTenantId } from "../utils/tenant.js";
 
 const SENSITIVE_KEY = /pass|password|token|secret|authorization|smtp/i;
+
+let cachedDefaultTenantId = null;
+
+async function getDefaultTenantId() {
+  if (cachedDefaultTenantId != null) return cachedDefaultTenantId;
+
+  const fromEnv = Number(process.env.DEFAULT_TENANT_ID);
+  if (Number.isInteger(fromEnv) && fromEnv > 0) {
+    cachedDefaultTenantId = fromEnv;
+    return cachedDefaultTenantId;
+  }
+
+  // Em testes sem DB, evita falha ao resolver seed tenant
+  if (process.env.NODE_ENV === "test" && process.env.RUN_DB_TESTS !== "1" && process.env.CI !== "true") {
+    cachedDefaultTenantId = 1;
+    return cachedDefaultTenantId;
+  }
+
+  try {
+    cachedDefaultTenantId = await resolveDefaultTenantId();
+  } catch {
+    cachedDefaultTenantId = 1;
+  }
+  return cachedDefaultTenantId;
+}
 
 const summarizeAuditBody = (body) => {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
@@ -79,46 +105,71 @@ function applyAuthUser(req, user) {
   }
 }
 
-export const requireAuth = (req, res, next) => {
-  if (req.method === "OPTIONS") {
-    return next();
-  }
+export const requireAuth = async (req, res, next) => {
+  try {
+    if (req.method === "OPTIONS") {
+      return next();
+    }
 
-  if (!config.auth.enabled) {
-    applyAuthUser(req, { id: "dev", role: "admin", email: "dev@local" });
-    return next();
-  }
+    if (!config.auth.enabled) {
+      const tenantId = await getDefaultTenantId();
+      applyAuthUser(req, {
+        id: "dev",
+        role: "admin",
+        email: "dev@local",
+        tenantId,
+      });
+      return next();
+    }
 
-  const authHeader = req.headers.authorization || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
 
-  if (!token) {
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        error: "Não autorizado",
+      });
+    }
+
+    const jwtPayload = verifyAccessToken(token);
+    if (jwtPayload?.sub) {
+      const tenantId = Number(jwtPayload.tenantId);
+      if (!Number.isInteger(tenantId) || tenantId <= 0) {
+        return res.status(401).json({
+          success: false,
+          error: "Token sem tenant. Faça login novamente.",
+        });
+      }
+
+      applyAuthUser(req, {
+        id: String(jwtPayload.sub),
+        role: jwtPayload.role || "operator",
+        email: jwtPayload.email,
+        nome: jwtPayload.nome,
+        tenantId,
+      });
+      return next();
+    }
+
+    if (tokensMatch(token, config.auth.apiToken)) {
+      const tenantId = await getDefaultTenantId();
+      applyAuthUser(req, {
+        id: "api-token",
+        role: "admin",
+        email: "api-token",
+        tenantId,
+      });
+      return next();
+    }
+
     return res.status(401).json({
       success: false,
       error: "Não autorizado",
     });
+  } catch (err) {
+    return next(err);
   }
-
-  const jwtPayload = verifyAccessToken(token);
-  if (jwtPayload?.sub) {
-    applyAuthUser(req, {
-      id: String(jwtPayload.sub),
-      role: jwtPayload.role || "operator",
-      email: jwtPayload.email,
-      nome: jwtPayload.nome,
-    });
-    return next();
-  }
-
-  if (tokensMatch(token, config.auth.apiToken)) {
-    applyAuthUser(req, { id: "api-token", role: "admin", email: "api-token" });
-    return next();
-  }
-
-  return res.status(401).json({
-    success: false,
-    error: "Não autorizado",
-  });
 };
 
 export const requireRole =
@@ -146,6 +197,7 @@ export const auditLog = (req, res, next) => {
     requestId: req.context?.requestId,
     userId: req.context?.user?.id,
     role: req.context?.user?.role,
+    tenantId: req.context?.user?.tenantId,
     method: req.method,
     path: req.path,
     bodyKeys:

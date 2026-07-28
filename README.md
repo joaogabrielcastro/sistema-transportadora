@@ -1,21 +1,26 @@
-# Sistema de Gestão para Transportadora
+# ATrack — Gestão de Frotas
 
-Aplicação fullstack para gestão de frota, manutenção, pneus e gastos operacionais.
+Plataforma **multi-empresa** (SaaS) para gestão de frota, manutenção, pneus, gastos e ordens de coleta.
 
-## Arquitetura Atual
+## Arquitetura
 
-- Backend: Node.js, Express, Prisma ORM, PostgreSQL, Zod.
+- Backend: Node.js, Express, Prisma ORM, PostgreSQL, Zod, JWT.
 - Frontend: React, Vite, Tailwind, Axios, Chart.js.
+- Isolamento: banco compartilhado com `tenant_id` em todas as tabelas de negócio.
 
-## Principais Melhorias Implementadas
+## Multi-tenant e acesso
 
-- Migração completa do acesso a dados para Prisma.
-- Contrato de API padronizado com envelope `success`, `data`, `message`, `pagination`.
-- Regras críticas de atualização de KM movidas para services transacionais.
-- Endpoints analíticos server-side para dashboard e relatório de custo por KM.
-- CORS orientado por ambiente (`CORS_ORIGINS`).
-- Segurança base: rate limit, contexto de requisição e trilha de auditoria para mutações.
-- Postura TLS de banco controlada por ambiente (`DB_SSL_MODE`).
+- Login por **e-mail + senha** (e-mail único no sistema); o tenant vem do usuário.
+- Cadastro público de empresa: `POST /api/auth/register` e rota frontend `/register` (desligar com `ALLOW_PUBLIC_REGISTER=false` / `VITE_ALLOW_PUBLIC_REGISTER=false`).
+- Papéis **dentro** do tenant: `admin` | `operator`. Admin gerencia usuários em `/usuarios`.
+- Seed histórico: tenant `slug=abbroto` (dados migrados). Novos tenants via UI ou CLI:
+  `cd backend && npm run tenant:create -- --slug=empresa --nome="Empresa" --email=admin@empresa.com --password=SenhaSegura123`
+
+## Principais recursos
+
+- Frota (caminhões), pneus, manutenção/gastos, relatórios, ordem de coleta (PDF + e-mail).
+- Upload de documentos por caminhão.
+- CORS, rate limit, auditoria de mutações, health check com probe de Chromium para PDF.
 
 ## Estrutura
 
@@ -37,17 +42,21 @@ Aplicação fullstack para gestão de frota, manutenção, pneus e gastos operac
 - `AUTH_ENABLED`: `true`/`false` para exigir token.
 - `JWT_SECRET`: chave para assinar tokens JWT (obrigatório em produção, ≥16 caracteres).
 - `API_TOKEN`: opcional — token fixo para scripts/CI (não use no frontend).
-- `ADMIN_EMAIL` / `ADMIN_PASSWORD`: primeiro usuário admin criado automaticamente se a tabela `users` estiver vazia.
+- `ADMIN_EMAIL` / `ADMIN_PASSWORD`: primeiro admin do tenant seed `abbroto` se esse tenant ainda não tiver usuários.
+- `DEFAULT_TENANT_ID`: tenant usado quando `AUTH_ENABLED=false` ou API token.
+- `ALLOW_PUBLIC_REGISTER`: `false` desliga cadastro de novas empresas (padrão: habilitado).
 
 ### Frontend (`frontend/.env`)
 
 - `VITE_API_URL`: URL base da API sem `/api`.
 - `VITE_AUTH_REQUIRED`: `true` em produção para exigir login JWT.
+- `VITE_ALLOW_PUBLIC_REGISTER`: `false` esconde o link “Criar conta” (alinhar com o backend).
 
 Exemplo (desenvolvimento local):
 
 ```bash
 VITE_API_URL=http://localhost:3020
+VITE_AUTH_REQUIRED=true
 ```
 
 Exemplo (build de produção):
@@ -57,7 +66,7 @@ VITE_API_URL=https://api.seudominio.com.br
 VITE_AUTH_REQUIRED=true
 ```
 
-Desenvolvimento local com Postgres via Docker: na raiz do projeto, `docker compose up -d` (porta **5433** no host; veja `backend/.env.example`).
+Desenvolvimento local com Postgres via Docker: na raiz do projeto, `docker compose up -d` (porta **5434** no host; veja `backend/.env.example`).
 
 ### Deploy do backend (Coolify)
 

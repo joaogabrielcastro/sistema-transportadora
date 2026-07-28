@@ -1,13 +1,19 @@
 import { test as base } from "@playwright/test";
 
 const E2E_TOKEN = "e2e-test-token";
-const E2E_USER = { id: 1, email: "e2e@example.com", role: "admin", nome: "E2E" };
+const E2E_USER = {
+  id: 1,
+  email: "e2e@example.com",
+  role: "admin",
+  nome: "E2E",
+  tenantId: 1,
+};
 
 export async function seedAuthSession(page) {
   await page.addInitScript(
     ({ token, user }) => {
-      localStorage.setItem("abrotto_auth_token", token);
-      localStorage.setItem("abrotto_auth_user", JSON.stringify(user));
+      localStorage.setItem("atrack_auth_token", token);
+      localStorage.setItem("atrack_auth_user", JSON.stringify(user));
     },
     { token: E2E_TOKEN, user: E2E_USER },
   );

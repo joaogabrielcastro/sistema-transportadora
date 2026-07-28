@@ -1,4 +1,4 @@
-# Checklist Coolify — ABrotto (frontend + API)
+# Checklist Coolify — ATrack (frontend + API)
 
 Use este guia quando o site mostrar **Bad Gateway (502)**, versão antiga em alguns PCs, ou após mudanças no código.
 

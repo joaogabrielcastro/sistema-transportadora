@@ -4,14 +4,16 @@ import { catchAsync } from "../utils/catchAsync.js";
 import { GastoService } from "../services/GastoService.js";
 import { normalizeDatesForDb } from "../utils/dates.js";
 import { parseListLimit } from "../utils/listLimits.js";
+import { requireTenantId } from "../utils/tenant.js";
 
 export const gastosController = {
   createGasto: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
     const gastoValidado = gastoSchema.parse(req.body);
-    const novoGasto =
-      await GastoService.createWithCaminhaoUpdate(
-        normalizeDatesForDb(gastoValidado),
-      );
+    const novoGasto = await GastoService.createWithCaminhaoUpdate(
+      tenantId,
+      normalizeDatesForDb(gastoValidado),
+    );
 
     res.status(201).json({
       success: true,
@@ -21,11 +23,12 @@ export const gastosController = {
   }),
 
   getAllGastos: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseListLimit(req.query.limit, 10);
     const { caminhaoId } = req.query;
 
-    const { data, count } = await gastosModel.getAll({
+    const { data, count } = await gastosModel.getAll(tenantId, {
       page,
       limit,
       caminhaoId,
@@ -44,7 +47,8 @@ export const gastosController = {
   }),
 
   getGastoById: catchAsync(async (req, res) => {
-    const gasto = await gastosModel.getById(req.params.id);
+    const tenantId = requireTenantId(req);
+    const gasto = await gastosModel.getById(tenantId, req.params.id);
     if (!gasto) {
       return res
         .status(404)
@@ -55,9 +59,10 @@ export const gastosController = {
   }),
 
   getGastosByCaminhao: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
     const { id } = req.params;
     const limit = parseListLimit(req.query.limit);
-    const result = await gastosModel.getByCaminhaoId(id, { limit });
+    const result = await gastosModel.getByCaminhaoId(tenantId, id, { limit });
     res.status(200).json({
       success: true,
       data: result.data,
@@ -70,8 +75,10 @@ export const gastosController = {
   }),
 
   updateGasto: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
     const gastoValidado = gastoUpdateSchema.parse(req.body);
     const gastoAtualizado = await GastoService.updateWithCaminhaoUpdate(
+      tenantId,
       req.params.id,
       normalizeDatesForDb(gastoValidado),
     );
@@ -83,12 +90,17 @@ export const gastosController = {
   }),
 
   deleteGasto: catchAsync(async (req, res) => {
-    await GastoService.deleteWithKmSync(req.params.id);
+    const tenantId = requireTenantId(req);
+    await GastoService.deleteWithKmSync(tenantId, req.params.id);
     res.status(204).send();
   }),
 
   getConsumoCombustivel: catchAsync(async (req, res) => {
-    const consumoData = await gastosModel.getConsumoCombustivel(req.params.id);
+    const tenantId = requireTenantId(req);
+    const consumoData = await gastosModel.getConsumoCombustivel(
+      tenantId,
+      req.params.id,
+    );
     res.status(200).json({ success: true, data: consumoData });
   }),
 };

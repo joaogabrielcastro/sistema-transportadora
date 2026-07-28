@@ -2,7 +2,7 @@
   "name": "sistema-transportadora",
   "version": "1.0.0",
   "private": true,
-  "description": "Sistema de gestão de frotas ABroto — monorepo (backend + frontend).",
+  "description": "ATrack — gestão de frotas multi-empresa (backend + frontend).",
   "scripts": {
     "backend": "cd backend && npm start",
     "frontend": "cd frontend && npm run dev",

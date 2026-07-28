@@ -10,7 +10,6 @@ export default defineConfig({
       registerType: "autoUpdate",
       injectRegister: "auto",
       workbox: {
-        // HTML fora do precache: navegação busca index.html na rede após deploy
         globPatterns: ["**/*.{js,css,ico,png,svg,woff2}"],
         navigateFallback: "index.html",
         cleanupOutdatedCaches: true,
@@ -19,35 +18,35 @@ export default defineConfig({
       },
       includeAssets: [
         "favicon.ico",
-        "abrotto-180x180.png",
-        "abrotto-192x192.png", // Corrigido o nome
-        "abrotto-512x512.png", // Corrigido o nome
+        "atrack-180x180.png",
+        "atrack-192x192.png",
+        "atrack-512x512.png",
       ],
       manifest: {
-        name: "Sistema Transportadora",
-        short_name: "TransporteApp",
-        description: "Gestão de Manutenção e Frota",
-        theme_color: "#FF0000",
+        name: "ATrack — Gestão de Frotas",
+        short_name: "ATrack",
+        description: "Sistema multi-empresa de gestão de frota e manutenção",
+        theme_color: "#0F172A",
         background_color: "#FFFFFF",
         icons: [
           {
-            src: "abrotto-512x512.png", // Corrigido
+            src: "atrack-512x512.png",
             sizes: "512x512",
             type: "image/png",
           },
           {
-            src: "abrotto-192x192.png", // Corrigido
+            src: "atrack-192x192.png",
             sizes: "192x192",
             type: "image/png",
             purpose: "any maskable",
           },
           {
-            src: "abrotto-180x180.png", // Corrigido
+            src: "atrack-180x180.png",
             sizes: "180x180",
             type: "image/png",
           },
         ],
-        display: "standalone", // Garante o prompt de instalação
+        display: "standalone",
       },
       devOptions: {
         enabled: true,

@@ -23,7 +23,12 @@ test.describe("Auth JWT", () => {
             success: true,
             data: {
               token: fakeToken,
-              user: { id: 1, email: "test@example.com", role: "admin" },
+              user: {
+                id: 1,
+                email: "test@example.com",
+                role: "admin",
+                tenantId: 1,
+              },
             },
           }),
         });

@@ -7,11 +7,16 @@ import {
   caminhaoUpdateSchema,
 } from "../schemas/caminhaoSchema.js";
 import { catchAsync } from "../utils/catchAsync.js";
+import { requireTenantId } from "../utils/tenant.js";
 
 export const caminhoesController = {
   createCaminhao: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
     const caminhaoValidado = caminhaoSchema.parse(req.body);
-    const novoCaminhao = await CaminhaoService.criarCaminhao(caminhaoValidado);
+    const novoCaminhao = await CaminhaoService.criarCaminhao(
+      tenantId,
+      caminhaoValidado,
+    );
 
     res.status(201).json({
       success: true,
@@ -20,12 +25,11 @@ export const caminhoesController = {
     });
   }),
 
-  // Listar todos os caminhões com paginação e busca
   getAllCaminhoes: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
     const filtro = req.query.filtro || null;
     const termo = req.query.termo || null;
 
-    // Sem paginação explícita: retorna até 200 registros (evita carregar frota inteira)
     let page;
     let limit;
     const pageParam = req.query.page;
@@ -40,6 +44,7 @@ export const caminhoesController = {
     }
 
     const resultado = await CaminhaoService.buscarTodos({
+      tenantId,
       page,
       limit,
       filtro,
@@ -58,10 +63,10 @@ export const caminhoesController = {
     });
   }),
 
-  // Buscar caminhão por placa
   getByPlaca: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
     const { placa } = req.params;
-    const caminhao = await CaminhaoService.buscarPorPlaca(placa);
+    const caminhao = await CaminhaoService.buscarPorPlaca(tenantId, placa);
 
     res.status(200).json({
       success: true,
@@ -69,8 +74,8 @@ export const caminhoesController = {
     });
   }),
 
-  // Buscar caminhões por placa ou motorista
   searchCaminhoes: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
     const { term } = req.query;
 
     if (!term || term.trim().length < 2) {
@@ -80,7 +85,7 @@ export const caminhoesController = {
       });
     }
 
-    const caminhoes = await CaminhaoService.pesquisarCaminhoes(term);
+    const caminhoes = await CaminhaoService.pesquisarCaminhoes(tenantId, term);
 
     res.status(200).json({
       success: true,
@@ -89,12 +94,13 @@ export const caminhoesController = {
     });
   }),
 
-  // Atualizar caminhão
   updateCaminhao: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
     const { placa } = req.params;
     const caminhaoValidado = caminhaoUpdateSchema.parse(req.body);
 
     const caminhaoAtualizado = await CaminhaoService.atualizarCaminhao(
+      tenantId,
       placa,
       caminhaoValidado,
     );
@@ -106,10 +112,13 @@ export const caminhoesController = {
     });
   }),
 
-  // Verificar dependências antes de excluir
   checkDependencies: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
     const { placa } = req.params;
-    const dependencias = await CaminhaoService.verificarDependencias(placa);
+    const dependencias = await CaminhaoService.verificarDependencias(
+      tenantId,
+      placa,
+    );
 
     res.status(200).json({
       success: true,
@@ -121,32 +130,33 @@ export const caminhoesController = {
     });
   }),
 
-  // Deletar caminhão
   deleteCaminhao: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
     const { placa } = req.params;
-    await CaminhaoService.deletarCaminhao(placa);
+    await CaminhaoService.deletarCaminhao(tenantId, placa);
 
     res.status(204).send();
   }),
 
-  // Deletar caminhão com cascata (remove todos os registros relacionados)
   deleteCaminhaoWithCascade: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
     const { placa } = req.params;
-    const caminhao = await caminhoesModel.getByPlaca(placa);
+    const caminhao = await caminhoesModel.getByPlaca(tenantId, placa);
     if (caminhao?.id) {
-      await CaminhaoDocumentoService.purgeCaminhao(caminhao.id);
+      await CaminhaoDocumentoService.purgeCaminhao(tenantId, caminhao.id);
     }
-    await caminhoesModel.deleteWithCascade(placa);
+    await caminhoesModel.deleteWithCascade(tenantId, placa);
 
     res.status(204).send();
   }),
 
-  // Atualizar caminhão por ID (usado pelo frontend quando se tem apenas o id)
   updateCaminhaoById: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
     const { id } = req.params;
     const caminhaoValidado = caminhaoUpdateSchema.parse(req.body);
 
     const caminhaoAtualizado = await CaminhaoService.atualizarCaminhaoPorId(
+      tenantId,
       id,
       caminhaoValidado,
     );

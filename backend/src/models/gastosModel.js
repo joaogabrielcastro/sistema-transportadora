@@ -21,19 +21,30 @@ const parseId = (value) => {
   return Number.isNaN(parsed) ? value : parsed;
 };
 
+const withTenant = (tenantId, where = {}) => ({
+  ...where,
+  tenant_id: Number(tenantId),
+});
+
 export const gastosModel = {
-  create: async (gastoData) => {
+  create: async (tenantId, gastoData) => {
     const data = await prisma.gastos.create({
-      data: gastoData,
+      data: {
+        ...gastoData,
+        tenant_id: Number(tenantId),
+      },
       include: gastoInclude,
     });
 
     return serializePrisma(data);
   },
 
-  getAll: async ({ page = 1, limit = 10, caminhaoId = null }) => {
+  getAll: async (tenantId, { page = 1, limit = 10, caminhaoId = null }) => {
     const skip = (page - 1) * limit;
-    const where = caminhaoId ? { caminhao_id: parseId(caminhaoId) } : undefined;
+    const where = withTenant(
+      tenantId,
+      caminhaoId ? { caminhao_id: parseId(caminhaoId) } : {},
+    );
 
     const [data, count] = await prisma.$transaction([
       prisma.gastos.findMany({
@@ -49,17 +60,17 @@ export const gastosModel = {
     return { data: serializePrisma(data), count };
   },
 
-  getById: async (id) => {
-    const data = await prisma.gastos.findUnique({
-      where: { id: parseId(id) },
+  getById: async (tenantId, id) => {
+    const data = await prisma.gastos.findFirst({
+      where: withTenant(tenantId, { id: parseId(id) }),
       include: gastoInclude,
     });
 
     return serializePrisma(data);
   },
 
-  getByCaminhaoId: async (caminhaoId, { limit = MAX_LIST_LIMIT } = {}) => {
-    const where = { caminhao_id: parseId(caminhaoId) };
+  getByCaminhaoId: async (tenantId, caminhaoId, { limit = MAX_LIST_LIMIT } = {}) => {
+    const where = withTenant(tenantId, { caminhao_id: parseId(caminhaoId) });
 
     const [data, total] = await prisma.$transaction([
       prisma.gastos.findMany({
@@ -85,7 +96,7 @@ export const gastosModel = {
     };
   },
 
-  update: async (id, gastoData) => {
+  update: async (tenantId, id, gastoData) => {
     const data = await prisma.gastos.update({
       where: { id: parseId(id) },
       data: gastoData,
@@ -95,7 +106,7 @@ export const gastosModel = {
     return serializePrisma(data);
   },
 
-  delete: async (id) => {
+  delete: async (tenantId, id) => {
     const data = await prisma.gastos.delete({
       where: { id: parseId(id) },
     });
@@ -103,19 +114,19 @@ export const gastosModel = {
     return serializePrisma(data);
   },
 
-  getConsumoCombustivel: async (id) => {
+  getConsumoCombustivel: async (tenantId, id) => {
     const tipoCombustivelId = await resolveCombustivelTipoId();
     if (!tipoCombustivelId) {
       return [];
     }
 
     const data = await prisma.gastos.findMany({
-      where: {
+      where: withTenant(tenantId, {
         caminhao_id: parseId(id),
         tipo_gasto_id: tipoCombustivelId,
         km_registro: { not: null },
         quantidade_combustivel: { not: null },
-      },
+      }),
       select: {
         km_registro: true,
         quantidade_combustivel: true,

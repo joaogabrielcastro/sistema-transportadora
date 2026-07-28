@@ -1,18 +1,34 @@
 import prisma from "../lib/prisma.js";
 import { checklistModel } from "../models/checklistModel.js";
+import { caminhoesModel } from "../models/caminhoesModel.js";
 import {
   syncKmFromRegistro,
   recalculateKmAtual,
 } from "./KmCaminhaoService.js";
 
+const assertCaminhaoPertenceAoTenant = async (tenantId, caminhaoId) => {
+  const caminhao = await caminhoesModel.getById(tenantId, caminhaoId);
+  if (!caminhao) {
+    throw new Error("Caminhão não encontrado");
+  }
+  return caminhao;
+};
+
 export class ChecklistService {
-  static async createWithCaminhaoUpdate(checklistData) {
+  static async createWithCaminhaoUpdate(tenantId, checklistData) {
     const kmManutencao = checklistData.km_manutencao;
     const caminhaoId = checklistData.caminhao_id;
 
+    if (caminhaoId) {
+      await assertCaminhaoPertenceAoTenant(tenantId, caminhaoId);
+    }
+
     const novoChecklist = await prisma.$transaction(async (tx) => {
       const checklistCriado = await tx.checklist.create({
-        data: checklistData,
+        data: {
+          ...checklistData,
+          tenant_id: Number(tenantId),
+        },
         include: {
           caminhoes: {
             select: { placa: true },
@@ -30,13 +46,17 @@ export class ChecklistService {
       return checklistCriado;
     });
 
-    return checklistModel.getById(novoChecklist.id);
+    return checklistModel.getById(tenantId, novoChecklist.id);
   }
 
-  static async updateWithCaminhaoUpdate(id, checklistData) {
-    const existing = await checklistModel.getById(id);
+  static async updateWithCaminhaoUpdate(tenantId, id, checklistData) {
+    const existing = await checklistModel.getById(tenantId, id);
     if (!existing) {
       throw new Error("Item de checklist não encontrado");
+    }
+
+    if (checklistData.caminhao_id) {
+      await assertCaminhaoPertenceAoTenant(tenantId, checklistData.caminhao_id);
     }
 
     const parsedId = Number(id);
@@ -59,11 +79,11 @@ export class ChecklistService {
       }
     });
 
-    return checklistModel.getById(parsedId);
+    return checklistModel.getById(tenantId, parsedId);
   }
 
-  static async deleteWithKmSync(id) {
-    const existing = await checklistModel.getById(id);
+  static async deleteWithKmSync(tenantId, id) {
+    const existing = await checklistModel.getById(tenantId, id);
     if (!existing) {
       throw new Error("Item de checklist não encontrado");
     }

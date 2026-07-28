@@ -27,3 +27,15 @@ test("POST /api/ordem-coleta/preview rejeita payload inválido", async () => {
   assert.equal(res.status, 400);
   assert.equal(res.body.success, false);
 });
+
+test("POST /api/ordem-coleta/enviar rejeita e-mail inválido (sem DB)", async () => {
+  const res = await request(app)
+    .post("/api/ordem-coleta/enviar")
+    .send({
+      tipo: "PADRAO",
+      emailDestinatario: "nao-e-email",
+    });
+
+  assert.equal(res.status, 400);
+  assert.equal(res.body.success, false);
+});

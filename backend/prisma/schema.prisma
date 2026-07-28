@@ -7,43 +7,69 @@ datasource db {
   provider = "postgresql"
 }
 
-/// This table contains check constraints and requires additional setup for migrations. 
+model tenants {
+  id                  Int                   @id @default(autoincrement())
+  nome                String                @db.VarChar(120)
+  slug                String                @unique @db.VarChar(64)
+  ativo               Boolean               @default(true)
+  criado_em           DateTime              @default(now()) @db.Timestamptz(6)
+  users               users[]
+  caminhoes           caminhoes[]
+  gastos              gastos[]
+  checklist           checklist[]
+  pneus               pneus[]
+  ordens_coleta_envio ordens_coleta_envio[]
+  caminhao_documentos caminhao_documentos[]
+
+  @@index([slug])
+}
+
+/// This table contains check constraints and requires additional setup for migrations.
 model caminhoes {
-  id               Int         @id @default(autoincrement())
-  placa            String      @unique @db.VarChar(10)
-  qtd_pneus        Int
-  km_atual         Int?        @default(0)
-  criado_em        DateTime?   @default(now()) @db.Timestamptz(6)
-  numero_carreta_1 Int?
-  numero_cavalo    Int?
-  motorista        String?     @db.VarChar(100)
-  numero_carreta_2 Int?
-  placa_carreta_1  String?     @db.VarChar(10)
-  placa_carreta_2  String?     @db.VarChar(10)
-  ano              Int?
-  marca            String?     @db.VarChar(100)
-  modelo           String?     @db.VarChar(100)
-  checklist             checklist[]
-  gastos                gastos[]
-  pneus                 pneus[]
-  ordens_coleta_envio   ordens_coleta_envio[]
-  caminhao_documentos   caminhao_documentos[]
+  id                  Int                   @id @default(autoincrement())
+  tenant_id           Int
+  placa               String                @db.VarChar(10)
+  qtd_pneus           Int
+  km_atual            Int?                  @default(0)
+  criado_em           DateTime?             @default(now()) @db.Timestamptz(6)
+  numero_carreta_1    Int?
+  numero_cavalo       Int?
+  motorista           String?               @db.VarChar(100)
+  numero_carreta_2    Int?
+  placa_carreta_1     String?               @db.VarChar(10)
+  placa_carreta_2     String?               @db.VarChar(10)
+  ano                 Int?
+  marca               String?               @db.VarChar(100)
+  modelo              String?               @db.VarChar(100)
+  tenants             tenants               @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  checklist           checklist[]
+  gastos              gastos[]
+  pneus               pneus[]
+  ordens_coleta_envio ordens_coleta_envio[]
+  caminhao_documentos caminhao_documentos[]
+
+  @@unique([tenant_id, placa])
+  @@index([tenant_id])
 }
 
 model caminhao_documentos {
   id            Int       @id @default(autoincrement())
+  tenant_id     Int
   caminhao_id   Int
   nome_original String    @db.VarChar(255)
   arquivo_path  String    @db.VarChar(500)
   tamanho_bytes Int
   criado_em     DateTime? @default(now()) @db.Timestamptz(6)
+  tenants       tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   caminhoes     caminhoes @relation(fields: [caminhao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([caminhao_id])
+  @@index([tenant_id])
 }
 
 model ordens_coleta_envio {
   id                 Int        @id @default(autoincrement())
+  tenant_id          Int
   tipo               String     @db.VarChar(32)
   caminhao_id        Int?
   dados              Json       @db.JsonB
@@ -53,26 +79,32 @@ model ordens_coleta_envio {
   enviado_em         DateTime?  @db.Timestamptz(6)
   erro_envio         String?
   retry_count        Int        @default(0)
+  tenants            tenants    @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   caminhoes          caminhoes? @relation(fields: [caminhao_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([criado_em])
   @@index([tipo])
+  @@index([tenant_id])
 }
 
 model users {
   id            Int      @id @default(autoincrement())
+  tenant_id     Int
   email         String   @unique @db.VarChar(255)
   nome          String   @db.VarChar(120)
   password_hash String   @db.VarChar(255)
   role          String   @default("operator") @db.VarChar(32)
   ativo         Boolean  @default(true)
   criado_em     DateTime @default(now()) @db.Timestamptz(6)
+  tenants       tenants  @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@index([role])
+  @@index([tenant_id])
 }
 
 model checklist {
   id              Int              @id @default(autoincrement())
+  tenant_id       Int
   caminhao_id     Int?
   item_id         Int?
   data_manutencao DateTime         @db.Date
@@ -81,15 +113,18 @@ model checklist {
   valor           Decimal?         @db.Decimal(10, 2)
   km_registro     BigInt?
   km_manutencao   Int?
+  tenants         tenants          @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   caminhoes       caminhoes?       @relation(fields: [caminhao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   itens_checklist itens_checklist? @relation(fields: [item_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([caminhao_id])
   @@index([data_manutencao])
+  @@index([tenant_id])
 }
 
 model gastos {
   id                     Int           @id @default(autoincrement())
+  tenant_id              Int
   caminhao_id            Int?
   tipo_gasto_id          Int?
   valor                  Decimal       @db.Decimal(10, 2)
@@ -97,6 +132,7 @@ model gastos {
   descricao              String?
   quantidade_combustivel Decimal?      @db.Decimal(10, 2)
   km_registro            Int?
+  tenants                tenants       @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   caminhoes              caminhoes?    @relation(fields: [caminhao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   tipos_gastos           tipos_gastos? @relation(fields: [tipo_gasto_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
@@ -104,6 +140,7 @@ model gastos {
   @@index([data_gasto])
   @@index([tipo_gasto_id])
   @@index([caminhao_id, data_gasto])
+  @@index([tenant_id])
 }
 
 model itens_checklist {
@@ -114,6 +151,7 @@ model itens_checklist {
 
 model pneus {
   id              Int             @id @default(autoincrement())
+  tenant_id       Int
   caminhao_id     Int?
   posicao_id      Int?
   status_id       Int?
@@ -124,6 +162,7 @@ model pneus {
   km_instalacao   Int?
   observacao      String?
   criado_em       DateTime?       @default(now()) @db.Timestamptz(6)
+  tenants         tenants         @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   caminhoes       caminhoes?      @relation(fields: [caminhao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   posicoes_pneus  posicoes_pneus? @relation(fields: [posicao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   status_pneus    status_pneus?   @relation(fields: [status_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -131,6 +170,7 @@ model pneus {
   @@index([caminhao_id])
   @@index([status_id])
   @@index([posicao_id])
+  @@index([tenant_id])
 }
 
 model posicoes_pneus {

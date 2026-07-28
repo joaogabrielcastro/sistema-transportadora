@@ -20,19 +20,30 @@ const parseId = (value) => {
   return Number.isNaN(parsed) ? value : parsed;
 };
 
+const withTenant = (tenantId, where = {}) => ({
+  ...where,
+  tenant_id: Number(tenantId),
+});
+
 export const checklistModel = {
-  create: async (checklistData) => {
+  create: async (tenantId, checklistData) => {
     const data = await prisma.checklist.create({
-      data: checklistData,
+      data: {
+        ...checklistData,
+        tenant_id: Number(tenantId),
+      },
       include: checklistInclude,
     });
 
     return serializePrisma(data);
   },
 
-  getAll: async ({ page = 1, limit = 10, caminhaoId = null }) => {
+  getAll: async (tenantId, { page = 1, limit = 10, caminhaoId = null }) => {
     const skip = (page - 1) * limit;
-    const where = caminhaoId ? { caminhao_id: parseId(caminhaoId) } : undefined;
+    const where = withTenant(
+      tenantId,
+      caminhaoId ? { caminhao_id: parseId(caminhaoId) } : {},
+    );
 
     const [data, count] = await prisma.$transaction([
       prisma.checklist.findMany({
@@ -48,17 +59,17 @@ export const checklistModel = {
     return { data: serializePrisma(data), count };
   },
 
-  getById: async (id) => {
-    const data = await prisma.checklist.findUnique({
-      where: { id: parseId(id) },
+  getById: async (tenantId, id) => {
+    const data = await prisma.checklist.findFirst({
+      where: withTenant(tenantId, { id: parseId(id) }),
       include: checklistInclude,
     });
 
     return serializePrisma(data);
   },
 
-  getByCaminhaoId: async (caminhaoId, { limit = MAX_LIST_LIMIT } = {}) => {
-    const where = { caminhao_id: parseId(caminhaoId) };
+  getByCaminhaoId: async (tenantId, caminhaoId, { limit = MAX_LIST_LIMIT } = {}) => {
+    const where = withTenant(tenantId, { caminhao_id: parseId(caminhaoId) });
 
     const [data, total] = await prisma.$transaction([
       prisma.checklist.findMany({
@@ -84,7 +95,7 @@ export const checklistModel = {
     };
   },
 
-  update: async (id, checklistData) => {
+  update: async (tenantId, id, checklistData) => {
     const data = await prisma.checklist.update({
       where: { id: parseId(id) },
       data: checklistData,
@@ -94,7 +105,7 @@ export const checklistModel = {
     return serializePrisma(data);
   },
 
-  delete: async (id) => {
+  delete: async (tenantId, id) => {
     const data = await prisma.checklist.delete({
       where: { id: parseId(id) },
     });

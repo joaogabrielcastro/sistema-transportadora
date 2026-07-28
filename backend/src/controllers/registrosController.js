@@ -1,11 +1,13 @@
 import { RegistrosService } from "../services/RegistrosService.js";
 import { registrosListSchema } from "../schemas/authSchema.js";
 import { catchAsync } from "../utils/catchAsync.js";
+import { requireTenantId } from "../utils/tenant.js";
 
 export const registrosController = {
   list: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
     const params = registrosListSchema.parse(req.query);
-    const result = await RegistrosService.list(params);
+    const result = await RegistrosService.list(tenantId, params);
 
     res.status(200).json({
       success: true,

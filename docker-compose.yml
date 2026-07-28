@@ -1,12 +1,12 @@
 # Postgres para desenvolvimento (credenciais alinhadas ao backend/.env).
-# Porta 5433 no host evita conflito com outro PostgreSQL já na 5432.
+# Porta 5434 no host: evita 5432 (Postgres local) e 5433 (outros projetos, ex. Benny).
 services:
   db:
     image: postgres:16-alpine
     container_name: transportadora_postgres_dev
     restart: unless-stopped
     ports:
-      - "5433:5432"
+      - "5434:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres

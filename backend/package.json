@@ -12,6 +12,7 @@
     "db:down": "docker compose -f ../docker-compose.yml down",
     "db:migrate": "node scripts/baseline-and-deploy.mjs",
     "tenant:create": "node scripts/create-tenant.mjs",
+    "import:trans-motin": "node scripts/import-trans-motin-historico.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node --test tests/unit/**/*.test.js tests/integration/**/*.test.js",

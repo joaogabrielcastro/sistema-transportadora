@@ -27,23 +27,31 @@ export default defineConfig({
         short_name: "ATrack",
         description: "Sistema multi-empresa de gestão de frota e manutenção",
         theme_color: "#0F172A",
-        background_color: "#FFFFFF",
+        background_color: "#0F172A",
         icons: [
           {
             src: "atrack-512x512.png",
             sizes: "512x512",
             type: "image/png",
+            purpose: "any",
+          },
+          {
+            src: "atrack-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
           },
           {
             src: "atrack-192x192.png",
             sizes: "192x192",
             type: "image/png",
-            purpose: "any maskable",
+            purpose: "any",
           },
           {
             src: "atrack-180x180.png",
             sizes: "180x180",
             type: "image/png",
+            purpose: "any",
           },
         ],
         display: "standalone",

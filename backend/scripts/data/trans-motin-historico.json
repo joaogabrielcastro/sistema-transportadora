@@ -1249,5 +1249,3685 @@
       }
     ],
     "count": 6
+  },
+  {
+    "arquivo": "Manutenção ATJ4875 - Google Docs.pdf",
+    "placa": "ATJ4875",
+    "tipo": "Manutenção",
+    "header": "Manutenções VW 31.320 - ATJ4875",
+    "entries": [
+      {
+        "data": "12/09/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "PINTURA, FUNILARIA E ALINHAMENTO PINTURA PARTE CINZA E POLIMENTO"
+      },
+      {
+        "data": "10/12/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "MULTIFER\nFEITO ALINHAMENTO RODA RAIADA\nFEIXE DA CARRETA"
+      },
+      {
+        "data": "05/11/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "MULTIFER\nABRAÇADEIRA DE BARRA CHATA 1/4 X 1 1⁄4\nM.O FEIXE DIANTEIRO PESADO\nM.O JUMELO\nM.O SUPORTE\nM.O TIRANTE DA TRAÇÃO"
+      },
+      {
+        "data": "09/10/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO BORBOLETADO FREIO MOTOR COM PISTÃO\nTROCADO RETENTOR TRAÇÃO LADO DIREITO\nTROCADO JOGO DE LONA DE FREIO\nTROCADO JOGO DE JUNTA COLETOR DE ESCAPE"
+      },
+      {
+        "data": "29/02/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO TERMINAL DE CÂMBIO\nREVISADO CAIXA\nTROCADO KIT DE EMBREAGEM (PLATÔ/ DISCO/ MANCAL)\nTROCADO ROLAMENTO DO VOLANTE"
+      },
+      {
+        "data": "16/02/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "DIAGNOSTICO SCANNER DIESEL\nLIMPEZA TUBO RAIL\nTIRADO INJETORES CR CUMMINS\nCOLOCADO INJETORES CR CUMMINS\nCONSERTO INJETOR COMMON RAIL"
+      },
+      {
+        "data": "07/12/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO CRUZETA DO DIFERENCIAL TRASEIRO\nREVISADO CUICA TRAÇÃO LADO ESQUERDO\nTROCADO RETENTOR DO CUBO E LONA DE FREIO TRAÇÃO LADO ESQUERDO\nTROCADO RETENTOR DO PINHÃO DO DIFERENCIAL"
+      },
+      {
+        "data": "28/09/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO RADIADOR\nCOLOCADO RADIADOR NOVO\nTROCADO MANGUEIRA E BRAÇADEIRA DO RADIADOR"
+      },
+      {
+        "data": "21/06/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO CORREIA DO MOTOR"
+      },
+      {
+        "data": "03/04/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO BOTÃO DE PARTIDA\nTROCADO BORRACHA DO PEDAL"
+      },
+      {
+        "data": "31/03/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "CONSERTO DE DUAS CUÍCAS\nCONSERTO DE UM SERVO DE EMBREAGEM\nCONSERTO DE UMA VÁLVULA 4 VIAS\nCONSERTO DE DUAS CONEXÕES"
+      },
+      {
+        "data": "03/08/2022",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO 2 COXIM DO MOTOR"
+      },
+      {
+        "data": "07/03/2022",
+        "km": null,
+        "oficina": null,
+        "observacao": "EMBUCHAMENTO DO EIXO\nM.O FEIXE DIANTEIRO PESADO\nM.O JUMELO\nM.O SUPORTE GEOMETRIA EIXO DIANTEIRO\nM.O TROCAR PIVO DE BARRA DE DIREÇÃO"
+      },
+      {
+        "data": "21/01/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO INTERRUPTOR P"
+      },
+      {
+        "data": "12/01/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO MAÇANETA DO VIDRO\nTROCADO ALAVANCA DA MAÇANETA"
+      },
+      {
+        "data": "26/11/2020",
+        "km": null,
+        "oficina": null,
+        "observacao": "CONSERTO DE UM SERVO DE EMBREAGEM"
+      },
+      {
+        "data": "05/08/2020",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO KIT REPARO CAIXA DIFERENCIAL\nENGRENAGEM HELICOIDAL\nARRUELA BLOQUEIO\nARRUELA ENCOSTO SATÉLITE\nROLAMENTOS"
+      },
+      {
+        "data": "27/06/2020",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO PORCA PINHÃO\nTROCADO RETENTOR BLOQUEIO"
+      },
+      {
+        "data": "19/06/2020",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO CRUZETA CARDAN\nTROCADO FLANGE DIFERENCIAL"
+      },
+      {
+        "data": "10/02/2020",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO ROLAMENTO EMBREAGEM FMX\nTROCADO ROLAMENTO DO VIRABREQUIM\nTROCADO GARFO DE EMBRAGEM"
+      },
+      {
+        "data": "24/01/2020",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO KIT DE EMBREAGEM COMPLETO\nTROCADO RETENTOR DO VOLANTE\nSUBSTITUÍDA VÁLVULA 4 VIAS"
+      },
+      {
+        "data": "21/01/2020",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO KIT DE EMBREAGEM 430MM (PLATO DISCO MANCAL)\nTROCADO ROLAMENTO DO VIRABREQUIM\nTROCADO RETENTOR DO VIRABREQUIM"
+      },
+      {
+        "data": "20/01/2020",
+        "km": null,
+        "oficina": null,
+        "observacao": "CONSERTO DE UM SERVO DE EMBREAGEM\nCONSERTO DE UMA VÁLVULA"
+      },
+      {
+        "data": "18/12/2019",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO 3 BATENTE DE BORRACHA / METAL"
+      },
+      {
+        "data": "13/12/2019",
+        "km": null,
+        "oficina": null,
+        "observacao": "JATEAMENTO CAÇAMBA DE MINÉRIO"
+      },
+      {
+        "data": "07/11/2019",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO RESERVATÓRIO"
+      }
+    ],
+    "count": 26
+  },
+  {
+    "arquivo": "Manutenção JBC8181 - Google Docs.pdf",
+    "placa": "JBC8181",
+    "tipo": "Manutenção",
+    "header": "Manutenções Cargo 6332s - JBC8181",
+    "entries": [
+      {
+        "data": "24/04/2026",
+        "km": null,
+        "oficina": null,
+        "observacao": "FEITO MOTOR COMPLETO COLOCADO CABEÇOTE NOVO E REVISADO RADIADOR"
+      },
+      {
+        "data": "15/07/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "REVISADO CAIXA DE CAMBIO LIMA\nTROCADO ÓLEO DE CAIXA E DOS DOIS DIFERENCIAL E TROCADO DISCO PLATO E\nVOLANTE"
+      },
+      {
+        "data": "30/05/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "c.p de souza\n01 TAPETE 750,00\n01 REFORMA DO BANCO 850,00\n2 FORRO DE PORTA 380"
+      },
+      {
+        "data": "06/02/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO 2 COXINS DO MOTOR"
+      },
+      {
+        "data": "27/09/2023",
+        "km": 128075,
+        "oficina": null,
+        "observacao": "TESTE DE SENSOR DO RAIL\nTIRAR INJETORES CR CUMMINS\nDIAGNÓSTICO SCANNER DIESEL\nLIMPEZA TUBO RAIL\nCOLOCAR INJETORES CR CUMMINS\nDESLOCAMENTO SERVIÇO EXTERNO\nSERVIÇO ELETRÔNICO HORA TÉCNICA\nTESTE DE INJETOR CR"
+      },
+      {
+        "data": "03/07/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO FLANGE CARDAN\nTROCADO CRUZETA CARDAN\nTROCADO PORCA PINHAO\nTROCADO RETENTOR EIXO"
+      }
+    ],
+    "count": 6
+  },
+  {
+    "arquivo": "Manutenção JBC1818 - Google Docs.pdf",
+    "placa": "JBC1818",
+    "tipo": "Manutenção",
+    "header": "Manutenções Cargo 6332s - JBC 1818",
+    "entries": [
+      {
+        "data": "24/06/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO DUAS BATERIA DE 105"
+      },
+      {
+        "data": "05/08/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "CONSERTO DE UMA VALVULA SECADORA DE AR\nMR FREIOS"
+      },
+      {
+        "data": "16/08/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCA DO KIT DA EMBREAGEM E VOLANTE DO MOTOR"
+      },
+      {
+        "data": "02/04/24",
+        "km": null,
+        "oficina": null,
+        "observacao": "TIRANTE DO TRAÇADO"
+      },
+      {
+        "data": "26/03/24",
+        "km": null,
+        "oficina": null,
+        "observacao": "REVISADO RADIADOR DE ÁGUA E AR"
+      },
+      {
+        "data": "01/03/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO ABRAÇADEIRA DO CANO DA TURBINA\nTROCADO TERMINAIS DA ALAVANCA DE CÂMBIO\nREVISADO OS DOIS RADIADORES"
+      },
+      {
+        "data": "02/10/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO JUNTA DO TROCADOR DE CALOR"
+      },
+      {
+        "data": "18/08/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO JUNTA DO COMPRESSOR\nTROCADO RESERVATÓRIO DE ÁGUA DO RADIADOR"
+      },
+      {
+        "data": "30/06/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO EMBREAGEM\nTROCADO PLATÔ DISCO\nPLAINADO VOLANTE\nTROCADO JUNTA TAMPA DA CAIXA\nTROCADO CRUZETA"
+      },
+      {
+        "data": "30/11/2022",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO BATERIA"
+      }
+    ],
+    "count": 10,
+    "fontes": [
+      "Manutenção JBC1818 - Google Docs.pdf",
+      "Manutenção JBC1818 - Google Docs (1).pdf"
+    ]
+  },
+  {
+    "arquivo": "Manutenção TBP-3C61 - Google Docs.pdf",
+    "placa": "TBP3C61",
+    "tipo": "Manutenção",
+    "header": "Manutenção TBP-3C61",
+    "entries": [
+      {
+        "data": "22/04/2026",
+        "km": null,
+        "oficina": null,
+        "observacao": "loneiro\nCONSERTO DE LONAS 250,00"
+      },
+      {
+        "data": "27/06/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "DESPACHANTE\nPLACA 170,00\nEMPLACAMENTO 670,00"
+      }
+    ],
+    "count": 2
+  },
+  {
+    "arquivo": "Manutenção TBP-3C60 - Google Docs.pdf",
+    "placa": "TBP3C60",
+    "tipo": "Manutenção",
+    "header": "Manutenção TBP-3C60",
+    "entries": [
+      {
+        "data": "27/06/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "DESPACHANTE\nPLACA 170,00\nEMPLACAMENTO 670,00"
+      }
+    ],
+    "count": 1
+  },
+  {
+    "arquivo": "Manutenção TBP-3C39 - Google Docs.pdf",
+    "placa": "TBP3C39",
+    "tipo": "Manutenção",
+    "header": "Manutenção TBP-3C39",
+    "entries": [
+      {
+        "data": "27/06/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "DESPACHANTE\nPLACA 170,00\nEMPLACAMENTO 670,00"
+      }
+    ],
+    "count": 1
+  },
+  {
+    "arquivo": "Lubrificação BED8F89 - Google Docs.pdf",
+    "placa": "BED8F89",
+    "tipo": "Lubrificação",
+    "header": "Lubrificação",
+    "entries": [
+      {
+        "data": "16/05/2026",
+        "km": 541925,
+        "oficina": null,
+        "observacao": "TROCA DE ÓLEO DE MOTOR E  FILTROS DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "09/01/2026",
+        "km": 516515,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR E FILTROS DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "22/03/2025",
+        "km": 454592,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DA CAIXA DO DIFERENCIAL\nTROCADO FILTRO PU"
+      },
+      {
+        "data": "05/03/2025",
+        "km": 450430,
+        "oficina": null,
+        "observacao": "TROCADO OLEO DO MOTOR, FILTROS DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "15/10/2024",
+        "km": 417156,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR E FILTROS DE DIESEL E LUBRIFICANTE"
+      },
+      {
+        "data": "04/10/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO FILTRO PU"
+      },
+      {
+        "data": "28/05/2024",
+        "km": 385070,
+        "oficina": null,
+        "observacao": "TROCA DE ÓLEO E FILTROS"
+      },
+      {
+        "data": "26/01/2024",
+        "km": 355320,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR E FILTROS"
+      },
+      {
+        "data": "08/01/2024",
+        "km": 351420,
+        "oficina": null,
+        "observacao": "COMPLETADO 4L DE ÓLEO MOTOR"
+      },
+      {
+        "data": "04/09/2023",
+        "km": 321397,
+        "oficina": null,
+        "observacao": "TROCA DE ÓLEO MOTOR E FILTROS\nTROCA DE ÓLEO DE CAIXA\nTROCA DE ÓLEO DIFERENCIAL"
+      }
+    ],
+    "count": 10
+  },
+  {
+    "arquivo": "Lubrificação AUO5259 - Google Docs.pdf",
+    "placa": "AUO5259",
+    "tipo": "Lubrificação",
+    "header": "Lubrificação",
+    "entries": [
+      {
+        "data": "07/01/2026",
+        "km": 1207668,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DO MOTOR FILTROS DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "13/08/2025",
+        "km": 1153000,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DO DE MOTOR E FILTROS"
+      },
+      {
+        "data": "07/05/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR FILTROS DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "08/11/2024",
+        "km": 1152225,
+        "oficina": null,
+        "observacao": "TROCA DE ÓLEO E FILTROS DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "09/10/2024",
+        "km": 1146280,
+        "oficina": null,
+        "observacao": "TROCA DE FILTRO DE AR"
+      },
+      {
+        "data": "01/09/2024",
+        "km": 1390000,
+        "oficina": null,
+        "observacao": "TROCA DE ÓLEO DE CAIXA E FILTRO"
+      },
+      {
+        "data": "09/07/2024",
+        "km": 1127310,
+        "oficina": null,
+        "observacao": "TROCA DE ÓLEO , FILTROS E ENGRAXADO"
+      },
+      {
+        "data": "16/04/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DO DIFERENCIAL\nKM ATUAL: 1.110.074\nPRÓXIMA TROCA:1.200.074"
+      },
+      {
+        "data": "08/03/2024",
+        "km": 1102875,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR E FILTROS"
+      },
+      {
+        "data": "24/10/2023",
+        "km": 1077420,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR E FILTROS\nTROCADO FILTRO DE AR"
+      },
+      {
+        "data": "20/07/2023",
+        "km": 1055820,
+        "oficina": null,
+        "observacao": "ENGRAXADO"
+      },
+      {
+        "data": "17/03/2023",
+        "km": 977140,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO MOTOR\nENGRAXADO\nTROCADO ÓLEO DE CAIXA E DIFERENCIAL\nTROCADO ÓLEO MOTOR"
+      },
+      {
+        "data": "12/03/2022",
+        "km": 951935,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO MOTOR"
+      },
+      {
+        "data": "26/11/2021",
+        "km": 926900,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO MOTOR"
+      },
+      {
+        "data": "03/09/2021",
+        "km": 901365,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO MOTOR"
+      }
+    ],
+    "count": 15
+  },
+  {
+    "arquivo": "Manutenção AUO5259 - Google Docs.pdf",
+    "placa": "AUO5259",
+    "tipo": "Manutenção",
+    "header": "Manutenções FH 440 6x2 - AUO5259",
+    "entries": [
+      {
+        "data": "27/08/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO DISCO DE EMBREAGEM"
+      },
+      {
+        "data": "13/08/2025",
+        "km": 1153000,
+        "oficina": null,
+        "observacao": "TROCADO JOGO DE BRONZINA MANCAL E BIELA\nTROCADO BOMBA DE ÓLEO"
+      },
+      {
+        "data": "02/04/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "MULTIMENTAL\nMÃO DE OBRA REFERENTE  TROCAR MESA DA 5 RODA\nARQUEAMENTO FEIXE TRASEIRO\nM.O TIRANE\nALINHAMENTO EIXO RODA DISCO\nM.O SUPORTE CENTRAL\nM.O BALANÇA\nCOXIM DE BALANÇA SOLDADO"
+      },
+      {
+        "data": "24/04/2025",
+        "km": 1175236,
+        "oficina": null,
+        "observacao": "COLOCADO CAIXA\nTROCADO ROLAMENTO DA EMBREAGEM\nTROCADO SERVO DA EMBREAGEM\nTROCADO RAQUETE DA TRANSFERÊNCIA\nCANECO DA TRANSFERÊNCIA\nTROCADO VALVULA DUAS VIA DA TRANSFERÊNCIA\n1 ENGATE FÊMEA DA TOMADA DA CAÇAMBA"
+      },
+      {
+        "data": "19/03/2025",
+        "km": 1169839,
+        "oficina": null,
+        "observacao": "TROCADO 1 TAMBOR DE FREIO L.D\nTROCADO TAMBOR DE FREIO 2 EIXO L.E\nTROCADO UMA LONA"
+      },
+      {
+        "data": "04/02/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "PROTETOR DE SILENCIADOR INOX VOLVO\nPARAFUSO 6X16 COMPLETO\nTRAVA SOBERBO PLANTA SILENCIOSO"
+      },
+      {
+        "data": "28/01/2025",
+        "km": 1162316,
+        "oficina": null,
+        "observacao": "LONA TELA T"
+      },
+      {
+        "data": "16/12/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO 2 EIXO L.E"
+      },
+      {
+        "data": "12/11/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "COLOCADO MANGUEIRA SAE\nTERMINAL FÊMEA\nCAPA PRENSÁVEL"
+      },
+      {
+        "data": "08/11/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO LANTERNA TRASEIRA"
+      },
+      {
+        "data": "16/10/2024",
+        "km": 1147252,
+        "oficina": null,
+        "observacao": "REVISADO CUICA DE FREIO ( TRUCK LADO ESQUERDO)"
+      },
+      {
+        "data": "09/10/2024",
+        "km": 1146280,
+        "oficina": null,
+        "observacao": "TROCADO COXIN DO MOTOR LADO ESQUERDO"
+      },
+      {
+        "data": "01/10/2024",
+        "km": 1144430,
+        "oficina": null,
+        "observacao": "TROCADO 6 JUNTA DE COLETOR DE ESCAPE"
+      },
+      {
+        "data": "01/09/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "GARAGEM 33 TRUCK\nABERTURA DO CAMBIO + TROCA DO ROLAMENTO"
+      },
+      {
+        "data": "01/09/2024",
+        "km": 1390000,
+        "oficina": null,
+        "observacao": "REVISADO CAIXA DE CAMBIO\nTROCADO VALVULA DA REDUZIDA\nTROCADO EMBREAGEM COMPLETA REMANUFATURADA"
+      },
+      {
+        "data": "16/04/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "REVISADO DIFERENCIAL, TROCADO COROA E PINHA, TROCADO TODOS OS\nROLAMENTOS.\nKM ATUAL: 1110074"
+      },
+      {
+        "data": "01/02/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO SILENCIOSO"
+      },
+      {
+        "data": "12/01/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO BOMBA ELÉTRICA DO LIMPADOR DE PARABRISA"
+      },
+      {
+        "data": "06/01/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO SERVO DE EMBREAGEM\nTROCADO JUNTA DO COLETOR"
+      },
+      {
+        "data": "05/09/2023",
+        "km": 1065382,
+        "oficina": null,
+        "observacao": "TROCADO CABO DA ALAVANCA DE MARCHA (CINZA)\nTROCADO KIT AMORTECEDOR/ MOLA DIREITO E ESQUERDO DIANTEIRO CABINE\nTROCADO REPARO DA BARRA DE TORÇÃO DA CABINE LADO DIREITO E ESQUERDO\nTROCADO BUCHA DA BARRA DE TORÇÃO LADO DIREITO"
+      },
+      {
+        "data": "25/08/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO VÁLVULA SOLENÓIDE"
+      },
+      {
+        "data": "18/08/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO CORREIA DO ALTERNADOR"
+      },
+      {
+        "data": "12/08/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO AMORTECEDOR HORIZONTAL TRASEIRO LADO DIREITO DA CABINE"
+      },
+      {
+        "data": "03/08/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO EIXO PILOTO, ROLAMENTO TUBULAR,\nLUVA ENGATE REDUZIDA, CORPO ACOPLADO REDUZIDA,\nJOGO DE REPARO DO CANECO DA REDUZIDA, RÓTULA\nGARFO EMBREAGEM, KIT PRESSIONADOR REDUZIDA\nE RETENTOR FUNIL\nTROCADO ROLAMENTO DO VOLANTE\nREVISADO CAIXA\nTROCADO SPLIT\nTROCADO TOMADA DE FORÇA\nTROCADO CABO DA RÉ"
+      },
+      {
+        "data": "25/07/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "LIMPEZA, TESTE E ENVARETAMENTO EM RADIADOR\nTROCA DE CAIXA EM RADIADOR\nREFORMA GERAL EM INTERCOOLER\nLIMPEZA EM RESERVATÓRIO"
+      },
+      {
+        "data": "14/07/2023",
+        "km": 1054470,
+        "oficina": null,
+        "observacao": "TROCADO MANGUEIRA PARTE DE CIMA DO RADIADOR"
+      },
+      {
+        "data": "01/04/2023",
+        "km": 1030567,
+        "oficina": null,
+        "observacao": "REVISADO DIFERENCIAL\nTROCADO 1 COROA/PINHÃO 9 X 31 \"MERITOR\"\nTROCADO 1 JOGO DE ROLAMENTOS DIFERENCIAL\nTROCADO 1 JOGO DE ARRUELA SATELITE DIFERENCIAL\nTROCADO 2 ARRUELAS PLANETÁRIAS DIFERENCIAL"
+      },
+      {
+        "data": "23/03/2023",
+        "km": 1028711,
+        "oficina": null,
+        "observacao": "BOLSA DE ENCAIXE\nM.O DESMONTAR E MONTAR SUSPENSOR PNEUMÁTICO"
+      },
+      {
+        "data": "16/03/2023",
+        "km": 1026951,
+        "oficina": null,
+        "observacao": "TROCADO BUZINA\nCONSERTO DE UMA VÁLVULA DE FREIO\nCONSERTO DE UMA VÁLVULA REA"
+      },
+      {
+        "data": "01/03/2023",
+        "km": 1023308,
+        "oficina": null,
+        "observacao": "GARRA TRAVAMENTO 5 RODA\nDISCO DE FRICÇÃO\nBARRA DE TRAVAMENTO 5 RODA\nMOLA GARRA 5 RODA"
+      },
+      {
+        "data": "22/02/2023",
+        "km": 1021153,
+        "oficina": null,
+        "observacao": "M.O. FEIXE TRUCK/TRAÇÃO"
+      },
+      {
+        "data": "15/02/2023",
+        "km": 1020475,
+        "oficina": null,
+        "observacao": "COXIM DA 5 RODA MODERNA\nM.O. TROCAR BORRACHA 5 RODA\nM.O. TROCAR KIT 5 RODA\nM.O. TROCAR PINO REI"
+      },
+      {
+        "data": "07/02/2023",
+        "km": 1018547,
+        "oficina": null,
+        "observacao": "TROCADO RELE AUXILIAR E FEITO REPARO ELÉTRICO DO VIDRO"
+      },
+      {
+        "data": "02/02/2023",
+        "km": 1016656,
+        "oficina": null,
+        "observacao": "M.O. FEIXE TRUCK/ TRAÇÃO"
+      },
+      {
+        "data": "23/01/2023",
+        "km": 1014878,
+        "oficina": null,
+        "observacao": "TROCADO MANGUEIRA DO INTERCOOLER"
+      },
+      {
+        "data": "11/01/2023",
+        "km": 1012289,
+        "oficina": null,
+        "observacao": "TROCADO BARRA DE DIREÇÃO CURTA\nM.O FEIXE DIANTEIRO CAVALO MECÂNICO\nTROCADO PIVÔ DA BARRA DE DIREÇÃO"
+      },
+      {
+        "data": "15/12/2022",
+        "km": 1008936,
+        "oficina": null,
+        "observacao": "M.O FEIXE TRUCK/ TRAÇÃO PES\nM.O TIRANTE\nALINHAMENTO EIXO RODA DISCO\nM.O BALANÇA"
+      },
+      {
+        "data": "24/10/2022",
+        "km": 996889,
+        "oficina": null,
+        "observacao": "TROCADO MANGUEIRA PARA CAIXA DE GORDURA"
+      },
+      {
+        "data": "18/10/2022",
+        "km": 995398,
+        "oficina": null,
+        "observacao": "TROCADO PARAFUSO COXIM MOTOR TRASEIRO FH\nTROCADO COXIM TRASEIRO MOTOR FH13\n1 JUNTA TUBO CONEXÃO REFRIGERAÇÃO\nBORRACHA VEDACAO CARCACA TERMOSTATO\n1 TUBO CONEXÃO REFRIGERAÇÃO VOLVO\nTUBO CONEXÃO REFRIGERAÇÃO VOLVO"
+      },
+      {
+        "data": "17/09/2021",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO BATERIA"
+      },
+      {
+        "data": "13/09/2022",
+        "km": 993194,
+        "oficina": null,
+        "observacao": "DESMONTAR E MONTAR SUSPENSOR PNEUMÁTICO\nTROCADO RETENTOR PINHAO DIFERENCIAL\nTROCADO 2 ROLAMENTOS DIFERENCIAL PINHAO\nTROCADO ROLAMENTO DIFERENCIAL R780\nSERVIÇO DE TORNO FAZER EMBUCHAMENTO TRASEIRO DO BASCULANTE"
+      },
+      {
+        "data": "03/08/2022",
+        "km": 978683,
+        "oficina": null,
+        "observacao": "TROCADO CANECO DA TRANSFERÊNCIA E REPARO DO CANECO\nTROCADO ESTICADOR DE CORREIA\nTROCADO DISCO DE EMBREAGEM YALE FH"
+      },
+      {
+        "data": "21/07/2022",
+        "km": 975680,
+        "oficina": null,
+        "observacao": "TROCADO MANGUEIRA DO INTERCOOLER"
+      },
+      {
+        "data": "17/06/2022",
+        "km": 968653,
+        "oficina": null,
+        "observacao": "TROCADO CONJUNTO ROTATIVO NOVO TURBO FH13"
+      },
+      {
+        "data": "19/05/2022",
+        "km": 962867,
+        "oficina": null,
+        "observacao": "CATALISADOR VOLVO FH ORIGINAL\nTROCADO MANGUEIRA RADIADOR INFERIOR FH\nMANGUEIRA RADIADOR FH"
+      },
+      {
+        "data": "12/05/2022",
+        "km": 961262,
+        "oficina": null,
+        "observacao": "DESMONTAR E MONTAR SUSPENSOR PNEUMÁTICO"
+      },
+      {
+        "data": "05/04/2022",
+        "km": 954800,
+        "oficina": null,
+        "observacao": "FAZER COXIM DE BALANÇA\nGEOMETRIA EIXO DIANTEIRO\nALINHAMENTO EIXO RODA DISCO\nTROCADO TUBO ENCHIMENTO FH\n1 RETENTOR MORINGA\n1 KIT SPLIT VOLVO\n1 REPARO CANECO\nROLAMENTOS PARA CAIXA\n1 ROLAMENTO EIXO\n1 ROLAMENTO INTERNO"
+      },
+      {
+        "data": "18/02/2022",
+        "km": 942966,
+        "oficina": null,
+        "observacao": "M.O TIRANTE\nM.O FEIXE TRUCK/TRAÇÃO"
+      },
+      {
+        "data": "07/02/2022",
+        "km": 940071,
+        "oficina": null,
+        "observacao": "SERVIÇO REFERENTE A REFAZER TIRANTE REGULÁVEL"
+      },
+      {
+        "data": "24/01/2022",
+        "km": 936142,
+        "oficina": null,
+        "observacao": "M.O FEIXE TRUCK CAVALO MECANICO\nM.O TIRANTE\nALINHAMENTO EIXO RODA RAIADA\n1 SERVIÇO DE SOLDA E MAÇARICO\nSERVIÇO DE SOLDA REF CORTAR E SOLDAR SUPORTE DO TIRANTE P/\nALINHAR"
+      },
+      {
+        "data": "04/01/2022",
+        "km": 933010,
+        "oficina": null,
+        "observacao": "TROCADO TUBO MOTOR"
+      },
+      {
+        "data": "16/11/2021",
+        "km": 923895,
+        "oficina": null,
+        "observacao": "1 REVISÃO NA CAIXA DE DIREÇÃO ZF\nTROCADO MANGUEIRA DO HIDRÁULICO\nCOLOCADO 4 LITROS DE ATF\nTROCADO COXIM DA CAIXA MOTOR"
+      },
+      {
+        "data": "21/10/2021",
+        "km": 945861,
+        "oficina": null,
+        "observacao": "M.O TIRAR EIXO CARRETA/TRUCK"
+      },
+      {
+        "data": "14/09/2021",
+        "km": 907668,
+        "oficina": null,
+        "observacao": "M.O FEIXE TRUCK CAVALO MECANICO"
+      },
+      {
+        "data": "03/09/2021",
+        "km": 905664,
+        "oficina": null,
+        "observacao": "2 MOLA GÁS VOLVO FH 2004 2011\nAMORTECEDOR CAPO"
+      },
+      {
+        "data": "18/08/2021",
+        "km": 902831,
+        "oficina": null,
+        "observacao": "TROCADO CABO DA ALAVANCA (CABO MAIOR OLHAL GRANDE)"
+      },
+      {
+        "data": "09/08/2021",
+        "km": 900252,
+        "oficina": null,
+        "observacao": "SERVIÇO DE SELAGEM\nSERVICO DE ENSAIO\nSERVIÇO DE CALIBRAÇÃO"
+      },
+      {
+        "data": "04/08/2021",
+        "km": 899653,
+        "oficina": null,
+        "observacao": "2 BUCHAS DA SUSPENSÃO SUSPENSYS\n2 BUCHAS DA SUSP SUSPENSYS COM PI\nM.O TIRANTE\nTROCADO CORREIA 10PK1510 FH"
+      },
+      {
+        "data": "02/07/2021",
+        "km": 892445,
+        "oficina": null,
+        "observacao": "FEITA EMBREAGEM NOVA"
+      },
+      {
+        "data": "14/06/2021",
+        "km": 888670,
+        "oficina": null,
+        "observacao": "TROCADO CABO DA ALAVANCA\nPEÇAS PARA MOTOR ESTACIONÁRIO CARRETA"
+      },
+      {
+        "data": "01/06/2021",
+        "km": 886269,
+        "oficina": null,
+        "observacao": "CONSERTO DE SERVO DE EMBREAGEM M.O"
+      },
+      {
+        "data": "28/05/2021",
+        "km": 885791,
+        "oficina": null,
+        "observacao": "M.O FEIXE CAVALO MECÂNICO"
+      },
+      {
+        "data": "20/04/2021",
+        "km": 879364,
+        "oficina": null,
+        "observacao": "M.O TROCAR KIT 5a RODA\nM.O TROCAR BORRACHA 5a RODA\nCOXIM DA 5a RODA"
+      },
+      {
+        "data": "02/04/2021",
+        "km": 875958,
+        "oficina": null,
+        "observacao": "TROCADO RETENTOR MORINGA\nANEIS TRAVA DO ATUADOR\nRETENTOR GARFO DA EMBREAGEM C\nRETENTOR DO VIRABREQUIM\nBUCHA GARFO EMBREAGEM\nATUADOR GARFO EMBREAGEM\nROLAMENTO GARFO EMBREAGEM"
+      },
+      {
+        "data": "12/03/2021",
+        "km": 871829,
+        "oficina": null,
+        "observacao": "UM ABAFADOR DE RUÍDOS"
+      },
+      {
+        "data": "05/03/2021",
+        "km": 870037,
+        "oficina": null,
+        "observacao": "CARCACA BOMBA DAGUA VOLVO FH\nMOLA PNEUMÁTICA ENCAIXE #38\nCABO AJUSTE DE VOLANTE DIREÇÃO VOLVO\nFAZER COXIM DE BALANÇA"
+      },
+      {
+        "data": "03/02/2021",
+        "km": 864869,
+        "oficina": null,
+        "observacao": "MÃO DE OBRA REFERENTE A TROCAR PARAFUSO DO TIRANTE, DO PINO DA\nCAÇAMBA E DESENTUPIR PINO DA BALANÇA."
+      },
+      {
+        "data": "25/11/2020",
+        "km": 851414,
+        "oficina": null,
+        "observacao": "REVISADO MOTOR DE ARRANQUE"
+      },
+      {
+        "data": "17/09/2020",
+        "km": 839639,
+        "oficina": null,
+        "observacao": "RETENTOR VIRAB TRASEIRO D12 FH\nANEL TRAVA ATUADOR FH\nATUADOR EMBREAGEM FH\nATUADOR GARFO EMBREAGEM FH\nRET GARFO EMBR C FH\nBUCHA GARFO EMBREAGEM CX"
+      },
+      {
+        "data": "10/09/2020",
+        "km": 838416,
+        "oficina": null,
+        "observacao": "M.O TIRANTE M.O FEIXE TRUCK"
+      },
+      {
+        "data": "05/09/2020",
+        "km": 837244,
+        "oficina": null,
+        "observacao": "CONSERTO DE UMA MANGUEIRA DE 8MM REGULAGEM DA VÁLVULA BIGODE"
+      },
+      {
+        "data": "03/08/2020",
+        "km": 830533,
+        "oficina": null,
+        "observacao": "MÃO DE OBRA FEIXE CARRETA, BALANÇA E FAZER COXIM DA BALANÇA"
+      },
+      {
+        "data": "16/07/2020",
+        "km": 829540,
+        "oficina": null,
+        "observacao": "RECONDICIONAMENTO DA CAIXA DE CÂMBIO\nREVISADO E INSTALADO\n1 ROLAMENTO INTERNO EIXO PILOTO\n1 EIXO FIXO ORIGINAL"
+      },
+      {
+        "data": "13/07/2020",
+        "km": 804575,
+        "oficina": null,
+        "observacao": "1 ANEL TUBO ENTRADA REPARO CANECO REDUZIDA\n1 JUNTA MORINGA CX\n1 PORCA EIXO ENTAL\n1 ROLAMENTO EIXO\n1 RETENTOR MORINGA\n1 TUBO ENCHIMENTO INFERIOR\n1 RETENTOR VIRAB TRAS D12"
+      },
+      {
+        "data": "08/07/2020",
+        "km": 828066,
+        "oficina": null,
+        "observacao": "CILINDRO EMBREAGEM FH/NH\nREGULAGEM DO DIFERENCIAL\nINSTALAÇÃO 1 SERVO DE EMBREAGEM NOVO ORIGINAL\n1 CILINDRO NOVO ORIGINAL\nSERVO DE EMBREAGEM FH\nTROCAR PONTEIRA DO TIRANTE ALINHAMENTO DE RODA RAIADA"
+      },
+      {
+        "data": "29/06/2020",
+        "km": 826676,
+        "oficina": null,
+        "observacao": "ACABAMENTO ESTRIBO PARACHOQUE FRONTAL\nACABAMENTO ESTRIBO INF L"
+      },
+      {
+        "data": "09/06/2020",
+        "km": 822899,
+        "oficina": null,
+        "observacao": "M.O TIRANTE SERVIÇO DE SOLDA E MAÇARICO\nALINHAMENTO EIXO RODA RAIADA\nSOLDA E MAÇARICO REFERENTE A TROCAR PONTEIRA DO TIRANTE"
+      },
+      {
+        "data": "20/05/2020",
+        "km": 818592,
+        "oficina": null,
+        "observacao": "ABRAÇADEIRA 5\" INOX\nTUBO FLEXÍVEL CURTO PROTETOR DE SILENC INOX\nMANGUEIRA INTERCOOLER INF VOLVO FH\nMANGUEIRA TURBINA VOLVO FH\nCONSERTO EM INTERCOOLER E M.O"
+      },
+      {
+        "data": "05/05/2020",
+        "km": 815308,
+        "oficina": null,
+        "observacao": "M.O FEIXE P/ COLOCAR CALÇO\nM.O FEIXE TRUCK/TRAÇÃO PESADO"
+      },
+      {
+        "data": "23/03/2020",
+        "km": 806960,
+        "oficina": null,
+        "observacao": "M.O FEIXE CARRETA\nALINHAMENTO EIXO RODA RAIADA"
+      },
+      {
+        "data": "13/02/2020",
+        "km": 799209,
+        "oficina": null,
+        "observacao": "2 AMORTECEDOR CABINE TRASEIRA FH\n2 AMORTECEDOR CABINE C/MOLA DIANTEIRA FH\n2 AMORTECEDOR HORIZONTAL/TRANSVERSAL CAB VOLVO FH\n1 TERMINAL DE DIREÇÃO M30X1,50 DIR"
+      },
+      {
+        "data": "04/02/2020",
+        "km": 797460,
+        "oficina": null,
+        "observacao": "BUCHA DA SUSPENSÃO\nM.O TIRANTE"
+      },
+      {
+        "data": "31/01/2020",
+        "km": 796430,
+        "oficina": null,
+        "observacao": "CONSERTO DE UMA VALVULA SENSIVEL A CARGA\nCONSERTO DE UMA VÁLVULA DO ERGUEDOR DO TRUCK DA CARRETA\nTROCA DE UMA VÁLVULA DE RETENÇÃO DA VÁLVULA REA"
+      },
+      {
+        "data": "13/01/2020",
+        "km": 793070,
+        "oficina": null,
+        "observacao": "M.O FEIXE DA CARRETA"
+      },
+      {
+        "data": "11/12/2019",
+        "km": 788743,
+        "oficina": null,
+        "observacao": "M.O FEIXE TRUCK CAV MECANICO CENTRAL 1A FOLHA 585 X 585 CARRETA"
+      },
+      {
+        "data": "27/11/2019",
+        "km": 785450,
+        "oficina": null,
+        "observacao": "REPARO EM FEIXE DO TRUCK, DIANTEIRA E CARRETA\nTIRAR EIXO DA CARRETA E TRUCK"
+      },
+      {
+        "data": "12/11/2019",
+        "km": 782199,
+        "oficina": null,
+        "observacao": "JUNTA COLETOR ES\nPEÇAS DIVERSAS REFERENTE A UM TIRANTE REGULÁVEL PASTRE\nKIT AMORTECEDOR/MOLA CABINE VOLVO FH DIANTEIRO"
+      },
+      {
+        "data": "30/10/2019",
+        "km": 779813,
+        "oficina": null,
+        "observacao": "M.O TIRANTE BUCHA DA SUSPENSÃO"
+      },
+      {
+        "data": "15/10/2019",
+        "km": 775881,
+        "oficina": null,
+        "observacao": "MANOPLA ALAVANCA FH"
+      },
+      {
+        "data": "09/10/2019",
+        "km": 774884,
+        "oficina": null,
+        "observacao": "CONSERTO DE UMA VÁLVULA DE DESCARGA RÁPIDA"
+      },
+      {
+        "data": "07/10/2019",
+        "km": 774884,
+        "oficina": null,
+        "observacao": "M.O BALANÇA\nM.O FEIXE TRUCK CAV MEC\nFAZER COXIM DE BALANÇA\nESTICADOR DE CORREIA FH"
+      },
+      {
+        "data": "03/10/2019",
+        "km": 774082,
+        "oficina": null,
+        "observacao": "M.O FEIXE CARRETA"
+      },
+      {
+        "data": "17/09/2019",
+        "km": 770152,
+        "oficina": null,
+        "observacao": "CONSERTO DE UMA CUÍCA BLINDADA CONSERTO DE UMA VÁLVULA PILOTO"
+      },
+      {
+        "data": "16/09/2019",
+        "km": 770152,
+        "oficina": null,
+        "observacao": "RETENTOR CAIXA CAMBIO FH\nATUADOR GARFO EMBREAGEM FH\nATUADOR EMBREAGEM FH\nANEL TRAVA ATUADOR FH"
+      },
+      {
+        "data": "13/09/2019",
+        "km": 769520,
+        "oficina": null,
+        "observacao": "KIT EMBREAGEM VOLVO FH"
+      },
+      {
+        "data": "03/09/2019",
+        "km": 767641,
+        "oficina": null,
+        "observacao": "BOMBA D'ÁGUA FH/FM"
+      },
+      {
+        "data": "29/08/2019",
+        "km": 767010,
+        "oficina": null,
+        "observacao": "UM ABAFADOR DE RUÍDO DO SECADOR DE AR"
+      },
+      {
+        "data": "15/08/2019",
+        "km": 764187,
+        "oficina": null,
+        "observacao": "M.O FEIXE TRUCK CAV MEC\nM.O TIRANTE E ALINHAMENTO EIXO RODA DISCO\nPLATAFORMA ALUMINIO FH\nFÊMEA GIRAT. BSP\nCAPA PRENSÁVEL\nADAPTADOR MACHO NPT X FÊMEA"
+      },
+      {
+        "data": "08/08/2019",
+        "km": 762465,
+        "oficina": null,
+        "observacao": "CONSERTO DE UM SECADOR DE AR ELETRONICO S/ FILTRO"
+      },
+      {
+        "data": "31/07/2019",
+        "km": 762465,
+        "oficina": null,
+        "observacao": "SERVIÇO DE SOLDA REFERENTE A TROCAR TRAVESSAS DO ASSOALHO DO\nBASCULANTE\nE PARTE DA CHAPA SOLDAR TRINCAS EM TRAVESSA E SUPORTE"
+      },
+      {
+        "data": "16/07/2019",
+        "km": 758108,
+        "oficina": null,
+        "observacao": "LIMPEZA\nTESTE E ENVARETAMENTO EM RADIADOR\nTROCA DE CAIXA EM RADIADOR\nREFORMA GERAL EM INTERCOOLER, REMOÇÃO E INSTALAÇÃO\nJUNTA TURBINA VOLVO\nJUNTA COLETOR VOLVO"
+      },
+      {
+        "data": "08/07/2019",
+        "km": 755841,
+        "oficina": null,
+        "observacao": "M.O FEIXE DA CARRETA"
+      },
+      {
+        "data": "20/05/2019",
+        "km": 746425,
+        "oficina": null,
+        "observacao": "MANGUEIRA ERGUEDORA CABINE VOLVO FH\nTUBO DE COMBUSTIVEL FH"
+      }
+    ],
+    "count": 103
+  },
+  {
+    "arquivo": "MANUTENÇÃO MLT1I28 FORD CARGO - Google Docs.pdf",
+    "placa": "MLT1I28",
+    "tipo": "Manutenção",
+    "header": "MANUTENÇÃO MLT1I28  FORD CARGO",
+    "entries": [
+      {
+        "data": "17/01/2026",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCA DE REPARO\nESFERAS ZF\nCROMAGEM SEM FIM\nCROMAGEM DE EIXO SETOR"
+      },
+      {
+        "data": "14/03/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TESTE EM SISTEMA DE TURBINA E INTERCOOLER"
+      }
+    ],
+    "count": 2
+  },
+  {
+    "arquivo": "LUBRIFICAÇÃO TBA-1B34 - Google Docs (1).pdf",
+    "placa": "TBA1B34",
+    "tipo": "Lubrificação",
+    "header": "LUBRIFICAÇÃO TBA-1B34",
+    "entries": [
+      {
+        "data": "29/05/2025",
+        "km": 32978,
+        "oficina": null,
+        "observacao": "TROCADO OS FILTROS"
+      }
+    ],
+    "count": 1,
+    "fontes": [
+      "LUBRIFICAÇÃO TBA-1B34 - Google Docs (1).pdf",
+      "LUBRIFICAÇÃO TBA-1B34 - Google Docs.pdf"
+    ]
+  },
+  {
+    "arquivo": "MANUTENÇÃO TBA-1B34 - Google Docs.pdf",
+    "placa": "TBA1B34",
+    "tipo": "Manutenção",
+    "header": "MANUTENÇÃO TBA - 1B34 - IVECO S-WAY480-6X2",
+    "entries": [
+      {
+        "data": "11/03/2025",
+        "km": 7148,
+        "oficina": null,
+        "observacao": "RANDER DE GÓES\nPROJETO PROTETOR ( VALOR 120,00)\nPROTETOR #4,75  ( VALOR 895,00)  TOTAL: 1.015,60"
+      },
+      {
+        "data": "21/02/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "COLOCADO 4 PARALAMA"
+      },
+      {
+        "data": "11/02/2025",
+        "km": 1025,
+        "oficina": null,
+        "observacao": "ARRUMADO VAZAMENTO\n2 COLOCADO DOIS ANEL DE ALUMINIO\nCOLOCADO 1L DE ÓLEO HIDRAULICO"
+      },
+      {
+        "data": "13/02/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO UM TAPETE\n2 CAPAS DE BANCO"
+      }
+    ],
+    "count": 4
+  },
+  {
+    "arquivo": "Lubrificação RHO6C88 - Google Docs.pdf",
+    "placa": "RHO6C88",
+    "tipo": "Lubrificação",
+    "header": "Lubrificação",
+    "entries": [
+      {
+        "data": "05/12/2025",
+        "km": 537925,
+        "oficina": null,
+        "observacao": "TROCADO TODOS OS FILTROS LUBRIFICANTE E DIESEL\nE FILTRO DE AR"
+      },
+      {
+        "data": "08/09/2025",
+        "km": 526137,
+        "oficina": null,
+        "observacao": "TROCADO OLEO DE MOTOR E FILTROS DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "21/05/2025",
+        "km": 501137,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DO MOTOR  E TROCADO FILTROS DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "18/03/2025",
+        "km": 477777,
+        "oficina": null,
+        "observacao": "TROCA DE FILTROS DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "30/10/2024",
+        "km": 418693,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR\nTROCADO FILTROS DE DIESEL E LUBRIFICANTES\nTROCADO ÓLEO DA CAIXA (75W - 80 SINTÉTICO)"
+      },
+      {
+        "data": "02/08/2024",
+        "km": 392000,
+        "oficina": null,
+        "observacao": "TROCA DE ÓLEO E FILTROS"
+      },
+      {
+        "data": "31/05/2024",
+        "km": 367001,
+        "oficina": null,
+        "observacao": "TROCA DE ÓLEO E FILTROS"
+      },
+      {
+        "data": "28/04/2024",
+        "km": 339951,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO  MOTOR E FILTROS"
+      },
+      {
+        "data": "02/02/2024",
+        "km": 315775,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO MOTOR E FILTROS"
+      },
+      {
+        "data": "23/11/2023",
+        "km": 290673,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO MOTOR E FILTROS"
+      },
+      {
+        "data": "26/09/2023",
+        "km": 265299,
+        "oficina": null,
+        "observacao": "TROCA DE ÓLEO MOTOR E FILTRO LUBRIFICANTE"
+      },
+      {
+        "data": "13/09/2023",
+        "km": 259883,
+        "oficina": null,
+        "observacao": "TROCADO FILTRO DE DIESEL E RACOR POIS MOTOR ESTAVA\nPERDENDO POTÊNCIA"
+      },
+      {
+        "data": "11/09/2023",
+        "km": 258925,
+        "oficina": null,
+        "observacao": "TROCADO FILTRO DE AR DA CABINE"
+      },
+      {
+        "data": "29/07/2023",
+        "km": 240357,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO MOTOR E FILTROS"
+      }
+    ],
+    "count": 14
+  },
+  {
+    "arquivo": "Manutenção RHO6C88 - Google Docs.pdf",
+    "placa": "RHO6C88",
+    "tipo": "Manutenção",
+    "header": "Manutenções Iveco Stralis - RHO6C88",
+    "entries": [
+      {
+        "data": "28/04/2026",
+        "km": 547429,
+        "oficina": null,
+        "observacao": "FEITO MOTOR BLOCO PARCIAL COMPRADO\nPONTA GROSSA TROCADO 01 UNIDADE DE CILINDRO TROCADO ÓLEO DE MOTOR\nUNIDADE  COMPRADO DA IVECO TROCADO MÓDULO DO ARLA ORIGINAL IVECO"
+      },
+      {
+        "data": "05/12/2025",
+        "km": 537925,
+        "oficina": null,
+        "observacao": "FEITO MOTOR COMPLETO\nTROCADO FILTRO DE AR"
+      },
+      {
+        "data": "04/12/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "tectruck\nFEITO DESLOCAMENTO 150,00\nCALIBRAÇÃO DA CAIXA 950,00\ntotal R$1.000,00"
+      },
+      {
+        "data": "10/06/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "amr freios\n1 KIT AMPLIFICADOR RELE"
+      },
+      {
+        "data": "01/06/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "mr freios\nREGULAGEM VALVULA DISTRIBUIDORA"
+      },
+      {
+        "data": "06/06/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "MULTIFER\nM.O BALANÇA\nM.O FEIXE TRUCK CAV MEC\nM.O FEIXE PARA TIRAR BALANÇA\nALINHAMENTO EIXO RODA DISCO\nM.O TIRANTE"
+      },
+      {
+        "data": "27/03/2025",
+        "km": 482668,
+        "oficina": null,
+        "observacao": "TROCADO LONA DO FREIO BUCHA DO S 3 EIXO L.D"
+      },
+      {
+        "data": "24/02/2025",
+        "km": 467824,
+        "oficina": null,
+        "observacao": "TROCADO BOMBA DA ÁGUA"
+      },
+      {
+        "data": "21/02/2025",
+        "km": 467824,
+        "oficina": null,
+        "observacao": "TROCADO TAMBOR DE FREIO  3 EIXO E TROCADO LONA 2 EIXO LADO ESQUERDO"
+      },
+      {
+        "data": "14/02/2025",
+        "km": 465244,
+        "oficina": null,
+        "observacao": "TROCADO MANGUEIRA DA ÁGUA COMPRESSOR IVECO"
+      },
+      {
+        "data": "16/01/2025",
+        "km": 448260,
+        "oficina": null,
+        "observacao": "TROCADO MEIO PARALAMA (1)"
+      },
+      {
+        "data": "26/11/2024",
+        "km": 404691,
+        "oficina": null,
+        "observacao": "TROCADO VALVULA DISTRIBUIDORA DA CARRETA"
+      },
+      {
+        "data": "13/11/2024",
+        "km": 424686,
+        "oficina": null,
+        "observacao": "TROCADO RETENTOR DA TRAÇÃO LADO DIREITO"
+      },
+      {
+        "data": "04/11/2024",
+        "km": 419903,
+        "oficina": null,
+        "observacao": "TROCADO RETENTOR DA RODA\nE OS ROLAMENTOS DA TRAÇÃO\n01//11/2024\nTROCADO SUPORTE ARANHA\nTROCADO AS BUCHA DO “S”\nTROCADO UMA MOLA DE CUICA DE SERVIÇO"
+      },
+      {
+        "data": "17/06/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "REVISADO RADIADOR COMPLETO"
+      },
+      {
+        "data": "21/03/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "CONSERTO DE UMA VALVULA RE4 3 SAIDAS"
+      },
+      {
+        "data": "31/10/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO AMORTECEDOR COM BOLSA TRASEIRO DA CABINE\n(LADO ESQUERDO)"
+      },
+      {
+        "data": "09/10/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "CONDENSADOR NOVO\nMANGUEIRA AR CONDICIONADO\nTESTE E COLOCAÇÃO DE GAS EM AR CONDICIONADO"
+      },
+      {
+        "data": "02/08/2023",
+        "km": 242127,
+        "oficina": null,
+        "observacao": "TROCADO AMORTECEDOR COM BOLSA TRASEIRO DA CABINE\n(LADO ESQUERDO)"
+      }
+    ],
+    "count": 19
+  },
+  {
+    "arquivo": "Lubrificação RHN9C65 - Google Docs.pdf",
+    "placa": "RHN9C65",
+    "tipo": "Lubrificação",
+    "header": "Lubrificação",
+    "entries": [
+      {
+        "data": "16/12/2026",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR FILTROS DE DISEL E LUBRIFICANTES"
+      },
+      {
+        "data": "28/10/2025",
+        "km": 497000,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DO DIFERENCIAL"
+      },
+      {
+        "data": "16/07/2025",
+        "km": 480711,
+        "oficina": null,
+        "observacao": "TROCA DE ÓLEO FILTROS DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "31/03/2025",
+        "km": 443089,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DO MOTOR FILTROS DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "23/01/2025",
+        "km": 422085,
+        "oficina": null,
+        "observacao": "TROCADO OLEO DO MOTOR FILTROS DE DIESEL E COMBUSTIVEL"
+      },
+      {
+        "data": "23/10/2024",
+        "km": 392934,
+        "oficina": null,
+        "observacao": "trocado óleo de motor e filtros de diesel e lubrificante"
+      },
+      {
+        "data": "16/08/2024",
+        "km": 373347,
+        "oficina": null,
+        "observacao": "ENGRAXADO"
+      },
+      {
+        "data": "18/07/2024",
+        "km": 363465,
+        "oficina": null,
+        "observacao": "TROCA DE ÓLEO DO MOTOR ,CAIXA E DIFERENCIAL  E TROCA DOS FILTROS\nINCLUINDO A  TROCA DO  FILTRO DE AR"
+      },
+      {
+        "data": "17/04/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "KM ATUAL: 328233\nPRÓXIMA TROCA:  363233\nTROCADO OLEO DE MOTOR E FILTROS"
+      },
+      {
+        "data": "04/01/2024",
+        "km": 292407,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR E FILTROS"
+      },
+      {
+        "data": "25/10/2023",
+        "km": 265946,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR E FILTROS"
+      },
+      {
+        "data": "31/08/2023",
+        "km": 240385,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR E FILTROS"
+      },
+      {
+        "data": "09/06/2023",
+        "km": 199216,
+        "oficina": null,
+        "observacao": "TROCADO FILTRO DE AR"
+      }
+    ],
+    "count": 13
+  },
+  {
+    "arquivo": "Manutenção RHN9C65 - Google Docs.pdf",
+    "placa": "RHN9C65",
+    "tipo": "Manutenção",
+    "header": "Manutenções Iveco Stralis - RHN9C65",
+    "entries": [
+      {
+        "data": "17/04/2026",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO PISTÃO FREIO MOTOR -324,39"
+      },
+      {
+        "data": "13/05/2026",
+        "km": null,
+        "oficina": null,
+        "observacao": ""
+      },
+      {
+        "data": "02/02/2026",
+        "km": null,
+        "oficina": null,
+        "observacao": "tectruck\nCOMPONENTES MECATRONICO  DA CAIXA COM DEFEITO DEVIDO A AGUA NO\nSISTEMA DE AR\nREPARADO SERVO DE EMBREAGEM E TAMPA DA CAIXA"
+      },
+      {
+        "data": "28/10/2025",
+        "km": 497000,
+        "oficina": null,
+        "observacao": "TROCADO RETENTOR DA TRAÇÃO\nTROCADO 10 PRISIONEIROS DE RODA\nRETIFICADO CUBO\nE TROCADO DUAS RODAS DA TRAÇÃO\nOBS: RODAS CAIRAM PARA A ESTRADA"
+      },
+      {
+        "data": "22/09/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO SERVO DA EMBREAGEM DANIFICADOS POR AGUA NO SISTEMA E FEITO\nREPARO DAS PEÇAS"
+      },
+      {
+        "data": "23/06/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "multimental\nALINHAMENTO DIANTEIRO BIDIRECIONAL"
+      },
+      {
+        "data": "12/03/2025",
+        "km": 436840,
+        "oficina": null,
+        "observacao": "TROCADO DISCO DE PLATOR DE EMBREAGEM\nCURVA DO FREIO MOTOR"
+      },
+      {
+        "data": "07/03/2025",
+        "km": 436837,
+        "oficina": null,
+        "observacao": "REMOVIDO CAIXA DO IVECO E EMBREAGEM"
+      },
+      {
+        "data": "11/03/2025",
+        "km": 436840,
+        "oficina": null,
+        "observacao": "IVECO FLORENÇA\nCOLOCADO UMA VÁLVULA DE FREIO MOTOR"
+      },
+      {
+        "data": "17/01/2025",
+        "km": 420164,
+        "oficina": null,
+        "observacao": "TROCADO LONA DIANTEIRA\nTROCADO LONA DA TRAÇÃO\nTROCADO LONA DA TRAÇÃO 1 EIXO L.D\nTROCADO SUPORTE ARANHA\nTROCADO ARRUELA DE ENCOSTO DO CUBO"
+      },
+      {
+        "data": "12/02/2025",
+        "km": 429483,
+        "oficina": null,
+        "observacao": "mrf freios\nCONSERTO DE UM VAL DE PEDAL /  CONSERTO DE UM VAL DE RELE / CONSERTO\nDE UMA VAL DISTRIBUIDORA / SOS DESLOCAMENTO"
+      },
+      {
+        "data": "06/02/2025",
+        "km": 427583,
+        "oficina": ",",
+        "observacao": "TROCADO LONA EIXO DO MEIO 2 EIXO L.D"
+      },
+      {
+        "data": "01/02/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO LONA DA CARRETA 1 EIXO ESQUERDO"
+      },
+      {
+        "data": "31/01/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "425602\nmr freios\nCONSERTO DE UM SECADOR DO IVECO WABCO / UM FILTRO DE SECADOR DE AR\nWABCO"
+      },
+      {
+        "data": "09/01/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "415679\nMULTIMENTAL\n- 1A FOLHA FRIZADA -L-1620 TRAÇÃO/TRUCK\nPI CEN 1/2 X 6 CAL\nPO SX 12 UNF\nBUCHA DA SUSPENSÃO SUSPENSYS SI\nPO SX M'24 X2.00 (MB) NYB ZB TRAVANTE\nPF SX UNF RP C.5 5/8X3\"\nPO SX 5/8 UNF DPL\nDescrição M.O TIRANTE\nM.O FEIXE TRUCK CAV MEC\nALINHAMENTO EIXO RODA DISCO"
+      },
+      {
+        "data": "06/02/2025",
+        "km": 427583,
+        "oficina": null,
+        "observacao": "TROCADO LONA EIXO DO MEIO E 2 EIXO L.D"
+      },
+      {
+        "data": "01/02/2025",
+        "km": 426552,
+        "oficina": null,
+        "observacao": "TROCADO LONA DA CARRETA  1o EIXO ESQUERDO\nTROCADO LONA DE FREIO"
+      },
+      {
+        "data": "27/01/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO BUZINA"
+      },
+      {
+        "data": "17/01/2025",
+        "km": 420164,
+        "oficina": null,
+        "observacao": "TROCADO SUPORTE ARANHA\nTROCADO ARRUELA DE ENCOSTO DO CUBO\nTROCADO LONA DIANTEIRA\nTROCADO LONA DA TRAÇÃO 1o EIXO L.D"
+      },
+      {
+        "data": "06/01/2025",
+        "km": 414893,
+        "oficina": null,
+        "observacao": "TROCADO FREIO DA TRAÇÃO\nTROCADO LONA DE FREIO DA CARRETA 1 EIXO L.D E 2 EIXO L.D\nTROCADO CUICA DA TRAÇÃO L.E"
+      },
+      {
+        "data": "05/12/2024",
+        "km": 407540,
+        "oficina": null,
+        "observacao": "TROCADO CUICA ESTACIONÁRIO DO TRUCK L.D"
+      },
+      {
+        "data": "04/11/2024",
+        "km": 396728,
+        "oficina": null,
+        "observacao": "TROCADO CASAL DE ROLAMENTO DA TRAÇÃO E DO RETENTOR LADO ESQUERDO"
+      },
+      {
+        "data": "23/10/2024",
+        "km": 392934,
+        "oficina": null,
+        "observacao": "trocado sensor do abs tração lado esquerdo\npassado aparelho e apagado falha do arla"
+      },
+      {
+        "data": "09/10/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADA MANGUEIRA DA ÁGUA SAIDA DO COMPRESSOR\n1 ADITIVO PARA O RADIADOR VERDE"
+      },
+      {
+        "data": "08/10/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO ERGUEDOR DE EIXO MOLA PNEUMATICA\nTROCADO VALVULA  DESCARGA RÁPIDA 1  EIXO"
+      },
+      {
+        "data": "07/05/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCA MOLA ASPIRAL AR CONDICIONADO"
+      },
+      {
+        "data": "30/09/2023",
+        "km": 255115,
+        "oficina": null,
+        "observacao": "TROCADO KIT AMORTECEDOR/BOLSA DA CABINE TRASEIRO LADO ESQUERDO"
+      },
+      {
+        "data": "21/09/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO VÁLVULA NIVELADORA DA CABINE"
+      },
+      {
+        "data": "05/12/2022",
+        "km": null,
+        "oficina": null,
+        "observacao": "2 TROCADO BATERIA"
+      }
+    ],
+    "count": 29
+  },
+  {
+    "arquivo": "Manutenção FLK2781 - Google Docs.pdf",
+    "placa": "FLK2781",
+    "tipo": "Manutenção",
+    "header": "Manutenções Volvo FM 460 - FLK2781",
+    "entries": [
+      {
+        "data": "17/01/2026",
+        "km": null,
+        "oficina": null,
+        "observacao": "trocado casal volvo i shift\nTROCADO ATUADOR VOLVO\nTROCADO VALVULA PWM CAIXA I SHIFT"
+      },
+      {
+        "data": "14/10/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO VALVULA DO PEDAL DE FREIO\nREPARO DA VALVULA PRESSÃO DO  AR\nCOLOCADO ESCAPAMENTO PONTEIRA"
+      },
+      {
+        "data": "17/02/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO KIT DE EMBREAGEM COMPLETO\n(ATUADOR, DISCO, PLATÔ E VÁLVULA PWM)\nTROCADO VÁLVULA DO FREIO MOTOR"
+      },
+      {
+        "data": "07/02/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO BOMBA D’ÁGUA\nTROCADO POLIA DA BOMBA D’ÁGUA\nTROCADO JUNTA LATERAL DO MOTOR"
+      },
+      {
+        "data": "19/12/2023",
+        "km": 113460,
+        "oficina": null,
+        "observacao": "TROCADO A VÁLVULA DO VEBER\nTROCADO SENSOR DA PRESSÃO DO ÓLEO (DENTRO DO CARTER)\nTROCADO VÁLVULA SENSÍVEL A CARGA E COLOCADO VÁLVULA RELÊ"
+      },
+      {
+        "data": "01/12/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO ESTICADOR DE CORREIA DE CIMA\nTROCADO ESTICADOR DE CORREIA DE BAIXO\nTROCADO CORREIA 8PK1538"
+      },
+      {
+        "data": "02/09/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO POLIA DO ALTERNADOR\nTROCADO CORREIA 8PK1538"
+      },
+      {
+        "data": "13/08/2023",
+        "km": 107140,
+        "oficina": null,
+        "observacao": "TROCADO ANEL DE SINCRONIZAÇÃO FREIO DO GRUPO REDUTOR\nTROCADO KIT JUNTAS DA TAMPA DA CAIXA\nFILTRO DE ÓLEO DA CAIXA\nÓLEO DE CAIXA\nKIT BRONZE DE ACIONAMENTO DA CAIXA\nBLOCO DE VÁLVULAS DA CAIXA"
+      },
+      {
+        "data": "03/07/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "REVISADO TURBINA, TROCADO CORREIA,\nTROCADO ESTICADOR E ROLAMENTO DA POLIA\nTROCADO KIT DE EMBREAGEM\n(PLATO, DISCO E ATUADOR)"
+      }
+    ],
+    "count": 9
+  },
+  {
+    "arquivo": "Manutenção BAY8673 - Google Docs.pdf",
+    "placa": "BAY8673",
+    "tipo": "Manutenção",
+    "header": "Manutenções VW 31.280 - BAY8673",
+    "entries": [
+      {
+        "data": "20/05/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO MÁQUINA DE VIDRO LE"
+      },
+      {
+        "data": "19/11/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO BORRACHA DA CUICA\nGARAGEM 33 TRUCK PERFORMANCE"
+      },
+      {
+        "data": "02/07/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "BANHO QUÍMICO\nREVISÃO DA CAIXA DE CAMBIO , MEDIA E TROCA DOS SINCRONIZADOS"
+      },
+      {
+        "data": "27/06/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO RETENTOR DO CARDAN INTERMEDIÁRIO"
+      },
+      {
+        "data": "10/06/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO RETENTOR DO VIRA E TODAS JUNTAS DA PARTE DA FRENTE DO MOTOR\nOBS: JUNTAS TODAS ORIGINAIS"
+      },
+      {
+        "data": "12/01/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO ALTERNADOR\nFEITO REPARO ELÉTRICO"
+      },
+      {
+        "data": "13/11/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TESTE E COLOCAÇÃO DE GAS EM AR CONDICIONADO"
+      },
+      {
+        "data": "27/09/2023",
+        "km": 67941,
+        "oficina": null,
+        "observacao": "DESLOCAMENTO SERVIÇO EXTERNO\nDIAGNOSTICO SCANNER DIESEL"
+      },
+      {
+        "data": "15/06/2023",
+        "km": 65200,
+        "oficina": null,
+        "observacao": "REVISADO VALVULA DE TRANSFERENCIA DA CAIXA\nTROCADO CANECO DE TRANSFERÊNCIA E OS REPAROS"
+      }
+    ],
+    "count": 9
+  },
+  {
+    "arquivo": "LUBRIFICAÇÃO RQR-3172 - Google Docs.pdf",
+    "placa": "RQR3172",
+    "tipo": "Lubrificação",
+    "header": "LUBRIFICAÇÃO RQR-3172",
+    "entries": [
+      {
+        "data": "23/02/2026",
+        "km": 313615,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DO MOTOR E FILTROS DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "26/09/2025",
+        "km": 287786,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR E FILTROS DE DIESEL E LUBRIFICANTES TROCADO\nFILTRO DE AR"
+      },
+      {
+        "data": "17/04/2025",
+        "km": 263210,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR FILTROS DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "05/12/2024",
+        "km": 238100,
+        "oficina": null,
+        "observacao": "TROCA DE ÓLEO DE FILTROS DE DIESEL E COMBUSTÍVEL"
+      }
+    ],
+    "count": 4
+  },
+  {
+    "arquivo": "Manutenção - Google Docs.pdf",
+    "placa": "BAK5297",
+    "tipo": "Manutenção",
+    "header": "Manutenções - BAK5297",
+    "entries": [
+      {
+        "data": "14/07/2026",
+        "km": null,
+        "oficina": null,
+        "observacao": "revisado feixe de mola dianteiro trocado todas as buchas trocado as buchas do eixo tander\nmultifer km193,894"
+      },
+      {
+        "data": "12/01/2026",
+        "km": null,
+        "oficina": null,
+        "observacao": "revisado chicote eletrico do ar condicionado e interclima\neletricista garagem 33 lima\nTROCADO DOIS AMORTECEDORES CABINE"
+      },
+      {
+        "data": "28/03/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "molas cordeiro\nPINO DE CENTRO 12X7 CB\nPORCA 12 MB\nMOLA 1= VOLVO VM 330 DIANT 6X4 90X29X1000X1000\nBUCHA MOLA VOLVO VM DIANTEIRA 20MM PU SILENCIOSA\nMAO DE OBRA MOLEJO DIANTEIRO L.E"
+      },
+      {
+        "data": "10/07/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "FELIX E ANDRADE RADIADORES\nLIMPEZA E TESTE E ENVARETAMENTO EM RADIADOR\nLIPEZA E TESTE EM INTERCOOLER\nCONSERTO EM INTERCOOLER"
+      },
+      {
+        "data": "20/03/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO OS 4 AMORTECEDORES DA CABINE"
+      },
+      {
+        "data": "15/03/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "REVISADO RADIADOR"
+      },
+      {
+        "data": "21/03/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO ROLAMENTO PEQUENO RODA TRASEIRA"
+      },
+      {
+        "data": "23/02/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "M.O. FEIXE TRASEIRO TRAÇADO\nM.O. FEIXE DIANTEIRO CAVALO MECÂNICO\nM.O SUPORTE"
+      },
+      {
+        "data": "10/02/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "REFORMA GERAL NO RADIADOR"
+      },
+      {
+        "data": "14/12/2022",
+        "km": null,
+        "oficina": null,
+        "observacao": "M.O. FEIXE TRAÇÃO\nM.O. TROCAR DESLIZANTE DA CARCAÇA"
+      },
+      {
+        "data": "16/08/2022",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO ROLAMENTO DO ALTERNADOR"
+      },
+      {
+        "data": "15/08/2022",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO TUBO FLEXIVEL UNIVERSAL"
+      },
+      {
+        "data": "02/02/2022",
+        "km": null,
+        "oficina": null,
+        "observacao": "FEITO REPARO ELÉTRICO"
+      },
+      {
+        "data": "31/01/2022",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO KIT DE EMBREAGEM\nTROCADO DISCO DE EMBREAGEM"
+      },
+      {
+        "data": "12/01/2022",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO 2 AMORTECEDORES DA CABINE DIANTEIRA"
+      },
+      {
+        "data": "18/08/2021",
+        "km": 151847,
+        "oficina": null,
+        "observacao": "FEITO DIAGNÓSTICO DO CAMINHÃO\nTROCADO 1 PLUG ELETRÔNICO\nFEITO REPARO ELETRÔNICO"
+      },
+      {
+        "data": "28/07/2021",
+        "km": 150291,
+        "oficina": null,
+        "observacao": "TROCADO TRAVA ARANHA DE DIREÇÃO"
+      },
+      {
+        "data": "24/06/2021",
+        "km": 149131,
+        "oficina": null,
+        "observacao": "TROCADO JUNTAS DO COLETOR"
+      },
+      {
+        "data": "25/03/2021",
+        "km": 142835,
+        "oficina": null,
+        "observacao": "TROCADO SENSOR ABS LADO DIREITO"
+      },
+      {
+        "data": "01/03/2021",
+        "km": 141234,
+        "oficina": null,
+        "observacao": "TROCADO BOIA DO TANQUE"
+      },
+      {
+        "data": "15/01/2021",
+        "km": 139147,
+        "oficina": null,
+        "observacao": "TROCADO CONJUNTO ROTATIVO TURBO"
+      },
+      {
+        "data": "14/12/2020",
+        "km": 136138,
+        "oficina": null,
+        "observacao": "FEITO GEOMETRIA DO EIXO DIANTEIRO\nM.O. ACERTAR POSIÇÃO DO VOLANTE"
+      },
+      {
+        "data": "09/10/2020",
+        "km": 136138,
+        "oficina": null,
+        "observacao": "CONSERTO NA CAIXA DE CÂMBIO\nTROCADO PISTÃO\nTROCADO RETENTOR DO PISTÃO\nTROCADO ANEL DE VEDAÇÃO"
+      },
+      {
+        "data": "03/07/2020",
+        "km": 130022,
+        "oficina": null,
+        "observacao": "M.O. TIRAR E COLOCAR EIXO DIANTEIRO"
+      },
+      {
+        "data": "06/04/2020",
+        "km": 126778,
+        "oficina": null,
+        "observacao": "TROCADO SUPORTE DO CONDENSADOR\nCONSERTO NO CONDENSADOR"
+      },
+      {
+        "data": "31/07/2019",
+        "km": 121665,
+        "oficina": null,
+        "observacao": "M.O. FEIXE DIANTEIRO PESADO"
+      }
+    ],
+    "count": 26
+  },
+  {
+    "arquivo": "LUBRIFICAÇÃO BAK-5297 - Google Docs.pdf",
+    "placa": "BAK5297",
+    "tipo": "Lubrificação",
+    "header": "LUBRIFICAÇÃO BAK-5297 - RIO  BRANCO",
+    "entries": [
+      {
+        "data": "07/11/2024",
+        "km": 181773,
+        "oficina": null,
+        "observacao": "HORA: 130871\nTROCA DE ÓLEO  E FILTROS DE DIESEL E LUBRIFICANTES"
+      }
+    ],
+    "count": 1
+  },
+  {
+    "arquivo": "taw-2h21 - Google Docs.pdf",
+    "placa": "TAW2H21",
+    "tipo": "Manutenção",
+    "header": "MANUTENÇÃO  TAW-2H21",
+    "entries": [
+      {
+        "data": "08/12/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TEE DE AR DIRETO COM ANILHA DE METAL\nMANGUEIRA ESPIRAL PRETA 3.5MT\nPISTOLA DE GATILHO\nCALHA VOLVO FH 540 CRR - FE"
+      }
+    ],
+    "count": 1
+  },
+  {
+    "arquivo": "MANUTENÇÃO SFO-1C13 - Google Docs.pdf",
+    "placa": "SFO1C13",
+    "tipo": "Manutenção",
+    "header": "MANUTENÇÃO SFO-1C13",
+    "entries": [
+      {
+        "data": "20/10/2025",
+        "km": 74690,
+        "oficina": null,
+        "observacao": "TROCADO FILTRO PU"
+      },
+      {
+        "data": "14/10/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO UMA BORRACHA DE CUICA DE FREIO 3 EIXO LADO DIREITO"
+      },
+      {
+        "data": "05/10/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "COLOCADO 3METROS DE MANGOTE DE BORRACHA PRO SILO\nCOLOCADO 9 PARAFUSO 12X45 COM PORCA"
+      }
+    ],
+    "count": 3
+  },
+  {
+    "arquivo": "Lubrificação RHR8A68 - Google Docs.pdf",
+    "placa": "RHR8A68",
+    "tipo": "Lubrificação",
+    "header": "Lubrificação",
+    "entries": [
+      {
+        "data": "10/12/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR FILTROS DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "15/10/2024",
+        "km": 260000,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO  DE MOTOR E FILTROS DE DIESEL E LUBRIFICANTE\nTROCADO FILTRO DE AR"
+      },
+      {
+        "data": "05/07/2024",
+        "km": 230612,
+        "oficina": null,
+        "observacao": "TROCA DE ÓLEO E FILTROS"
+      },
+      {
+        "data": "20/02/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "COMPLETADO 3L DE ÓLEO MOTOR"
+      },
+      {
+        "data": "11/09/2023",
+        "km": 161223,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO MOTOR E FILTROS\nTROCADO ÓLEO DE CAIXA E FILTRO DE CAIXA\nTROCADO ÓLEO DE DIFERENCIAL\nTROCADO FILTRO DE AR MOTOR\nTROCADO FILTRO SECADOR\nTROCADO FILTROS DE AR DA CABINE\nTROCADO KIT FILTROS DO ARLA\nFEITO SERVIÇO DE LUBRIFICAÇÃO DO CHASSI"
+      }
+    ],
+    "count": 5
+  },
+  {
+    "arquivo": "Manutenções RHR8A68 - Google Docs.pdf",
+    "placa": "RHR8A68",
+    "tipo": "Manutenção",
+    "header": "Manutenções Volvo FH 460 - RHR8A68",
+    "entries": [
+      {
+        "data": "19/01/2026",
+        "km": null,
+        "oficina": null,
+        "observacao": "LONEIRO\nLONA TELA 9X3"
+      },
+      {
+        "data": "22/09/2025",
+        "km": 337255,
+        "oficina": null,
+        "observacao": "TROCADO FILTRO DE AR"
+      },
+      {
+        "data": "09/09/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "bloco suporte de valvula hyva\njunta vedação bloco de aluminio"
+      },
+      {
+        "data": "24/07/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "cp de souza\n40 CAPA DE PORCA 110,00\n02 CAPA DE CUBO 85,00\n01 T\n01 TAPETE FH 750,00\n02 CAPA DE BANCO 1100"
+      },
+      {
+        "data": "20/01/2025",
+        "km": 277923,
+        "oficina": null,
+        "observacao": "TROCADO BATERIA 225 P.E"
+      },
+      {
+        "data": "25/06/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCA DO PROTETOR DA 5o RODA"
+      },
+      {
+        "data": "22/09/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO 2 MOLAS PNEUMÁTICAS 2G 1 PARAFUSO 852\n(BOLSA ERGUEDORA DO 4° EIXO)"
+      }
+    ],
+    "count": 7
+  },
+  {
+    "arquivo": "Lubrificação BDZ7F52 - Google Docs.pdf",
+    "placa": "BDZ7F52",
+    "tipo": "Lubrificação",
+    "header": "Lubrificação",
+    "entries": [
+      {
+        "data": "12/05/2026",
+        "km": 615448,
+        "oficina": null,
+        "observacao": "REVISADO DIFERENCIAL E TROCADO ÓLEO"
+      },
+      {
+        "data": "23/04/2026",
+        "km": 611900,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DO MOTOR E FILTROS DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "05/01/2026",
+        "km": 586735,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DO MOTOR E FILTROS DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "05/09/2025",
+        "km": 561945,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR E FILTROS"
+      },
+      {
+        "data": "24/06/2025",
+        "km": 543977,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DA CAIXA DO DIFERENCIAL"
+      },
+      {
+        "data": "05/02/2025",
+        "km": 509069,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR FILTROS DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "02/12/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO FILTRO DA PU"
+      },
+      {
+        "data": "08/10/2024",
+        "km": 479778,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR E FILTROS DE DIESEL E LUBRIFICANTE"
+      },
+      {
+        "data": "29/05/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "KM: 442890 TROCA DO OLEO DO MOTOR CAIXA E DIFERENCIAL E FILTROS"
+      },
+      {
+        "data": "31/01/2024",
+        "km": 407970,
+        "oficina": null,
+        "observacao": "TROCADO FILTRO DE AR"
+      },
+      {
+        "data": "18/01/2024",
+        "km": 404100,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR E FILTROS"
+      },
+      {
+        "data": "29/08/2023",
+        "km": 362248,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR\nTROCADO KIT DE FILTROS MOTOR\nTROCADO KIT DE FILTROS ARLA"
+      }
+    ],
+    "count": 12
+  },
+  {
+    "arquivo": "Manutenções BDZ7F52 - Google Docs.pdf",
+    "placa": "BDZ7F52",
+    "tipo": "Manutenção",
+    "header": "Manutenções Volvo FH500 - BDZ7F52",
+    "entries": [
+      {
+        "data": "12/05/2026",
+        "km": 615448,
+        "oficina": null,
+        "observacao": "REVISADO DIFERENCIAL E TROCADO ÓLEO"
+      },
+      {
+        "data": "23/03/2026",
+        "km": null,
+        "oficina": null,
+        "observacao": "REVISADO O RADIADOR E TROCADO O INTERCOOLER NOVO"
+      },
+      {
+        "data": "23/09/2025",
+        "km": 566918,
+        "oficina": null,
+        "observacao": "TROCADO VALVULA PU"
+      },
+      {
+        "data": "28/07/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "RETICHESKI\nLIMPEZA QUIMICA DO CABEÇOTE\nMONTAGEM POR VALVULA\nTESTAR CABEÇOTE"
+      },
+      {
+        "data": "11/07/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "VOLTEC\nADTIVO VERDE  8- 28,95\nBOMBA D AGUA COM VISCOSA ELETRONICA - 1 - 2.250\nJUNTA TAMPA  LATERAL MOTOR - 150,00\nJUNTA BOMBA AGUA - 120,00\nREVISÃO 10.000  KM  - 1,250\nCHECK UP GERAL / VAZAMENTO DA ÁGUA\nTROCA DA JUNTA DA TAMPA LATERAL DO MOTOR\nCONFERENCIA REGULAGEM DE VALVULA\nTROCA BOMBA DA AGUA"
+      },
+      {
+        "data": "02/06/2025",
+        "km": 536274,
+        "oficina": null,
+        "observacao": "TROCADO DUAS LONA DO ULTIMO EIXO L.D/LE"
+      },
+      {
+        "data": "29/05/2025",
+        "km": 535247,
+        "oficina": null,
+        "observacao": "REVISÃO DA CAIXA DE DIREÇÃO\nREMOÇÃO E INST. DA CAIXA DE DIREÇÃO\nSERVIÇO DE RETIFICA -\nPOLIMENTO DO COMANDO\nMETROLOGIA E AJUSTE MOTOR\nRETIFICA TORNEAR PISTÕES\nRETIFICA - POLIMENTO DO VIRABREQUIM RETIFICA - BANHO QUIMICO DO BLOCO\nREVISÃO DOS INJETORES EM BANCADA"
+      },
+      {
+        "data": "22/05/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO TURBO COMPRESSOR"
+      },
+      {
+        "data": "21/05/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "reticheski\nLIMPEZA QUIMICA CABECOTE MONTAGEM POR VALVULA PLAINAR CAB FH\nRETIFICAR SEDE DE VÁLVULA\nSUBST SEDE VALVULAS\nSUBST. GUIA DE VÁLVULA SUBSTITUIR CAMISA INJ. FH TESTAR CABEÇOTE FH"
+      },
+      {
+        "data": "12/02/2025",
+        "km": 510636,
+        "oficina": null,
+        "observacao": "J E S ACESSORIOS\nREVISÃO DO CHICOTE BOMBA DO ARLA\nRECONDICIONAR CHICOTE LINK DE\nCOMUNICAÇÃO DE DADOS\nTESTE DE DOSAGEM UREIA\nDESCARBONIZAÇÃO DO BICO INJETOR DO\nSISTEMA SCR\nCHICOTE DO MOTOR REPARO NOS FIOS E\nCABOS"
+      },
+      {
+        "data": "04/02/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO JUNTA DO FLEXIVEL HIDRAULICO"
+      },
+      {
+        "data": "04/02/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "NORDICA\nCOLOCADO SENSOR DE TEMPERATURA"
+      },
+      {
+        "data": "28/01/2025",
+        "km": 413260,
+        "oficina": null,
+        "observacao": "TROCADO LONA 1o EIXO E 2o EIXO L.D"
+      },
+      {
+        "data": "23/01/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO BUCHA DA PATENTE"
+      },
+      {
+        "data": "21/01/2025",
+        "km": null,
+        "oficina": "- J E S ACESSORIOS",
+        "observacao": "SERVIÇOS DE MANUTENÇÃO"
+      },
+      {
+        "data": "20/01/2025",
+        "km": null,
+        "oficina": "- FAMA ACESSORIOS",
+        "observacao": "FEITO SERVIÇO CLIMATIZADOR\nTROCADO PLACA DE RESFRIAR\nVIDRO DO ESPELHO\nTROCADO PALHA REFIL AVULSA"
+      },
+      {
+        "data": "02/12/2024",
+        "km": 494008,
+        "oficina": null,
+        "observacao": "TROCADO FILTRO DA PU"
+      },
+      {
+        "data": "26/11/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO AMORTECEDOR TRASEIRO DA CABINE L.E"
+      },
+      {
+        "data": "13/11/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO AMORTECEDOR COM BOLSA  DIANTEIRO 2 LADOS\nTROCADO AMORTECEDOR C/ BOLSA TRASEIRA L.D"
+      },
+      {
+        "data": "28/08/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "CONSERTO DE UMA VALVULA PUSH PULL\nAMR FREIOS"
+      },
+      {
+        "data": "20/08/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCA DA PROTEÇÃO DA QUINTA RODA\nMULTIFER"
+      },
+      {
+        "data": "19/08/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "REVISADO ALTERNADOR"
+      },
+      {
+        "data": "07/06/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO 1 AMORTECEDOR TRASEIRO DA CABINE E 1  AMORTECEDOR\nHORIZONTAL"
+      },
+      {
+        "data": "07/05/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCA DOS 2 AMORTECEDORES TRASEIROS DA CABINE"
+      },
+      {
+        "data": "10/02/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO KIT AMORTECEDOR/ BOLSA TRASEIRO\n(LADO DIREITO E LADO ESQUERDO)"
+      },
+      {
+        "data": "29/09/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO BARRA DE DIREÇÃO CURTA\nTROCADO 4 TERMINAIS DA BARRA DE DIREÇÃO"
+      },
+      {
+        "data": "30/08/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO FILTRO PU"
+      }
+    ],
+    "count": 27
+  },
+  {
+    "arquivo": "Manutenção BDW5F32 - Google Docs.pdf",
+    "placa": "BDW5F32",
+    "tipo": "Manutenção",
+    "header": "Manutenções Volvo FH 500 - BDW5F32",
+    "entries": [
+      {
+        "data": "29/08/2025",
+        "km": 462064,
+        "oficina": null,
+        "observacao": "TROCADO BRONZINA E JOGO DE MANCAL E BIELA"
+      },
+      {
+        "data": "01/08/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "1 CUBO ÚLTIMO EIXO LADO ESQUERDO"
+      },
+      {
+        "data": "30/06/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "mr freios\nCONCERTO DE UMA VAL FREIO MOTOR VOLVO"
+      },
+      {
+        "data": "26/06/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO PISTÃO FREIO MOTOR\nJUNTA DA TAMPA DE VALVULA"
+      },
+      {
+        "data": "05/06/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "placa 209,00"
+      },
+      {
+        "data": "16/05/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO MOLA PNEUMATICA  CABINE TRASEIRA"
+      },
+      {
+        "data": "17/05/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO PISTÃO FREIO MOTOR\nTROCADO TAMPA RESERVATÓRIO"
+      },
+      {
+        "data": "11/04/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "multimental\nM.O TROCAR PIVO DA BARRA DE DIREÇÃO\nM.O ACERTAR A POSIÇÃO DO VOLANTE"
+      },
+      {
+        "data": "24/04/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO SENSOR TEMPERATURA"
+      },
+      {
+        "data": "10/04/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO LONA 2 EIXO L.D"
+      },
+      {
+        "data": "02/04/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO VÁLVULA DE DESCARGA RAPIDA\n11/03/20253\nMULTIFER\nBUCHA MOLA FH 2015 PI CEN M12 X5 CB PO SX M12X1,50 (MB)\nPF SX MA(1.50) RI 8.8 10X35\nPO SX MIOX1,50 (MA)\nM.O FEIXE DIANT CAV MEC"
+      },
+      {
+        "data": "05/03/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "MULTIFER\nPO SX MT2X1,50 (MB)\nBUCHA JUMELO FM 24X5IXTT0\nREBITE 3/8XI\nBUCHA SILENC DA'MOLAVL FANM\nABRACADEIRA DE BARRA CHATA 1/4 X 1 1/4\nM.O FEIXE DIANT CAV MEC"
+      },
+      {
+        "data": "28/03/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "VOLMERSCANIA\nFEITO DIAGNOSTICO CAMINHÃO VOLVO\nFEITO KIT REPARO ELETRICO\nBOBINA PARA MOTOR PARTIDA 24V JF(ANTIGO)\nPORTA ESCOVA PARTIDA JF 24V (ANTIGO)\nBUCHA PI MOT. DE PARTIDA JF LADO\nCOLETOR (STANDER)\nBUCHA PI MOT. DE PARTIDA JF\nINTERMEDIARIA (STANDER)\nPARAFUSO DO AUTOMATICO PARTIDA JF\n(PHILPS)\nPARAFUSO SAPATA PARTIDA JF -KB (10 X\n16MM)\nIMPULSOR PARTIDA JF MB - MASSEY (9\nDENTES)\nBUCHA P/MOT. DE PARTIDA JFIJD LADO\nMOTICOL (2 X)\nINDUZIDO MOTOR DE PARTIDA JF 24V\nAUTOMATICO PART, 24V JF"
+      },
+      {
+        "data": "21/03/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO RESERVATORIO LIMPADOR DE PARABRISA"
+      },
+      {
+        "data": "26/02/2025",
+        "km": 417994,
+        "oficina": null,
+        "observacao": "ELETRO DIESEL\nTIARAR UNIDADES VOLVO , FEITO DIAGNOSTICO, BOSCH KTS TRUCK V3 TROCA\nCAMISA VOLVO CONSERTO"
+      },
+      {
+        "data": "04/02/2025",
+        "km": 413775,
+        "oficina": null,
+        "observacao": "TROCADO JUNTA DO FLEXIVEL DO HIDRÁULICO"
+      },
+      {
+        "data": "24/01/2025",
+        "km": 411900,
+        "oficina": null,
+        "observacao": "FEITO DIAGNÓSTICO DO CAMINHÃO\nE KIT REPARO ELETRICO\nCOLOCADO VALVULA DE CONTROLE"
+      },
+      {
+        "data": "09/12/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "CONNECTAR\nCOLOCADO REGULADOR SÉRIE SDR ROSCA 1⁄4 COM MANÔMETRO REDONDO"
+      },
+      {
+        "data": "26/11/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO MEIA CUICA\nTROCADO MANGUEIRA FLEXÍVEL"
+      },
+      {
+        "data": "08/11/2024",
+        "km": 397349,
+        "oficina": null,
+        "observacao": "TROCADO SENSOR DO ARLA"
+      },
+      {
+        "data": "08/11/2024",
+        "km": 397349,
+        "oficina": null,
+        "observacao": "TROCADO SENSOR DO ARLA"
+      },
+      {
+        "data": "03/10/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCA DE PASTILHA TRAÇÃO LADO DIREITO 1⁄2 JOGO  ‘ 1 RODA”\nTROCA DA BOLSA DA TRAÇÃO DIANTEIRA LADO ESQUERDO MENOR"
+      },
+      {
+        "data": "29/08/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "GARAGEM 33 TRUCK\nBANHO QUÍMICO\nREVISÃO CAIXA DE CAMBIO"
+      },
+      {
+        "data": "29/08/2024",
+        "km": 381710,
+        "oficina": null,
+        "observacao": "TROCA DO KIT DA EMBREAGEM\nROLAMENTO TUBULAR\nLUVA DE ENGATE REDUZIDA\nCORPO ACOPLAMENTO REDUZIDA\nANEL SINCR REDUZIDA\nRETENTOR FUNIL\nEIXO PILOTO"
+      },
+      {
+        "data": "07/08/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO COXIM DO MOTOR TRASEIRO"
+      },
+      {
+        "data": "18/06/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "MECÂNICA MULTIFER\nMAO DE OBRA TIRANTE"
+      },
+      {
+        "data": "17/05/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "MECANICA MULTIFER  MAO DE OBRA TRUCK / TRAÇÃO PES\nMAO DE OBRA BALANÇA\nSERVIÇO DE SOLDA RESOLDAR BALANÇAS +  PEÇAS"
+      },
+      {
+        "data": "03/05/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "LIMPEZA, TESTE E ENVARETAMENTO EM RADIADOR\nTROCA DE CAIXA EM RADIADOR\nLIMPEZA E TESTE EM INTERCOOLER"
+      },
+      {
+        "data": "21/02/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "REVISADO DIFERENCIAL\nTROCADO ROLAMENTO DA PONTA DO PINHÃO"
+      },
+      {
+        "data": "12/12/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO EVAPORADOR\nSOLDADO CONDENSADOR\nTESTE E COLOCAÇÃO DE GAS EM AR CONDICIONADO"
+      },
+      {
+        "data": "17/11/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO CORREIA DO ALTERNADOR"
+      },
+      {
+        "data": "04/11/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO BATENTE DIANTEIRO ESQUERDO DA CABINE"
+      },
+      {
+        "data": "03/10/2023",
+        "km": 313200,
+        "oficina": null,
+        "observacao": "REVISADO DIFERENCIAL\nTROCADO ROLAMENTO y32026x"
+      },
+      {
+        "data": "28/06/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO BOMBA D’ÁGUA"
+      }
+    ],
+    "count": 34
+  },
+  {
+    "arquivo": "Lubrificação BDW5F32 - Google Docs.pdf",
+    "placa": "BDW5F32",
+    "tipo": "Lubrificação",
+    "header": "Lubrificação",
+    "entries": [
+      {
+        "data": "20/04/2026",
+        "km": 497749,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO E FILTROS DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "29/08/2025",
+        "km": 462064,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO E FILTROS"
+      },
+      {
+        "data": "07/07/2025",
+        "km": 442742,
+        "oficina": null,
+        "observacao": "TROCADO FILTROS DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "18/03/2025",
+        "km": 422456,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO FILTROS DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "23/01/2025",
+        "km": 411100,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DIFERENCIAL TROCA DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "07/07/2024",
+        "km": 397915,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DO MOTOR"
+      },
+      {
+        "data": "03/10/2024",
+        "km": 390775,
+        "oficina": null,
+        "observacao": "TROCA DO ÓLEO HIDRÁULICO"
+      },
+      {
+        "data": "28/08/2024",
+        "km": 381710,
+        "oficina": null,
+        "observacao": "TROCA DO ÓLEO DA CAIXA E FILTRO DA CAIXA"
+      },
+      {
+        "data": "16/08/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO FILTRO APU"
+      },
+      {
+        "data": "24/07/2024",
+        "km": 374000,
+        "oficina": null,
+        "observacao": "TROCA DE ÓLEO DO MOTOR E FILTROS INCLUINDO O FILTRO DE AR"
+      },
+      {
+        "data": "04/06/2024",
+        "km": 362965,
+        "oficina": null,
+        "observacao": "TROCA DO ÓLEO DA CAIXA E FILTRO"
+      },
+      {
+        "data": "21/02/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE DIFERENCIAL"
+      },
+      {
+        "data": "03/01/2023",
+        "km": 330903,
+        "oficina": null,
+        "observacao": "COMPLETADO 3 LITROS DE ÓLEO MOTOR"
+      },
+      {
+        "data": "03/10/2023",
+        "km": 313200,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR E FILTROS\nTROCADO ÓLEO DE DIFERENCIAL"
+      },
+      {
+        "data": "02/07/2023",
+        "km": 290850,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE CAIXA E DIFERENCIAL"
+      },
+      {
+        "data": "17/05/2023",
+        "km": 279171,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR E FILTROS"
+      }
+    ],
+    "count": 16
+  },
+  {
+    "arquivo": "Lubrificação EOE1909 - Google Docs.pdf",
+    "placa": "EOE1909",
+    "tipo": "Lubrificação",
+    "header": "Lubrificação",
+    "entries": [
+      {
+        "data": "12/05/2026",
+        "km": 1098492,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO E FILTROS DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "21/01/2026",
+        "km": 1043368,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO E FILTROS DE FILTROS E LUBRIFICANTES"
+      },
+      {
+        "data": "10/09/2025",
+        "km": 1071757,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO E FILTROS DE DIESEL E LUBRIFICANTES E ÓLEO"
+      },
+      {
+        "data": "17/06/2025",
+        "km": 1061456,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR E FILTROS DE DIESEL E LUBRIFICANTES\nTROCADO ÓLEO DA CAIXA DO DIFERENCIAL"
+      },
+      {
+        "data": "06/11/2024",
+        "km": 1036260,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR  FILTROS DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "07/05/2024",
+        "km": 1011333,
+        "oficina": null,
+        "observacao": "TROCA DE ÓLEO\nTROCA DO JOGO DE FILTROS"
+      },
+      {
+        "data": "04/11/2023",
+        "km": 985287,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR E FILTROS"
+      },
+      {
+        "data": "27/09/2023",
+        "km": 978434,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE DIFERENCIAL"
+      },
+      {
+        "data": "27/07/2023",
+        "km": 966017,
+        "oficina": null,
+        "observacao": "ENGRAXADO"
+      },
+      {
+        "data": "29/06/2023",
+        "km": 960147,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR, CAIXA E DIFERENCIAL"
+      },
+      {
+        "data": "23/06/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "ENGRAXADO"
+      },
+      {
+        "data": "07/06/2023",
+        "km": 956280,
+        "oficina": null,
+        "observacao": "TROCADO FILTRO DE AR EXTERNO"
+      }
+    ],
+    "count": 12
+  },
+  {
+    "arquivo": "Manutenção EOE1909 - Google Docs.pdf",
+    "placa": "EOE1909",
+    "tipo": "Manutenção",
+    "header": "Manutenções FH 460 - EOE1909",
+    "entries": [
+      {
+        "data": "17/01/2026",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO CASAL VOLVO I SHIFT\nTROCADO ATUADOR VOLVO\nTROCADO VALVULA PWM"
+      },
+      {
+        "data": "22/01/2026",
+        "km": null,
+        "oficina": null,
+        "observacao": "PREENCHIMENTO DA PONTA DO EIXO PILOTO  + BANHO QUIMICO REVISÃO DA\nCAIXA DE CAMBIO GRANDE\ngaragem 33"
+      },
+      {
+        "data": "10/10/2025",
+        "km": 1071757,
+        "oficina": null,
+        "observacao": "TROCADO VALVULA PWM"
+      },
+      {
+        "data": "08/10/2025",
+        "km": 1071757,
+        "oficina": null,
+        "observacao": "trocado kit de embreagem disco plator e atuador novo embreagex"
+      },
+      {
+        "data": "10/09/2025",
+        "km": 1071757,
+        "oficina": null,
+        "observacao": "TROCADO bronzinas de mancal e de bielas e bomba de oleo e trocado óleo de motor"
+      },
+      {
+        "data": "10/04/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "multimental\nM.O ENCHIMENTO E TORNEAR BASE CONICA DA CARCAÇA\nM.O TIRANTE DO TRAÇADO"
+      },
+      {
+        "data": "29/04/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "1.056.140\nTROCADO DUAS BATERIAS 180P.E"
+      },
+      {
+        "data": "28/04/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO DUAS LONA DIANTEIRA"
+      },
+      {
+        "data": "08/02/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO LONA 1 EIXO L.D"
+      },
+      {
+        "data": "20/01/2025",
+        "km": 1042950,
+        "oficina": null,
+        "observacao": "TROCADO LONA  2o EIXO L.D"
+      },
+      {
+        "data": "15/01/2025",
+        "km": 1041743,
+        "oficina": null,
+        "observacao": "TROCADO LIMITADOR DE PORTA L.E"
+      },
+      {
+        "data": "25/11/2024",
+        "km": 1037971,
+        "oficina": null,
+        "observacao": "TROCADO COMPRESSOR"
+      },
+      {
+        "data": "08/05/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO CUICA DE FREIO L DIREITO DIANTEIRA"
+      },
+      {
+        "data": "05/12/2023",
+        "km": 990418,
+        "oficina": null,
+        "observacao": "TROCADO AMORTECEDOR COM BOLSA TRASEIRO DA CABINE\n(LADO ESQUERDO)"
+      },
+      {
+        "data": "08/11/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO MANGUEIRA DO FILTRO COMPRESSOR DE AR\nTROCADO SENSOR DE PRESSÃO DO ÓLEO MOTOR"
+      },
+      {
+        "data": "24/10/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO TUBO DO MOTOR\nTROCADO VÁLVULA NIVELADORA DA CABINE"
+      },
+      {
+        "data": "07/10/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO ESTICADOR DE CORREIA DE CIMA COMPLETO\nTROCADO CORREIA"
+      },
+      {
+        "data": "30/09/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO VALVULA NIVELADORA DA CABINE"
+      },
+      {
+        "data": "25/09/2023",
+        "km": 978434,
+        "oficina": null,
+        "observacao": "REMOVIDO DIFERENCIAL\nREVISADO DIFERENCIAL\nTROCADO RETENTOR DO PINHÃO"
+      },
+      {
+        "data": "31/08/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO 2 KITS AMORTECEDOR/BOLSA TRASEIRO DA CABINE\nTROCADO SENSOR ABS"
+      },
+      {
+        "data": "23/06/2023",
+        "km": 959356,
+        "oficina": null,
+        "observacao": "TROCADO VÁLVULA DISTRIBUIDORA"
+      },
+      {
+        "data": "09/06/2023",
+        "km": 955818,
+        "oficina": null,
+        "observacao": "REVISADO TAMPA DA CAIXA"
+      },
+      {
+        "data": "26/05/2023",
+        "km": 952141,
+        "oficina": null,
+        "observacao": "TROCADO COXIM TRASEIRO DO MOTOR\nTROCADO BOMBA HIDRÁULICA DA DIREÇÃO"
+      },
+      {
+        "data": "17/04/2023",
+        "km": 946247,
+        "oficina": null,
+        "observacao": "CONSERTO DE UM SECADOR DE AR ELETRÔNICO\nCONSERTO DE UM FILTRO A/O WABCO\nCONSERTO DE UMA VÁLVULA DISTRIBUIDORA\nTROCADO BATENTE DA CABINE ESTRELADO"
+      },
+      {
+        "data": "06/04/2023",
+        "km": 944596,
+        "oficina": null,
+        "observacao": "DIAGNOSTICO VOLVO VCADS\nTROCADO CAMISA E CONSERTO DE UNIDADES INJETORAS\nTROCADO 6 BICOS INJETORES\nTROCADO MANGA DO INJETOR\nTROCADO MANGUEIRA DO TANQUE EXPANSÃO"
+      },
+      {
+        "data": "14/03/2023",
+        "km": 940570,
+        "oficina": null,
+        "observacao": "SERVIÇO DE SELAGEM, ENSAIO E CALIBRAÇÃO DO TACÓGRAFO"
+      },
+      {
+        "data": "22/02/2023",
+        "km": 937922,
+        "oficina": null,
+        "observacao": "FEITO REVISÃO NA CAIXA DE DIREÇÃO ZF\nTROCADO KIT AMORTECEDOR/ BOLSA CABINE\nTROCADO POLIA INTERMEDIÁRIA"
+      },
+      {
+        "data": "14/02/2023",
+        "km": 936994,
+        "oficina": null,
+        "observacao": "CONSERTO DE UMA VÁLVULA DE ACIONAMENTO"
+      },
+      {
+        "data": "19/12/2022",
+        "km": 930301,
+        "oficina": null,
+        "observacao": "TROCADO BUCHAS LADO DIREITO E LADO ESQUERDO\nDA BARRA DE TORÇÃO DA CABINE"
+      },
+      {
+        "data": "24/11/2022",
+        "km": 927279,
+        "oficina": null,
+        "observacao": "TROCADO SUPORTE CÂMARA DE FREIO TUBELESS"
+      },
+      {
+        "data": "20/09/2022",
+        "km": 916049,
+        "oficina": null,
+        "observacao": "MÃO DE OBRA EM ALTERNADOR"
+      },
+      {
+        "data": "22/05/2022",
+        "km": 881508,
+        "oficina": null,
+        "observacao": "TROCADO MANGUEIRA DO INTERCOOLER INFERIOR"
+      },
+      {
+        "data": "14/12/2021",
+        "km": 873233,
+        "oficina": null,
+        "observacao": "TROCADO KIT AMORTECEDOR/ BOLSA CABINE TRASEIRO"
+      },
+      {
+        "data": "22/11/2021",
+        "km": 872279,
+        "oficina": null,
+        "observacao": "FAZER COXIM DA BALANÇA"
+      },
+      {
+        "data": "06/10/2021",
+        "km": 862358,
+        "oficina": null,
+        "observacao": "TROCADO 2 COXIM DA CAIXA/ CAMBIO\nTROCADO BORRACHA DO TENSOR V"
+      },
+      {
+        "data": "04/10/2021",
+        "km": 861821,
+        "oficina": null,
+        "observacao": "SERVIÇO REFERENTE A TROCAR SUPORTES LATERAL DO\nSUSPENSOR PNEUMÁTICO"
+      },
+      {
+        "data": "16/09/2021",
+        "km": 858055,
+        "oficina": null,
+        "observacao": "TROCADO RETENTOR DO PINHÃO"
+      },
+      {
+        "data": "26/08/2021",
+        "km": 854519,
+        "oficina": null,
+        "observacao": "TROCADO SENSOR ABS"
+      },
+      {
+        "data": "20/08/2021",
+        "km": 852905,
+        "oficina": null,
+        "observacao": "TROCAR 5a RODA"
+      },
+      {
+        "data": "28/07/2021",
+        "km": 847076,
+        "oficina": null,
+        "observacao": "TROCADO KIT AMORTECEDOR/ BOLSA CABINE TRASEIRO"
+      },
+      {
+        "data": "21/07/2021",
+        "km": 846367,
+        "oficina": null,
+        "observacao": "CONSERTO DE UMA VÁLVULA LIMITADORA DE PRESSÃO\nTROCADO 2 COXIM TRASEIRO DO MOTOR\nTROCADO 2 COXIM DIANTEIRO DO MOTOR\nTROCADO 2 COXIM BATENTE DA CABINE\nTROCADO 6 JUNTAS COLETOR ESCAPE"
+      },
+      {
+        "data": "21/05/2021",
+        "km": 830813,
+        "oficina": null,
+        "observacao": "CONSERTO DE UMA VÁLVULA DO PEDAL DE FREIO"
+      },
+      {
+        "data": "20/04/2021",
+        "km": 823048,
+        "oficina": null,
+        "observacao": "CONSERTO DE UMA VÁLVULA SECADORA DE AR ELETRÔNICO\nE UM FILTRO A/O WABCO"
+      },
+      {
+        "data": "06/04/2021",
+        "km": 818959,
+        "oficina": null,
+        "observacao": "TROCADO VÁLVULA REGULADORA"
+      },
+      {
+        "data": "17/03/2021",
+        "km": 814030,
+        "oficina": null,
+        "observacao": "SERVIÇO DE SELAGEM ENSAIO E CALIBRAÇÃO (REVISÃO EM TACÓGRAFO)"
+      },
+      {
+        "data": "16/02/2021",
+        "km": 805879,
+        "oficina": null,
+        "observacao": "MÃO DE OBRA FEIXE DIANTEIRO DO CAVALO\nDESMONTAR E MONTAR CATALISADOR E PROTEÇÕES PARA TIRAR\nSUPORTES E TROCAR BUCHAS\nSERVIÇO DE SOLDA REFERENTE A ARRUMAR BASE INFERIOR E SUPERIOR\nDO SUSPENSOR DE FERRO U PARA ARRUMAR SUSPENSOR"
+      },
+      {
+        "data": "14/01/2021",
+        "km": 797889,
+        "oficina": null,
+        "observacao": "TROCADO RESERVATÓRIO"
+      },
+      {
+        "data": "07/01/2021",
+        "km": 797889,
+        "oficina": null,
+        "observacao": "FEITO LIMPEZA DO CABEÇOTE\nMONTAGEM POR VÁLVULA\nPLAINAR CABINE\nRETIFICAR SEDE DE VÁLVULA\nRETIFICAR VÁLVULA\nSUBSTITUIR GUIA DE VÁLVULA\nSUBSTITUIR CAMISA INJ\nTESTAR CABEÇOTE"
+      },
+      {
+        "data": "05/01/2021",
+        "km": 797889,
+        "oficina": null,
+        "observacao": "FINALIZADO MONTAGEM PAR DE CIMA DO MOTOR\nREGULADO VÁLVULAS\nFORNECIDO SENSOR DA DEPRESSÃO DO CARTER\nFEITO TESTE ELETRONICO"
+      },
+      {
+        "data": "09/12/2020",
+        "km": 791448,
+        "oficina": null,
+        "observacao": "REVISÃO NA BOMBA HIDRÁULICA"
+      },
+      {
+        "data": "25/11/2020",
+        "km": 789127,
+        "oficina": null,
+        "observacao": "TROCADO JOGO SENSOR CHICOTE DA CAIXA"
+      },
+      {
+        "data": "11/11/2020",
+        "km": 786012,
+        "oficina": null,
+        "observacao": "CONSERTO DE VÁLVULA DO PEDAL"
+      },
+      {
+        "data": "09/11/2020",
+        "km": 785528,
+        "oficina": null,
+        "observacao": "TROCADO MOLA PNEUMÁTICA ENCAIXE #38"
+      },
+      {
+        "data": "15/10/2020",
+        "km": 778329,
+        "oficina": null,
+        "observacao": "CARCAÇA DE EMBREAGEM"
+      },
+      {
+        "data": "07/10/2020",
+        "km": 776203,
+        "oficina": null,
+        "observacao": "CONSERTO DE UMA VÁLVULA 4 VIAS"
+      },
+      {
+        "data": "11/09/2020",
+        "km": 769912,
+        "oficina": null,
+        "observacao": "TROCADO CILINDRO DE EMBREAGEM"
+      },
+      {
+        "data": "20/08/2020",
+        "km": 764335,
+        "oficina": null,
+        "observacao": "MÃO DE OBRA FEIXE DIANTEIRO CAVALO MECÂNICO"
+      },
+      {
+        "data": "21/07/2020",
+        "km": 756170,
+        "oficina": null,
+        "observacao": "FEITO TESTE ELETRÔNICO PARA VERIFICAR FALHAS NA EMBREAGEM\nCALIBRADO CAIXA DE CÂMBIO\nTROCADO COXIM DA CAIXA\nTROCADO DISCO DE EMBREAGEM\nTROCADO PLATO DE EMBREAGEM\nTROCADO SENSOR PRESSAO FREIO"
+      },
+      {
+        "data": "15/05/2020",
+        "km": 738136,
+        "oficina": null,
+        "observacao": "CONSERTO DE UMA VÁLVULA DISTRIBUIDORA"
+      },
+      {
+        "data": "29/04/2020",
+        "km": 733996,
+        "oficina": null,
+        "observacao": "TROCADO AMORTECEDOR CABINE TRASEIRA\nVERIFICAR BARULHO MOTOR\nVÁLVULA DO VEB\nCALIBRAR CAIXA DE CÂMBIO\nSUBSTITUÍDO MODULO DA CAIXA VÁLVULA EPG\nREGENERAR SECADOR DE AR"
+      },
+      {
+        "data": "16/04/2020",
+        "km": 731314,
+        "oficina": null,
+        "observacao": "TROCADO BOLSA DE AR CABINE DIANTEIRA\nACERTAR POSIÇÃO DO VOLANTE GEOMETRIA EIXO DIANTEIRO\nSERVIÇO DE TORNO REFERENTE A FAZER BUCHAS DE BRONZE\nPARA MANCAIS DA ARTICULAÇÃO TRASEIRA DO BASCULANTE"
+      },
+      {
+        "data": "08/04/2020",
+        "km": 730184,
+        "oficina": null,
+        "observacao": "CONSERTO DE UMA VÁLVULA DO FREIO MOTOR\nTROCADO FILTRO DO SECADOR DE AR WABCO\nFEITO LIMPEZA DO ABAFADOR"
+      },
+      {
+        "data": "03/02/2020",
+        "km": 713540,
+        "oficina": null,
+        "observacao": "TROCADO KIT AMORTECEDOR/ BOLSA CABINE TRASEIRO"
+      },
+      {
+        "data": "27/01/2020",
+        "km": 711595,
+        "oficina": null,
+        "observacao": "EMBUCHADO ROSCA DO BLOCO DO MOTOR\nTROCADO COXIM DA 5a RODA MODERNA\nTROCADO BORRACHA, PINO REI E KIT DA 5a RODA"
+      },
+      {
+        "data": "16/01/2020",
+        "km": 708556,
+        "oficina": null,
+        "observacao": "DESMONTAR E MONTAR SUSPENSOR PNEUMÁTICO\nMÃO DE OBRA FEIXE TRUCK/ TRAÇÃO"
+      },
+      {
+        "data": "19/12/2019",
+        "km": 705483,
+        "oficina": null,
+        "observacao": "TROCADO FRISO VEDAÇÃO TA\nTROCADO FRISO CABEÇOTE D"
+      },
+      {
+        "data": "11/12/2019",
+        "km": 703454,
+        "oficina": null,
+        "observacao": "MÃO DE OBRA REFERENTE A SOLDAR BALANÇA"
+      },
+      {
+        "data": "14/11/2019",
+        "km": 696035,
+        "oficina": null,
+        "observacao": "CONSERTO DE VÁLVULA RELE DE SERVIÇO"
+      },
+      {
+        "data": "05/11/2019",
+        "km": 693296,
+        "oficina": null,
+        "observacao": "DESMONTAR E MONTAR SUSPENSOR PNEUMÁTICO"
+      },
+      {
+        "data": "04/10/2019",
+        "km": 683874,
+        "oficina": null,
+        "observacao": "CONSERTO NA CAIXA DE DIREÇÃO ZF\nCONSERTO NO PISTÃO DE BASCULAR CABINE"
+      },
+      {
+        "data": "30/09/2019",
+        "km": 683362,
+        "oficina": null,
+        "observacao": "TROCADO JUNTA DO COLETOR"
+      },
+      {
+        "data": "16/09/2019",
+        "km": 678617,
+        "oficina": null,
+        "observacao": "TROCADO REPARO VÁLVULA FLUXO DO ÓLEO DR"
+      },
+      {
+        "data": "21/08/2019",
+        "km": 672122,
+        "oficina": null,
+        "observacao": "SERVIÇO DE SOLDA E MAÇARICO REFERENTE A ARRUMAR SUPORTES\nLATERAIS DO SUSPENSOR PNEUMÁTICO"
+      },
+      {
+        "data": "12/07/2019",
+        "km": 660723,
+        "oficina": null,
+        "observacao": "ALINHAMENTO EIXO RODA RAIADA"
+      },
+      {
+        "data": "18/06/2019",
+        "km": 654493,
+        "oficina": null,
+        "observacao": "TROCADO VÁLVULA DE SUSPENDER CABINE"
+      },
+      {
+        "data": "16/05/2019",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO KIT AMORTECEDOR COM BOLSAS TRASEIRO DA CABINE"
+      },
+      {
+        "data": "10/04/2019",
+        "km": null,
+        "oficina": null,
+        "observacao": "FALHA NA CAIXA DE CÂMBIO\n(CALIBRAGEM E TESTE DE RUA - (PROBLEMA SANADO)"
+      },
+      {
+        "data": "22/02/2019",
+        "km": null,
+        "oficina": null,
+        "observacao": "SUBSTITUÍDO ENGRENAGENS\nCHICOTE DA TAMPA DA CAIXA\nJUNTA DA TAMPA\nSUBSTITUÍDO BRONZINAS, BIELA E MANCAL\nBOMBA DE ÓLEO\nFEITO TESTE ELETRÔNICO PARA FAZER CALIBRAGEM DA CAIXA\nE LEITURA DOS SENSORES"
+      },
+      {
+        "data": "14/01/2019",
+        "km": null,
+        "oficina": null,
+        "observacao": "FEITO TESTE ELETRÔNICO PARA VERIFICAR FALHA NA 5a UNIDADE"
+      },
+      {
+        "data": "20/11/2018",
+        "km": null,
+        "oficina": null,
+        "observacao": "SUBSTITUÍDO CAMISAS DE BICO\nREGULADO VÁLVULAS\nFORNECIDO VÁLVULAS DE RETORNO\nFEITO TESTE ELETRÔNICO PARA PAGAR FALHAS"
+      }
+    ],
+    "count": 80
+  },
+  {
+    "arquivo": "MANUTENÇÃO IUP-7E12 - Google Docs.pdf",
+    "placa": "IUP7E12",
+    "tipo": "Manutenção",
+    "header": "MANUTENÇÃO IUP-7E12",
+    "entries": [
+      {
+        "data": "17/04/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "MECÂNICA J ARAUJO\nINSTALADO STAR CONFERIDO FALHAS DO BS\nAPAGADO FALHAS\nVERIFICADO E CONSTADO FALHA NA VALVULA DISTRIBUIDORA DE AR\nELETRONICA, NECESSÁRIO FAZER REPARO"
+      },
+      {
+        "data": "15/04/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "1 CUICA TRAÇÃO L.D"
+      },
+      {
+        "data": "27/03/2025",
+        "km": 237962,
+        "oficina": null,
+        "observacao": "COLOCADO CAIXA DE CAMBIO"
+      },
+      {
+        "data": "20/03/2025",
+        "km": 237962,
+        "oficina": null,
+        "observacao": "REMOVIDO CAIXA DE CAMBIO"
+      },
+      {
+        "data": "12/03/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "MR FREIOS\nCONCERTO DE CUICA 24X30 WABCO\nCONCERTO DE UMA VALVULA DO ESTACIONARIO"
+      }
+    ],
+    "count": 5
+  },
+  {
+    "arquivo": "LUBRIFICAÇÃO IUP 7E12 - Google Docs.pdf",
+    "placa": "IUP7E12",
+    "tipo": "Lubrificação",
+    "header": "LUBRIFICAÇÃO IUP 7E12",
+    "entries": [
+      {
+        "data": "29/03/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO E FILTROS DE DIESEL E LUBRIFICANTES\nTROCADO ÓLEO DA CAIXA DO DIFERENCIAL E REDUÇÃO"
+      }
+    ],
+    "count": 1
+  },
+  {
+    "arquivo": "Lubrificação HSD8860 - Google Docs.pdf",
+    "placa": "HSD8860",
+    "tipo": "Lubrificação",
+    "header": "11/05/2026",
+    "entries": [
+      {
+        "data": "03/04/2025",
+        "km": 337380,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DO MOTOR  E FILTROS"
+      },
+      {
+        "data": "09/08/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCA DE ÓLEO DO MOTOR E FILTROS"
+      },
+      {
+        "data": "19/01/2024",
+        "km": 327614,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR E FILTROS"
+      }
+    ],
+    "count": 3
+  },
+  {
+    "arquivo": "Manutenção HSD8860 - Google Docs.pdf",
+    "placa": "HSD8860",
+    "tipo": "Manutenção",
+    "header": "Manutenções M.Benz 2324 - HSD8860",
+    "entries": [
+      {
+        "data": "09/12/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "MULTIFER\nTROCADO BATENTE DO FEIXO TRAÇADO"
+      },
+      {
+        "data": "18/11/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "DOIS CILINDROS DA CAÇAMBA\nCAIXA DE DIREÇÃO JUNTA E TAMPA DA VALULA\nVAZAMENTO BUJÃO DE AR EMBAIXO DA PU\nPLUG NA SAÍDA DE AR DO ENGATE RÁPIDO"
+      },
+      {
+        "data": "30/11/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO E REVISADO DOIS PISTÃO DA CAÇAMBA\nCOLOCADO 50 L DE ÓLEO 68 HIDRAULICO\nREVISADO CAIXA DE DIREÇÃO\nCOLOCADO 4 LITRO DE ÓLEO HIDRÁULICO ATF\nCOLOCADO FECHADURA E CABO NA PORTA L.E\nCOLOCADO SENSOR DE AR NOVO\nE ENGATE DA VÁLVULA PU"
+      },
+      {
+        "data": "24/07/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "MAO DE OBRA FEIXE DIANTEIRO PESADO\nMULTIFER"
+      },
+      {
+        "data": "16/01/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "DIAGNÓSTICO SCANNER DIESEL\nSERVIÇO ELETRÔNICO HORA TÉCNICA"
+      }
+    ],
+    "count": 5
+  },
+  {
+    "arquivo": "Manutenção AUS5095 - Google Docs.pdf",
+    "placa": "AUS5095",
+    "tipo": "Manutenção",
+    "header": "Manutenções M.Benz 1318 - AUS5095",
+    "entries": [
+      {
+        "data": "17/06/2025",
+        "km": 399774,
+        "oficina": null,
+        "observacao": "LIMPEZA E CONSERTO DE INTERCOOLER"
+      },
+      {
+        "data": "16/06/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO BATERIA"
+      },
+      {
+        "data": "09/12/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO TURBINA\nRETIRADO INTERCOOLER PARA LIMPEZA"
+      },
+      {
+        "data": "30/03/2023",
+        "km": 342608,
+        "oficina": null,
+        "observacao": "TROCADO RELE DO PISCA"
+      },
+      {
+        "data": "26/08/2022",
+        "km": 327728,
+        "oficina": null,
+        "observacao": "TROCADO RESERVATÓRIO\nTROCADO MANGUEIRA DE RETORNO"
+      },
+      {
+        "data": "12/08/2022",
+        "km": 327114,
+        "oficina": null,
+        "observacao": "CONJUNTO EIXO COMANDO DE VÁLVULAS\nCONJUNTO VIRABREQUIM OM 924\nTROCADO JUNTA DO CABEÇOTE"
+      },
+      {
+        "data": "05/08/2022",
+        "km": 326539,
+        "oficina": null,
+        "observacao": "REPARO EM BIELA, BLOCO, CABEÇOTE. COMANDO, VIRABREQUIM E BANHO\nQUÍMICO\nPISTÃO E REBAIXAR ENGRENAGEM DO VIRABREQUIM\nREVISADO MOTOR"
+      },
+      {
+        "data": "20/07/2022",
+        "km": 323282,
+        "oficina": null,
+        "observacao": "TROCADA MANGUEIRA DO INTERCOOLER\nTESTE EM PRESSÃO INTERCOOLER MANGUEIRAS E TURBINAS"
+      },
+      {
+        "data": "04/07/2022",
+        "km": 322940,
+        "oficina": null,
+        "observacao": "1 CONJUNTO ROTATIVO NOVO - TURBO"
+      },
+      {
+        "data": "09/06/2022",
+        "km": 320589,
+        "oficina": null,
+        "observacao": "CONSERTO DE UM CABEÇOTE DO COMPRESSOR"
+      },
+      {
+        "data": "30/03/2022",
+        "km": 315991,
+        "oficina": null,
+        "observacao": "1 CORREIA MULTI\n1 BARRA CURTA M\n1 VÁLVULA TERMO"
+      },
+      {
+        "data": "23/06/2021",
+        "km": 290041,
+        "oficina": null,
+        "observacao": "2 JUNTA DO COLETOR\n8 PARAFUSO COLETOR\nREFORMA GERAL EM RADIADOR\nREFORMA GERAL EM INTERCOOLER\n1 CONJUNTO ROTATIVO NOVO\nTURBO MARCA BORGWARNER\nMOD K16 1 JOGO DE JUNTAS 8 PORCAS"
+      },
+      {
+        "data": "10/06/2021",
+        "km": 289174,
+        "oficina": null,
+        "observacao": "REVISÃO TACÓGRAFO SELAGEM"
+      },
+      {
+        "data": "25/09/2020",
+        "km": 275278,
+        "oficina": null,
+        "observacao": "1 FLANGE CARDAN\n2 ROLAMENTO CAR\n1 CRUZETA CARDAN"
+      },
+      {
+        "data": "14/09/2020",
+        "km": 274598,
+        "oficina": null,
+        "observacao": "EMENDAR CARDAN"
+      },
+      {
+        "data": "27/08/2020",
+        "km": 274078,
+        "oficina": null,
+        "observacao": "TROCADO 1 GARFO DO CARDAN"
+      },
+      {
+        "data": "28/07/2020",
+        "km": 273526,
+        "oficina": null,
+        "observacao": "REFORMA GERAL EM INTERCOOLER\nREMOÇÃO E INSTALAÇÃO"
+      },
+      {
+        "data": "26/09/2019",
+        "km": 258240,
+        "oficina": null,
+        "observacao": "REMOÇÃO E INSTALAÇÃO CÂMBIO, VOLANTE PARA TORNEAR, TROCA DE\nEMBREAGEM, TROCA DE RETENTOR DO VOLANTE, TROCA DE CILINDRO EMISSOR\nDA EMBREAGEM."
+      },
+      {
+        "data": "19/09/2019",
+        "km": 258059,
+        "oficina": null,
+        "observacao": "DESENGATE HIDRÁULICO\nPLATÔ REMANUFATURADO\nKIT DISCO DE EMBREAGEM\nRETENTOR EMBREAGEM\nROLAMENTO DE ESFERAS COM RANHURAS EMBREAGEM\nCILINDRO DA EMBREAGEM\nCONSERTO EM VOLANTE DE MOTOR\nFEITO BALANCEAMENTO ELETRÔNICO"
+      },
+      {
+        "data": "11/03/2019",
+        "km": null,
+        "oficina": null,
+        "observacao": "REFORMA GERAL EM RADIADOR\nREFORMA GERAL EM INTERCOOLER"
+      }
+    ],
+    "count": 20
+  },
+  {
+    "arquivo": "Lubrificação BEL4719 - Google Docs.pdf",
+    "placa": "BEL4719",
+    "tipo": "Lubrificação",
+    "header": "Lubrificação",
+    "entries": [
+      {
+        "data": "12/02/2026",
+        "km": 570753,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO  FILTROS DE DIESEL E LUBRIFICANTES"
+      },
+      {
+        "data": "16/06/2025",
+        "km": 546116,
+        "oficina": null,
+        "observacao": "TROCADO OLEO DE MOTOR E FILTROS"
+      },
+      {
+        "data": "08/01/2025",
+        "km": 530972,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE FILTROS DE DIESEL E DE COMBUSTIVEL"
+      },
+      {
+        "data": "16/05/2024",
+        "km": 508508,
+        "oficina": null,
+        "observacao": "TROCA DE OLEO E FILTROS ,"
+      },
+      {
+        "data": "20/12/2023",
+        "km": 483185,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO MOTOR E FILTROS"
+      },
+      {
+        "data": "23/06/2023",
+        "km": 458219,
+        "oficina": null,
+        "observacao": "TROCADO ÓLEO DE MOTOR E FILTROS\nTROCADO FILTRO DE AR"
+      },
+      {
+        "data": "09/06/2023",
+        "km": 456305,
+        "oficina": null,
+        "observacao": "ENGRAXADO"
+      }
+    ],
+    "count": 7
+  },
+  {
+    "arquivo": "Manutenção BEL 4719 - Google Docs.pdf",
+    "placa": "BEL4719",
+    "tipo": "Manutenção",
+    "header": "Manutenções Mercedes Atego 2428 - BEL 4719",
+    "entries": [
+      {
+        "data": "24/03/2026",
+        "km": 575615,
+        "oficina": null,
+        "observacao": "TROCADO ALTERNADOR"
+      },
+      {
+        "data": "04/08/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "multimental\nM.O ACERTAR POSIÇAO DO VOLANTE M.OFEIXE DIANTEIRO\"PESADO M.O\nESTABILIZADOR\nMI.O TROCAR BUCHA SUPORTE DIANT PARTE TRASEIRA ATEGO\nM.O' TROCAR PIVO DA BARRA DE DIREÇÄO\nGEOMETRIA EIXO DIANTEIRO"
+      },
+      {
+        "data": "15/07/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "cp de souza\n02 CAPAS DE BANCO R$1.100\n02 TAPETINHO R$220,00"
+      },
+      {
+        "data": "30/01/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "OTC\nABRAÇADEIRA LISA 3.1/2 CM PARAFUSO FLEXIVEL 3.1/2 INOX MB 1620/1622\nTODOS-PARAFUSO AÇO 3/8X2 COMPLETO TUBO RETO 3 1/2 GALVANIZADO-SOLDAS\nTotal"
+      },
+      {
+        "data": "12/03/2025",
+        "km": 539218,
+        "oficina": null,
+        "observacao": "TROCADO LONA TRUCK L.E"
+      },
+      {
+        "data": "08/01/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "FELIX E ANDRADE\nLIMPEZA, TESTE E ENVARETAMENTO EM RADIADOR\nLIMPEZA E TESTE EM INTERCOOLER\nCONSERTO EM INTERCOOLER\nREMOÇÃO E INSTALAÇÃO"
+      },
+      {
+        "data": "22/01/2025",
+        "km": 531864,
+        "oficina": null,
+        "observacao": "TROCADO COXIM RADIADOR\nTROCADO PORCA CARCADA SEM PINO"
+      },
+      {
+        "data": "06/01/2025",
+        "km": null,
+        "oficina": null,
+        "observacao": "CONJUNTO ROTATIVO DA TURBINA TURBO NOVO\nFEITO SOCORRO REMOÇÃO E INTALAÇÃO"
+      },
+      {
+        "data": "21/11/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "COLOCADO UMA REDUTORA FEMEA"
+      },
+      {
+        "data": "10/06/2024",
+        "km": null,
+        "oficina": null,
+        "observacao": "SADAN AUTO ELETRICA\nREVISADO MOTOR DE ARRANQUE"
+      },
+      {
+        "data": "23/04/2024",
+        "km": 504582,
+        "oficina": null,
+        "observacao": "TROCADO MOTOR DE ARRANQUE"
+      },
+      {
+        "data": "20/07/2023",
+        "km": null,
+        "oficina": null,
+        "observacao": "TROCADO GUARDA PÓ DO CAMBIO"
+      }
+    ],
+    "count": 12
   }
 ]

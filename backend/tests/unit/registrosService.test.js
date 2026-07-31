@@ -65,6 +65,43 @@ test("RegistrosService.list mescla gastos e manutenções ordenados e pagina", a
   }
 });
 
+test("RegistrosService.list empurra datas futuras para o fim do histórico", async () => {
+  const restore = patchPrisma({
+    gastos: {
+      count: async () => 0,
+      findMany: async () => [],
+    },
+    checklist: {
+      count: async () => 2,
+      findMany: async () => [
+        {
+          id: 99,
+          data_manutencao: "2099-12-16",
+          observacao: "Import OCR futuro",
+          itens_checklist: { nome_item: "Lubrificação" },
+          caminhoes: { placa: "RHN9C65" },
+        },
+        {
+          id: 100,
+          data_manutencao: "2026-07-30",
+          observacao: "Recente",
+          itens_checklist: { nome_item: "Alternador" },
+          caminhoes: { placa: "AUO5259" },
+        },
+      ],
+    },
+  });
+
+  try {
+    const result = await RegistrosService.list(1, { page: 1, limit: 10 });
+    assert.equal(result.data.length, 2);
+    assert.equal(result.data[0].nome_tipo, "Alternador");
+    assert.equal(result.data[1].nome_tipo, "Lubrificação");
+  } finally {
+    restore();
+  }
+});
+
 test("RegistrosService.list filtra por caminhaoId no where", async () => {
   let capturedWhere;
   const restore = patchPrisma({

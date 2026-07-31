@@ -19,5 +19,22 @@ services:
       timeout: 5s
       retries: 5
 
+  # Opcional: fila durable local (REDIS_URL=redis://localhost:6379/0)
+  redis:
+    image: redis:7-alpine
+    container_name: transportadora_redis_dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - transportadora_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
 volumes:
   transportadora_pgdata:
+  transportadora_redisdata:

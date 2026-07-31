@@ -102,9 +102,22 @@ Alternativa: Base Directory `.` e Dockerfile na raiz (copia `backend/`).
 | `CORS_ORIGINS` | `https://abbroto.jwsoftware.com.br` |
 | `DB_SSL_MODE` | `require` ou `no-verify` (evite `disable` em produção) |
 | `PRISMA_CLIENT_ENGINE_TYPE` | `library` |
+| `REDIS_URL` | URL interna do Redis Coolify (fila ordem de coleta / BullMQ) |
 | SMTP | se usar envio de e-mail |
 
 **Remova** `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium` se existir — o Dockerfile instala Chrome em `/app/.cache/puppeteer`.
+
+### Redis (fila ordem de coleta)
+
+No Coolify, adicione no serviço da **API**:
+
+```
+REDIS_URL=redis://default:SENHA@HOST_INTERNO:6379/0
+```
+
+Use a URL **interna** do serviço Redis (mesma rede do container da API). Sem `REDIS_URL`, a fila cai para memória e jobs podem se perder em restart/multi-réplica.
+
+Após redeploy, confira `/health` → `redis.ok: true` e `redis.queueMode: "redis"`.
 
 ### Storage → Volume (obrigatório para PDFs)
 

@@ -25,7 +25,7 @@ const EditChecklist = () => {
 
   const [formData, setFormData] = useState({
     caminhao_id: "",
-    item_id: "",
+    nome_item: "",
     data_manutencao: "",
     observacao: "",
     valor: "",
@@ -33,7 +33,6 @@ const EditChecklist = () => {
     km_registro: "",
   });
   const [caminhoes, setCaminhoes] = useState([]);
-  const [itensChecklist, setItensChecklist] = useState([]);
   const [submitting, setSubmitting] = useState(false);
 
   const loadError = queryError?.message || null;
@@ -44,7 +43,7 @@ const EditChecklist = () => {
     const checklistData = data.checklist;
     setFormData({
       caminhao_id: checklistData.caminhao_id || "",
-      item_id: checklistData.item_id || "",
+      nome_item: checklistData.itens_checklist?.nome_item || "",
       data_manutencao: checklistData.data_manutencao
         ? new Date(checklistData.data_manutencao).toISOString().split("T")[0]
         : "",
@@ -54,7 +53,6 @@ const EditChecklist = () => {
       km_registro: checklistData.km_manutencao || "",
     });
     setCaminhoes(data.caminhoes);
-    setItensChecklist(data.itensChecklist);
   }, [data, id]);
 
   const handleChange = (e) => {
@@ -72,7 +70,7 @@ const EditChecklist = () => {
     try {
       const payload = {
         caminhao_id: parseInt(formData.caminhao_id),
-        item_id: parseInt(formData.item_id),
+        nome_item: String(formData.nome_item || "").trim(),
         data_manutencao: formData.data_manutencao,
         observacao: formData.observacao,
         valor: formData.valor ? parseFloat(formData.valor) : null,
@@ -98,11 +96,6 @@ const EditChecklist = () => {
   const caminhaoOptions = caminhoes.map((c) => ({
     value: c.id,
     label: `${c.placa} - KM: ${c.km_atual?.toLocaleString("pt-BR")}`,
-  }));
-
-  const itemOptions = itensChecklist.map((item) => ({
-    value: item.id,
-    label: item.nome_item,
   }));
 
   const caminhaoPlaca =
@@ -172,12 +165,12 @@ const EditChecklist = () => {
 
               <FormField
                 label="Item de Manutenção"
-                type="select"
-                name="item_id"
-                value={formData.item_id}
+                type="text"
+                name="nome_item"
+                value={formData.nome_item}
                 onChange={handleChange}
                 required
-                options={itemOptions}
+                placeholder="Ex.: Troca de óleo, filtros, pastilhas..."
               />
 
               <FormField

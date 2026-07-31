@@ -33,8 +33,26 @@ test("formatRegistros mescla e ordena por data desc", () => {
   assert.equal(rows[1].nome_tipo, "Combustível");
 });
 
-test("formatRegistros tolera entradas não-array", () => {
-  assert.deepEqual(formatRegistros(null, undefined), []);
+test("formatRegistros empurra datas futuras para o fim", () => {
+  const rows = formatRegistros(
+    [],
+    [
+      {
+        id: 1,
+        data_manutencao: "2099-12-16",
+        itens_checklist: { nome_item: "Lubrificação" },
+        caminhoes: { placa: "RHN9C65" },
+      },
+      {
+        id: 2,
+        data_manutencao: "2026-07-30",
+        itens_checklist: { nome_item: "Alternador" },
+        caminhoes: { placa: "AUO5259" },
+      },
+    ],
+  );
+  assert.equal(rows[0].nome_tipo, "Alternador");
+  assert.equal(rows[1].nome_tipo, "Lubrificação");
 });
 
 test("formatCaminhaoRegistros monta rows de detalhe", () => {

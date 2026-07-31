@@ -458,7 +458,7 @@ export class OrdemColetaService {
       erroEnvio: null,
     });
 
-    enqueueOrdemEnvio(row.id, parsed);
+    await enqueueOrdemEnvio(row.id, parsed);
 
     return { id: row.id, status: "processing" };
   }
@@ -577,7 +577,7 @@ export class OrdemColetaService {
         emailDestinatario: row.email_destinatario,
         assunto: row.assunto ?? undefined,
       };
-      enqueueOrdemEnvio(row.id, parsed);
+      await enqueueOrdemEnvio(row.id, parsed);
     }
 
     logger.info("Envios de ordem de coleta retomados após boot", {

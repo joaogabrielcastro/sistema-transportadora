@@ -29,9 +29,32 @@ export function formatRegistros(gastosData, checklistData) {
     quantidade_combustivel: "N/A",
   }));
 
-  return [...gastosFormatados, ...checklistFormatados].sort(
-    (a, b) => new Date(b.data) - new Date(a.data),
-  );
+  return [...gastosFormatados, ...checklistFormatados].sort(compareByDateDesc);
+}
+
+function toTime(value) {
+  const t = new Date(value).getTime();
+  return Number.isNaN(t) ? null : t;
+}
+
+function endOfTodayMs() {
+  const n = new Date();
+  n.setHours(23, 59, 59, 999);
+  return n.getTime();
+}
+
+/** Datas futuras no fim; depois data desc; empate por id desc. */
+export function compareByDateDesc(a, b) {
+  const todayEnd = endOfTodayMs();
+  let ta = toTime(a.data);
+  let tb = toTime(b.data);
+  const aFuture = ta != null && ta > todayEnd;
+  const bFuture = tb != null && tb > todayEnd;
+  if (aFuture !== bFuture) return aFuture ? 1 : -1;
+  ta = ta ?? Number.NEGATIVE_INFINITY;
+  tb = tb ?? Number.NEGATIVE_INFINITY;
+  if (tb !== ta) return tb - ta;
+  return (Number(b.id) || 0) - (Number(a.id) || 0);
 }
 
 /** Registros resumidos para abas de detalhe do caminhão. */
@@ -58,7 +81,5 @@ export function formatCaminhaoRegistros(gastos = [], checklists = []) {
     raw: c,
   }));
 
-  return [...gastosRows, ...checklistRows].sort(
-    (a, b) => new Date(b.data) - new Date(a.data),
-  );
+  return [...gastosRows, ...checklistRows].sort(compareByDateDesc);
 }

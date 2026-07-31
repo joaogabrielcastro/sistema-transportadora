@@ -23,6 +23,7 @@ const validProductionConfig = {
     apiToken: null,
   },
   database: { url: "postgresql://localhost/db", sslMode: "disable" },
+  redis: { url: null },
 };
 
 test("getProductionConfigErrors retorna vazio fora de produção", () => {
@@ -49,8 +50,9 @@ test("getProductionConfigErrors exige AUTH e JWT em produção", () => {
   }
 });
 
-test("getProductionConfigWarnings alerta API_TOKEN e SSL desabilitado", () => {
+test("getProductionConfigWarnings alerta API_TOKEN, SSL e REDIS", () => {
   const warnings = getProductionConfigWarnings(validProductionConfig);
   assert.ok(warnings.some((w) => w.includes("API_TOKEN")));
   assert.ok(warnings.some((w) => w.includes("DB_SSL_MODE")));
+  assert.ok(warnings.some((w) => w.includes("REDIS_URL")));
 });

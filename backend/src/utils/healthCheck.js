@@ -2,6 +2,8 @@ import prisma from "../lib/prisma.js";
 import { config } from "../config/index.js";
 import { OrdemColetaService } from "../services/OrdemColetaService.js";
 import { getUploadsHealth } from "./uploadsHealth.js";
+import { pingRedis, isRedisConfigured } from "../lib/redis.js";
+import { getOrdemColetaQueueMode } from "../queues/ordemColetaJobQueue.js";
 
 /**
  * Monta status agregado a partir das probes (testável sem I/O).
@@ -11,6 +13,9 @@ export function buildHealthPayload({
   pdfReady,
   uploadsWritable,
   uploadsDetail,
+  redisOk,
+  redisConfigured,
+  queueMode,
   uptime,
   isProd,
 }) {
@@ -19,6 +24,7 @@ export function buildHealthPayload({
   if (!dbOk) issues.push("database");
   if (!pdfReady) issues.push("pdf");
   if (!uploadsWritable) issues.push("uploads");
+  if (redisConfigured && !redisOk) issues.push("redis");
 
   const status = issues.length === 0 ? "healthy" : "degraded";
 
@@ -30,6 +36,11 @@ export function buildHealthPayload({
     timestamp: new Date().toISOString(),
     uptime,
     database: { ok: dbOk },
+    redis: {
+      configured: Boolean(redisConfigured),
+      ok: redisConfigured ? Boolean(redisOk) : null,
+      queueMode: queueMode || (redisConfigured ? "redis" : "memory"),
+    },
     pdf: isProd
       ? { ready: pdfReady }
       : {
@@ -37,9 +48,7 @@ export function buildHealthPayload({
           chromiumPath,
           puppeteerCacheDir: process.env.PUPPETEER_CACHE_DIR || null,
         },
-    uploads: isProd
-      ? { writable: uploadsWritable }
-      : uploadsDetail,
+    uploads: isProd ? { writable: uploadsWritable } : uploadsDetail,
   };
 }
 
@@ -58,11 +67,21 @@ export async function runHealthCheck() {
   const pdfReady = Boolean(chromiumPath);
   const isProd = config.app.env === "production";
 
+  const redisConfigured = isRedisConfigured();
+  let redisOk = false;
+  if (redisConfigured) {
+    const redisPing = await pingRedis();
+    redisOk = Boolean(redisPing.ok);
+  }
+
   const payload = buildHealthPayload({
     dbOk,
     pdfReady,
     uploadsWritable: uploadsDetail.writable,
     uploadsDetail,
+    redisOk,
+    redisConfigured,
+    queueMode: getOrdemColetaQueueMode(),
     uptime: process.uptime(),
     isProd,
   });

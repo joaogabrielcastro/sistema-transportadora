@@ -14,6 +14,32 @@ const assertCaminhaoPertenceAoTenant = async (tenantId, caminhaoId) => {
   return caminhao;
 };
 
+/** Remove campos de API que não existem na tabela checklist. */
+const stripApiOnlyFields = (data) => {
+  const { nome_item: _nomeItem, ...rest } = data;
+  return rest;
+};
+
+/**
+ * Resolve item_id a partir de texto livre (find-or-create) ou do id informado.
+ */
+const resolveItemId = async (client, { item_id, nome_item }) => {
+  if (nome_item != null && String(nome_item).trim() !== "") {
+    const nome = String(nome_item).trim();
+    const item = await client.itens_checklist.upsert({
+      where: { nome_item: nome },
+      create: { nome_item: nome },
+      update: {},
+      select: { id: true },
+    });
+    return item.id;
+  }
+  if (item_id != null && item_id !== "") {
+    return Number(item_id);
+  }
+  return undefined;
+};
+
 export class ChecklistService {
   static async createWithCaminhaoUpdate(tenantId, checklistData) {
     const kmManutencao = checklistData.km_manutencao;
@@ -24,9 +50,15 @@ export class ChecklistService {
     }
 
     const novoChecklist = await prisma.$transaction(async (tx) => {
+      const itemId = await resolveItemId(tx, checklistData);
+      const data = stripApiOnlyFields(checklistData);
+      if (itemId !== undefined) {
+        data.item_id = itemId;
+      }
+
       const checklistCriado = await tx.checklist.create({
         data: {
-          ...checklistData,
+          ...data,
           tenant_id: Number(tenantId),
         },
         include: {
@@ -65,9 +97,22 @@ export class ChecklistService {
     const novoKm = kmAlterado ? checklistData.km_manutencao : undefined;
 
     await prisma.$transaction(async (tx) => {
+      const data = stripApiOnlyFields(checklistData);
+      const hasNome =
+        checklistData.nome_item != null &&
+        String(checklistData.nome_item).trim() !== "";
+      const hasItemId = checklistData.item_id !== undefined;
+
+      if (hasNome || hasItemId) {
+        const itemId = await resolveItemId(tx, checklistData);
+        if (itemId !== undefined) {
+          data.item_id = itemId;
+        }
+      }
+
       await tx.checklist.update({
         where: { id: parsedId },
-        data: checklistData,
+        data,
       });
 
       if (!caminhaoId) return;

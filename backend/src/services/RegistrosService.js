@@ -62,6 +62,39 @@ function buildCaminhaoFilter(tenantId, { caminhaoId, placa }) {
   return base;
 }
 
+function toTime(value) {
+  const t = new Date(value).getTime();
+  return Number.isNaN(t) ? null : t;
+}
+
+function endOfTodayMs() {
+  const n = new Date();
+  n.setHours(23, 59, 59, 999);
+  return n.getTime();
+}
+
+/**
+ * Ordena histórico: data mais recente primeiro.
+ * Datas futuras (erros de OCR/import) vão para o fim — não ocupam o topo.
+ * Empate: id maior (registro mais novo) primeiro.
+ */
+export function compareRegistrosByDateDesc(a, b) {
+  const todayEnd = endOfTodayMs();
+  let ta = toTime(a.data);
+  let tb = toTime(b.data);
+
+  const aFuture = ta != null && ta > todayEnd;
+  const bFuture = tb != null && tb > todayEnd;
+
+  if (aFuture !== bFuture) return aFuture ? 1 : -1;
+
+  ta = ta ?? Number.NEGATIVE_INFINITY;
+  tb = tb ?? Number.NEGATIVE_INFINITY;
+  if (tb !== ta) return tb - ta;
+
+  return (Number(b.id) || 0) - (Number(a.id) || 0);
+}
+
 export class RegistrosService {
   static async list(tenantId, { page = 1, limit = 20, caminhaoId, placa } = {}) {
     const parsedPage = Math.max(1, Number(page) || 1);
@@ -71,6 +104,8 @@ export class RegistrosService {
 
     const caminhaoFilter = buildCaminhaoFilter(tenantId, { caminhaoId, placa });
 
+    // id DESC garante que registros recém-criados entrem na janela de merge,
+    // mesmo quando existem datas futuras (import/OCR) que dominariam orderBy data.
     const [gastosCount, checklistCount, gastos, checklists] =
       await Promise.all([
         prisma.gastos.count({ where: caminhaoFilter }),
@@ -78,13 +113,13 @@ export class RegistrosService {
         prisma.gastos.findMany({
           where: caminhaoFilter,
           include: gastosInclude,
-          orderBy: { data_gasto: "desc" },
+          orderBy: [{ id: "desc" }],
           take: fetchSize,
         }),
         prisma.checklist.findMany({
           where: caminhaoFilter,
           include: checklistInclude,
-          orderBy: { data_manutencao: "desc" },
+          orderBy: [{ id: "desc" }],
           take: fetchSize,
         }),
       ]);
@@ -92,7 +127,7 @@ export class RegistrosService {
     const merged = [
       ...gastos.map(mapGastoRow),
       ...checklists.map(mapChecklistRow),
-    ].sort((a, b) => new Date(b.data) - new Date(a.data));
+    ].sort(compareRegistrosByDateDesc);
 
     const totalItems = gastosCount + checklistCount;
     const totalPages = Math.max(1, Math.ceil(totalItems / parsedLimit));

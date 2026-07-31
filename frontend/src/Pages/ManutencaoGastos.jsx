@@ -25,6 +25,7 @@ import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import { TableSkeleton } from "../components/Skeleton.jsx";
 import { isCombustivelTipo } from "../utils/tipoGastoUtils.js";
+import { formatDate } from "../utils/formatters.js";
 
 const tipoToModal = (registro) => ({
   ...registro,
@@ -34,7 +35,6 @@ const tipoToModal = (registro) => ({
 const RegistroForm = ({
   form,
   caminhoes,
-  itensChecklist,
   tiposGastos,
   onChange,
   onCaminhaoChange,
@@ -56,16 +56,12 @@ const RegistroForm = ({
     label: `${c.placa} - KM: ${c.km_atual?.toLocaleString("pt-BR")}`,
   }));
 
-  const tipoOptions =
-    form.tipo === "gasto"
-      ? (Array.isArray(tiposGastos) ? tiposGastos : []).map((t) => ({
-          value: t.id,
-          label: t.nome_tipo,
-        }))
-      : (Array.isArray(itensChecklist) ? itensChecklist : []).map((i) => ({
-          value: i.id,
-          label: i.nome_item,
-        }));
+  const tipoGastoOptions = (Array.isArray(tiposGastos) ? tiposGastos : []).map(
+    (t) => ({
+      value: t.id,
+      label: t.nome_tipo,
+    }),
+  );
 
   return (
     <Card title="Adicionar Novo Registro" className="mb-8">
@@ -101,17 +97,27 @@ const RegistroForm = ({
             }
           />
 
-          <FormField
-            label={
-              form.tipo === "gasto" ? "Tipo de Gasto" : "Item de Manutenção"
-            }
-            type="select"
-            name="tipo_id"
-            value={form.tipo_id}
-            onChange={onChange}
-            required
-            options={tipoOptions}
-          />
+          {form.tipo === "gasto" ? (
+            <FormField
+              label="Tipo de Gasto"
+              type="select"
+              name="tipo_id"
+              value={form.tipo_id}
+              onChange={onChange}
+              required
+              options={tipoGastoOptions}
+            />
+          ) : (
+            <FormField
+              label="Item de Manutenção"
+              type="text"
+              name="nome_item"
+              value={form.nome_item}
+              onChange={onChange}
+              required
+              placeholder="Ex.: Troca de óleo, filtros, pastilhas..."
+            />
+          )}
 
           <FormField
             label="Valor (R$)"
@@ -211,9 +217,7 @@ const HistoricoRegistros = ({
               currency: "BRL",
             }).format(registro.valor)
           : "N/A",
-      dataFormatada: registro.data
-        ? new Date(registro.data).toLocaleDateString("pt-BR")
-        : "N/A",
+      dataFormatada: registro.data ? formatDate(registro.data) : "N/A",
       kmFormatado:
         registro.km_registro !== "N/A" && !isNaN(parseInt(registro.km_registro))
           ? parseInt(registro.km_registro).toLocaleString("pt-BR")
@@ -461,7 +465,6 @@ const ManutencaoGastos = () => {
 
   const {
     caminhoes,
-    itensChecklist,
     tiposGastos,
     registros,
     pagination,
@@ -479,6 +482,7 @@ const ManutencaoGastos = () => {
     tipo: "gasto",
     caminhao_id: "",
     tipo_id: "",
+    nome_item: "",
     valor: "",
     data: new Date().toISOString().split("T")[0],
     observacao: "",
@@ -515,6 +519,7 @@ const ManutencaoGastos = () => {
       tipo: newTipo,
       caminhao_id: form.caminhao_id,
       tipo_id: "",
+      nome_item: "",
       valor: "",
       data: form.data,
       observacao: "",
@@ -535,12 +540,11 @@ const ManutencaoGastos = () => {
       if (!Number.isFinite(caminhaoId) || caminhaoId <= 0) {
         throw new Error("Selecione um caminhão.");
       }
-      if (!form.tipo_id) {
-        throw new Error(
-          form.tipo === "gasto"
-            ? "Selecione o tipo de gasto."
-            : "Selecione o item de manutenção.",
-        );
+      if (form.tipo === "gasto" && !form.tipo_id) {
+        throw new Error("Selecione o tipo de gasto.");
+      }
+      if (form.tipo === "manutencao" && !String(form.nome_item || "").trim()) {
+        throw new Error("Informe o item de manutenção.");
       }
       if (!form.valor || Number.isNaN(parseFloat(String(form.valor).replace(",", ".")))) {
         throw new Error("Informe um valor válido.");
@@ -567,13 +571,9 @@ const ManutencaoGastos = () => {
         };
         await post("/gastos", payload, { skipSuccessToast: true });
       } else {
-        const itemId = parseInt(form.tipo_id, 10);
-        if (!Number.isFinite(itemId) || itemId <= 0) {
-          throw new Error("Selecione o item de manutenção.");
-        }
         const payload = {
           caminhao_id: caminhaoId,
-          item_id: itemId,
+          nome_item: String(form.nome_item).trim(),
           data_manutencao: form.data,
           observacao: form.observacao,
           valor: parseFloat(String(form.valor).replace(",", ".")),
@@ -591,6 +591,7 @@ const ManutencaoGastos = () => {
         tipo: "gasto",
         caminhao_id: "",
         tipo_id: "",
+        nome_item: "",
         valor: "",
         data: new Date().toISOString().split("T")[0],
         observacao: "",
@@ -674,7 +675,6 @@ const ManutencaoGastos = () => {
       <RegistroForm
           form={form}
           caminhoes={caminhoes}
-          itensChecklist={itensChecklist}
           tiposGastos={tiposGastos}
           onChange={handleChange}
           onCaminhaoChange={handleCaminhaoChange}
@@ -698,8 +698,6 @@ const ManutencaoGastos = () => {
         <RegistroEditModal
           registro={registroEmEdicao}
           tiposGastos={tiposGastos}
-          itensChecklist={itensChecklist}
-          caminhoes={caminhoes}
           onClose={() => setRegistroEmEdicao(null)}
           onSaved={async () => {
             toast.success("Registro atualizado com sucesso.");

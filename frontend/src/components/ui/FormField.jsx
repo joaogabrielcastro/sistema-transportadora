@@ -43,7 +43,7 @@ const FormField = ({
           <select
             id={fieldId}
             name={name}
-            value={value}
+            value={value === null || value === undefined ? "" : String(value)}
             onChange={onChange}
             disabled={disabled}
             className={`${baseInputClasses} appearance-none ${

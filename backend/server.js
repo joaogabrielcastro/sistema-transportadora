@@ -18,6 +18,15 @@ const server = app.listen(PORT, async () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 
   try {
+    const { startOrdemColetaWorker } = await import(
+      "./src/queues/ordemColetaJobQueue.js"
+    );
+    await startOrdemColetaWorker();
+  } catch (err) {
+    console.error("Falha ao iniciar worker ordem coleta:", err?.message);
+  }
+
+  try {
     const { OrdemColetaService } = await import(
       "./src/services/OrdemColetaService.js"
     );
@@ -30,13 +39,22 @@ const server = app.listen(PORT, async () => {
   }
 });
 
-const shutdown = (signal) => {
+const shutdown = async (signal) => {
   console.log(`${signal} recebido — encerrando servidor…`);
 
   const forceExit = setTimeout(() => {
     console.error("Timeout no shutdown — encerrando processo.");
     process.exit(1);
   }, SHUTDOWN_TIMEOUT_MS);
+
+  try {
+    const { closeOrdemColetaQueue } = await import(
+      "./src/queues/ordemColetaJobQueue.js"
+    );
+    await closeOrdemColetaQueue();
+  } catch (err) {
+    console.error("Erro ao fechar fila ordem coleta:", err?.message);
+  }
 
   server.close(() => {
     clearTimeout(forceExit);
@@ -45,7 +63,11 @@ const shutdown = (signal) => {
   });
 };
 
-process.on("SIGTERM", () => shutdown("SIGTERM"));
-process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => {
+  void shutdown("SIGTERM");
+});
+process.on("SIGINT", () => {
+  void shutdown("SIGINT");
+});
 
 export { server };

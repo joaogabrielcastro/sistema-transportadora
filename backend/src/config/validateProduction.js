@@ -52,6 +52,12 @@ export function getProductionConfigWarnings(cfg = config) {
     );
   }
 
+  if (!cfg.redis?.url) {
+    warnings.push(
+      "REDIS_URL não definido — fila de ordem de coleta fica em memória (jobs se perdem em restart/multi-réplica).",
+    );
+  }
+
   return warnings;
 }
 

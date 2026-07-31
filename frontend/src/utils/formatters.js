@@ -1,12 +1,42 @@
 // frontend/src/utils/formatters.js
 
 /**
- * Formatar data no padrão brasileiro
+ * Formatar data no padrão brasileiro (dd/MM/yyyy).
+ * Campos DATE do Postgres chegam como meia-noite UTC — usa o calendário UTC
+ * para não “voltar” um dia em America/Sao_Paulo.
  */
 export const formatDate = (date, options = {}) => {
   if (!date) return "";
 
+  const wantsTime =
+    options.hour != null ||
+    options.minute != null ||
+    options.second != null;
+
+  if (!wantsTime && typeof date === "string") {
+    const m = date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) {
+      return `${m[3]}/${m[2]}/${m[1]}`;
+    }
+  }
+
   const dateObj = typeof date === "string" ? new Date(date) : date;
+  if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) {
+    return "";
+  }
+
+  if (!wantsTime) {
+    const isDateOnlyUtcMidnight =
+      dateObj.getUTCHours() === 0 &&
+      dateObj.getUTCMinutes() === 0 &&
+      dateObj.getUTCSeconds() === 0;
+    if (isDateOnlyUtcMidnight) {
+      const d = String(dateObj.getUTCDate()).padStart(2, "0");
+      const mo = String(dateObj.getUTCMonth() + 1).padStart(2, "0");
+      const y = dateObj.getUTCFullYear();
+      return `${d}/${mo}/${y}`;
+    }
+  }
 
   const defaultOptions = {
     year: "numeric",

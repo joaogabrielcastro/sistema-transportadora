@@ -24,6 +24,7 @@ import PageLayout from "../components/layout/PageLayout.jsx";
 import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
 import { exportToPDF, exportToExcel } from "../utils/exportUtils";
 import { formatCurrency, formatNumber, formatDate } from "../utils/formatters";
+import { useToast } from "../components/ui/useToast.js";
 
 const tipoLabels = {
   gasto: "Gasto",
@@ -35,6 +36,7 @@ const CostPerKmBarChart = lazy(
 );
 
 const Relatorios = () => {
+  const toast = useToast();
   const [selectedCaminhao, setSelectedCaminhao] = useState("");
   const [dateRange, setDateRange] = useState({
     start: new Date(new Date().setMonth(new Date().getMonth() - 1))
@@ -174,21 +176,34 @@ const Relatorios = () => {
       entry.km ?? "—",
     ]);
 
+    const sections = [
+      {
+        title: "Relatório de Custo Operacional — Resumo",
+        columns: summaryColumns,
+        rows: summaryRows,
+      },
+    ];
+    if (detailRows.length > 0) {
+      sections.push({
+        title: "Relatório de Custo Operacional — Detalhamento",
+        columns: detailColumns,
+        rows: detailRows,
+      });
+    }
+
     setExporting("pdf");
     try {
       await exportToPDF(
-        "Relatório de Custo Operacional — Resumo",
+        "Relatório de Custo Operacional",
         summaryColumns,
         summaryRows,
+        "relatorio_custos.pdf",
+        { sections },
       );
-      if (detailRows.length > 0) {
-        await exportToPDF(
-          "Relatório de Custo Operacional — Detalhamento",
-          detailColumns,
-          detailRows,
-          "relatorio_detalhamento.pdf",
-        );
-      }
+      toast.success("PDF exportado com sucesso.");
+    } catch (err) {
+      console.error("Erro ao exportar PDF:", err);
+      toast.error(err.message || "Não foi possível exportar o PDF.");
     } finally {
       setExporting(null);
     }
@@ -220,6 +235,10 @@ const Relatorios = () => {
     setExporting("excel");
     try {
       await exportToExcel(data, "relatorio_custos.xlsx");
+      toast.success("Excel exportado com sucesso.");
+    } catch (err) {
+      console.error("Erro ao exportar Excel:", err);
+      toast.error(err.message || "Não foi possível exportar o Excel.");
     } finally {
       setExporting(null);
     }

@@ -4,30 +4,62 @@
 
 /**
  * @param {string} title
- * @param {Array} columns
- * @param {Array} data
+ * @param {string[]} columns
+ * @param {Array<Array<string|number>>} data
  * @param {string} [filename]
+ * @param {{ sections?: Array<{ title: string, columns: string[], rows: Array<Array<string|number>> }> }} [extra]
  */
 export const exportToPDF = async (
   title,
   columns,
   data,
   filename = "relatorio.pdf",
+  extra = {},
 ) => {
   const { jsPDF } = await import("jspdf");
-  await import("jspdf-autotable");
+  const autoTableModule = await import("jspdf-autotable");
+  const autoTable = autoTableModule.default || autoTableModule.autoTable;
+
+  if (typeof autoTable !== "function") {
+    throw new Error("Falha ao carregar o gerador de tabelas do PDF.");
+  }
 
   const doc = new jsPDF();
+  const sections =
+    Array.isArray(extra.sections) && extra.sections.length > 0
+      ? extra.sections
+      : [{ title, columns, rows: data }];
 
-  doc.text(title, 14, 20);
+  let startY = 16;
 
-  doc.autoTable({
-    args: { margin: { bottom: 20 } },
-    startY: 30,
-    head: [columns],
-    body: data,
-    styles: { fontSize: 8 },
-  });
+  for (const section of sections) {
+    const sectionTitle = section.title || title;
+    const sectionColumns = section.columns || columns;
+    const sectionRows = Array.isArray(section.rows) ? section.rows : [];
+
+    if (startY > 270) {
+      doc.addPage();
+      startY = 16;
+    }
+
+    doc.setFontSize(14);
+    doc.text(String(sectionTitle), 14, startY);
+    startY += 8;
+
+    autoTable(doc, {
+      startY,
+      head: [sectionColumns],
+      body:
+        sectionRows.length > 0
+          ? sectionRows
+          : [["Nenhum dado para exibir no período selecionado."]],
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [30, 41, 59], textColor: 255 },
+      margin: { left: 14, right: 14, bottom: 16 },
+    });
+
+    startY = (doc.lastAutoTable?.finalY ?? startY) + 14;
+  }
 
   doc.save(filename);
 };

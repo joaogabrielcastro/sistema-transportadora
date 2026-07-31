@@ -45,6 +45,7 @@ Plataforma **multi-empresa** (SaaS) para gestão de frota, manutenção, pneus, 
 - `ADMIN_EMAIL` / `ADMIN_PASSWORD`: primeiro admin do tenant seed `abbroto` se esse tenant ainda não tiver usuários.
 - `DEFAULT_TENANT_ID`: tenant usado quando `AUTH_ENABLED=false` ou API token.
 - `ALLOW_PUBLIC_REGISTER`: `false` desliga cadastro de novas empresas (padrão: habilitado).
+- `REDIS_URL`: Redis para fila durable de ordem de coleta (BullMQ). Sem isso, a fila fica em memória.
 
 ### Frontend (`frontend/.env`)
 
@@ -82,7 +83,7 @@ O log `FROM ghcr.io/railwayapp/nixpacks` indica que o Coolify está usando **Nix
 6. **Volume obrigatório** para PDFs dos caminhões: montar **`/app/uploads`** no container (Storage → Volume → mount path `/app/uploads`). Sem isso, a lista aparece no banco mas **Abrir** falha após redeploy — remova e envie os PDFs de novo após configurar o volume.
 7. **Redeploy** com “Clear build cache” / rebuild sem cache. Se o build ainda falhar no export, aumente RAM/swap do servidor (≥ 4 GB recomendado no build).
 
-Variáveis mínimas: `DATABASE_URL`, `PORT` (ex.: 3020), SMTP se for enviar e-mail.
+Variáveis mínimas: `DATABASE_URL`, `PORT` (ex.: 3020), `REDIS_URL` (fila ordem de coleta), SMTP se for enviar e-mail.
 
 **Segurança em produção (obrigatório):**
 

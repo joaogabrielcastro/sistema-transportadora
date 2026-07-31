@@ -104,4 +104,8 @@ export const config = {
     smtpPass: process.env.SMTP_PASS || "",
     mailFrom: process.env.MAIL_FROM || "",
   },
+  redis: {
+    /** URL completa, ex.: redis://default:senha@host:6379/0 */
+    url: (process.env.REDIS_URL || "").trim() || null,
+  },
 };

@@ -12,6 +12,7 @@ import {
   capitalizeWords,
   truncateText,
   formatFileSize,
+  formatDate,
 } from "./formatters.js";
 
 test("formatCurrency e formatNumber tratam nulos", () => {
@@ -19,6 +20,11 @@ test("formatCurrency e formatNumber tratam nulos", () => {
   assert.match(formatCurrency(10.5), /R\$/);
   assert.equal(formatNumber(null), "0");
   assert.equal(formatNumber(1500), "1.500");
+});
+
+test("formatDate não atrasa DATE UTC em um dia", () => {
+  assert.equal(formatDate("2026-12-16"), "16/12/2026");
+  assert.equal(formatDate("2026-12-16T00:00:00.000Z"), "16/12/2026");
 });
 
 test("formatPlaca mercosul e antigo", () => {

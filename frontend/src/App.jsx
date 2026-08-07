@@ -10,6 +10,8 @@ import {
 import Navbar from "./components/Navbar.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
+import { FeatureRoute } from "./components/FeatureRoute.jsx";
+import { BillingGate } from "./components/BillingGate.jsx";
 import { LoadingSpinner } from "./components/ui";
 
 const Home = lazy(() => import("./Pages/Home.jsx"));
@@ -27,7 +29,13 @@ const EditGasto = lazy(() => import("./Pages/EditGasto.jsx"));
 const EditChecklist = lazy(() => import("./Pages/EditChecklist.jsx"));
 const Relatorios = lazy(() => import("./Pages/Relatorios.jsx"));
 const OrdensColeta = lazy(() => import("./Pages/OrdensColeta.jsx"));
+const NotasEstoque = lazy(() => import("./Pages/NotasEstoque.jsx"));
 const Usuarios = lazy(() => import("./Pages/Usuarios.jsx"));
+const Assinatura = lazy(() => import("./Pages/Assinatura.jsx"));
+const Motoristas = lazy(() => import("./Pages/Motoristas.jsx"));
+const Documentos = lazy(() => import("./Pages/Documentos.jsx"));
+const Alertas = lazy(() => import("./Pages/Alertas.jsx"));
+const NotFound = lazy(() => import("./Pages/NotFound.jsx"));
 
 function RedirectCadastroLote() {
   const location = useLocation();
@@ -53,127 +61,217 @@ function AppRoutes() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
+          <Route
+            path="/assinatura"
+            element={
+              <ProtectedRoute>
+                <Assinatura />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/motoristas"
+            element={
+              <ProtectedRoute>
+                <BillingGate>
+                  <Motoristas />
+                </BillingGate>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/documentos"
+            element={
+              <ProtectedRoute>
+                <BillingGate>
+                  <Documentos />
+                </BillingGate>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/alertas"
+            element={
+              <ProtectedRoute>
+                <BillingGate>
+                  <Alertas />
+                </BillingGate>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <BillingGate>
                   <Home />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/cadastro-caminhao"
-              element={
-                <ProtectedRoute>
+                </BillingGate>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cadastro-caminhao"
+            element={
+              <ProtectedRoute>
+                <BillingGate>
                   <CadastroCaminhao />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/pneus"
-              element={
-                <ProtectedRoute>
+                </BillingGate>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pneus"
+            element={
+              <ProtectedRoute>
+                <BillingGate>
                   <Pneus />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/pneus/estoque"
-              element={
-                <ProtectedRoute>
+                </BillingGate>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pneus/estoque"
+            element={
+              <ProtectedRoute>
+                <BillingGate>
                   <PneusEstoque />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/pneus/atribuir"
-              element={
-                <ProtectedRoute>
+                </BillingGate>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pneus/atribuir"
+            element={
+              <ProtectedRoute>
+                <BillingGate>
                   <PneuAtribuir />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/caminhao/:placa"
-              element={
-                <ProtectedRoute>
+                </BillingGate>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/caminhao/:placa"
+            element={
+              <ProtectedRoute>
+                <BillingGate>
                   <CaminhaoDetail />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/caminhao/editar/:placa"
-              element={
-                <ProtectedRoute>
+                </BillingGate>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/caminhao/editar/:placa"
+            element={
+              <ProtectedRoute>
+                <BillingGate>
                   <EditCaminhao />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/pneu/editar/:id"
-              element={
-                <ProtectedRoute>
+                </BillingGate>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pneu/editar/:id"
+            element={
+              <ProtectedRoute>
+                <BillingGate>
                   <EditPneu />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/manutencao-gastos"
-              element={
-                <ProtectedRoute>
+                </BillingGate>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/manutencao-gastos"
+            element={
+              <ProtectedRoute>
+                <BillingGate>
                   <ManutencaoGastos />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/gasto/editar/:id"
-              element={
-                <ProtectedRoute>
+                </BillingGate>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/gasto/editar/:id"
+            element={
+              <ProtectedRoute>
+                <BillingGate>
                   <EditGasto />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/checklist/editar/:id"
-              element={
-                <ProtectedRoute>
+                </BillingGate>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/checklist/editar/:id"
+            element={
+              <ProtectedRoute>
+                <BillingGate>
                   <EditChecklist />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/pneus/cadastro-em-lote"
-              element={
-                <ProtectedRoute>
+                </BillingGate>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pneus/cadastro-em-lote"
+            element={
+              <ProtectedRoute>
+                <BillingGate>
                   <RedirectCadastroLote />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/relatorios"
-              element={
-                <ProtectedRoute>
+                </BillingGate>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/relatorios"
+            element={
+              <ProtectedRoute>
+                <BillingGate>
                   <Relatorios />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/ordem-coleta"
-              element={
-                <ProtectedRoute>
-                  <OrdensColeta />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/usuarios"
-              element={
-                <ProtectedRoute>
+                </BillingGate>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ordem-coleta"
+            element={
+              <ProtectedRoute>
+                <BillingGate>
+                  <FeatureRoute feature="ordem_coleta">
+                    <OrdensColeta />
+                  </FeatureRoute>
+                </BillingGate>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notas-estoque"
+            element={
+              <ProtectedRoute>
+                <BillingGate>
+                  <FeatureRoute feature="notas_estoque">
+                    <NotasEstoque />
+                  </FeatureRoute>
+                </BillingGate>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/usuarios"
+            element={
+              <ProtectedRoute>
+                <BillingGate>
                   <Usuarios />
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
+                </BillingGate>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="*"
+            element={
+              <ProtectedRoute>
+                <NotFound />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
       </Suspense>
     </>
   );

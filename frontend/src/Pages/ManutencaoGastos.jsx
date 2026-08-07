@@ -5,6 +5,7 @@ import ConfirmModal from "../components/ConfirmModal";
 import RegistroDetailModal from "../components/RegistroDetailModal.jsx";
 import RegistroEditModal from "../components/RegistroEditModal.jsx";
 import Pagination from "../components/Pagination.jsx";
+import { formatCaminhaoOptions } from "../utils/caminhaoOptions.js";
 import {
   Card,
   Button,
@@ -27,10 +28,47 @@ import { TableSkeleton } from "../components/Skeleton.jsx";
 import { isCombustivelTipo } from "../utils/tipoGastoUtils.js";
 import { formatDate } from "../utils/formatters.js";
 
+/** Intervalo sugerido para óleo / lubrificação (km e meses). */
+const OLEO_INTERVALO_KM = 10000;
+const OLEO_INTERVALO_MESES = 6;
+
+function isOleoOuLubrificacao(nome) {
+  const n = String(nome || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  return /\boleo\b|\boléo\b|lubrific|graxa/.test(n) || n.includes("oleo");
+}
+
+function addMonthsYmd(ymd, months) {
+  const m = String(ymd || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return "";
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  d.setMonth(d.getMonth() + months);
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${mo}-${day}`;
+}
+
 const tipoToModal = (registro) => ({
   ...registro,
   tipo: registro.tipo_registro === "Manutenção" ? "manutencao" : "gasto",
 });
+
+const FormSection = ({ step, title, children }) => (
+  <section className="rounded-lg border border-border bg-white p-4">
+    <div className="mb-3 flex items-center gap-2">
+      <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-white">
+        {step}
+      </span>
+      <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
+    </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {children}
+    </div>
+  </section>
+);
 
 const RegistroForm = ({
   form,
@@ -40,8 +78,10 @@ const RegistroForm = ({
   onCaminhaoChange,
   onTipoChange,
   onSubmit,
+  onSugerirProxima,
   loading,
 }) => {
+  const isManutencao = form.tipo === "manutencao";
   const isCombustivel =
     form.tipo === "gasto" && isCombustivelTipo(form.tipo_id, tiposGastos);
 
@@ -51,10 +91,11 @@ const RegistroForm = ({
     (c) => c.id === parseInt(form.caminhao_id, 10),
   );
 
-  const caminhaoOptions = caminhoesList.map((c) => ({
-    value: c.id,
-    label: `${c.placa} - KM: ${c.km_atual?.toLocaleString("pt-BR")}`,
-  }));
+  const showLembreteOleo = isOleoOuLubrificacao(form.nome_item);
+
+  const caminhaoOptions = formatCaminhaoOptions(caminhoesList, {
+    includeKm: true,
+  });
 
   const tipoGastoOptions = (Array.isArray(tiposGastos) ? tiposGastos : []).map(
     (t) => ({
@@ -63,41 +104,183 @@ const RegistroForm = ({
     }),
   );
 
+  const campoTipo = (
+    <FormField
+      label="Tipo de Registro"
+      type="select"
+      name="tipo"
+      value={form.tipo}
+      onChange={onTipoChange}
+      required
+      options={[
+        { value: "gasto", label: "Gasto Financeiro" },
+        { value: "manutencao", label: "Manutenção (Checklist)" },
+      ]}
+      className="mb-0"
+    />
+  );
+
+  const campoCaminhao = (
+    <FormField
+      label="Caminhão"
+      type="typeahead"
+      name="caminhao_id"
+      value={form.caminhao_id}
+      onChange={onCaminhaoChange}
+      required
+      placeholder="Digite placa, modelo ou tipo..."
+      options={caminhaoOptions}
+      helperText={
+        caminhaoSelecionado
+          ? `KM atual: ${caminhaoSelecionado.km_atual?.toLocaleString("pt-BR")}`
+          : ""
+      }
+      className="mb-0"
+    />
+  );
+
+  const campoKm = (
+    <FormField
+      label="Quilometragem (KM)"
+      type="number"
+      name="km_registro"
+      value={form.km_registro}
+      onChange={onChange}
+      min="0"
+      placeholder="KM atual do caminhão"
+      className="mb-0"
+    />
+  );
+
+  const campoData = (
+    <FormField
+      label="Data"
+      type="date"
+      name="data"
+      value={form.data}
+      onChange={onChange}
+      required
+      max={new Date().toISOString().split("T")[0]}
+      className="mb-0"
+    />
+  );
+
+  const campoValor = (
+    <FormField
+      label="Valor (R$)"
+      type="number"
+      name="valor"
+      value={form.valor}
+      onChange={onChange}
+      step="0.01"
+      min="0"
+      required
+      placeholder="0,00"
+      icon={<span className="text-gray-500 font-semibold">R$</span>}
+      className="mb-0"
+    />
+  );
+
   return (
     <Card title="Adicionar Novo Registro" className="mb-8">
-      <form onSubmit={onSubmit}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-5">
-          <FormField
-            label="Tipo de Registro"
-            type="select"
-            name="tipo"
-            value={form.tipo}
-            onChange={onTipoChange}
-            required
-            options={[
-              { value: "gasto", label: "Gasto Financeiro" },
-              { value: "manutencao", label: "Manutenção (Checklist)" },
-            ]}
-          />
+      <form onSubmit={onSubmit} className="space-y-4">
+        {isManutencao ? (
+          <>
+            <FormSection step={1} title="Caminhão, KM e data">
+              {campoTipo}
+              {campoCaminhao}
+              {campoKm}
+              {campoData}
+            </FormSection>
 
-          <FormField
-            label="Caminhão"
-            type="select"
-            name="caminhao_id"
-            value={form.caminhao_id}
-            onChange={onCaminhaoChange}
-            required
-            options={caminhaoOptions}
-            helperText={
-              caminhaoSelecionado
-                ? `KM atual: ${caminhaoSelecionado.km_atual?.toLocaleString(
-                    "pt-BR"
-                  )}`
-                : ""
-            }
-          />
+            <FormSection step={2} title="Serviço e oficina">
+              <FormField
+                label="Serviço realizado"
+                type="text"
+                name="nome_item"
+                value={form.nome_item}
+                onChange={onChange}
+                required
+                placeholder="Ex.: Troca de óleo, filtros, pastilhas..."
+                className="mb-0 sm:col-span-2"
+              />
+              <FormField
+                label="Oficina"
+                name="oficina"
+                value={form.oficina}
+                onChange={onChange}
+                placeholder="Nome da oficina"
+                className="mb-0"
+              />
+            </FormSection>
 
-          {form.tipo === "gasto" ? (
+            <FormSection step={3} title="Valor">
+              {campoValor}
+            </FormSection>
+
+            <section className="rounded-lg border border-border bg-slate-50 p-4">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-white">
+                    4
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-semibold text-text-primary">
+                      Próxima manutenção e observações
+                    </h3>
+                    <p className="text-xs text-text-light">
+                      {showLembreteOleo
+                        ? `Detectamos óleo/lubrificação — sugestão: +${OLEO_INTERVALO_KM.toLocaleString("pt-BR")} km ou +${OLEO_INTERVALO_MESES} meses`
+                        : "Opcional. Quando chegar perto do KM ou da data, aparece em Alertas."}
+                    </p>
+                  </div>
+                </div>
+                {onSugerirProxima && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={onSugerirProxima}
+                  >
+                    Sugerir próxima troca
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  label="Próxima troca (KM)"
+                  type="number"
+                  name="proxima_km"
+                  value={form.proxima_km ?? ""}
+                  onChange={onChange}
+                  min="0"
+                  placeholder="Ex.: 1400000"
+                  className="mb-0"
+                />
+                <FormField
+                  label="Próxima troca (data)"
+                  type="date"
+                  name="proxima_data"
+                  value={form.proxima_data ?? ""}
+                  onChange={onChange}
+                  className="mb-0"
+                />
+                <FormField
+                  label="Observação"
+                  type="textarea"
+                  name="observacao"
+                  value={form.observacao}
+                  onChange={onChange}
+                  rows={3}
+                  placeholder="Detalhes adicionais sobre o registro..."
+                  className="mb-0 sm:col-span-2"
+                />
+              </div>
+            </section>
+          </>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
+            {campoTipo}
+            {campoCaminhao}
             <FormField
               label="Tipo de Gasto"
               type="select"
@@ -106,88 +289,39 @@ const RegistroForm = ({
               onChange={onChange}
               required
               options={tipoGastoOptions}
+              className="mb-0"
             />
-          ) : (
+            {campoValor}
+            {campoData}
+            {campoKm}
+            {isCombustivel && (
+              <FormField
+                label="Quantidade (Litros)"
+                type="number"
+                name="quantidade_combustivel"
+                value={form.quantidade_combustivel}
+                onChange={onChange}
+                step="0.01"
+                min="0"
+                required
+                placeholder="0,00"
+                className="mb-0"
+              />
+            )}
             <FormField
-              label="Item de Manutenção"
-              type="text"
-              name="nome_item"
-              value={form.nome_item}
+              label="Observação"
+              type="textarea"
+              name="observacao"
+              value={form.observacao}
               onChange={onChange}
-              required
-              placeholder="Ex.: Troca de óleo, filtros, pastilhas..."
+              rows={3}
+              placeholder="Detalhes adicionais sobre o registro..."
+              className="mb-0 sm:col-span-2 lg:col-span-3 xl:col-span-4"
             />
-          )}
+          </div>
+        )}
 
-          <FormField
-            label="Valor (R$)"
-            type="number"
-            name="valor"
-            value={form.valor}
-            onChange={onChange}
-            step="0.01"
-            min="0"
-            required
-            placeholder="0,00"
-            icon={<span className="text-gray-500 font-semibold">R$</span>}
-          />
-
-          <FormField
-            label="Data"
-            type="date"
-            name="data"
-            value={form.data}
-            onChange={onChange}
-            required
-            max={new Date().toISOString().split("T")[0]}
-          />
-
-          <FormField
-            label="Quilometragem (KM)"
-            type="number"
-            name="km_registro"
-            value={form.km_registro}
-            onChange={onChange}
-            min="0"
-            placeholder="KM atual do caminhão"
-          />
-
-          {form.tipo === "manutencao" && (
-            <FormField
-              label="Oficina"
-              name="oficina"
-              value={form.oficina}
-              onChange={onChange}
-              placeholder="Nome da oficina"
-            />
-          )}
-
-          {isCombustivel && (
-            <FormField
-              label="Quantidade (Litros)"
-              type="number"
-              name="quantidade_combustivel"
-              value={form.quantidade_combustivel}
-              onChange={onChange}
-              step="0.01"
-              min="0"
-              required
-              placeholder="0,00"
-            />
-          )}
-        </div>
-
-        <FormField
-          label="Observação"
-          type="textarea"
-          name="observacao"
-          value={form.observacao}
-          onChange={onChange}
-          rows={3}
-          placeholder="Detalhes adicionais sobre o registro..."
-        />
-
-        <div className="flex justify-end mt-4">
+        <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
           <Button type="submit" loading={loading}>
             Cadastrar Registro
           </Button>
@@ -489,6 +623,8 @@ const ManutencaoGastos = () => {
     oficina: "",
     km_registro: "",
     quantidade_combustivel: "",
+    proxima_km: "",
+    proxima_data: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -496,7 +632,25 @@ const ManutencaoGastos = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [name]: value };
+      if (
+        name === "nome_item" &&
+        isOleoOuLubrificacao(value) &&
+        !prev.proxima_km &&
+        !prev.proxima_data
+      ) {
+        const kmAtual = prev.km_registro
+          ? parseInt(prev.km_registro, 10)
+          : null;
+        if (Number.isFinite(kmAtual) && kmAtual > 0) {
+          next.proxima_km = String(kmAtual + OLEO_INTERVALO_KM);
+        }
+        next.proxima_data =
+          addMonthsYmd(prev.data, OLEO_INTERVALO_MESES) || prev.proxima_data;
+      }
+      return next;
+    });
   };
 
   const handleCaminhaoChange = (e) => {
@@ -526,7 +680,24 @@ const ManutencaoGastos = () => {
       oficina: "",
       km_registro: form.km_registro,
       quantidade_combustivel: "",
+      proxima_km: "",
+      proxima_data: "",
     });
+  };
+
+  const handleSugerirProxima = () => {
+    const kmAtual = form.km_registro
+      ? parseInt(form.km_registro, 10)
+      : null;
+    setForm((prev) => ({
+      ...prev,
+      proxima_km:
+        Number.isFinite(kmAtual) && kmAtual > 0
+          ? String(kmAtual + OLEO_INTERVALO_KM)
+          : prev.proxima_km,
+      proxima_data:
+        addMonthsYmd(prev.data, OLEO_INTERVALO_MESES) || prev.proxima_data,
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -579,6 +750,10 @@ const ManutencaoGastos = () => {
           valor: parseFloat(String(form.valor).replace(",", ".")),
           oficina: form.oficina,
           km_manutencao: newKm,
+          proxima_km: form.proxima_km
+            ? parseInt(form.proxima_km, 10)
+            : null,
+          proxima_data: form.proxima_data || null,
         };
         await post("/checklist", payload, { skipSuccessToast: true });
       }
@@ -598,6 +773,8 @@ const ManutencaoGastos = () => {
         oficina: "",
         km_registro: "",
         quantidade_combustivel: "",
+        proxima_km: "",
+        proxima_data: "",
       });
     } catch (err) {
       console.error("Erro ao cadastrar registro:", err);
@@ -679,6 +856,7 @@ const ManutencaoGastos = () => {
           onChange={handleChange}
           onCaminhaoChange={handleCaminhaoChange}
           onTipoChange={handleTipoChange}
+          onSugerirProxima={handleSugerirProxima}
           onSubmit={handleSubmit}
           loading={submitting}
         />

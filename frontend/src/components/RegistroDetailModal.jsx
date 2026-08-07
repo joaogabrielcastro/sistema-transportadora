@@ -69,6 +69,18 @@ const RegistroDetailModal = ({ registro, onClose }) => {
               }
             />
             {registro.oficina && <Row label="Oficina" value={registro.oficina} />}
+            {registro.proxima_km != null && registro.proxima_km !== "" && (
+              <Row
+                label="Próxima troca (KM)"
+                value={Number(registro.proxima_km).toLocaleString("pt-BR")}
+              />
+            )}
+            {registro.proxima_data && (
+              <Row
+                label="Próxima troca (data)"
+                value={formatDate(registro.proxima_data)}
+              />
+            )}
             {registro.observacao && (
               <Row label="Observações" value={registro.observacao} multiline />
             )}

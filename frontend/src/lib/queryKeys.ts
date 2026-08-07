@@ -7,7 +7,8 @@ export const queryKeys = {
     byPlaca: (placa: string) => ["caminhoes", "by-placa", placa] as const,
     detail: (placa: string) => ["caminhoes", "detail", placa] as const,
     documentos: (placa: string) => ["caminhoes", "documentos", placa] as const,
-    search: (term: string) => ["caminhoes", "search", term] as const,
+    search: (term: string, tipo?: string) =>
+      ["caminhoes", "search", term, tipo || ""] as const,
   },
   reports: {
     overview: ["reports", "overview"] as const,

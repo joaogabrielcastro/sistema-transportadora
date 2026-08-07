@@ -11,6 +11,7 @@ import {
   Alert,
   PageHeader,
 } from "../components/ui";
+import { formatCaminhaoOptions } from "../utils/caminhaoOptions.js";
 import { isCombustivelTipo } from "../utils/tipoGastoUtils.js";
 
 const EditGasto = () => {
@@ -126,10 +127,7 @@ const EditGasto = () => {
     (c) => c.id === parseInt(formData.caminhao_id)
   );
 
-  const caminhaoOptions = caminhoes.map((c) => ({
-    value: c.id,
-    label: `${c.placa} - KM: ${c.km_atual?.toLocaleString("pt-BR")}`,
-  }));
+  const caminhaoOptions = formatCaminhaoOptions(caminhoes, { includeKm: true });
 
   const tipoOptions = tiposGastos.map((t) => ({
     value: t.id,
@@ -186,12 +184,13 @@ const EditGasto = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField
               label="Caminhão"
-              type="select"
+              type="typeahead"
               name="caminhao_id"
               value={formData.caminhao_id}
               onChange={handleCaminhaoChange}
               options={caminhaoOptions}
               disabled
+              placeholder="Digite para buscar..."
               helperText={
                 caminhaoSelecionado
                   ? `KM atual: ${caminhaoSelecionado.km_atual?.toLocaleString(

@@ -16,6 +16,24 @@ Plataforma **multi-empresa** (SaaS) para gestão de frota, manutenção, pneus, 
 - Seed histórico: tenant `slug=abbroto` (dados migrados). Novos tenants via UI ou CLI:
   `cd backend && npm run tenant:create -- --slug=empresa --nome="Empresa" --email=admin@empresa.com --password=SenhaSegura123`
 
+## Billing (Stripe)
+
+- **Clientes atuais** (pré-migração): `billing_exempt=true` — usam o sistema sem Stripe e sem tela de cobrança.
+- **Novos tenants** (register ou `tenant:create` sem `--exempt=true`): trial de 14 dias no plano **ops**, depois precisam assinar em `/assinatura`.
+- Planos: `starter` | `ops` (ordem de coleta) | `fiscal` (NF-e/estoque) | `complete` (ambos).
+- Ativar cobrança depois em um isento: `npm run tenant:billing -- --slug=empresa --exempt=false --plan=ops`
+- Webhook: `POST /api/billing/webhook` (raw body). Local: `stripe listen --forward-to localhost:3020/api/billing/webhook`
+
+## Operação avançada
+
+- **Alertas / documentos / motoristas:** `/alertas`, `/documentos`, `/motoristas` (+ APIs `/api/ops/*`, `/api/motoristas`)
+- **Digest semanal:** `npm run job:weekly-digest` (cron recomendado: segunda 8h)
+- **Worker PDF:** em produção `REDIS_URL` obrigatório; `RUN_ORDEM_WORKER_IN_API=false` + `npm run worker:ordem-coleta`
+- **S3:** `S3_BUCKET` + keys (AWS/R2/MinIO) — uploads de documentos saem do disco local
+- **WhatsApp:** `WHATSAPP_API_URL` + `WHATSAPP_TOKEN` — teste em `POST /api/ops/whatsapp/test`
+- **Auditoria:** mutações gravadas em `audit_logs`; listar em `GET /api/ops/audit-logs` (admin)
+- **RBAC:** permissões por role (`admin`/`operator`) + extras em `users.permissions`
+
 ## Principais recursos
 
 - Frota (caminhões), pneus, manutenção/gastos, relatórios, ordem de coleta (PDF + e-mail).

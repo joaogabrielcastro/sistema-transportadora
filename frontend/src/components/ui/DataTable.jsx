@@ -100,7 +100,7 @@ DataTableTd.propTypes = {
 };
 
 const actionBtn =
-  "inline-flex items-center justify-center p-1.5 rounded-md text-text-secondary hover:text-primary hover:bg-primary/5 transition-colors disabled:opacity-40";
+  "inline-flex items-center justify-center min-h-10 min-w-10 p-2.5 rounded-md text-text-secondary hover:text-primary hover:bg-primary/5 transition-colors disabled:opacity-40";
 
 export const TableRowActions = ({ onEdit, onView, onDelete, editTitle = "Editar", viewTitle = "Ver detalhes", deleteTitle = "Excluir" }) => (
   <div className="flex items-center justify-end gap-0.5 shrink-0">

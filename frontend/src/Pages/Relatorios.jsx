@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState, useMemo } from "react";
+import React, { lazy, Suspense, useState, useMemo, useEffect } from "react";
 import {
   useCaminhoesListQuery,
   useCostPerKmReportQuery,
@@ -24,7 +24,9 @@ import PageLayout from "../components/layout/PageLayout.jsx";
 import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
 import { exportToPDF, exportToExcel } from "../utils/exportUtils";
 import { formatCurrency, formatNumber, formatDate } from "../utils/formatters";
+import { formatCaminhaoOptions } from "../utils/caminhaoOptions.js";
 import { useToast } from "../components/ui/useToast.js";
+import { apiFetch } from "../lib/apiClient.js";
 
 const tipoLabels = {
   gasto: "Gasto",
@@ -33,6 +35,9 @@ const tipoLabels = {
 
 const CostPerKmBarChart = lazy(
   () => import("../components/relatorios/CostPerKmBarChart.jsx"),
+);
+const CostPerKmTrendChart = lazy(
+  () => import("../components/relatorios/CostPerKmTrendChart.jsx"),
 );
 
 const Relatorios = () => {
@@ -59,13 +64,7 @@ const Relatorios = () => {
   const caminhoes = caminhoesPage?.data ?? [];
 
   const caminhaoOptions = useMemo(
-    () => [
-      { value: "", label: "Todos os caminhões" },
-      ...caminhoes.map((c) => ({
-        value: String(c.id),
-        label: `${c.placa}${c.modelo ? ` — ${c.modelo}` : ""}`,
-      })),
-    ],
+    () => formatCaminhaoOptions(caminhoes),
     [caminhoes],
   );
 
@@ -73,6 +72,34 @@ const Relatorios = () => {
     data: report,
     isFetching: loading,
   } = useCostPerKmReportQuery(submittedParams ?? {}, Boolean(submittedParams));
+
+  const [trendMonths, setTrendMonths] = useState([]);
+
+  useEffect(() => {
+    if (!submittedParams) {
+      setTrendMonths([]);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const qs = new URLSearchParams();
+        if (submittedParams.startDate) qs.set("startDate", submittedParams.startDate);
+        if (submittedParams.endDate) qs.set("endDate", submittedParams.endDate);
+        if (submittedParams.caminhaoId)
+          qs.set("caminhaoId", String(submittedParams.caminhaoId));
+        const res = await apiFetch({
+          url: `/reports/cost-per-km-trend?${qs.toString()}`,
+        });
+        if (!cancelled) setTrendMonths(res.data?.months || []);
+      } catch {
+        if (!cancelled) setTrendMonths([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [submittedParams]);
 
   const reportData = report?.items ?? [];
   const reportEntries = report?.entries ?? [];
@@ -279,7 +306,9 @@ const Relatorios = () => {
               onChange={setSelectedCaminhao}
               disabled={loadingCaminhoes}
               options={caminhaoOptions}
-              placeholder="Buscar por placa ou modelo..."
+              placeholder="Digite placa, modelo ou tipo..."
+              allowEmpty
+              emptyLabel="Todos os caminhões"
             />
             <Button onClick={generateReport} loading={loading}>
               Gerar Relatório
@@ -345,6 +374,25 @@ const Relatorios = () => {
             <Card noPadding>
               <div className="px-5 py-4 border-b border-border">
                 <h3 className="text-lg font-semibold text-text-primary">
+                  Tendência mensal (custo e R$/km)
+                </h3>
+              </div>
+              <div className="p-5">
+                <Suspense
+                  fallback={
+                    <div className="h-64 flex items-center justify-center">
+                      <LoadingSpinner text="Carregando tendência..." />
+                    </div>
+                  }
+                >
+                  <CostPerKmTrendChart months={trendMonths} />
+                </Suspense>
+              </div>
+            </Card>
+
+            <Card noPadding>
+              <div className="px-5 py-4 border-b border-border">
+                <h3 className="text-lg font-semibold text-text-primary">
                   Custo por Caminhão
                 </h3>
               </div>
@@ -390,7 +438,7 @@ const Relatorios = () => {
                 ))}
               </div>
 
-              <DataTable className="hidden md:table">
+              <DataTable className="hidden md:block">
                 <DataTableHead>
                   <tr>
                     <DataTableTh width="20%">Placa</DataTableTh>
@@ -473,7 +521,7 @@ const Relatorios = () => {
                   ))}
                 </div>
 
-                <DataTable className="hidden md:table">
+                <DataTable className="hidden md:block">
                   <DataTableHead>
                     <tr>
                       <DataTableTh width="12%">Data</DataTableTh>

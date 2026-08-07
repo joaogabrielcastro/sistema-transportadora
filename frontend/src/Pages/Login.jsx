@@ -34,9 +34,9 @@ const LockIcon = () => (
 );
 
 const highlights = [
-  "Gestão completa da frota",
-  "Manutenção e gastos em um só lugar",
-  "Ordens de coleta e relatórios",
+  "Frota, documentos e composição em um painel",
+  "Pneus, estoque e vida útil sob controle",
+  "Custos, manutenção e relatórios de custo/km",
 ];
 
 export default function Login() {
@@ -98,16 +98,16 @@ export default function Login() {
 
         <div className="relative z-10 space-y-6 max-w-md">
           <h2 className="text-3xl xl:text-4xl font-bold leading-tight tracking-tight text-white">
-            Sistema de gestão da sua frota
+            Sua frota sob controle, do pátio ao relatório
           </h2>
           <p className="text-slate-300 text-lg leading-relaxed">
-            Plataforma multi-empresa para controle de caminhões, pneus,
-            manutenções e ordens de coleta.
+            Organize veículos, pneus e custos em um só lugar — com dados da
+            sua empresa isolados e prontos para decidir.
           </p>
-          <ul className="space-y-3">
+          <ul className="space-y-3.5">
             {highlights.map((item) => (
-              <li key={item} className="flex items-center gap-3 text-slate-200">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary/20 text-secondary-light">
+              <li key={item} className="flex items-start gap-3 text-slate-200">
+                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary/20 text-secondary-light">
                   <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
                     <path
                       fillRule="evenodd"
@@ -116,7 +116,7 @@ export default function Login() {
                     />
                   </svg>
                 </span>
-                {item}
+                <span className="leading-snug">{item}</span>
               </li>
             ))}
           </ul>

@@ -124,3 +124,83 @@ test(
     }
   },
 );
+
+test(
+  "checklist com proxima_km gera alerta de manutenção",
+  { skip: shouldRunDbTests ? false : "Defina RUN_DB_TESTS=1 ou rode no CI" },
+  async () => {
+    const { authHeader } = await loginAsAdmin(app);
+    const caminhao = await createCaminhaoViaApi(app, authHeader, {
+      km_atual: 100000,
+    });
+
+    let checklistId;
+    try {
+      const createRes = await request(app)
+        .post("/api/checklist")
+        .set(authHeader)
+        .send({
+          caminhao_id: caminhao.id,
+          nome_item: "Troca de óleo",
+          data_manutencao: "2026-07-02",
+          km_manutencao: 90000,
+          valor: 500,
+          proxima_km: 95000,
+          proxima_data: "2026-07-10",
+        });
+
+      assert.equal(
+        createRes.status,
+        201,
+        createRes.body?.error || "create checklist com lembrete",
+      );
+      checklistId = createRes.body.data.id;
+      assert.equal(createRes.body.data.proxima_km, 95000);
+
+      const getRes = await request(app)
+        .get(`/api/checklist/${checklistId}`)
+        .set(authHeader);
+      assert.equal(getRes.status, 200);
+      assert.equal(getRes.body.data.proxima_km, 95000);
+      assert.ok(getRes.body.data.proxima_data);
+
+      const alertsRes = await request(app)
+        .get("/api/ops/alerts")
+        .set(authHeader);
+      assert.equal(alertsRes.status, 200, alertsRes.body?.error || "alerts");
+      const alerts = alertsRes.body.data?.alerts || [];
+      const manutKm = alerts.find(
+        (a) => a.id === `manut-km-${checklistId}` || a.type === "manut_km_due",
+      );
+      assert.ok(
+        manutKm,
+        `esperava alerta de manutenção por KM; tipos: ${alerts.map((a) => a.type).join(",")}`,
+      );
+      assert.equal(manutKm.severity, "critical");
+      assert.match(manutKm.title, /óleo|Manutenção/i);
+
+      const updateRes = await request(app)
+        .put(`/api/checklist/${checklistId}`)
+        .set(authHeader)
+        .send({
+          proxima_km: 200000,
+          proxima_data: "2099-01-01",
+        });
+      assert.equal(updateRes.status, 200);
+      assert.equal(updateRes.body.data.proxima_km, 200000);
+
+      const alertsAfter = await request(app)
+        .get("/api/ops/alerts")
+        .set(authHeader);
+      const stillDue = (alertsAfter.body.data?.alerts || []).find(
+        (a) => a.id === `manut-km-${checklistId}`,
+      );
+      assert.equal(stillDue, undefined);
+    } finally {
+      if (checklistId) {
+        await prisma.checklist.deleteMany({ where: { id: checklistId } });
+      }
+      await cleanupCaminhao(caminhao.id);
+    }
+  },
+);

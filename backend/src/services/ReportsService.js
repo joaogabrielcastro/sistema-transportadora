@@ -347,4 +347,105 @@ export class ReportsService {
       entries,
     });
   }
+
+  /**
+   * Tendência mensal de custo/km no intervalo.
+   */
+  static async getCostPerKmTrend(
+    tenantId,
+    { startDate, endDate, caminhaoId } = {},
+  ) {
+    const parsedCaminhaoId = parseOptionalInt(caminhaoId);
+    const dateWhere = buildDateWhere({ startDate, endDate });
+    const baseWhere = {
+      tenant_id: Number(tenantId),
+      ...(parsedCaminhaoId ? { caminhao_id: parsedCaminhaoId } : {}),
+    };
+    const gastosDateWhere = dateWhere ? { data_gasto: dateWhere } : {};
+    const checklistDateWhere = dateWhere ? { data_manutencao: dateWhere } : {};
+
+    const [gastos, checklists] = await Promise.all([
+      prisma.gastos.findMany({
+        where: { ...baseWhere, ...gastosDateWhere },
+        select: {
+          valor: true,
+          data_gasto: true,
+          km_registro: true,
+          caminhao_id: true,
+        },
+      }),
+      prisma.checklist.findMany({
+        where: { ...baseWhere, ...checklistDateWhere },
+        select: {
+          valor: true,
+          data_manutencao: true,
+          km_manutencao: true,
+          km_registro: true,
+          caminhao_id: true,
+        },
+      }),
+    ]);
+
+    /** @type {Map<string, { cost: number, timeline: {date:Date,km:number|null}[] }>} */
+    const byMonth = new Map();
+
+    const monthKey = (d) => {
+      const dt = new Date(d);
+      const y = dt.getUTCFullYear();
+      const m = String(dt.getUTCMonth() + 1).padStart(2, "0");
+      return `${y}-${m}`;
+    };
+
+    const ensure = (key) => {
+      if (!byMonth.has(key)) {
+        byMonth.set(key, { cost: 0, timeline: [] });
+      }
+      return byMonth.get(key);
+    };
+
+    for (const g of gastos) {
+      const key = monthKey(g.data_gasto);
+      const bucket = ensure(key);
+      bucket.cost += Number(g.valor || 0);
+      if (g.km_registro != null) {
+        bucket.timeline.push({ date: g.data_gasto, km: g.km_registro });
+      }
+    }
+    for (const c of checklists) {
+      const key = monthKey(c.data_manutencao);
+      const bucket = ensure(key);
+      bucket.cost += Number(c.valor || 0);
+      const km = c.km_manutencao ?? c.km_registro;
+      if (km != null) {
+        bucket.timeline.push({ date: c.data_manutencao, km });
+      }
+    }
+
+    const months = [...byMonth.keys()]
+      .sort()
+      .map((month) => {
+        const b = byMonth.get(month);
+        const { kmDriven, kmDataInsufficient } = computeKmDrivenFromTimeline(
+          b.timeline,
+        );
+        const costPerKm =
+          kmDriven && kmDriven > 0 ? b.cost / kmDriven : null;
+        return {
+          month,
+          totalCost: b.cost,
+          kmDriven,
+          costPerKm,
+          kmDataInsufficient,
+        };
+      });
+
+    return serializePrisma({
+      filters: {
+        startDate: startDate || null,
+        endDate: endDate || null,
+        caminhaoId: parsedCaminhaoId || null,
+      },
+      months,
+    });
+  }
 }

@@ -12,7 +12,12 @@
     "db:down": "docker compose -f ../docker-compose.yml down",
     "db:migrate": "node scripts/baseline-and-deploy.mjs",
     "tenant:create": "node scripts/create-tenant.mjs",
+    "tenant:billing": "node scripts/set-tenant-billing.mjs",
+    "worker:ordem-coleta": "node scripts/worker-ordem-coleta.mjs",
+    "job:weekly-digest": "node scripts/run-weekly-digest.mjs",
+    "db:backup": "node scripts/backup-db.mjs",
     "import:trans-motin": "node scripts/import-trans-motin-historico.mjs",
+    "import:trans-motin-frota": "node scripts/import-trans-motin-frota.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node --test tests/unit/**/*.test.js tests/integration/**/*.test.js",
@@ -31,6 +36,7 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1104.0",
     "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
     "bcryptjs": "^3.0.3",
@@ -46,6 +52,7 @@
     "pg": "^8.20.0",
     "prisma": "^7.5.0",
     "puppeteer": "^24.15.0",
+    "stripe": "^22.4.0",
     "zod": "^4.1.12"
   },
   "engines": {

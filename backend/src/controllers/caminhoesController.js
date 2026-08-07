@@ -1,10 +1,12 @@
 // backend/src/controllers/caminhoesController.js
 import { CaminhaoService } from "../services/CaminhaoService.js";
 import { CaminhaoDocumentoService } from "../services/CaminhaoDocumentoService.js";
+import { ComposicaoService } from "../services/ComposicaoService.js";
 import { caminhoesModel } from "../models/caminhoesModel.js";
 import {
   caminhaoSchema,
   caminhaoUpdateSchema,
+  vinculoComposicaoSchema,
 } from "../schemas/caminhaoSchema.js";
 import { catchAsync } from "../utils/catchAsync.js";
 import { requireTenantId } from "../utils/tenant.js";
@@ -29,6 +31,7 @@ export const caminhoesController = {
     const tenantId = requireTenantId(req);
     const filtro = req.query.filtro || null;
     const termo = req.query.termo || null;
+    const tipo_veiculo = req.query.tipo_veiculo || null;
 
     let page;
     let limit;
@@ -49,6 +52,7 @@ export const caminhoesController = {
       limit,
       filtro,
       termo,
+      tipo_veiculo,
     });
 
     res.status(200).json({
@@ -76,7 +80,7 @@ export const caminhoesController = {
 
   searchCaminhoes: catchAsync(async (req, res) => {
     const tenantId = requireTenantId(req);
-    const { term } = req.query;
+    const { term, tipo_veiculo } = req.query;
 
     if (!term || term.trim().length < 2) {
       return res.status(400).json({
@@ -85,7 +89,11 @@ export const caminhoesController = {
       });
     }
 
-    const caminhoes = await CaminhaoService.pesquisarCaminhoes(tenantId, term);
+    const caminhoes = await CaminhaoService.pesquisarCaminhoes(
+      tenantId,
+      term,
+      tipo_veiculo || null,
+    );
 
     res.status(200).json({
       success: true,
@@ -165,6 +173,36 @@ export const caminhoesController = {
       success: true,
       data: caminhaoAtualizado,
       message: "Caminhão atualizado com sucesso",
+    });
+  }),
+
+  listarVinculos: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    const id = Number(req.params.id);
+    const vinculos = await ComposicaoService.listarPorCavalo(tenantId, id);
+    res.status(200).json({ success: true, data: vinculos });
+  }),
+
+  vincularCarreta: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    const id = Number(req.params.id);
+    const body = vinculoComposicaoSchema.parse(req.body);
+    const vinculo = await ComposicaoService.vincular(tenantId, id, body);
+    res.status(201).json({
+      success: true,
+      data: vinculo,
+      message: "Carreta vinculada com sucesso",
+    });
+  }),
+
+  desvincularCarreta: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    const vinculoId = Number(req.params.vinculoId);
+    const vinculo = await ComposicaoService.desvincular(tenantId, vinculoId);
+    res.status(200).json({
+      success: true,
+      data: vinculo,
+      message: "Carreta desvinculada",
     });
   }),
 };

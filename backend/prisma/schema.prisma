@@ -8,20 +8,43 @@ datasource db {
 }
 
 model tenants {
-  id                  Int                   @id @default(autoincrement())
-  nome                String                @db.VarChar(120)
-  slug                String                @unique @db.VarChar(64)
-  ativo               Boolean               @default(true)
-  criado_em           DateTime              @default(now()) @db.Timestamptz(6)
-  users               users[]
-  caminhoes           caminhoes[]
-  gastos              gastos[]
-  checklist           checklist[]
-  pneus               pneus[]
-  ordens_coleta_envio ordens_coleta_envio[]
-  caminhao_documentos caminhao_documentos[]
+  id                     Int                     @id @default(autoincrement())
+  nome                   String                  @db.VarChar(120)
+  slug                   String                  @unique @db.VarChar(64)
+  ativo                  Boolean                 @default(true)
+  features               Json                    @default("{}") @db.JsonB
+  /// Clientes legados / parceiros: sem cobrança Stripe
+  billing_exempt         Boolean                 @default(false)
+  /// starter | ops | fiscal | complete
+  plan                   String?                 @db.VarChar(32)
+  /// trialing | active | past_due | canceled | none
+  subscription_status    String?                 @db.VarChar(32)
+  trial_ends_at          DateTime?               @db.Timestamptz(6)
+  stripe_customer_id     String?                 @unique @db.VarChar(255)
+  stripe_subscription_id String?                 @unique @db.VarChar(255)
+  stripe_price_id        String?                 @db.VarChar(255)
+  onboarding_completed_at DateTime?              @db.Timestamptz(6)
+  alert_email            String?                 @db.VarChar(255)
+  whatsapp_notify_phone  String?                 @db.VarChar(30)
+  weekly_digest_enabled  Boolean                 @default(true)
+  last_weekly_digest_at  DateTime?               @db.Timestamptz(6)
+  criado_em              DateTime                @default(now()) @db.Timestamptz(6)
+  users                  users[]
+  caminhoes              caminhoes[]
+  gastos                 gastos[]
+  checklist              checklist[]
+  pneus                  pneus[]
+  ordens_coleta_envio    ordens_coleta_envio[]
+  caminhao_documentos    caminhao_documentos[]
+  vinculos_composicao    vinculos_composicao[]
+  produtos               produtos[]
+  notas_fiscais          notas_fiscais[]
+  estoque_movimentos     estoque_movimentos[]
+  motoristas             motoristas[]
 
   @@index([slug])
+  @@index([stripe_customer_id])
+  @@index([billing_exempt])
 }
 
 /// This table contains check constraints and requires additional setup for migrations.
@@ -35,36 +58,115 @@ model caminhoes {
   numero_carreta_1    Int?
   numero_cavalo       Int?
   motorista           String?               @db.VarChar(100)
+  motorista_id        Int?
   numero_carreta_2    Int?
   placa_carreta_1     String?               @db.VarChar(10)
   placa_carreta_2     String?               @db.VarChar(10)
   ano                 Int?
   marca               String?               @db.VarChar(100)
   modelo              String?               @db.VarChar(100)
+  /// truck | cavalo | carreta
+  tipo_veiculo        String                @default("truck") @db.VarChar(20)
+  /// ex: 6x2, 6x4, 8x2, 8x4
+  config_eixos        String?               @db.VarChar(32)
+  com_4_eixo          Boolean               @default(false)
+  chassi              String?               @db.VarChar(40)
+  /// Solofino | Colombocal | Transmotin (opcional)
+  empresa             String?               @db.VarChar(80)
   tenants             tenants               @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  motorista_ref       motoristas?           @relation(fields: [motorista_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   checklist           checklist[]
   gastos              gastos[]
   pneus               pneus[]
   ordens_coleta_envio ordens_coleta_envio[]
   caminhao_documentos caminhao_documentos[]
+  vinculos_como_cavalo  vinculos_composicao[] @relation("VinculoCavalo")
+  vinculos_como_carreta vinculos_composicao[] @relation("VinculoCarreta")
+  estoque_movimentos  estoque_movimentos[]
 
   @@unique([tenant_id, placa])
   @@index([tenant_id])
+  @@index([tenant_id, tipo_veiculo])
+  @@index([motorista_id])
+}
+
+model vinculos_composicao {
+  id          Int       @id @default(autoincrement())
+  tenant_id   Int
+  cavalo_id   Int
+  carreta_id  Int
+  ordem       Int       @default(1)
+  ativo       Boolean   @default(true)
+  inicio_em   DateTime  @default(now()) @db.Timestamptz(6)
+  fim_em      DateTime? @db.Timestamptz(6)
+  tenants     tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  cavalo      caminhoes @relation("VinculoCavalo", fields: [cavalo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  carreta     caminhoes @relation("VinculoCarreta", fields: [carreta_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([tenant_id])
+  @@index([cavalo_id, ativo])
+  @@index([carreta_id, ativo])
 }
 
 model caminhao_documentos {
-  id            Int       @id @default(autoincrement())
-  tenant_id     Int
-  caminhao_id   Int
-  nome_original String    @db.VarChar(255)
-  arquivo_path  String    @db.VarChar(500)
-  tamanho_bytes Int
-  criado_em     DateTime? @default(now()) @db.Timestamptz(6)
-  tenants       tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  caminhoes     caminhoes @relation(fields: [caminhao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id             Int       @id @default(autoincrement())
+  tenant_id      Int
+  caminhao_id    Int
+  nome_original  String    @db.VarChar(255)
+  arquivo_path   String    @db.VarChar(500)
+  tamanho_bytes  Int
+  tipo_documento String?   @db.VarChar(64)
+  validade_em    DateTime? @db.Date
+  observacao     String?
+  criado_em      DateTime? @default(now()) @db.Timestamptz(6)
+  tenants        tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  caminhoes      caminhoes @relation(fields: [caminhao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([caminhao_id])
   @@index([tenant_id])
+  @@index([validade_em])
+  @@index([tenant_id, validade_em])
+}
+
+model motoristas {
+  id            Int         @id @default(autoincrement())
+  tenant_id     Int
+  nome          String      @db.VarChar(120)
+  cpf           String?     @db.VarChar(14)
+  cnh           String?     @db.VarChar(30)
+  cnh_categoria String?     @db.VarChar(8)
+  cnh_validade  DateTime?   @db.Date
+  telefone      String?     @db.VarChar(30)
+  whatsapp      String?     @db.VarChar(30)
+  ativo         Boolean     @default(true)
+  observacao    String?
+  criado_em     DateTime    @default(now()) @db.Timestamptz(6)
+  tenants       tenants     @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  caminhoes     caminhoes[]
+
+  @@index([tenant_id])
+  @@index([tenant_id, ativo])
+  @@index([cnh_validade])
+}
+
+model audit_logs {
+  id          BigInt   @id @default(autoincrement())
+  tenant_id   Int?
+  user_id     Int?
+  user_email  String?  @db.VarChar(255)
+  action      String   @db.VarChar(32)
+  method      String   @db.VarChar(16)
+  path        String   @db.VarChar(500)
+  entity      String?  @db.VarChar(64)
+  entity_id   String?  @db.VarChar(64)
+  ip          String?  @db.VarChar(64)
+  request_id  String?  @db.VarChar(64)
+  summary     Json?
+  criado_em   DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([tenant_id])
+  @@index([criado_em])
+  @@index([tenant_id, criado_em])
 }
 
 model ordens_coleta_envio {
@@ -94,6 +196,8 @@ model users {
   nome          String   @db.VarChar(120)
   password_hash String   @db.VarChar(255)
   role          String   @default("operator") @db.VarChar(32)
+  /// Permissões extras além do role (array JSON de strings)
+  permissions   Json     @default("[]") @db.JsonB
   ativo         Boolean  @default(true)
   criado_em     DateTime @default(now()) @db.Timestamptz(6)
   tenants       tenants  @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
@@ -113,6 +217,10 @@ model checklist {
   valor           Decimal?         @db.Decimal(10, 2)
   km_registro     BigInt?
   km_manutencao   Int?
+  /** KM previsto para a próxima manutenção (ex.: troca de óleo). */
+  proxima_km      Int?
+  /** Data prevista para a próxima manutenção. */
+  proxima_data    DateTime?        @db.Date
   tenants         tenants          @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   caminhoes       caminhoes?       @relation(fields: [caminhao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   itens_checklist itens_checklist? @relation(fields: [item_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -120,6 +228,7 @@ model checklist {
   @@index([caminhao_id])
   @@index([data_manutencao])
   @@index([tenant_id])
+  @@index([proxima_data])
 }
 
 model gastos {
@@ -189,4 +298,85 @@ model tipos_gastos {
   id        Int      @id @default(autoincrement())
   nome_tipo String   @unique @db.VarChar(255)
   gastos    gastos[]
+}
+
+model produtos {
+  id                 Int                  @id @default(autoincrement())
+  tenant_id          Int
+  codigo             String?              @db.VarChar(60)
+  descricao          String               @db.VarChar(500)
+  unidade            String               @default("UN") @db.VarChar(20)
+  ncm                String?              @db.VarChar(20)
+  saldo              Decimal              @default(0) @db.Decimal(14, 3)
+  criado_em          DateTime             @default(now()) @db.Timestamptz(6)
+  atualizado_em      DateTime             @default(now()) @updatedAt @db.Timestamptz(6)
+  tenants            tenants              @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  nota_itens         nota_itens[]
+  estoque_movimentos estoque_movimentos[]
+
+  @@index([tenant_id])
+  @@index([tenant_id, codigo])
+  @@index([tenant_id, descricao])
+}
+
+model notas_fiscais {
+  id           Int         @id @default(autoincrement())
+  tenant_id    Int
+  chave_acesso String?     @db.VarChar(44)
+  numero       String      @db.VarChar(20)
+  serie        String?     @db.VarChar(10)
+  emitente     String?     @db.VarChar(255)
+  cnpj_emitente String?    @db.VarChar(18)
+  data_emissao DateTime?   @db.Date
+  valor_total  Decimal?    @db.Decimal(14, 2)
+  pdf_path     String?     @db.VarChar(500)
+  xml_path     String?     @db.VarChar(500)
+  status       String      @default("confirmada") @db.VarChar(32)
+  criado_em    DateTime    @default(now()) @db.Timestamptz(6)
+  tenants      tenants     @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  itens        nota_itens[]
+  movimentos   estoque_movimentos[]
+
+  @@index([tenant_id])
+  @@index([tenant_id, numero])
+  @@index([tenant_id, chave_acesso])
+}
+
+model nota_itens {
+  id              Int           @id @default(autoincrement())
+  nota_id         Int
+  produto_id      Int?
+  codigo          String?       @db.VarChar(60)
+  descricao       String        @db.VarChar(500)
+  unidade         String        @default("UN") @db.VarChar(20)
+  ncm             String?       @db.VarChar(20)
+  quantidade      Decimal       @db.Decimal(14, 3)
+  valor_unitario  Decimal?      @db.Decimal(14, 4)
+  valor_total     Decimal?      @db.Decimal(14, 2)
+  notas_fiscais   notas_fiscais @relation(fields: [nota_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  produtos        produtos?     @relation(fields: [produto_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([nota_id])
+  @@index([produto_id])
+}
+
+model estoque_movimentos {
+  id           Int            @id @default(autoincrement())
+  tenant_id    Int
+  produto_id   Int
+  tipo         String         @db.VarChar(20)
+  quantidade   Decimal        @db.Decimal(14, 3)
+  nota_id      Int?
+  caminhao_id  Int?
+  motivo       String?        @db.VarChar(500)
+  criado_em    DateTime       @default(now()) @db.Timestamptz(6)
+  tenants      tenants        @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  produtos     produtos       @relation(fields: [produto_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  notas_fiscais notas_fiscais? @relation(fields: [nota_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  caminhoes    caminhoes?     @relation(fields: [caminhao_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([tenant_id])
+  @@index([produto_id])
+  @@index([nota_id])
+  @@index([caminhao_id])
 }

@@ -405,6 +405,26 @@ export class OrdemColetaService {
         to: parsed.emailDestinatario,
       });
 
+      try {
+        const { WhatsAppService } = await import("./WhatsAppService.js");
+        if (WhatsAppService.isConfigured() && registro?.tenant_id) {
+          const tenant = await prisma.tenants.findUnique({
+            where: { id: registro.tenant_id },
+            select: { whatsapp_notify_phone: true, nome: true },
+          });
+          if (tenant?.whatsapp_notify_phone) {
+            await WhatsAppService.sendText({
+              to: tenant.whatsapp_notify_phone,
+              body: `ATrack — ${tipoLegivel} enviada para ${parsed.emailDestinatario} (placa ${parsed.placa || "—"}).`,
+            });
+          }
+        }
+      } catch (waErr) {
+        logger.warn("WhatsApp pós-ordem falhou (e-mail ok)", {
+          err: waErr?.message,
+        });
+      }
+
       return { id: envioId, assunto, filename, status: "sent" };
     } catch (err) {
       logger.error("Falha ao enviar ordem de coleta", {

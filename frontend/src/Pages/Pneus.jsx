@@ -166,7 +166,7 @@ const PneusTable = ({
           </p>
         </div>
 
-        <div className="flex gap-3 w-full xl:w-auto shrink-0">
+        <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto shrink-0">
           <div className="w-full xl:w-64">
             <FormField
               placeholder="Filtrar por placa..."
@@ -190,8 +190,10 @@ const PneusTable = ({
               }
             />
           </div>
-          <Link to="/pneus/atribuir">
-            <Button variant="primary">Instalar pneus</Button>
+          <Link to="/pneus/atribuir" className="w-full sm:w-auto">
+            <Button variant="primary" className="w-full sm:w-auto">
+              Instalar pneus
+            </Button>
           </Link>
         </div>
       </div>

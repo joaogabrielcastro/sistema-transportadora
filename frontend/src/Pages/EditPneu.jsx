@@ -12,6 +12,7 @@ import {
   Alert,
   PageHeader,
 } from "../components/ui";
+import { formatCaminhaoOptions } from "../utils/caminhaoOptions.js";
 
 const EditPneu = () => {
   const { id } = useParams();
@@ -122,10 +123,7 @@ const EditPneu = () => {
     (c) => c.id === parseInt(formData.caminhao_id)
   );
 
-  const caminhaoOptions = caminhoes.map((c) => ({
-    value: c.id,
-    label: c.placa,
-  }));
+  const caminhaoOptions = formatCaminhaoOptions(caminhoes);
 
   const posicaoOptions = posicoes.map((p) => ({
     value: p.id,
@@ -178,12 +176,13 @@ const EditPneu = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 label="Caminhão"
-                type="select"
+                type="typeahead"
                 name="caminhao_id"
                 value={formData.caminhao_id}
                 onChange={handleChange}
                 options={caminhaoOptions}
                 disabled
+                placeholder="Digite para buscar..."
                 helperText={
                   caminhaoSelecionado
                     ? `KM atual: ${caminhaoSelecionado.km_atual?.toLocaleString(

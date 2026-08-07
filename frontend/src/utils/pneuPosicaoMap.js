@@ -1,4 +1,4 @@
-/** Agrupa posições do banco em diagrama dinâmico conforme o caminhão. */
+/** Agrupa posições do banco em diagrama dinâmico conforme o veículo. */
 
 const normalize = (value) =>
   String(value || "")
@@ -8,13 +8,14 @@ const normalize = (value) =>
 
 const parsePosicaoMeta = (nome) => {
   const n = normalize(nome);
+  const isCarreta = /carreta/.test(n);
 
   if (/dianteir/.test(n) && /(esq|esquer)/.test(n)) {
-    return { type: "front", side: "left" };
+    return { type: "front", side: "left", scope: "cavalo" };
   }
 
   if (/dianteir/.test(n) && /(dir|direit)/.test(n)) {
-    return { type: "front", side: "right" };
+    return { type: "front", side: "right", scope: "cavalo" };
   }
 
   if (/estepe/.test(n)) {
@@ -22,6 +23,7 @@ const parsePosicaoMeta = (nome) => {
     return {
       type: "spare",
       index: indexMatch ? parseInt(indexMatch[1], 10) : 1,
+      scope: isCarreta ? "carreta" : "cavalo",
     };
   }
 
@@ -30,16 +32,28 @@ const parsePosicaoMeta = (nome) => {
     const axleNum = parseInt(axleMatch[1], 10);
     const side = /(dir|direit)/.test(n) ? "right" : "left";
     const mount = /(int|intern)/.test(n) ? "inner" : "outer";
-    return { type: "axle", axleNum, side, mount };
+    return {
+      type: "axle",
+      axleNum,
+      side,
+      mount,
+      scope: isCarreta ? "carreta" : "cavalo",
+    };
   }
 
   if (/traseir/.test(n)) {
     const side = /(dir|direit)/.test(n) ? "right" : "left";
     const mount = /(int|intern)/.test(n) ? "inner" : "outer";
-    return { type: "axle", axleNum: 2, side, mount };
+    return {
+      type: "axle",
+      axleNum: 2,
+      side,
+      mount,
+      scope: "cavalo",
+    };
   }
 
-  return { type: "unknown" };
+  return { type: "unknown", scope: "cavalo" };
 };
 
 const emptyAxle = () => ({
@@ -90,37 +104,92 @@ const buildOrderedPositions = ({ front, axles, spares }) => {
   return ordered;
 };
 
+/** Inferência de qtd de pneus a partir de config_eixos (ex: 6x2, 8x4). */
+export const inferQtdFromConfig = (configEixos, com4Eixo = false) => {
+  const m = String(configEixos || "").match(/(\d+)\s*[xX]\s*(\d+)/);
+  if (!m) return null;
+  const wheels = parseInt(m[1], 10);
+  // Heurística comum: N em NxM ≈ posições de roda (não necessariamente pneus dual)
+  // Preferimos qtd_pneus explícito; aqui só fallback.
+  let qtd = wheels;
+  if (com4Eixo && qtd < 10) qtd += 2;
+  return qtd;
+};
+
+export const resolveTipoVeiculo = (veiculo) => {
+  const t = String(veiculo?.tipo_veiculo || "").toLowerCase();
+  if (t === "cavalo" || t === "carreta" || t === "truck") return t;
+  if (veiculo?.placa_carreta_1 || veiculo?.numero_cavalo) return "cavalo";
+  return "truck";
+};
+
 export const inferTireLayout = (caminhao, orderedPositions) => {
-  const qtd = parseInt(caminhao?.qtd_pneus, 10);
-  const hasCarreta1 = Boolean(caminhao?.placa_carreta_1?.trim());
-  const hasCarreta2 = Boolean(caminhao?.placa_carreta_2?.trim());
+  const tipo = resolveTipoVeiculo(caminhao);
+  let qtd = parseInt(caminhao?.qtd_pneus, 10);
+
+  if (!Number.isFinite(qtd) || qtd <= 0) {
+    const inferred = inferQtdFromConfig(
+      caminhao?.config_eixos,
+      caminhao?.com_4_eixo,
+    );
+    if (inferred) qtd = inferred;
+  }
+
+  const vinculos = caminhao?.composicao?.vinculos || [];
+  const carretasVinculadas = vinculos.filter((v) => v.ativo !== false);
 
   if (!Number.isFinite(qtd) || qtd <= 0) {
     return {
       description: `${orderedPositions.length} posições cadastradas`,
       limit: orderedPositions.length,
+      tipo,
     };
   }
 
-  const parts = [`${qtd} pneus no veículo`];
-  const visible = Math.min(qtd, orderedPositions.length);
-  const rearVisible = Math.max(0, visible - 2);
-  const rearAxles = Math.ceil(rearVisible / 4);
+  const tipoLabel =
+    tipo === "carreta" ? "carreta" : tipo === "cavalo" ? "cavalo" : "truck";
+  const parts = [`${qtd} pneus (${tipoLabel})`];
 
-  if (rearAxles > 0) {
-    parts.push(`${rearAxles} eixo(s) traseiro(s) no diagrama`);
+  if (caminhao?.config_eixos) {
+    parts.push(caminhao.config_eixos);
+  }
+  if (caminhao?.com_4_eixo) {
+    parts.push("c/ 4º eixo");
   }
 
-  if (hasCarreta1 || hasCarreta2) {
-    const carretas = [hasCarreta1 && "1ª carreta", hasCarreta2 && "2ª carreta"]
-      .filter(Boolean)
-      .join(" + ");
-    parts.push(carretas);
+  if (tipo === "carreta") {
+    const axles = Math.ceil(qtd / 4);
+    parts.push(`${axles} eixo(s) no diagrama`);
+  } else {
+    const visible = Math.min(qtd, orderedPositions.length);
+    const rearVisible = Math.max(0, visible - 2);
+    const rearAxles = Math.ceil(rearVisible / 4);
+    if (rearAxles > 0) {
+      parts.push(`${rearAxles} eixo(s) traseiro(s)`);
+    }
+  }
+
+  if (carretasVinculadas.length) {
+    parts.push(
+      carretasVinculadas
+        .map((v, i) => `${i + 1}ª carreta ${v.carreta?.placa || ""}`.trim())
+        .join(" + "),
+    );
+  } else {
+    const hasCarreta1 = Boolean(caminhao?.placa_carreta_1?.trim());
+    const hasCarreta2 = Boolean(caminhao?.placa_carreta_2?.trim());
+    if (hasCarreta1 || hasCarreta2) {
+      const carretas = [hasCarreta1 && "1ª carreta", hasCarreta2 && "2ª carreta"]
+        .filter(Boolean)
+        .join(" + ");
+      parts.push(carretas);
+    }
   }
 
   return {
     description: parts.join(" • "),
     limit: qtd,
+    tipo,
   };
 };
 
@@ -134,16 +203,34 @@ const pruneAxle = (axle, allowedIds) => {
   return next;
 };
 
+const filterPosicoesByScope = (posicoes, tipo) => {
+  if (tipo === "carreta") {
+    const carretaOnly = posicoes.filter((p) =>
+      /carreta/i.test(p.nome_posicao || ""),
+    );
+    if (carretaOnly.length) return carretaOnly;
+  }
+  // truck/cavalo: ignora posições prefixadas Carreta
+  return posicoes.filter((p) => !/carreta/i.test(p.nome_posicao || ""));
+};
+
 export const buildPositionDiagram = (posicoes, caminhao = null) => {
+  const tipo = resolveTipoVeiculo(caminhao);
+  const scoped = filterPosicoesByScope(posicoes, tipo);
+
   const front = { left: null, right: null };
   const axleMap = new Map();
   const spares = [];
   const unmapped = [];
 
-  for (const pos of posicoes) {
+  for (const pos of scoped) {
     const meta = parsePosicaoMeta(pos.nome_posicao);
 
     if (meta.type === "front") {
+      if (tipo === "carreta") {
+        unmapped.push(pos);
+        continue;
+      }
       front[meta.side] = pos;
       continue;
     }
@@ -169,8 +256,9 @@ export const buildPositionDiagram = (posicoes, caminhao = null) => {
     .sort((a, b) => a.index - b.index)
     .map((item) => item.pos);
 
+  // Carreta: sem dianteiro; eixos começam do 1
   const ordered = buildOrderedPositions({
-    front,
+    front: tipo === "carreta" ? { left: null, right: null } : front,
     axles: allAxles,
     spares: allSpares,
   });
@@ -182,10 +270,14 @@ export const buildPositionDiagram = (posicoes, caminhao = null) => {
       : ordered.map((pos) => pos.id),
   );
 
-  const prunedFront = {
-    left: front.left && allowedIds.has(front.left.id) ? front.left : null,
-    right: front.right && allowedIds.has(front.right.id) ? front.right : null,
-  };
+  const prunedFront =
+    tipo === "carreta"
+      ? { left: null, right: null }
+      : {
+          left: front.left && allowedIds.has(front.left.id) ? front.left : null,
+          right:
+            front.right && allowedIds.has(front.right.id) ? front.right : null,
+        };
 
   const prunedAxles = allAxles
     .map((axle) => pruneAxle(axle, allowedIds))
@@ -206,7 +298,42 @@ export const buildPositionDiagram = (posicoes, caminhao = null) => {
     unmapped,
     layout,
     allowedIds,
+    tipo,
+    title:
+      tipo === "carreta"
+        ? `Carreta ${caminhao?.placa || ""}`.trim()
+        : tipo === "cavalo"
+          ? `Cavalo ${caminhao?.placa || ""}`.trim()
+          : `Truck ${caminhao?.placa || ""}`.trim(),
   };
+};
+
+/**
+ * Monta seções (cavalo + carretas) para instalação em composição.
+ */
+export const buildCompositionDiagrams = (posicoes, cavalo, carretas = []) => {
+  const sections = [];
+  if (cavalo) {
+    sections.push({
+      key: `veiculo-${cavalo.id}`,
+      veiculo: cavalo,
+      diagram: buildPositionDiagram(posicoes, {
+        ...cavalo,
+        tipo_veiculo: resolveTipoVeiculo(cavalo),
+      }),
+    });
+  }
+  for (const carreta of carretas) {
+    sections.push({
+      key: `veiculo-${carreta.id}`,
+      veiculo: carreta,
+      diagram: buildPositionDiagram(posicoes, {
+        ...carreta,
+        tipo_veiculo: "carreta",
+      }),
+    });
+  }
+  return sections;
 };
 
 /** @deprecated use buildPositionDiagram */

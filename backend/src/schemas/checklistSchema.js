@@ -43,6 +43,16 @@ export const checklistSchema = z.object({
   valor: z.coerce.number().nonnegative().optional().nullable(),
   observacao: z.string().optional().nullable(),
   oficina: z.string().optional().nullable(),
+  /** KM da próxima troca / manutenção (lembrete). */
+  proxima_km: z.preprocess(
+    (v) => (v === "" || v === undefined ? null : v),
+    z.coerce.number().int().positive().optional().nullable(),
+  ),
+  /** Data da próxima troca / manutenção (lembrete; pode ser futura). */
+  proxima_data: z.preprocess(
+    (v) => (v === "" || v === undefined ? null : v),
+    dataStringSchema.optional().nullable(),
+  ),
 });
 
 export const checklistUpdateSchema = checklistSchema.partial();

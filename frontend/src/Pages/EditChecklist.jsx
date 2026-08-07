@@ -11,6 +11,7 @@ import {
   Alert,
   PageHeader,
 } from "../components/ui";
+import { formatCaminhaoOptions } from "../utils/caminhaoOptions.js";
 
 const EditChecklist = () => {
   const { id } = useParams();
@@ -31,6 +32,8 @@ const EditChecklist = () => {
     valor: "",
     oficina: "",
     km_registro: "",
+    proxima_km: "",
+    proxima_data: "",
   });
   const [caminhoes, setCaminhoes] = useState([]);
   const [submitting, setSubmitting] = useState(false);
@@ -51,6 +54,11 @@ const EditChecklist = () => {
       valor: checklistData.valor || "",
       oficina: checklistData.oficina || "",
       km_registro: checklistData.km_manutencao || "",
+      proxima_km:
+        checklistData.proxima_km != null ? String(checklistData.proxima_km) : "",
+      proxima_data: checklistData.proxima_data
+        ? new Date(checklistData.proxima_data).toISOString().split("T")[0]
+        : "",
     });
     setCaminhoes(data.caminhoes);
   }, [data, id]);
@@ -78,6 +86,10 @@ const EditChecklist = () => {
         km_manutencao: formData.km_registro
           ? parseInt(formData.km_registro)
           : null,
+        proxima_km: formData.proxima_km
+          ? parseInt(formData.proxima_km, 10)
+          : null,
+        proxima_data: formData.proxima_data || null,
       };
 
       await put(`/checklist/${id}`, payload);
@@ -86,17 +98,14 @@ const EditChecklist = () => {
       setTimeout(() => {
         navigate("/manutencao-gastos");
       }, 2000);
-    } catch (err) {
-      console.error("Erro completo:", err);
+    } catch {
+      // Toast de erro vem do useApiMutation
     } finally {
       setSubmitting(false);
     }
   };
 
-  const caminhaoOptions = caminhoes.map((c) => ({
-    value: c.id,
-    label: `${c.placa} - KM: ${c.km_atual?.toLocaleString("pt-BR")}`,
-  }));
+  const caminhaoOptions = formatCaminhaoOptions(caminhoes, { includeKm: true });
 
   const caminhaoPlaca =
     caminhoes.find((c) => c.id === parseInt(formData.caminhao_id))?.placa || "";
@@ -155,12 +164,13 @@ const EditChecklist = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 label="Caminhão"
-                type="select"
+                type="typeahead"
                 name="caminhao_id"
                 value={formData.caminhao_id}
                 onChange={handleChange}
                 options={caminhaoOptions}
                 disabled
+                placeholder="Digite para buscar..."
               />
 
               <FormField
@@ -212,6 +222,26 @@ const EditChecklist = () => {
                 value={formData.oficina}
                 onChange={handleChange}
                 placeholder="Nome da oficina"
+              />
+
+              <FormField
+                label="Próxima troca (KM)"
+                type="number"
+                name="proxima_km"
+                value={formData.proxima_km}
+                onChange={handleChange}
+                min="0"
+                placeholder="Ex.: 150000"
+                helperText="Opcional — gera alerta em Alertas"
+              />
+
+              <FormField
+                label="Próxima troca (data)"
+                type="date"
+                name="proxima_data"
+                value={formData.proxima_data}
+                onChange={handleChange}
+                helperText="Opcional — gera alerta em Alertas"
               />
             </div>
 

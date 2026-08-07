@@ -26,6 +26,7 @@ export const caminhaoDocumentosController = {
       tenantId,
       req.params.placa,
       files,
+      req.body || {},
     );
     res.status(201).json({
       success: true,
@@ -37,19 +38,36 @@ export const caminhaoDocumentosController = {
     });
   }),
 
-  download: catchAsync(async (req, res) => {
+  patchMeta: catchAsync(async (req, res) => {
     const tenantId = requireTenantId(req);
-    const { doc, absolute } = await CaminhaoDocumentoService.obterArquivo(
+    const data = await CaminhaoDocumentoService.patchMeta(
       tenantId,
       req.params.placa,
       req.params.docId,
+      req.body,
     );
+    res.json({ success: true, data });
+  }),
+
+  download: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    const { doc, absolute, cleanupTemp } =
+      await CaminhaoDocumentoService.obterArquivo(
+        tenantId,
+        req.params.placa,
+        req.params.docId,
+      );
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
       `inline; filename="${encodeURIComponent(doc.nome_original)}"`,
     );
-    res.sendFile(absolute);
+    res.sendFile(absolute, async () => {
+      if (cleanupTemp) {
+        const fs = await import("node:fs/promises");
+        await fs.unlink(cleanupTemp).catch(() => {});
+      }
+    });
   }),
 
   remover: catchAsync(async (req, res) => {

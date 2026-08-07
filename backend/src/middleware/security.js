@@ -4,6 +4,8 @@ import { config } from "../config/index.js";
 import { logger } from "../utils/logger.js";
 import { verifyAccessToken } from "../utils/jwt.js";
 import { resolveDefaultTenantId } from "../utils/tenant.js";
+import { resolvePermissions } from "../utils/permissions.js";
+import { AuditService } from "../services/AuditService.js";
 
 const SENSITIVE_KEY = /pass|password|token|secret|authorization|smtp/i;
 
@@ -99,6 +101,18 @@ export const apiRateLimiter = rateLimit({
   },
 });
 
+/** Limite mais estrito para login/register (anti brute-force). */
+export const authRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.AUTH_RATE_LIMIT_MAX || 40),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: "Muitas tentativas de login. Aguarde alguns minutos.",
+  },
+});
+
 function applyAuthUser(req, user) {
   if (req.context?.user) {
     req.context.user = user;
@@ -111,12 +125,14 @@ function applyJwtUser(req, jwtPayload) {
     return { ok: false, error: "Token sem tenant. Faça login novamente." };
   }
 
+  const role = jwtPayload.role || "operator";
   applyAuthUser(req, {
     id: String(jwtPayload.sub),
-    role: jwtPayload.role || "operator",
+    role,
     email: jwtPayload.email,
     nome: jwtPayload.nome,
     tenantId,
+    permissions: resolvePermissions(role, jwtPayload.permissions || []),
   });
   return { ok: true };
 }
@@ -158,6 +174,7 @@ export const requireAuth = async (req, res, next) => {
         role: "admin",
         email: "dev@local",
         tenantId,
+        permissions: resolvePermissions("admin"),
       });
       return next();
     }
@@ -188,6 +205,7 @@ export const requireAuth = async (req, res, next) => {
         role: "admin",
         email: "api-token",
         tenantId,
+        permissions: resolvePermissions("admin"),
       });
       return next();
     }
@@ -214,6 +232,27 @@ export const requireRole =
     return next();
   };
 
+/** Exige o API_TOKEN estático (ops / scripts), não JWT de usuário. */
+export const requireApiToken = (req, res, next) => {
+  const expected = config.auth.apiToken;
+  if (!expected) {
+    return res.status(503).json({
+      success: false,
+      error: "API_TOKEN não configurado no servidor",
+    });
+  }
+
+  const token = readBearerToken(req);
+  if (!tokensMatch(token, expected)) {
+    return res.status(401).json({
+      success: false,
+      error: "API token inválido",
+    });
+  }
+
+  return next();
+};
+
 export const auditLog = (req, res, next) => {
   const method = req.method.toUpperCase();
   const shouldAudit = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
@@ -222,6 +261,7 @@ export const auditLog = (req, res, next) => {
     return next();
   }
 
+  const summary = summarizeAuditBody(req.body);
   logger.info("Audit log", {
     requestId: req.context?.requestId,
     userId: req.context?.user?.id,
@@ -231,7 +271,19 @@ export const auditLog = (req, res, next) => {
     path: req.path,
     bodyKeys:
       req.body && typeof req.body === "object" ? Object.keys(req.body) : null,
-    bodySummary: summarizeAuditBody(req.body),
+    bodySummary: summary,
+  });
+
+  void AuditService.record({
+    tenantId: req.context?.user?.tenantId,
+    userId: req.context?.user?.id,
+    userEmail: req.context?.user?.email,
+    action: method,
+    method,
+    path: req.originalUrl || req.path,
+    ip: req.ip,
+    requestId: req.context?.requestId,
+    summary,
   });
 
   return next();

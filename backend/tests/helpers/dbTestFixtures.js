@@ -112,10 +112,11 @@ export async function createSecondaryTenantAdmin({
   email = `admin-${Date.now().toString(36)}@tenant-b.local`,
   password = "TenantBAdmin123!",
   nome = "Tenant B",
+  features = { ordem_coleta: true, notas_estoque: false },
 } = {}) {
   const password_hash = await hashPassword(password);
   const tenant = await prisma.tenants.create({
-    data: { nome, slug, ativo: true },
+    data: { nome, slug, ativo: true, features },
   });
 
   await prisma.users.create({
@@ -224,6 +225,14 @@ export async function createCaminhaoViaApi(app, authHeader, overrides = {}) {
 
 export async function cleanupCaminhao(caminhaoId) {
   if (!caminhaoId) return;
+  await prisma.estoque_movimentos
+    .deleteMany({ where: { caminhao_id: caminhaoId } })
+    .catch(() => {});
+  await prisma.vinculos_composicao
+    .deleteMany({
+      where: { OR: [{ cavalo_id: caminhaoId }, { carreta_id: caminhaoId }] },
+    })
+    .catch(() => {});
   await prisma.pneus.deleteMany({ where: { caminhao_id: caminhaoId } });
   await prisma.gastos.deleteMany({ where: { caminhao_id: caminhaoId } });
   await prisma.checklist.deleteMany({ where: { caminhao_id: caminhaoId } });
@@ -238,6 +247,15 @@ export async function cleanupCaminhao(caminhaoId) {
 
 export async function cleanupTenant(tenantId) {
   if (!tenantId) return;
+  await prisma.estoque_movimentos.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
+  await prisma.nota_itens
+    .deleteMany({
+      where: { notas_fiscais: { tenant_id: tenantId } },
+    })
+    .catch(() => {});
+  await prisma.notas_fiscais.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
+  await prisma.produtos.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
+  await prisma.vinculos_composicao.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.gastos.deleteMany({ where: { tenant_id: tenantId } });
   await prisma.checklist.deleteMany({ where: { tenant_id: tenantId } });
   await prisma.pneus.deleteMany({ where: { tenant_id: tenantId } });

@@ -9,16 +9,42 @@ import {
   uploadCaminhaoPdfs,
   handleMulterError,
 } from "../middleware/uploadCaminhaoPdf.js";
+import { requirePermission } from "../middleware/requirePermission.js";
+import { PERMISSIONS } from "../utils/permissions.js";
 
 const router = Router();
 
-router.get("/search", caminhoesController.searchCaminhoes);
-router.post("/", caminhoesController.createCaminhao);
-router.get("/", caminhoesController.getAllCaminhoes);
-router.delete("/:placa/cascade", caminhoesController.deleteCaminhaoWithCascade);
-router.get("/:placa/check-dependencies", caminhoesController.checkDependencies);
+router.get(
+  "/search",
+  requirePermission(PERMISSIONS.FROTA_READ),
+  caminhoesController.searchCaminhoes,
+);
+router.post(
+  "/",
+  requirePermission(PERMISSIONS.FROTA_WRITE),
+  caminhoesController.createCaminhao,
+);
+router.get(
+  "/",
+  requirePermission(PERMISSIONS.FROTA_READ),
+  caminhoesController.getAllCaminhoes,
+);
+router.delete(
+  "/:placa/cascade",
+  requirePermission(PERMISSIONS.FROTA_WRITE),
+  caminhoesController.deleteCaminhaoWithCascade,
+);
+router.get(
+  "/:placa/check-dependencies",
+  requirePermission(PERMISSIONS.FROTA_READ),
+  caminhoesController.checkDependencies,
+);
 
-router.get("/:placa/documentos", caminhaoDocumentosController.listar);
+router.get(
+  "/:placa/documentos",
+  requirePermission(PERMISSIONS.DOCS_READ),
+  caminhaoDocumentosController.listar,
+);
 const runUploadCaminhaoPdfs = (req, res, next) => {
   uploadCaminhaoPdfs(req, res, (err) => {
     if (err) return handleMulterError(err, req, res, next);
@@ -28,23 +54,61 @@ const runUploadCaminhaoPdfs = (req, res, next) => {
 
 router.post(
   "/:placa/documentos",
+  requirePermission(PERMISSIONS.DOCS_WRITE),
   loadCaminhaoForUpload,
   runUploadCaminhaoPdfs,
   caminhaoDocumentosController.upload,
 );
 router.get(
   "/:placa/documentos/:docId/arquivo",
+  requirePermission(PERMISSIONS.DOCS_READ),
   caminhaoDocumentosController.download,
+);
+router.patch(
+  "/:placa/documentos/:docId",
+  requirePermission(PERMISSIONS.DOCS_WRITE),
+  caminhaoDocumentosController.patchMeta,
 );
 router.delete(
   "/:placa/documentos/:docId",
+  requirePermission(PERMISSIONS.DOCS_WRITE),
   caminhaoDocumentosController.remover,
 );
 
-// Atualizar por ID (útil para chamadas do frontend que possuem apenas o ID)
-router.put("/id/:id", caminhoesController.updateCaminhaoById);
-router.get("/:placa", caminhoesController.getByPlaca);
-router.put("/:placa", caminhoesController.updateCaminhao);
-router.delete("/:placa", caminhoesController.deleteCaminhao);
+router.put(
+  "/id/:id",
+  requirePermission(PERMISSIONS.FROTA_WRITE),
+  caminhoesController.updateCaminhaoById,
+);
+router.get(
+  "/id/:id/vinculos",
+  requirePermission(PERMISSIONS.FROTA_READ),
+  caminhoesController.listarVinculos,
+);
+router.post(
+  "/id/:id/vinculos",
+  requirePermission(PERMISSIONS.FROTA_WRITE),
+  caminhoesController.vincularCarreta,
+);
+router.delete(
+  "/id/:id/vinculos/:vinculoId",
+  requirePermission(PERMISSIONS.FROTA_WRITE),
+  caminhoesController.desvincularCarreta,
+);
+router.get(
+  "/:placa",
+  requirePermission(PERMISSIONS.FROTA_READ),
+  caminhoesController.getByPlaca,
+);
+router.put(
+  "/:placa",
+  requirePermission(PERMISSIONS.FROTA_WRITE),
+  caminhoesController.updateCaminhao,
+);
+router.delete(
+  "/:placa",
+  requirePermission(PERMISSIONS.FROTA_WRITE),
+  caminhoesController.deleteCaminhao,
+);
 
 export default router;

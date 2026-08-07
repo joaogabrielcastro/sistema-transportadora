@@ -7,27 +7,51 @@ import {
   useCaminhoesListQuery,
   useReportsOverviewQuery,
 } from "../hooks";
-import { Card, Button, LoadingSpinner, Alert, PageHeader, StatCard, StatusBadge } from "../components/ui";
+import { Button, LoadingSpinner, Alert, PageHeader, StatCard, StatusBadge } from "../components/ui";
 import { useToast } from "../components/ui/useToast.js";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import { formatCurrency, formatNumber } from "../utils";
 import { extractApiArray, extractApiData } from "../utils/extractApiArray.js";
 import { queryKeys } from "../lib/queryKeys.ts";
-import { apiFetch } from "../lib/apiClient.js";
+import { apiFetch, parseApiError } from "../lib/apiClient.js";
 import ConfirmModal from "../components/ConfirmModal";
 import Pagination from "../components/Pagination.jsx";
 import EmptyState from "../components/EmptyState.jsx";
+import OnboardingBanner from "../components/OnboardingBanner.jsx";
+
+const TIPO_FILTROS = [
+  { id: "", label: "Todos" },
+  { id: "truck", label: "Trucks" },
+  { id: "cavalo", label: "Cavalos" },
+  { id: "carreta", label: "Carretas" },
+];
+
+const TIPO_LABEL = {
+  truck: "Truck",
+  cavalo: "Cavalo",
+  carreta: "Carreta",
+};
 
 const Home = () => {
   const [currentPage, setCurrentPage] = useState(1);
+  const [tipoFiltro, setTipoFiltro] = useState("");
   const toast = useToast();
   const queryClient = useQueryClient();
+
+  const listParams = useMemo(
+    () => ({
+      page: currentPage,
+      limit: 10,
+      ...(tipoFiltro ? { tipo_veiculo: tipoFiltro } : {}),
+    }),
+    [currentPage, tipoFiltro],
+  );
 
   const {
     data: caminhoesPage,
     isLoading: loadingCaminhoes,
     error: errorCaminhoes,
-  } = useCaminhoesListQuery({ page: currentPage, limit: 10 });
+  } = useCaminhoesListQuery(listParams);
 
   const caminhoes = caminhoesPage?.data ?? [];
   const pagination = caminhoesPage?.pagination;
@@ -54,7 +78,6 @@ const Home = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  // Estados para o modal de confirmação
   const [modalOpen, setModalOpen] = useState(false);
   const [caminhaoParaExcluir, setCaminhaoParaExcluir] = useState(null);
   const [ordensHistoricoCount, setOrdensHistoricoCount] = useState(0);
@@ -68,13 +91,21 @@ const Home = () => {
   }, [searchTerm]);
 
   const searchQuery = useQuery({
-    queryKey: queryKeys.caminhoes.search(debouncedSearch),
+    queryKey: queryKeys.caminhoes.search(debouncedSearch, tipoFiltro),
     queryFn: async () => {
-      const res = await apiFetch({
-        method: "GET",
-        url: `/caminhoes/search?term=${encodeURIComponent(debouncedSearch.trim())}`,
-      });
-      return extractApiArray(res);
+      try {
+        const params = new URLSearchParams({
+          term: debouncedSearch.trim(),
+        });
+        if (tipoFiltro) params.set("tipo_veiculo", tipoFiltro);
+        const res = await apiFetch({
+          method: "GET",
+          url: `/caminhoes/search?${params.toString()}`,
+        });
+        return extractApiArray(res);
+      } catch (err) {
+        throw await parseApiError(err);
+      }
     },
     enabled: isSearching,
   });
@@ -84,8 +115,13 @@ const Home = () => {
     : caminhoes;
 
   const listLoading = isSearching ? searchQuery.isLoading : loadingCaminhoes;
+  const listError = isSearching ? searchQuery.error : errorCaminhoes;
 
-  // Função para verificar dependências ANTES de excluir
+  const handleTipoFiltro = (tipo) => {
+    setTipoFiltro(tipo);
+    setCurrentPage(1);
+  };
+
   const handleOpenDeleteModal = async (caminhao) => {
     try {
       const dependenciasResponse = await apiGet(
@@ -117,7 +153,6 @@ const Home = () => {
       setOrdensHistoricoCount(detalhes?.ordens_envio ?? 0);
       setModalOpen(true);
     } catch (err) {
-      console.error("Erro ao verificar dependências:", err);
       toast.error("Não foi possível verificar dependências. Tente novamente.");
     }
   };
@@ -140,13 +175,12 @@ const Home = () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.caminhoes.all });
       handleCloseModal();
     } catch (err) {
-      console.error("Erro ao excluir caminhão:", err);
-      const errorMessage =
+      const nextError =
         err.message?.includes("registros vinculados")
           ? `Não é possível excluir o caminhão ${caminhaoParaExcluir.placa}. Existem registros vinculados.`
           : err.message || "Erro ao excluir caminhão. Tente novamente.";
-      setErrorMessage(errorMessage);
-      toast.error(errorMessage);
+      setErrorMessage(nextError);
+      toast.error(nextError);
     } finally {
       setExcluindo(false);
     }
@@ -156,11 +190,15 @@ const Home = () => {
     setCurrentPage(page);
   };
 
+  const tipoFiltroLabel =
+    TIPO_FILTROS.find((t) => t.id === tipoFiltro)?.label || "Todos";
+
   return (
     <PageLayout wide={false} className="space-y-8">
+        <OnboardingBanner />
         <PageHeader
           title="Dashboard"
-          subtitle="Bem-vindo ao sistema de gestão de frotas."
+          subtitle="Visão geral da frota, custos e próximos passos."
           actions={
             <Link to="/cadastro-caminhao">
               <Button
@@ -187,22 +225,19 @@ const Home = () => {
           }
         />
 
-        {(errorMessage) && (
+        {errorMessage && (
           <div className="space-y-3">
-            {errorMessage && (
-              <Alert
-                type="error"
-                message={
-                  <span className="whitespace-pre-line">{errorMessage}</span>
-                }
-                dismissible
-                onClose={() => setErrorMessage("")}
-              />
-            )}
+            <Alert
+              type="error"
+              message={
+                <span className="whitespace-pre-line">{errorMessage}</span>
+              }
+              dismissible
+              onClose={() => setErrorMessage("")}
+            />
           </div>
         )}
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-slide-up">
           <StatCard
             title="Total de Caminhões"
@@ -253,7 +288,7 @@ const Home = () => {
           <StatCard
             title="Manutenções"
             value={formatNumber(stats.totalManutencoes)}
-            color="amber"
+            color="orange"
             icon={
               <svg
                 className="w-6 h-6"
@@ -298,7 +333,7 @@ const Home = () => {
           />
         </div>
 
-        <div className="max-w-2xl mx-auto w-full">
+        <div className="max-w-2xl mx-auto w-full space-y-3">
           <label htmlFor="home-search" className="sr-only">
             Buscar caminhão por placa, motorista ou modelo
           </label>
@@ -327,13 +362,38 @@ const Home = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+
+          <div
+            className="flex flex-wrap justify-center gap-2"
+            role="group"
+            aria-label="Filtrar por tipo de veículo"
+          >
+            {TIPO_FILTROS.map((filtro) => {
+              const active = tipoFiltro === filtro.id;
+              return (
+                <button
+                  key={filtro.id || "todos"}
+                  type="button"
+                  onClick={() => handleTipoFiltro(filtro.id)}
+                  className={`px-3.5 py-2.5 min-h-10 rounded-lg text-sm font-medium border transition-colors ${
+                    active
+                      ? "bg-secondary text-white border-secondary shadow-sm"
+                      : "bg-white text-text-secondary border-border hover:border-secondary/40 hover:text-text-primary"
+                  }`}
+                  aria-pressed={active}
+                >
+                  {filtro.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {errorCaminhoes ? (
+        {listError ? (
           <Alert
             type="error"
             title="Erro ao carregar frota"
-            message={errorCaminhoes.message || "Tente recarregar a página."}
+            message={listError.message || "Tente recarregar a página."}
           />
         ) : listLoading ? (
           <div className="flex justify-center py-20">
@@ -343,39 +403,55 @@ const Home = () => {
           <div className="space-y-6">
             <div className="flex justify-between items-center flex-wrap gap-3">
               <h2 className="text-xl font-bold text-text-primary">
-                {isSearching ? "Resultados da busca" : "Frota recente"}
+                {isSearching
+                  ? "Resultados da busca"
+                  : tipoFiltro
+                    ? tipoFiltroLabel
+                    : "Frota recente"}
               </h2>
-              {isSearching ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSearchTerm("")}
-                >
-                  Limpar busca
-                </Button>
-              ) : (
-                pagination?.totalPages > 1 && (
+              <div className="flex items-center gap-3">
+                {!isSearching && !tipoFiltro && pagination?.totalPages > 1 && (
                   <p className="text-sm text-text-secondary">
                     Página {currentPage} de {pagination.totalPages}
                   </p>
-                )
-              )}
+                )}
+                {!isSearching && tipoFiltro && pagination && (
+                  <p className="text-sm text-text-secondary">
+                    {pagination.totalItems} veículo
+                    {pagination.totalItems === 1 ? "" : "s"}
+                    {pagination.totalPages > 1
+                      ? ` · pág. ${currentPage}/${pagination.totalPages}`
+                      : ""}
+                  </p>
+                )}
+                {isSearching && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSearchTerm("")}
+                  >
+                    Limpar busca
+                  </Button>
+                )}
+              </div>
             </div>
 
             {displayedCaminhoes.length === 0 ? (
               <EmptyState
                 title={
-                  isSearching
-                    ? "Nenhum resultado encontrado"
+                  isSearching || tipoFiltro
+                    ? "Nenhum veículo encontrado"
                     : "Nenhum caminhão cadastrado"
                 }
                 description={
                   isSearching
-                    ? "Tente outro termo de busca."
-                    : "Comece cadastrando seu primeiro veículo."
+                    ? "Tente outro termo ou mude o filtro de tipo."
+                    : tipoFiltro
+                      ? `Não há ${tipoFiltroLabel.toLowerCase()} cadastrados.`
+                      : "Comece cadastrando seu primeiro veículo."
                 }
                 action={
-                  !isSearching ? (
+                  !isSearching && !tipoFiltro ? (
                     <Link to="/cadastro-caminhao">
                       <Button variant="primary">Cadastrar Caminhão</Button>
                     </Link>
@@ -423,8 +499,12 @@ const Home = () => {
   );
 };
 
-// Sub-component for Truck Card to keep main file cleaner
-const TruckCard = ({ caminhao, onDelete }) => (
+const TruckCard = ({ caminhao, onDelete }) => {
+  const tipo =
+    TIPO_LABEL[caminhao.tipo_veiculo] ||
+    (caminhao.tipo_veiculo ? String(caminhao.tipo_veiculo) : "Truck");
+
+  return (
   <div className="bg-white rounded-xl border border-border shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group flex flex-col">
     <div className="p-5 flex-1">
       <div className="flex justify-between items-start mb-4">
@@ -444,10 +524,15 @@ const TruckCard = ({ caminhao, onDelete }) => (
             />
           </svg>
         </div>
-        <StatusBadge
-          status={caminhao.motorista ? "Com motorista" : "Sem motorista"}
-          type="vehicle"
-        />
+        <div className="flex flex-col items-end gap-1.5">
+          <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-semibold text-text-secondary">
+            {tipo}
+          </span>
+          <StatusBadge
+            status={caminhao.motorista ? "Com motorista" : "Sem motorista"}
+            type="vehicle"
+          />
+        </div>
       </div>
 
       <h3 className="text-lg font-bold text-text-primary mb-1">
@@ -506,7 +591,7 @@ const TruckCard = ({ caminhao, onDelete }) => (
           <button
             type="button"
             aria-label={`Editar caminhão ${caminhao.placa}`}
-            className="p-1.5 text-gray-400 hover:text-secondary transition-colors rounded-md hover:bg-blue-50"
+            className="p-2.5 min-h-10 min-w-10 inline-flex items-center justify-center text-gray-400 hover:text-secondary transition-colors rounded-md hover:bg-blue-50"
           >
             <svg
               className="w-5 h-5"
@@ -527,7 +612,7 @@ const TruckCard = ({ caminhao, onDelete }) => (
           type="button"
           onClick={onDelete}
           aria-label={`Excluir caminhão ${caminhao.placa}`}
-          className="p-1.5 text-gray-400 hover:text-danger transition-colors rounded-md hover:bg-red-50"
+          className="p-2.5 min-h-10 min-w-10 inline-flex items-center justify-center text-gray-400 hover:text-danger transition-colors rounded-md hover:bg-red-50"
         >
           <svg
             className="w-5 h-5"
@@ -546,6 +631,7 @@ const TruckCard = ({ caminhao, onDelete }) => (
       </div>
     </div>
   </div>
-);
+  );
+};
 
 export default Home;

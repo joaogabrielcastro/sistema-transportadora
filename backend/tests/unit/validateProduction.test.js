@@ -13,6 +13,7 @@ const productionConfig = {
     apiToken: null,
   },
   database: { url: "", sslMode: "disable" },
+  redis: { url: null },
 };
 
 const validProductionConfig = {
@@ -23,7 +24,9 @@ const validProductionConfig = {
     apiToken: null,
   },
   database: { url: "postgresql://localhost/db", sslMode: "disable" },
-  redis: { url: null },
+  redis: { url: "redis://localhost:6379/0" },
+  storage: { s3Enabled: false },
+  workers: { runInApiProcess: true },
 };
 
 test("getProductionConfigErrors retorna vazio fora de produção", () => {
@@ -43,6 +46,7 @@ test("getProductionConfigErrors exige AUTH e JWT em produção", () => {
     assert.ok(errors.some((e) => e.includes("JWT_SECRET")));
     assert.ok(errors.some((e) => e.includes("DATABASE_URL")));
     assert.ok(errors.some((e) => e.includes("CORS_ORIGINS")));
+    assert.ok(errors.some((e) => e.includes("REDIS_URL")));
   } finally {
     if (savedCors !== undefined) {
       process.env.CORS_ORIGINS = savedCors;
@@ -50,9 +54,9 @@ test("getProductionConfigErrors exige AUTH e JWT em produção", () => {
   }
 });
 
-test("getProductionConfigWarnings alerta API_TOKEN, SSL e REDIS", () => {
+test("getProductionConfigWarnings alerta API_TOKEN, SSL e S3", () => {
   const warnings = getProductionConfigWarnings(validProductionConfig);
   assert.ok(warnings.some((w) => w.includes("API_TOKEN")));
   assert.ok(warnings.some((w) => w.includes("DB_SSL_MODE")));
-  assert.ok(warnings.some((w) => w.includes("REDIS_URL")));
+  assert.ok(warnings.some((w) => w.includes("S3")));
 });

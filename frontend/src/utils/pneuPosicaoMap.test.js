@@ -58,6 +58,70 @@ test("caminhão com 16 pneus inclui estepes após os eixos", () => {
   assert.equal(diagram.allowedIds.size, 16);
 });
 
+test("carreta usa posições Carreta - e não mostra dianteiro", () => {
+  const comCarreta = [
+    ...posicoes,
+    { id: 101, nome_posicao: "Carreta - Eixo 1 - Externo Esquerdo" },
+    { id: 102, nome_posicao: "Carreta - Eixo 1 - Interno Esquerdo" },
+    { id: 103, nome_posicao: "Carreta - Eixo 1 - Interno Direito" },
+    { id: 104, nome_posicao: "Carreta - Eixo 1 - Externo Direito" },
+    { id: 105, nome_posicao: "Carreta - Eixo 2 - Externo Esquerdo" },
+    { id: 106, nome_posicao: "Carreta - Eixo 2 - Interno Esquerdo" },
+    { id: 107, nome_posicao: "Carreta - Eixo 2 - Interno Direito" },
+    { id: 108, nome_posicao: "Carreta - Eixo 2 - Externo Direito" },
+    { id: 109, nome_posicao: "Carreta - Eixo 3 - Externo Esquerdo" },
+    { id: 110, nome_posicao: "Carreta - Eixo 3 - Interno Esquerdo" },
+    { id: 111, nome_posicao: "Carreta - Eixo 3 - Interno Direito" },
+    { id: 112, nome_posicao: "Carreta - Eixo 3 - Externo Direito" },
+  ];
+
+  const diagram = buildPositionDiagram(comCarreta, {
+    tipo_veiculo: "carreta",
+    qtd_pneus: 12,
+    placa: "AIE4604",
+  });
+
+  assert.equal(diagram.tipo, "carreta");
+  assert.equal(diagram.front.left, null);
+  assert.equal(diagram.front.right, null);
+  assert.equal(diagram.axles.length, 3);
+  assert.equal(diagram.allowedIds.size, 12);
+  assert.match(diagram.title, /Carreta/i);
+});
+
+test("cavalo ignora posições prefixadas Carreta", () => {
+  const mixed = [
+    ...posicoes,
+    { id: 201, nome_posicao: "Carreta - Eixo 1 - Externo Esquerdo" },
+  ];
+  const diagram = buildPositionDiagram(mixed, {
+    tipo_veiculo: "cavalo",
+    qtd_pneus: 6,
+  });
+  assert.equal(diagram.tipo, "cavalo");
+  assert.equal(diagram.allowedIds.has(201), false);
+  assert.equal(diagram.allowedIds.size, 6);
+});
+
+test("buildCompositionDiagrams monta seções cavalo + carreta", async () => {
+  const { buildCompositionDiagrams } = await import("./pneuPosicaoMap.js");
+  const comCarreta = [
+    ...posicoes,
+    { id: 101, nome_posicao: "Carreta - Eixo 1 - Externo Esquerdo" },
+    { id: 102, nome_posicao: "Carreta - Eixo 1 - Interno Esquerdo" },
+    { id: 103, nome_posicao: "Carreta - Eixo 1 - Interno Direito" },
+    { id: 104, nome_posicao: "Carreta - Eixo 1 - Externo Direito" },
+  ];
+  const sections = buildCompositionDiagrams(
+    comCarreta,
+    { id: 1, placa: "EOE1909", tipo_veiculo: "cavalo", qtd_pneus: 6 },
+    [{ id: 2, placa: "AWT3125", tipo_veiculo: "carreta", qtd_pneus: 4 }],
+  );
+  assert.equal(sections.length, 2);
+  assert.equal(sections[0].diagram.tipo, "cavalo");
+  assert.equal(sections[1].diagram.tipo, "carreta");
+});
+
 test("filterPosicoesForCaminhao e isPosicaoAllowedForCaminhao", async () => {
   const { filterPosicoesForCaminhao, isPosicaoAllowedForCaminhao, mapPosicoesToSlots } =
     await import("./pneuPosicaoMap.js");

@@ -39,4 +39,15 @@ export const reportsController = {
       data,
     });
   }),
+
+  getCostPerKmTrend: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    converterDatasQuery(req.query);
+    const parsed = costPerKmQuerySchema.parse(req.query);
+    const data = await ReportsService.getCostPerKmTrend(tenantId, parsed);
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  }),
 };

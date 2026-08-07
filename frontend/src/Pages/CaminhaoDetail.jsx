@@ -9,6 +9,7 @@ import PageLayout from "../components/layout/PageLayout.jsx";
 import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
 import { CardSkeleton } from "../components/Skeleton.jsx";
 import CaminhaoDocumentos from "../components/CaminhaoDocumentos";
+import VinculosComposicao from "../components/VinculosComposicao.jsx";
 import RegistroDetailModal from "../components/RegistroDetailModal.jsx";
 import NovoPneuModal from "../components/NovoPneuModal.jsx";
 
@@ -132,12 +133,24 @@ const CaminhaoDetail = () => {
       />
 
       <PageHeader
-        title={`Caminhão ${caminhao.placa}`}
+        title={`${
+          caminhao.tipo_veiculo === "carreta"
+            ? "Carreta"
+            : caminhao.tipo_veiculo === "cavalo"
+              ? "Cavalo"
+              : "Veículo"
+        } ${caminhao.placa}`}
         subtitle="Detalhes completos e análise de desempenho"
         actions={
           <div className="flex items-center gap-3 flex-wrap">
             <StatusBadge
-              status={caminhao.status || "Operacional"}
+              status={
+                caminhao.tipo_veiculo === "carreta"
+                  ? "Carreta"
+                  : caminhao.tipo_veiculo === "cavalo"
+                    ? "Cavalo"
+                    : caminhao.status || "Truck"
+              }
               type="vehicle"
             />
             <Button variant="outline" onClick={() => navigate("/")}>
@@ -276,9 +289,13 @@ const CaminhaoDetail = () => {
         {/* Info Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <Card title="Dados do Veículo" className="lg:col-span-2 h-full">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
               {[
                 { label: "Placa", value: caminhao.placa },
+                {
+                  label: "Tipo",
+                  value: caminhao.tipo_veiculo || "truck",
+                },
                 { label: "Motorista", value: caminhao.motorista || "N/A" },
                 { label: "Marca", value: caminhao.marca || "N/A" },
                 { label: "Modelo", value: caminhao.modelo || "N/A" },
@@ -288,22 +305,48 @@ const CaminhaoDetail = () => {
                   value: `${(caminhao.km_atual || 0).toLocaleString()} km`,
                 },
                 { label: "Qtd. Pneus", value: caminhao.qtd_pneus },
-                { label: "Nº Cavalo", value: caminhao.numero_cavalo || "N/A" },
                 {
-                  label: "Carreta 1",
-                  value: caminhao.placa_carreta_1 || "N/A",
+                  label: "Config. eixos",
+                  value: caminhao.config_eixos || "N/A",
                 },
-                {
-                  label: "Carreta 2",
-                  value: caminhao.placa_carreta_2 || "N/A",
-                },
+                { label: "Chassi", value: caminhao.chassi || "N/A" },
+                { label: "Empresa", value: caminhao.empresa || "N/A" },
+                ...(caminhao.tipo_veiculo === "carreta"
+                  ? []
+                  : [
+                      {
+                        label: "Nº Cavalo",
+                        value: caminhao.numero_cavalo || "N/A",
+                      },
+                    ]),
+                ...(caminhao.tipo_veiculo === "carreta"
+                  ? []
+                  : caminhao.composicao?.vinculos?.length
+                    ? caminhao.composicao.vinculos.map((v, i) => ({
+                        label: `Carreta vinculada ${i + 1}`,
+                        value: v.carreta?.placa || v.cavalo?.placa || "—",
+                      }))
+                    : caminhao.placa_carreta_1 || caminhao.placa_carreta_2
+                      ? [
+                          {
+                            label: "Carreta 1 (legado)",
+                            value: caminhao.placa_carreta_1 || "N/A",
+                          },
+                          {
+                            label: "Carreta 2 (legado)",
+                            value: caminhao.placa_carreta_2 || "N/A",
+                          },
+                        ]
+                      : []),
               ].map((item, idx) => (
                 <div
                   key={idx}
                   className="p-4 bg-gray-50 rounded-lg border border-gray-100"
                 >
                   <p className="text-sm text-gray-500 mb-1">{item.label}</p>
-                  <p className="font-semibold text-gray-900">{item.value}</p>
+                  <p className="font-semibold text-gray-900 break-words">
+                    {item.value}
+                  </p>
                 </div>
               ))}
             </div>
@@ -342,6 +385,18 @@ const CaminhaoDetail = () => {
             </div>
           </Card>
         </div>
+
+        <VinculosComposicao
+          caminhao={caminhao}
+          onChanged={() => {
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.caminhoes.byPlaca(placa),
+            });
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.caminhoes.detail(placa),
+            });
+          }}
+        />
         </div>
         )}
 

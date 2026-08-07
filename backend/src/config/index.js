@@ -108,4 +108,76 @@ export const config = {
     /** URL completa, ex.: redis://default:senha@host:6379/0 */
     url: (process.env.REDIS_URL || "").trim() || null,
   },
+  billing: {
+    get stripeSecretKey() {
+      return (process.env.STRIPE_SECRET_KEY || "").trim();
+    },
+    get stripeWebhookSecret() {
+      return (process.env.STRIPE_WEBHOOK_SECRET || "").trim();
+    },
+    get frontendUrl() {
+      return (
+        (process.env.FRONTEND_URL || "").trim().replace(/\/$/, "") ||
+        "http://localhost:5173"
+      );
+    },
+    get trialDays() {
+      const n = Number(process.env.BILLING_TRIAL_DAYS || 14);
+      return Number.isFinite(n) && n > 0 ? Math.floor(n) : 14;
+    },
+    get prices() {
+      return {
+        starter: (process.env.STRIPE_PRICE_STARTER || "").trim(),
+        ops: (process.env.STRIPE_PRICE_OPS || "").trim(),
+        fiscal: (process.env.STRIPE_PRICE_FISCAL || "").trim(),
+        complete: (process.env.STRIPE_PRICE_COMPLETE || "").trim(),
+      };
+    },
+    get enabled() {
+      return Boolean((process.env.STRIPE_SECRET_KEY || "").trim());
+    },
+  },
+  storage: {
+    get s3Enabled() {
+      return Boolean(
+        (process.env.S3_BUCKET || "").trim() &&
+          (process.env.S3_ACCESS_KEY_ID || "").trim() &&
+          (process.env.S3_SECRET_ACCESS_KEY || "").trim(),
+      );
+    },
+    get bucket() {
+      return (process.env.S3_BUCKET || "").trim();
+    },
+    get region() {
+      return (process.env.S3_REGION || "auto").trim();
+    },
+    get endpoint() {
+      return (process.env.S3_ENDPOINT || "").trim() || null;
+    },
+    get accessKeyId() {
+      return (process.env.S3_ACCESS_KEY_ID || "").trim();
+    },
+    get secretAccessKey() {
+      return (process.env.S3_SECRET_ACCESS_KEY || "").trim();
+    },
+  },
+  whatsapp: {
+    get apiUrl() {
+      return (process.env.WHATSAPP_API_URL || "").trim();
+    },
+    get token() {
+      return (process.env.WHATSAPP_TOKEN || "").trim();
+    },
+    get from() {
+      return (process.env.WHATSAPP_FROM || "").trim();
+    },
+  },
+  workers: {
+    get runInApiProcess() {
+      // Em produção com REDIS, preferir worker separado (WORKER_MODE=standalone)
+      if (process.env.RUN_ORDEM_WORKER_IN_API === "false") return false;
+      if (process.env.RUN_ORDEM_WORKER_IN_API === "true") return true;
+      return process.env.NODE_ENV !== "production";
+    },
+  },
 };

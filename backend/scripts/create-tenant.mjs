@@ -5,11 +5,20 @@
  * Uso:
  *   node scripts/create-tenant.mjs --slug=empresa-x --nome="Empresa X" --email=admin@empresa.com --password=SenhaSegura123
  *
+ * Por padrão o tenant ENTRA EM TRIAL (billing cobrado).
+ * Para criar isento (legado/parceiro):
+ *   ... --exempt=true
+ *
  * Requer DATABASE_URL no ambiente ou em backend/.env
  */
 import "dotenv/config";
 import prisma from "../src/lib/prisma.js";
 import { hashPassword } from "../src/utils/password.js";
+import { config } from "../src/config/index.js";
+import {
+  exemptTenantBillingDefaults,
+  newTenantBillingDefaults,
+} from "../src/utils/tenantFeatures.js";
 
 function parseArgs(argv) {
   const out = {};
@@ -18,6 +27,11 @@ function parseArgs(argv) {
     if (m) out[m[1]] = m[2];
   }
   return out;
+}
+
+function parseBool(value, fallback = false) {
+  if (value === undefined || value === null || value === "") return fallback;
+  return ["1", "true", "yes", "on"].includes(String(value).toLowerCase());
 }
 
 function usage() {
@@ -30,6 +44,7 @@ Opções:
   --email      E-mail do admin (único global)
   --password   Senha do admin (mín. 8 caracteres)
   --nome-admin Nome do usuário admin (opcional)
+  --exempt     true = sem cobrança Stripe (padrão: false = trial)
 `);
 }
 
@@ -44,6 +59,7 @@ async function main() {
     .toLowerCase();
   const password = String(args.password || "");
   const nomeAdmin = String(args["nome-admin"] || "Administrador").trim();
+  const exempt = parseBool(args.exempt, false);
 
   if (!slug || !nome || !email || !password) {
     usage();
@@ -73,10 +89,18 @@ async function main() {
   }
 
   const password_hash = await hashPassword(password);
+  const billing = exempt
+    ? exemptTenantBillingDefaults(slug)
+    : newTenantBillingDefaults(config.billing.trialDays);
 
   const result = await prisma.$transaction(async (tx) => {
     const tenant = await tx.tenants.create({
-      data: { nome, slug, ativo: true },
+      data: {
+        nome,
+        slug,
+        ativo: true,
+        ...billing,
+      },
     });
 
     const user = await tx.users.create({
@@ -102,6 +126,10 @@ async function main() {
           id: result.tenant.id,
           slug: result.tenant.slug,
           nome: result.tenant.nome,
+          billing_exempt: result.tenant.billing_exempt,
+          plan: result.tenant.plan,
+          subscription_status: result.tenant.subscription_status,
+          trial_ends_at: result.tenant.trial_ends_at,
         },
         admin: result.user,
       },

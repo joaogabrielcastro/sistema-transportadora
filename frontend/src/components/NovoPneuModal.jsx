@@ -4,6 +4,7 @@ import { useApiMutation } from "../hooks";
 import { Modal, Button, FormField, Alert } from "./ui";
 import PneuPositionPicker from "./pneus/PneuPositionPicker.jsx";
 import { isPosicaoAllowedForCaminhao } from "../utils/pneuPosicaoMap.js";
+import { formatCaminhaoOptions } from "../utils/caminhaoOptions.js";
 
 const NovoPneuModal = ({
   isOpen,
@@ -214,16 +215,14 @@ const NovoPneuModal = ({
         <FormField
           label="Caminhão"
           name="caminhao_id"
-          type="select"
+          type="typeahead"
           value={form.caminhao_id}
           onChange={handleChange}
           required
           error={fieldErrors.caminhao_id}
           disabled={Boolean(defaultCaminhaoId)}
-          options={caminhoes.map((c) => ({
-            value: String(c.id),
-            label: `${c.placa}${c.modelo ? ` — ${c.modelo}` : ""}${c.marca ? ` (${c.marca})` : ""}`,
-          }))}
+          placeholder="Digite placa, modelo ou tipo..."
+          options={formatCaminhaoOptions(caminhoes)}
         />
 
         {caminhaoSelecionado && (

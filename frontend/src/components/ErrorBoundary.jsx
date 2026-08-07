@@ -17,10 +17,17 @@ class ErrorBoundary extends React.Component {
       errorInfo,
     });
 
-    // Em produção, enviar para serviço de monitoramento
+    // Em produção, enviar para serviço de monitoramento (Sentry se carregado)
     if (import.meta.env.PROD) {
-      // Aqui você pode integrar com Sentry, LogRocket, etc.
-      console.error("Error caught by boundary:", error, errorInfo);
+      import("../lib/monitoring.js")
+        .then(({ captureException }) => {
+          captureException(error, {
+            componentStack: errorInfo?.componentStack,
+          });
+        })
+        .catch(() => {
+          console.error("Error caught by boundary:", error, errorInfo);
+        });
     }
   }
 

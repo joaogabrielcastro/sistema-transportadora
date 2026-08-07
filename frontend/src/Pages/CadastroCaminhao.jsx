@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useApiMutation } from "../hooks";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
@@ -8,7 +8,11 @@ import {
   Button,
   FormField,
   PageHeader,
+  Alert,
+  SearchableSelect,
 } from "../components/ui";
+import { TIPO_VEICULO_OPTIONS } from "../utils/caminhaoOptions.js";
+import { apiFetch } from "../lib/apiClient.js";
 
 const CadastroCaminhao = () => {
   const navigate = useNavigate();
@@ -20,17 +24,50 @@ const CadastroCaminhao = () => {
     km_atual: "",
     numero_cavalo: "",
     motorista: "",
+    motorista_id: "",
     marca: "",
     modelo: "",
     ano: "",
-    placa_carreta_1: "",
-    placa_carreta_2: "",
+    tipo_veiculo: "truck",
+    config_eixos: "",
+    com_4_eixo: false,
+    chassi: "",
+    empresa: "",
   });
 
-  const [carretas, setCarretas] = useState([""]);
+  const [motoristas, setMotoristas] = useState([]);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+
+  const isCarreta = form.tipo_veiculo === "carreta";
+  const podeVincularCarreta =
+    form.tipo_veiculo === "cavalo" || form.tipo_veiculo === "truck";
+
+  const motoristaOptions = useMemo(
+    () =>
+      motoristas.map((m) => ({
+        value: String(m.id),
+        label: m.nome,
+        searchText: `${m.nome} ${m.cpf || ""} ${m.cnh || ""}`,
+      })),
+    [motoristas],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiFetch({ url: "/motoristas" });
+        if (!cancelled) setMotoristas(res.data || []);
+      } catch {
+        if (!cancelled) setMotoristas([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const validatePlaca = (placa) => {
     if (!placa) return true;
@@ -47,31 +84,12 @@ const CadastroCaminhao = () => {
       newErrors.placa = "Formato inválido (ex: ABC1D23)";
     }
 
-    if (form.placa_carreta_1 && !validatePlaca(form.placa_carreta_1)) {
-      newErrors.placa_carreta_1 = "Formato inválido";
-    }
-    if (form.placa_carreta_2 && !validatePlaca(form.placa_carreta_2)) {
-      newErrors.placa_carreta_2 = "Formato inválido";
-    }
-
     if (!form.qtd_pneus || parseInt(form.qtd_pneus) <= 0) {
       newErrors.qtd_pneus = "Qtd. inválida";
     }
 
-    if (!form.km_atual || parseInt(form.km_atual) < 0) {
+    if (!isCarreta && (!form.km_atual || parseInt(form.km_atual) < 0)) {
       newErrors.km_atual = "KM inválido";
-    }
-
-    // Validação das carretas
-    const carretasPreenchidas = carretas.filter((c) => c.trim() !== "");
-    if (carretasPreenchidas.length > 0) {
-      carretasPreenchidas.forEach((carreta, index) => {
-        if (!/^[0-9]+$/.test(carreta)) {
-          newErrors[`carreta_${index}`] = "Apenas números";
-        } else if (parseInt(carreta) < 0 || parseInt(carreta) > 99) {
-          newErrors[`carreta_${index}`] = "0-99";
-        }
-      });
     }
 
     if (form.numero_cavalo && form.numero_cavalo.trim() !== "") {
@@ -83,10 +101,22 @@ const CadastroCaminhao = () => {
       }
     }
 
-    if (!form.motorista.trim()) {
-      newErrors.motorista = "Nome obrigatório";
-    } else if (form.motorista.length < 3) {
-      newErrors.motorista = "Mínimo 3 caracteres";
+    if (!isCarreta) {
+      const hasId = Boolean(form.motorista_id);
+      const hasName = form.motorista.trim().length >= 3;
+      if (!hasId && !hasName) {
+        newErrors.motorista_id =
+          motoristas.length > 0
+            ? "Selecione um motorista cadastrado"
+            : "Cadastre um motorista ou informe o nome (mín. 3 caracteres)";
+        if (
+          !motoristas.length &&
+          form.motorista.trim() &&
+          form.motorista.trim().length < 3
+        ) {
+          newErrors.motorista = "Mínimo 3 caracteres";
+        }
+      }
     }
 
     setErrors(newErrors);
@@ -101,7 +131,7 @@ const CadastroCaminhao = () => {
     if (cleaned.length === 7) {
       return cleaned.replace(
         /([A-Z]{3})([0-9])([A-Z0-9])([0-9]{2})/,
-        "$1$2$3$4"
+        "$1$2$3$4",
       );
     }
     return cleaned;
@@ -126,38 +156,6 @@ const CadastroCaminhao = () => {
     }
   };
 
-  const handleCarretaChange = (index, value) => {
-    const newCarretas = [...carretas];
-    newCarretas[index] = value.replace(/[^0-9]/g, "").slice(0, 2);
-    setCarretas(newCarretas);
-
-    if (errors[`carreta_${index}`]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[`carreta_${index}`];
-        return newErrors;
-      });
-    }
-  };
-
-  const addCarreta = () => {
-    if (carretas.length < 2) {
-      setCarretas([...carretas, ""]);
-    }
-  };
-
-  const removeCarreta = (index) => {
-    if (carretas.length > 1) {
-      const newCarretas = carretas.filter((_, i) => i !== index);
-      setCarretas(newCarretas);
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[`carreta_${index}`];
-        return newErrors;
-      });
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -169,29 +167,26 @@ const CadastroCaminhao = () => {
     }
 
     try {
-      const carretasPreenchidas = carretas.filter((c) => c.trim() !== "");
-
+      const selected = motoristas.find(
+        (m) => String(m.id) === String(form.motorista_id),
+      );
       const payload = {
         placa: form.placa.replace(/-/g, ""),
         qtd_pneus: parseInt(form.qtd_pneus),
-        km_atual: parseInt(form.km_atual),
+        km_atual: form.km_atual ? parseInt(form.km_atual) : 0,
         numero_cavalo: form.numero_cavalo?.trim()
           ? parseInt(form.numero_cavalo, 10)
           : null,
-        motorista: form.motorista.trim(),
+        motorista_id: form.motorista_id ? Number(form.motorista_id) : null,
+        motorista: selected?.nome || form.motorista.trim() || null,
         marca: form.marca.trim() || null,
         modelo: form.modelo.trim() || null,
         ano: form.ano ? parseInt(form.ano) : null,
-        numero_carreta_1:
-          carretasPreenchidas[0] != null && carretasPreenchidas[0] !== ""
-            ? parseInt(carretasPreenchidas[0], 10)
-            : null,
-        placa_carreta_1: form.placa_carreta_1.trim() || null,
-        numero_carreta_2:
-          carretasPreenchidas[1] != null && carretasPreenchidas[1] !== ""
-            ? parseInt(carretasPreenchidas[1], 10)
-            : null,
-        placa_carreta_2: form.placa_carreta_2.trim() || null,
+        tipo_veiculo: form.tipo_veiculo,
+        config_eixos: form.config_eixos.trim() || null,
+        com_4_eixo: Boolean(form.com_4_eixo),
+        chassi: form.chassi.trim() || null,
+        empresa: form.empresa.trim() || null,
       };
 
       await post("/caminhoes", payload);
@@ -199,7 +194,6 @@ const CadastroCaminhao = () => {
         navigate("/");
       }, 1500);
     } catch (err) {
-      console.error("Erro ao cadastrar:", err);
       if (err?.fieldErrors) {
         setFieldErrors(err.fieldErrors);
       }
@@ -217,40 +211,53 @@ const CadastroCaminhao = () => {
         ]}
       />
       <PageHeader
-        title="Cadastrar novo caminhão"
-        subtitle="Preencha os dados para adicionar um veículo à frota"
+        title="Cadastrar veículo"
+        subtitle="Truck, cavalo ou carreta — cada placa é um cadastro próprio"
       />
 
       <Card className="shadow-lg">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Dados Principais */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                label="Placa do Veículo"
-                name="placa"
-                value={form.placa}
-                onChange={(e) => handleInputChange("placa", e.target.value)}
-                required
-                placeholder="ABC1D23"
-                maxLength={7}
-                error={errors.placa || fieldErrors.placa}
-                icon={
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"
-                    />
-                  </svg>
-                }
-              />
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <FormField
+            label="Tipo do veículo"
+            name="tipo_veiculo"
+            type="typeahead"
+            value={form.tipo_veiculo}
+            onChange={(e) =>
+              setForm((prev) => ({
+                ...prev,
+                tipo_veiculo: e.target.value || "truck",
+              }))
+            }
+            options={TIPO_VEICULO_OPTIONS}
+            required
+            placeholder="Digite: truck, cavalo ou carreta..."
+            helperText={
+              isCarreta
+                ? "Cadastre a carreta com a placa dela. Depois vincule no cavalo/truck pela ficha do veículo."
+                : "Após salvar, abra a ficha do veículo para vincular carreta(s) cadastradas — a troca não fica fixa."
+            }
+          />
 
+          {podeVincularCarreta && (
+            <Alert
+              type="info"
+              message="Cadastre cada carreta como tipo «Carreta». Na ficha deste cavalo/truck você faz o vínculo (composição)."
+            />
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              label="Placa"
+              name="placa"
+              value={form.placa}
+              onChange={(e) => handleInputChange("placa", e.target.value)}
+              required
+              placeholder="ABC1D23"
+              maxLength={7}
+              error={errors.placa || fieldErrors.placa}
+            />
+
+            {!isCarreta && (
               <FormField
                 label="Número do Cavalo"
                 name="numero_cavalo"
@@ -260,334 +267,177 @@ const CadastroCaminhao = () => {
                   handleInputChange("numero_cavalo", e.target.value)
                 }
                 placeholder="Opcional"
-                helperText="Deixe em branco se o cavalo ainda não foi numerado."
                 error={errors.numero_cavalo || fieldErrors.numero_cavalo}
-                icon={
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"
-                    />
-                  </svg>
-                }
               />
-            </div>
+            )}
+          </div>
 
+          {!isCarreta && (
+            <div className="space-y-3">
+              <SearchableSelect
+                label="Motorista"
+                name="motorista_id"
+                value={form.motorista_id}
+                onChange={(id) => {
+                  const selected = motoristas.find(
+                    (m) => String(m.id) === String(id),
+                  );
+                  setForm((prev) => ({
+                    ...prev,
+                    motorista_id: id,
+                    motorista: selected?.nome || "",
+                  }));
+                  if (errors.motorista_id) {
+                    setErrors((prev) => ({ ...prev, motorista_id: "" }));
+                  }
+                }}
+                options={motoristaOptions}
+                required={motoristas.length > 0}
+                allowEmpty
+                emptyLabel="Nenhum motorista"
+                placeholder="Buscar motorista cadastrado..."
+                error={errors.motorista_id || fieldErrors.motorista_id}
+                helperText="Preferencial: vincule um cadastro da tela Motoristas."
+              />
+              <p className="text-sm text-text-secondary -mt-2">
+                Gerencie cadastros em{" "}
+                <Link to="/motoristas" className="text-secondary underline">
+                  Motoristas
+                </Link>
+                .
+              </p>
+              {motoristas.length === 0 && (
+                <FormField
+                  label="Nome do motorista (texto)"
+                  name="motorista"
+                  value={form.motorista}
+                  onChange={(e) =>
+                    handleInputChange("motorista", e.target.value)
+                  }
+                  required
+                  placeholder="Nome completo"
+                  error={errors.motorista || fieldErrors.motorista}
+                  helperText="Nenhum motorista cadastrado ainda — use o texto ou cadastre em Motoristas."
+                />
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <FormField
-              label="Nome do Motorista"
-              name="motorista"
-              value={form.motorista}
-              onChange={(e) => handleInputChange("motorista", e.target.value)}
-              required
-              placeholder="Nome completo"
-              error={errors.motorista || fieldErrors.motorista}
-              icon={
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
+              label="Marca"
+              name="marca"
+              value={form.marca}
+              onChange={(e) => handleInputChange("marca", e.target.value)}
+              placeholder="Ex: Volvo, Iveco"
+            />
+            <FormField
+              label="Modelo"
+              name="modelo"
+              value={form.modelo}
+              onChange={(e) => handleInputChange("modelo", e.target.value)}
+              placeholder="Ex: FH 460 6x2T"
+            />
+            <FormField
+              label="Ano"
+              name="ano"
+              type="number"
+              value={form.ano}
+              onChange={(e) => handleInputChange("ano", e.target.value)}
+              placeholder="Ex: 2020"
+              maxLength={4}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <FormField
+              label="Config. eixos"
+              name="config_eixos"
+              value={form.config_eixos}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, config_eixos: e.target.value }))
+              }
+              placeholder="Ex: 6x2, 6x4, 8x2"
+            />
+            <FormField
+              label="Chassi"
+              name="chassi"
+              value={form.chassi}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, chassi: e.target.value }))
+              }
+              placeholder="Opcional"
+            />
+            <FormField
+              label="Empresa / frota"
+              name="empresa"
+              value={form.empresa}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, empresa: e.target.value }))
+              }
+              placeholder="Ex: Solofino, Colombocal"
+            />
+          </div>
+
+          <label className="flex items-center gap-2 text-sm text-text-primary">
+            <input
+              type="checkbox"
+              checked={form.com_4_eixo}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  com_4_eixo: e.target.checked,
+                }))
               }
             />
+            Possui 4º eixo
+          </label>
 
-            {/* Dados do Veículo */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <FormField
-                label="Marca"
-                name="marca"
-                value={form.marca}
-                onChange={(e) => handleInputChange("marca", e.target.value)}
-                placeholder="Ex: Scania, Volvo"
-                error={errors.marca || fieldErrors.marca}
-                icon={
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                    />
-                  </svg>
-                }
-              />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              label="Quantidade de Pneus"
+              name="qtd_pneus"
+              type="number"
+              value={form.qtd_pneus}
+              onChange={(e) => handleInputChange("qtd_pneus", e.target.value)}
+              required
+              placeholder={isCarreta ? "Ex: 12" : "Ex: 6"}
+              error={errors.qtd_pneus || fieldErrors.qtd_pneus}
+            />
 
-              <FormField
-                label="Modelo"
-                name="modelo"
-                value={form.modelo}
-                onChange={(e) => handleInputChange("modelo", e.target.value)}
-                placeholder="Ex: R 450, FH 540"
-                error={errors.modelo || fieldErrors.modelo}
-                icon={
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                }
-              />
+            <FormField
+              label="Quilometragem Atual"
+              name="km_atual"
+              type="number"
+              value={form.km_atual}
+              onChange={(e) => handleInputChange("km_atual", e.target.value)}
+              required={!isCarreta}
+              placeholder="Ex: 150000"
+              error={errors.km_atual || fieldErrors.km_atual}
+            />
+          </div>
 
-              <FormField
-                label="Ano"
-                name="ano"
-                type="number"
-                value={form.ano}
-                onChange={(e) => handleInputChange("ano", e.target.value)}
-                placeholder="Ex: 2020"
-                maxLength={4}
-                error={errors.ano || fieldErrors.ano}
-                icon={
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
-                  </svg>
-                }
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                label="Quantidade de Pneus"
-                name="qtd_pneus"
-                type="number"
-                value={form.qtd_pneus}
-                onChange={(e) => handleInputChange("qtd_pneus", e.target.value)}
-                required
-                placeholder="Ex: 6"
-                error={errors.qtd_pneus || fieldErrors.qtd_pneus}
-                icon={
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                }
-              />
-
-              <FormField
-                label="Quilometragem Atual"
-                name="km_atual"
-                type="number"
-                value={form.km_atual}
-                onChange={(e) => handleInputChange("km_atual", e.target.value)}
-                required
-                placeholder="Ex: 150000"
-                error={errors.km_atual || fieldErrors.km_atual}
-                icon={
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 10V3L4 14h7v7l9-11h-7z"
-                    />
-                  </svg>
-                }
-              />
-            </div>
-
-            {/* Seção de Carretas */}
-            <div className="bg-gray-50 p-6 rounded-xl border border-border">
-              <div className="flex justify-between items-center mb-4">
-                <div>
-                  <h3 className="text-lg font-medium text-text-primary">
-                    Dados das Carretas
-                  </h3>
-                  <p className="text-sm text-text-secondary mt-1">
-                    Número e placa da carreta são opcionais se ainda não houver
-                    cadastro.
-                  </p>
-                </div>
-                {carretas.length < 2 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={addCarreta}
-                    icon={
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 4v16m8-8H4"
-                        />
-                      </svg>
-                    }
-                  >
-                    Adicionar Carreta
-                  </Button>
-                )}
-              </div>
-
-              <div className="space-y-6">
-                {/* Carreta 1 */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    label="Número Carreta 1"
-                    name="carreta_0"
-                    value={carretas[0]}
-                    onChange={(e) => handleCarretaChange(0, e.target.value)}
-                    error={errors.carreta_0}
-                    placeholder="Opcional (0–99)"
-                    helperText="Deixe em branco se a carreta ainda não foi numerada."
-                  />
-                  <FormField
-                    label="Placa Carreta 1"
-                    name="placa_carreta_1"
-                    value={form.placa_carreta_1}
-                    onChange={(e) =>
-                      handleInputChange("placa_carreta_1", e.target.value)
-                    }
-                    placeholder="ABC1D23"
-                    maxLength={7}
-                    error={errors.placa_carreta_1}
-                  />
-                </div>
-
-                {/* Carreta 2 */}
-                {carretas.length > 1 && (
-                  <div className="relative pt-6 border-t border-gray-200">
-                    <button
-                      type="button"
-                      onClick={() => removeCarreta(1)}
-                      className="absolute top-0 right-0 -mt-3 bg-white text-danger p-1 rounded-full border border-gray-200 hover:bg-red-50 transition-colors"
-                      title="Remover carreta"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        label="Número Carreta 2"
-                        name="carreta_1"
-                        value={carretas[1]}
-                        onChange={(e) => handleCarretaChange(1, e.target.value)}
-                        error={errors.carreta_1}
-                        placeholder="Opcional (0–99)"
-                        helperText="Deixe em branco se a carreta ainda não foi numerada."
-                      />
-                      <FormField
-                        label="Placa Carreta 2"
-                        name="placa_carreta_2"
-                        value={form.placa_carreta_2}
-                        onChange={(e) =>
-                          handleInputChange("placa_carreta_2", e.target.value)
-                        }
-                        placeholder="ABC1D23"
-                        maxLength={7}
-                        error={errors.placa_carreta_2}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex gap-4 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1"
-                onClick={() => navigate(-1)}
-                disabled={loading}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                className="flex-1"
-                loading={loading}
-                icon={
-                  !loading && (
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  )
-                }
-              >
-                Cadastrar Caminhão
-              </Button>
-            </div>
-          </form>
-        </Card>
+          <div className="flex gap-4 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={() => navigate(-1)}
+              disabled={loading}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              className="flex-1"
+              loading={loading}
+            >
+              Cadastrar veículo
+            </Button>
+          </div>
+        </form>
+      </Card>
     </PageLayout>
   );
 };

@@ -18,10 +18,17 @@ const server = app.listen(PORT, async () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 
   try {
-    const { startOrdemColetaWorker } = await import(
-      "./src/queues/ordemColetaJobQueue.js"
-    );
-    await startOrdemColetaWorker();
+    const { config: appConfig } = await import("./src/config/index.js");
+    if (appConfig.workers.runInApiProcess) {
+      const { startOrdemColetaWorker } = await import(
+        "./src/queues/ordemColetaJobQueue.js"
+      );
+      await startOrdemColetaWorker();
+    } else {
+      console.log(
+        "Worker ordem-coleta desabilitado na API (use scripts/worker-ordem-coleta.mjs).",
+      );
+    }
   } catch (err) {
     console.error("Falha ao iniciar worker ordem coleta:", err?.message);
   }

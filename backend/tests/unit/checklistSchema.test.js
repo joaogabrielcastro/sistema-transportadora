@@ -43,9 +43,29 @@ test("checklistSchema ainda aceita item_id legado", () => {
   assert.equal(parsed.item_id, 3);
 });
 
-test("checklistUpdateSchema aceita partial com nome_item", () => {
-  const parsed = checklistUpdateSchema.parse({
-    nome_item: "Alternador",
+test("checklistSchema aceita lembrete proxima_km e proxima_data futura", () => {
+  const parsed = checklistSchema.parse({
+    nome_item: "Troca de óleo",
+    data_manutencao: todayIso(),
+    proxima_km: 1400000,
+    proxima_data: "2027-02-06",
   });
-  assert.equal(parsed.nome_item, "Alternador");
+  assert.equal(parsed.proxima_km, 1400000);
+  assert.equal(parsed.proxima_data, "2027-02-06");
+});
+
+test("checklistSchema trata proxima vazia como null", () => {
+  const parsed = checklistSchema.parse({
+    nome_item: "Filtro",
+    data_manutencao: todayIso(),
+    proxima_km: "",
+    proxima_data: "",
+  });
+  assert.equal(parsed.proxima_km ?? null, null);
+  assert.equal(parsed.proxima_data ?? null, null);
+});
+
+test("checklistUpdateSchema aceita só proxima_km", () => {
+  const parsed = checklistUpdateSchema.parse({ proxima_km: 155000 });
+  assert.equal(parsed.proxima_km, 155000);
 });

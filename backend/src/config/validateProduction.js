@@ -30,6 +30,12 @@ export function getProductionConfigErrors(cfg = config) {
     );
   }
 
+  if (!cfg.redis?.url) {
+    errors.push(
+      "REDIS_URL é obrigatório em produção (fila durable de PDF/e-mail).",
+    );
+  }
+
   return errors;
 }
 
@@ -52,9 +58,15 @@ export function getProductionConfigWarnings(cfg = config) {
     );
   }
 
-  if (!cfg.redis?.url) {
+  if (!cfg.storage?.s3Enabled) {
     warnings.push(
-      "REDIS_URL não definido — fila de ordem de coleta fica em memória (jobs se perdem em restart/multi-réplica).",
+      "S3 não configurado — uploads ficam só no disco local (monte volume /app/uploads).",
+    );
+  }
+
+  if (cfg.workers?.runInApiProcess) {
+    warnings.push(
+      "Worker de PDF rodando na API — em escala use scripts/worker-ordem-coleta.mjs e RUN_ORDEM_WORKER_IN_API=false.",
     );
   }
 

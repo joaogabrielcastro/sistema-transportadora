@@ -1,14 +1,32 @@
-import prisma from "../lib/prisma.js";
+import {
+  buildBillingPublic,
+  newTenantBillingDefaults,
+} from "../utils/tenantFeatures.js";
+import { resolvePermissions } from "../utils/permissions.js";
 import { config } from "../config/index.js";
 import { hashPassword, verifyPassword } from "../utils/password.js";
 import { signAccessToken } from "../utils/jwt.js";
 import { logger } from "../utils/logger.js";
 import { ensureSeedTenant } from "../utils/tenant.js";
+import prisma from "../lib/prisma.js";
 
 const DEFAULT_BOOTSTRAP = {
   email: "admin@abrotto.local",
   password: "admin123456",
   nome: "Administrador",
+};
+
+const TENANT_BILLING_SELECT = {
+  id: true,
+  slug: true,
+  ativo: true,
+  nome: true,
+  features: true,
+  billing_exempt: true,
+  plan: true,
+  subscription_status: true,
+  trial_ends_at: true,
+  onboarding_completed_at: true,
 };
 
 /** Gera slug URL-safe a partir do nome da empresa. */
@@ -44,12 +62,15 @@ async function allocateUniqueSlug(baseSlug, tx = prisma) {
 
 function buildAuthPayload(user, tenant) {
   const tenantId = user.tenant_id ?? tenant?.id;
+  const billing = buildBillingPublic(tenant);
+  const permissions = resolvePermissions(user.role, user.permissions);
   const token = signAccessToken({
     sub: String(user.id),
     email: user.email,
     role: user.role,
     nome: user.nome,
     tenantId,
+    permissions,
   });
 
   return {
@@ -59,9 +80,19 @@ function buildAuthPayload(user, tenant) {
       email: user.email,
       nome: user.nome,
       role: user.role,
+      permissions,
       tenantId,
       tenantSlug: tenant?.slug ?? null,
       tenantNome: tenant?.nome ?? null,
+      features: billing.features,
+      billingExempt: billing.billingExempt,
+      plan: billing.plan,
+      subscriptionStatus: billing.subscriptionStatus,
+      trialEndsAt: billing.trialEndsAt,
+      hasBillingAccess: billing.hasAccess,
+      onboardingCompletedAt: tenant?.onboarding_completed_at
+        ? new Date(tenant.onboarding_completed_at).toISOString()
+        : null,
     },
   };
 }
@@ -102,7 +133,7 @@ export class AuthService {
 
   /**
    * Cadastro público: nova empresa (tenant) + admin.
-   * E-mail é único no sistema; slug gerado a partir do nome.
+   * Novos tenants entram em trial (billing_exempt=false).
    */
   static async register({ empresaNome, email, password, nome }) {
     if (process.env.ALLOW_PUBLIC_REGISTER === "false") {
@@ -128,11 +159,17 @@ export class AuthService {
 
     const password_hash = await hashPassword(password);
     const baseSlug = slugifyTenantName(empresa);
+    const billingDefaults = newTenantBillingDefaults(config.billing.trialDays);
 
     const { tenant, user } = await prisma.$transaction(async (tx) => {
       const slug = await allocateUniqueSlug(baseSlug, tx);
       const createdTenant = await tx.tenants.create({
-        data: { nome: empresa, slug, ativo: true },
+        data: {
+          nome: empresa,
+          slug,
+          ativo: true,
+          ...billingDefaults,
+        },
       });
 
       const createdUser = await tx.users.create({
@@ -153,6 +190,8 @@ export class AuthService {
       tenantId: tenant.id,
       slug: tenant.slug,
       email: user.email,
+      plan: tenant.plan,
+      trialEndsAt: tenant.trial_ends_at,
     });
 
     return buildAuthPayload(user, tenant);
@@ -165,7 +204,9 @@ export class AuthService {
     const user = await prisma.users.findUnique({
       where: { email: normalizedEmail },
       include: {
-        tenants: { select: { id: true, slug: true, ativo: true, nome: true } },
+        tenants: {
+          select: TENANT_BILLING_SELECT,
+        },
       },
     });
 
@@ -199,9 +240,12 @@ export class AuthService {
         email: true,
         nome: true,
         role: true,
+        permissions: true,
         ativo: true,
         tenant_id: true,
-        tenants: { select: { id: true, slug: true, nome: true, ativo: true } },
+        tenants: {
+          select: TENANT_BILLING_SELECT,
+        },
       },
     });
 
@@ -209,15 +253,28 @@ export class AuthService {
       throw new Error("Usuário não encontrado");
     }
 
+    const billing = buildBillingPublic(user.tenants);
+    const permissions = resolvePermissions(user.role, user.permissions);
+
     return {
       id: user.id,
       email: user.email,
       nome: user.nome,
       role: user.role,
+      permissions,
       ativo: user.ativo,
       tenantId: user.tenant_id,
       tenantSlug: user.tenants?.slug ?? null,
       tenantNome: user.tenants?.nome ?? null,
+      features: billing.features,
+      billingExempt: billing.billingExempt,
+      plan: billing.plan,
+      subscriptionStatus: billing.subscriptionStatus,
+      trialEndsAt: billing.trialEndsAt,
+      hasBillingAccess: billing.hasAccess,
+      onboardingCompletedAt: user.tenants?.onboarding_completed_at
+        ? new Date(user.tenants.onboarding_completed_at).toISOString()
+        : null,
     };
   }
 

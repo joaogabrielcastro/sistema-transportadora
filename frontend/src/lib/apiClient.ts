@@ -1,7 +1,7 @@
 import axios, { type AxiosResponse } from "axios";
 import logger from "../utils/logger.js";
 import { invalidateQueriesFromMutation } from "./invalidateQueries.js";
-import { getAuthHeaderToken } from "./authStorage.js";
+import { clearStoredAuth, getAuthHeaderToken } from "./authStorage.js";
 import type {
   ApiFetchConfig,
   ApiResponse,
@@ -120,8 +120,37 @@ api.interceptors.response.use(
     const axiosError = error as {
       code?: string;
       config?: { url?: string };
-      response?: unknown;
+      response?: { status?: number; data?: { code?: string } };
     };
+
+    const status = axiosError.response?.status;
+    const code = axiosError.response?.data?.code;
+    const reqUrl = String(axiosError.config?.url || "");
+    const isAuthAttempt = /\/auth\/(login|register)/i.test(reqUrl);
+
+    if (
+      status === 401 &&
+      !isAuthAttempt &&
+      typeof window !== "undefined" &&
+      getAuthHeaderToken()
+    ) {
+      clearStoredAuth();
+      if (!window.location.pathname.startsWith("/login")) {
+        const next = encodeURIComponent(
+          `${window.location.pathname}${window.location.search}`,
+        );
+        window.location.assign(`/login?next=${next}`);
+      }
+    }
+
+    if (
+      status === 402 &&
+      code === "SUBSCRIPTION_REQUIRED" &&
+      typeof window !== "undefined" &&
+      !window.location.pathname.startsWith("/assinatura")
+    ) {
+      window.location.assign("/assinatura");
+    }
 
     if (axiosError.code === "ECONNABORTED") {
       const url = String(axiosError.config?.url || "");

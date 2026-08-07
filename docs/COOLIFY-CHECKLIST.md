@@ -184,8 +184,51 @@ O app usa PWA com atualização automática; com `skipWaiting` no Workbox, a nov
 
 | O quê | Como |
 |-------|------|
-| **PostgreSQL** | Snapshot automático no provedor do banco ou `pg_dump` agendado |
+| **PostgreSQL** | Snapshot automático no provedor **ou** `npm run db:backup` (script `scripts/backup-db.mjs` — precisa de `pg_dump` + `DATABASE_URL`) |
 | **PDFs em `/app/uploads`** | Backup do volume Coolify (caminhão documentos somem sem ele) |
+
+### Agendar backup no Coolify
+
+Crie um **Scheduled Job** (ou cron no host) diário, por exemplo às 03:00:
+
+```bash
+cd /app && npm run db:backup -- --out=/app/backups
+```
+
+Monte um volume em `/app/backups` (ou use snapshot do Postgres gerenciado). Guarde pelo menos 7 dias.
+
+---
+
+## Worker PDF / e-mail (ordem de coleta) e digest
+
+Em produção, preferível **não** rodar o worker dentro da API (`RUN_ORDEM_WORKER_IN_API=false`).
+
+### Serviço worker (Coolify)
+
+1. Novo serviço a partir do mesmo `backend/Dockerfile`.
+2. Command / start: `npm run worker:ordem-coleta`
+3. Mesmas env da API: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` (se necessário), SMTP, `NODE_ENV=production`.
+4. Sem porta HTTP pública.
+
+### Digest semanal
+
+Cron (ex.: segunda 08:00 America/Sao_Paulo):
+
+```bash
+npm run job:weekly-digest
+```
+
+Requer SMTP (e WhatsApp se habilitado no tenant).
+
+### Sentry (frontend)
+
+Opcional: carregue o SDK do Sentry no HTML/CDN com `window.Sentry`. O `ErrorBoundary` envia erros via `frontend/src/lib/monitoring.js` quando `Sentry` estiver disponível. Build arg exemplo:
+
+```
+VITE_SENTRY_DSN=https://...@o....ingest.sentry.io/...
+```
+
+(hoje o hook usa `window.Sentry` se presente — sem forçar pacote npm).
 
 ---
 

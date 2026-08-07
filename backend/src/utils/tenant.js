@@ -1,4 +1,5 @@
 import prisma from "../lib/prisma.js";
+import { defaultFeaturesForSlug } from "./tenantFeatures.js";
 
 export const DEFAULT_TENANT_SLUG = "abbroto";
 
@@ -16,6 +17,9 @@ export async function ensureSeedTenant() {
       nome: "ABroto",
       slug: DEFAULT_TENANT_SLUG,
       ativo: true,
+      billing_exempt: true,
+      subscription_status: "active",
+      features: defaultFeaturesForSlug(DEFAULT_TENANT_SLUG),
     },
   });
 }

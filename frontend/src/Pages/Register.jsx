@@ -71,11 +71,11 @@ export default function Register() {
 
         <div className="relative z-10 space-y-6 max-w-md">
           <h2 className="text-3xl xl:text-4xl font-bold leading-tight tracking-tight text-white">
-            Cadastre sua empresa
+            Comece a organizar a frota da sua empresa
           </h2>
           <p className="text-slate-300 text-lg leading-relaxed">
-            Crie o espaço da sua transportadora e comece a gerenciar frota,
-            pneus, manutenções e ordens de coleta.
+            Crie o espaço da transportadora em minutos e acompanhe veículos,
+            pneus e custos com dados isolados da sua operação.
           </p>
         </div>
 

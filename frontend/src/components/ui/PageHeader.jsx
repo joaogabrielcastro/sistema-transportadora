@@ -3,12 +3,14 @@ import PropTypes from "prop-types";
 
 const PageHeader = ({ title, subtitle, actions }) => (
   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade-in">
-    <div>
-      <h1 className="text-3xl font-bold text-text-primary tracking-tight">
+    <div className="min-w-0">
+      <h1 className="text-2xl sm:text-3xl font-bold text-text-primary tracking-tight break-words">
         {title}
       </h1>
       {subtitle && (
-        <p className="text-text-secondary mt-1 max-w-2xl">{subtitle}</p>
+        <p className="text-text-secondary mt-1 max-w-2xl text-sm sm:text-base">
+          {subtitle}
+        </p>
       )}
     </div>
     {actions && (

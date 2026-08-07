@@ -42,6 +42,8 @@ function buildInitialForm(registro, isManutencao) {
       km_manutencao: displayValue(
         registro.km_manutencao ?? registro.km_registro,
       ),
+      proxima_km: displayValue(registro.proxima_km),
+      proxima_data: toInputDate(registro.proxima_data),
     };
   }
 
@@ -101,6 +103,8 @@ export default function RegistroEditModal({
             valor: displayValue(data.valor),
             oficina: displayValue(data.oficina),
             km_manutencao: displayValue(data.km_manutencao),
+            proxima_km: displayValue(data.proxima_km),
+            proxima_data: toInputDate(data.proxima_data),
           });
         } else {
           setForm({
@@ -152,6 +156,10 @@ export default function RegistroEditModal({
             km_manutencao: form.km_manutencao
               ? parseInt(form.km_manutencao, 10)
               : null,
+            proxima_km: form.proxima_km
+              ? parseInt(form.proxima_km, 10)
+              : null,
+            proxima_data: form.proxima_data || null,
           },
           { skipSuccessToast: true },
         );
@@ -241,6 +249,24 @@ export default function RegistroEditModal({
                 name="km_manutencao"
                 value={form.km_manutencao}
                 onChange={handleChange}
+              />
+              <FormField
+                label="Próxima troca (KM)"
+                name="proxima_km"
+                type="number"
+                value={form.proxima_km}
+                onChange={handleChange}
+                min="0"
+                placeholder="Ex.: 150000"
+                helperText="Opcional — aparece em Alertas"
+              />
+              <FormField
+                label="Próxima troca (data)"
+                name="proxima_data"
+                type="date"
+                value={form.proxima_data}
+                onChange={handleChange}
+                helperText="Opcional — aparece em Alertas"
               />
               <FormField
                 label="Observação"

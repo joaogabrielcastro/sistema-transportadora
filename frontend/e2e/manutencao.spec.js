@@ -109,4 +109,49 @@ test.describe("Manutenção e Gastos", () => {
     await expect(page.getByLabel("Tipo de Registro")).toBeVisible();
     await expect(page.getByLabel("Caminhão")).toBeVisible();
   });
+
+  test("lembrete de próxima troca aparece na manutenção", async ({ page }) => {
+    let postedBody = null;
+    await page.route("**/api/checklist", async (route) => {
+      if (route.request().method() === "POST") {
+        postedBody = route.request().postDataJSON();
+        await route.fulfill({
+          status: 201,
+          contentType: "application/json",
+          body: JSON.stringify({
+            success: true,
+            data: { id: 99, ...postedBody },
+          }),
+        });
+        return;
+      }
+      return route.continue();
+    });
+
+    await page.goto("/manutencao-gastos");
+
+    await page.getByLabel("Tipo de Registro").selectOption("manutencao");
+    await expect(page.getByText("Caminhão, KM e data")).toBeVisible();
+    await expect(page.getByText("Serviço e oficina")).toBeVisible();
+    await expect(
+      page.getByText("Próxima manutenção e observações"),
+    ).toBeVisible();
+    await expect(page.getByLabel("Próxima troca (KM)")).toBeVisible();
+    await expect(page.getByLabel("Próxima troca (data)")).toBeVisible();
+
+    await page.getByLabel("Caminhão").click();
+    await page.getByRole("option", { name: /ABC1D23/ }).click();
+
+    await page.getByLabel("Serviço realizado").fill("Troca de óleo");
+    await expect(page.getByLabel("Próxima troca (KM)")).toHaveValue("60000");
+    await expect(page.getByLabel("Próxima troca (data)")).not.toHaveValue("");
+
+    await page.getByLabel("Valor (R$)").fill("350");
+    await page.getByRole("button", { name: "Cadastrar Registro" }).click();
+
+    await expect.poll(() => postedBody).not.toBeNull();
+    expect(postedBody.nome_item).toBe("Troca de óleo");
+    expect(postedBody.proxima_km).toBe(60000);
+    expect(postedBody.proxima_data).toBeTruthy();
+  });
 });

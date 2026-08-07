@@ -2,6 +2,7 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -21,9 +22,58 @@ function resetSessionCaches() {
   queryClient.clear();
 }
 
+function mapProfileToUser(profile, prev = {}) {
+  return {
+    ...prev,
+    id: profile.id,
+    email: profile.email,
+    nome: profile.nome,
+    role: profile.role,
+    tenantId: profile.tenantId,
+    tenantSlug: profile.tenantSlug,
+    tenantNome: profile.tenantNome,
+        features: profile.features,
+    billingExempt: profile.billingExempt ?? false,
+    plan: profile.plan ?? null,
+    subscriptionStatus: profile.subscriptionStatus ?? null,
+    trialEndsAt: profile.trialEndsAt ?? null,
+    hasBillingAccess: profile.hasBillingAccess,
+    permissions: profile.permissions || [],
+    onboardingCompletedAt: profile.onboardingCompletedAt ?? null,
+  };
+}
+
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => getStoredToken());
   const [user, setUser] = useState(() => getStoredUser());
+
+  const refreshProfile = useCallback(async () => {
+    const currentToken = getStoredToken();
+    if (!currentToken) return null;
+    const res = await apiFetch({ url: "/auth/me" });
+    const profile = res.data?.data ?? res.data;
+    if (!profile?.id) return null;
+    const nextUser = mapProfileToUser(profile, getStoredUser() || {});
+    setStoredAuth({ token: currentToken, user: nextUser });
+    setUser(nextUser);
+    return nextUser;
+  }, []);
+
+  useEffect(() => {
+    if (!token) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const next = await refreshProfile();
+        if (cancelled || !next) return;
+      } catch {
+        /* sessão inválida tratada em rotas protegidas */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, refreshProfile]);
 
   const login = useCallback(async (email, password) => {
     const res = await apiFetch({
@@ -78,8 +128,9 @@ export function AuthProvider({ children }) {
       login,
       register,
       logout,
+      refreshProfile,
     }),
-    [token, user, login, register, logout],
+    [token, user, login, register, logout, refreshProfile],
   );
 
   return (

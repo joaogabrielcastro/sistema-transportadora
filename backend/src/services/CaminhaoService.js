@@ -1,10 +1,51 @@
+import prisma from "../lib/prisma.js";
 import { caminhoesModel } from "../models/caminhoesModel.js";
 import { CaminhaoDocumentoService } from "./CaminhaoDocumentoService.js";
+import { ComposicaoService } from "./ComposicaoService.js";
 import { logger } from "../utils/logger.js";
 import { normalizePlaca, samePlaca } from "../utils/placa.js";
 import { setKmManual } from "./KmCaminhaoService.js";
 
+/** Valida motorista_id do tenant e sincroniza o campo texto `motorista`. */
+async function applyMotoristaLink(tenantId, data) {
+  if (!data || typeof data !== "object" || !("motorista_id" in data)) {
+    return data;
+  }
+
+  const out = { ...data };
+  if (out.motorista_id == null || out.motorista_id === "") {
+    out.motorista_id = null;
+    return out;
+  }
+
+  const id = Number(out.motorista_id);
+  if (!Number.isInteger(id) || id <= 0) {
+    const err = new Error("Motorista inválido");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const row = await prisma.motoristas.findFirst({
+    where: { id, tenant_id: Number(tenantId) },
+    select: { id: true, nome: true },
+  });
+  if (!row) {
+    const err = new Error("Motorista não encontrado neste tenant");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  out.motorista_id = row.id;
+  out.motorista = row.nome;
+  return out;
+}
+
 const samePlacaLocal = samePlaca;
+
+const sameInt = (a, b) => {
+  if (a == null || b == null) return false;
+  return Number(a) === Number(b);
+};
 
 /** Inteiro opcional (null se vazio); preserva 0 quando informado. */
 const normalizeOptionalInt = (value) => {
@@ -14,10 +55,7 @@ const normalizeOptionalInt = (value) => {
   return Number.isNaN(n) ? null : n;
 };
 
-const sameInt = (a, b) => {
-  if (a == null || b == null) return false;
-  return Number(a) === Number(b);
-};
+const TIPOS_VEICULO = new Set(["truck", "cavalo", "carreta"]);
 
 const normalizeCaminhaoPayload = (data) => {
   if (!data || typeof data !== "object") return data;
@@ -36,12 +74,29 @@ const normalizeCaminhaoPayload = (data) => {
       out[key] = normalizeOptionalInt(out[key]);
     }
   }
+  if ("tipo_veiculo" in out && out.tipo_veiculo != null) {
+    const t = String(out.tipo_veiculo).toLowerCase().trim();
+    out.tipo_veiculo = TIPOS_VEICULO.has(t) ? t : "truck";
+  }
+  if ("com_4_eixo" in out && out.com_4_eixo != null) {
+    out.com_4_eixo = Boolean(out.com_4_eixo);
+  }
+  if ("config_eixos" in out && out.config_eixos != null) {
+    out.config_eixos = String(out.config_eixos).trim().slice(0, 32) || null;
+  }
+  if ("chassi" in out && out.chassi != null) {
+    out.chassi = String(out.chassi).trim().slice(0, 40) || null;
+  }
+  if ("empresa" in out && out.empresa != null) {
+    out.empresa = String(out.empresa).trim().slice(0, 80) || null;
+  }
   return out;
 };
 
 export class CaminhaoService {
   static async criarCaminhao(tenantId, data) {
-    const normalized = normalizeCaminhaoPayload(data);
+    let normalized = normalizeCaminhaoPayload(data);
+    normalized = await applyMotoristaLink(tenantId, normalized);
     logger.info("Iniciando criação de caminhão", {
       placa: normalized.placa,
       tenantId,
@@ -65,8 +120,15 @@ export class CaminhaoService {
     }
   }
 
-  static async buscarTodos({ tenantId, page, limit, filtro, termo }) {
-    logger.debug("Buscando caminhões", { tenantId, page, limit, filtro, termo });
+  static async buscarTodos({ tenantId, page, limit, filtro, termo, tipo_veiculo }) {
+    logger.debug("Buscando caminhões", {
+      tenantId,
+      page,
+      limit,
+      filtro,
+      termo,
+      tipo_veiculo,
+    });
 
     try {
       const resultado = await caminhoesModel.getAll({
@@ -75,6 +137,7 @@ export class CaminhaoService {
         limit,
         filtro,
         termo,
+        tipo_veiculo,
       });
 
       logger.info("Caminhões encontrados", {
@@ -101,7 +164,12 @@ export class CaminhaoService {
         throw new Error("Caminhão não encontrado");
       }
 
-      return caminhao;
+      const composicao = await ComposicaoService.listarAtivosDoVeiculo(
+        tenantId,
+        caminhao.id,
+      );
+
+      return { ...caminhao, composicao };
     } catch (error) {
       logger.error("Erro ao buscar caminhão por placa", error);
       throw error;
@@ -109,7 +177,8 @@ export class CaminhaoService {
   }
 
   static async atualizarCaminhao(tenantId, placa, data) {
-    const normalized = normalizeCaminhaoPayload(data);
+    let normalized = normalizeCaminhaoPayload(data);
+    normalized = await applyMotoristaLink(tenantId, normalized);
     logger.info("Atualizando caminhão", { placa, tenantId });
 
     try {
@@ -137,7 +206,8 @@ export class CaminhaoService {
   }
 
   static async atualizarCaminhaoPorId(tenantId, id, data) {
-    const normalized = normalizeCaminhaoPayload(data);
+    let normalized = normalizeCaminhaoPayload(data);
+    normalized = await applyMotoristaLink(tenantId, normalized);
     logger.info("Atualizando caminhão por id", { id, tenantId });
 
     const caminhao = await caminhoesModel.getById(tenantId, id);
@@ -208,15 +278,19 @@ export class CaminhaoService {
     }
   }
 
-  static async pesquisarCaminhoes(tenantId, termo) {
-    logger.debug("Pesquisando caminhões", { termo, tenantId });
+  static async pesquisarCaminhoes(tenantId, termo, tipo_veiculo = null) {
+    logger.debug("Pesquisando caminhões", { termo, tipo_veiculo, tenantId });
 
     if (!termo || termo.trim().length < 2) {
       throw new Error("O termo de busca deve ter pelo menos 2 caracteres");
     }
 
     try {
-      const resultados = await caminhoesModel.search(tenantId, termo.trim());
+      const resultados = await caminhoesModel.search(
+        tenantId,
+        termo.trim(),
+        tipo_veiculo,
+      );
 
       logger.info("Pesquisa realizada", {
         termo: termo.trim(),

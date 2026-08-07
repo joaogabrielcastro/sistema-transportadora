@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createUserSchema, updateUserSchema } from "../../src/schemas/userSchema.js";
 
-test("createUserSchema aceita operator e admin", () => {
+test("createUserSchema aceita operator, viewer e admin", () => {
   const u = createUserSchema.parse({
     email: "op@empresa.com",
     nome: "Operador",
@@ -10,6 +10,13 @@ test("createUserSchema aceita operator e admin", () => {
     role: "operator",
   });
   assert.equal(u.role, "operator");
+  const v = createUserSchema.parse({
+    email: "viewer@empresa.com",
+    nome: "Viewer",
+    password: "Senha1234",
+    role: "viewer",
+  });
+  assert.equal(v.role, "viewer");
 });
 
 test("createUserSchema rejeita role inválida", () => {

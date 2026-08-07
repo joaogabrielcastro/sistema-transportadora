@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useId } from "react";
 import PropTypes from "prop-types";
+import SearchableSelect from "./SearchableSelect.jsx";
 
 const FormField = ({
   label,
@@ -17,9 +18,12 @@ const FormField = ({
   rows = 3,
   helperText,
   children,
+  allowEmpty = false,
+  emptyLabel,
   ...props
 }) => {
-  const fieldId = name || `field-${Math.random().toString(36).substr(2, 9)}`;
+  const generatedId = useId();
+  const fieldId = name || generatedId;
 
   const baseInputClasses = `
     block w-full rounded-lg border 
@@ -33,6 +37,32 @@ const FormField = ({
     disabled:bg-gray-50 disabled:text-text-light disabled:cursor-not-allowed
     transition-all duration-200
   `;
+
+  if (type === "typeahead" || type === "searchable") {
+    return (
+      <SearchableSelect
+        label={label}
+        name={name}
+        value={value === null || value === undefined ? "" : String(value)}
+        onChange={(nextValue) => {
+          if (!onChange) return;
+          onChange({
+            target: { name: name || "", value: nextValue },
+          });
+        }}
+        options={options}
+        placeholder={placeholder || "Digite para buscar..."}
+        disabled={disabled}
+        required={required}
+        error={error}
+        helperText={helperText}
+        allowEmpty={allowEmpty}
+        emptyLabel={emptyLabel}
+        className={className}
+        {...props}
+      />
+    );
+  }
 
   const renderInput = () => {
     if (children) return children;
@@ -179,12 +209,15 @@ FormField.propTypes = {
       value: PropTypes.oneOfType([PropTypes.string, PropTypes.number])
         .isRequired,
       label: PropTypes.string.isRequired,
-    })
+      searchText: PropTypes.string,
+    }),
   ),
   disabled: PropTypes.bool,
   rows: PropTypes.number,
   helperText: PropTypes.string,
   children: PropTypes.node,
+  allowEmpty: PropTypes.bool,
+  emptyLabel: PropTypes.string,
 };
 
 export default FormField;

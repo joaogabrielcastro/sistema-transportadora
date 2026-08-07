@@ -62,12 +62,18 @@ const normalizeCaminhaoData = (caminhaoData) => {
     "numero_carreta_1",
     "numero_cavalo",
     "motorista",
+    "motorista_id",
     "numero_carreta_2",
     "placa_carreta_1",
     "placa_carreta_2",
     "ano",
     "marca",
     "modelo",
+    "tipo_veiculo",
+    "config_eixos",
+    "com_4_eixo",
+    "chassi",
+    "empresa",
   ];
 
   return Object.fromEntries(
@@ -135,14 +141,26 @@ export const caminhoesModel = {
     limit = 10,
     filtro = null,
     termo = null,
+    tipo_veiculo = null,
   }) => {
     const noPagination = limit === null || limit === undefined;
     const termoNormalizado = termo?.trim();
-    let where = withTenant(tenantId);
+    const tipoNormalizado = String(tipo_veiculo || "")
+      .toLowerCase()
+      .trim();
+    const tipoValido = ["truck", "cavalo", "carreta"].includes(tipoNormalizado)
+      ? tipoNormalizado
+      : null;
+
+    const conditions = [];
+
+    if (tipoValido) {
+      conditions.push({ tipo_veiculo: tipoValido });
+    }
 
     if (termoNormalizado) {
       if (filtro === "placa") {
-        where = withTenant(tenantId, {
+        conditions.push({
           OR: [
             { placa: { contains: termoNormalizado, mode: "insensitive" } },
             {
@@ -160,14 +178,16 @@ export const caminhoesModel = {
           ],
         });
       } else if (filtro === "motorista") {
-        where = withTenant(tenantId, {
+        conditions.push({
           motorista: { contains: termoNormalizado, mode: "insensitive" },
         });
       } else {
-        where = withTenant(tenantId, {
+        conditions.push({
           OR: [
             { placa: { contains: termoNormalizado, mode: "insensitive" } },
             { motorista: { contains: termoNormalizado, mode: "insensitive" } },
+            { modelo: { contains: termoNormalizado, mode: "insensitive" } },
+            { marca: { contains: termoNormalizado, mode: "insensitive" } },
             {
               placa_carreta_1: {
                 contains: termoNormalizado,
@@ -184,6 +204,11 @@ export const caminhoesModel = {
         });
       }
     }
+
+    const where = withTenant(
+      tenantId,
+      conditions.length ? { AND: conditions } : {},
+    );
 
     const [data, count] = await prisma.$transaction([
       prisma.caminhoes.findMany({
@@ -208,6 +233,11 @@ export const caminhoesModel = {
           placa: normalized,
         },
       },
+      include: {
+        motorista_ref: {
+          select: { id: true, nome: true, cpf: true, cnh: true },
+        },
+      },
     });
 
     return serializePrisma(data);
@@ -216,6 +246,11 @@ export const caminhoesModel = {
   getById: async (tenantId, id) => {
     const data = await prisma.caminhoes.findFirst({
       where: withTenant(tenantId, { id: parseId(id) }),
+      include: {
+        motorista_ref: {
+          select: { id: true, nome: true, cpf: true, cnh: true },
+        },
+      },
     });
 
     return serializePrisma(data);
@@ -330,14 +365,31 @@ export const caminhoesModel = {
     return serializePrisma(data);
   },
 
-  search: async (tenantId, term) => {
-    const data = await prisma.caminhoes.findMany({
-      where: withTenant(tenantId, {
+  search: async (tenantId, term, tipo_veiculo = null) => {
+    const tipoNormalizado = String(tipo_veiculo || "")
+      .toLowerCase()
+      .trim();
+    const tipoValido = ["truck", "cavalo", "carreta"].includes(tipoNormalizado)
+      ? tipoNormalizado
+      : null;
+
+    const conditions = [
+      {
         OR: [
           { placa: { contains: term, mode: "insensitive" } },
           { motorista: { contains: term, mode: "insensitive" } },
+          { modelo: { contains: term, mode: "insensitive" } },
+          { marca: { contains: term, mode: "insensitive" } },
         ],
-      }),
+      },
+    ];
+
+    if (tipoValido) {
+      conditions.push({ tipo_veiculo: tipoValido });
+    }
+
+    const data = await prisma.caminhoes.findMany({
+      where: withTenant(tenantId, { AND: conditions }),
       orderBy: { placa: "asc" },
     });
 

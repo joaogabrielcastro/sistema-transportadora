@@ -6,12 +6,15 @@ import { logger } from "./utils/logger.js";
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
 import {
   apiRateLimiter,
+  authRateLimiter,
   attachRequestContext,
   auditLog,
+  requireApiToken,
   requireAuth,
   requireRole,
 } from "./middleware/security.js";
 import { authController } from "./controllers/authController.js";
+import { billingController } from "./controllers/billingController.js";
 import caminhoesRoutes from "./routes/caminhoesRoutes.js";
 import pneusRoutes from "./routes/pneusRoutes.js";
 import posicoesPneusRoutes from "./routes/posicoesPneusRoutes.js";
@@ -24,6 +27,12 @@ import reportsRoutes from "./routes/reportsRoutes.js";
 import ordemColetaRoutes from "./routes/ordemColetaRoutes.js";
 import registrosRoutes from "./routes/registrosRoutes.js";
 import usersRoutes from "./routes/usersRoutes.js";
+import notasFiscaisRoutes from "./routes/notasFiscaisRoutes.js";
+import billingRoutes from "./routes/billingRoutes.js";
+import motoristasRoutes from "./routes/motoristasRoutes.js";
+import opsRoutes from "./routes/opsRoutes.js";
+import { requireFeature } from "./middleware/requireFeature.js";
+import { requireActiveSubscription } from "./middleware/requireActiveSubscription.js";
 import { ensureUploadDirs } from "./utils/uploadPaths.js";
 import { runHealthCheck } from "./utils/healthCheck.js";
 
@@ -72,6 +81,13 @@ app.use(
   }),
 );
 
+// Stripe webhook precisa do raw body (antes do express.json)
+app.post(
+  "/api/billing/webhook",
+  express.raw({ type: "application/json" }),
+  billingController.webhook,
+);
+
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
@@ -100,13 +116,26 @@ app.get("/health", async (req, res) => {
   res.status(httpStatus).json(payload);
 });
 
+// Admin interno (API_TOKEN): togglear billing_exempt / plan
+app.patch(
+  "/api/billing/admin/tenants/:id",
+  requireApiToken,
+  billingController.adminPatchTenant,
+);
+
 const apiRouter = express.Router();
 apiRouter.use(apiRateLimiter);
-apiRouter.post("/auth/login", authController.login);
-apiRouter.post("/auth/register", authController.register);
+apiRouter.post("/auth/login", authRateLimiter, authController.login);
+apiRouter.post("/auth/register", authRateLimiter, authController.register);
 apiRouter.use(requireAuth);
 apiRouter.use(auditLog);
 apiRouter.get("/auth/me", authController.me);
+
+// Billing: acessível mesmo sem assinatura ativa (para renovar / checkout)
+apiRouter.use("/billing", billingRoutes);
+
+apiRouter.use(requireActiveSubscription);
+
 apiRouter.use("/caminhoes", caminhoesRoutes);
 apiRouter.use("/pneus", pneusRoutes);
 apiRouter.use("/posicoes-pneus", posicoesPneusRoutes);
@@ -118,8 +147,12 @@ apiRouter.use("/tipos-gastos", tiposGastosRoutes);
 apiRouter.use("/reports", reportsRoutes);
 apiRouter.use("/registros", registrosRoutes);
 apiRouter.use("/users", usersRoutes);
+apiRouter.use("/motoristas", motoristasRoutes);
+apiRouter.use("/ops", opsRoutes);
+apiRouter.use("/notas-fiscais", notasFiscaisRoutes);
 apiRouter.use(
   "/ordem-coleta",
+  requireFeature("ordem_coleta"),
   (req, res, next) => {
     if (req.method === "DELETE" && req.path === "/historico/falhas") {
       return requireRole("admin")(req, res, next);

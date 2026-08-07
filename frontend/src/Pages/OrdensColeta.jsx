@@ -7,6 +7,7 @@ import {
   useOrdemColetaHistoricoQuery,
 } from "../hooks";
 import { extractApiData } from "../utils/extractApiArray.js";
+import { formatCaminhaoOptions } from "../utils/caminhaoOptions.js";
 import Pagination from "../components/Pagination.jsx";
 import {
   Card,
@@ -14,6 +15,7 @@ import {
   Alert,
   FormField,
   PageHeader,
+  SearchableSelect,
   DataTable,
   DataTableHead,
   DataTableBody,
@@ -249,11 +251,7 @@ const OrdensColeta = () => {
   };
 
   const opcoesCaminhao = useMemo(
-    () =>
-      caminhoes.map((c) => ({
-        value: c.placa,
-        label: `${c.placa}${c.motorista ? ` — ${c.motorista}` : ""}`,
-      })),
+    () => formatCaminhaoOptions(caminhoes, { valueKey: "placa" }),
     [caminhoes],
   );
 
@@ -300,41 +298,25 @@ const OrdensColeta = () => {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-text-secondary">
-                Caminhão (opcional)
-              </label>
-              <select
-                value={placa}
-                onChange={(e) => setPlaca(e.target.value)}
-                disabled={loadingCaminhoes}
-                className="block w-full rounded-lg border border-border bg-white px-4 py-2.5 text-text-primary focus:border-transparent focus:outline-none focus:ring-2 focus:ring-secondary disabled:bg-gray-50 disabled:text-text-light"
-              >
-                <option value="">
-                  Não vincular — preencher frota manualmente nos campos
-                </option>
-                {opcoesCaminhao.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-xs text-text-light">
-                Se escolher uma placa, motorista e carretas vêm do cadastro de
-                caminhões.
-                {loadingCaminhoes && " Carregando frota…"}
-                {!loadingCaminhoes &&
-                  !erroCaminhoes &&
-                  caminhoes.length === 0 &&
-                  " Nenhum caminhão cadastrado no sistema."}
-                {erroCaminhoes && (
-                  <span className="text-danger block mt-1">
-                    Não foi possível carregar a frota:{" "}
-                    {erroCaminhoes.message || String(erroCaminhoes)}
-                  </span>
-                )}
-              </p>
-            </div>
+            <SearchableSelect
+              label="Caminhão (opcional)"
+              value={placa}
+              onChange={setPlaca}
+              options={opcoesCaminhao}
+              placeholder="Digite placa, modelo ou motorista..."
+              disabled={loadingCaminhoes}
+              allowEmpty
+              emptyLabel="Não vincular — preencher frota manualmente nos campos"
+              helperText={
+                erroCaminhoes
+                  ? `Não foi possível carregar a frota: ${erroCaminhoes.message || String(erroCaminhoes)}`
+                  : loadingCaminhoes
+                    ? "Carregando frota…"
+                    : caminhoes.length === 0
+                      ? "Nenhum caminhão cadastrado no sistema."
+                      : "Se escolher uma placa, motorista e carretas vêm do cadastro."
+              }
+            />
             <FormField
               label="E-mail do destinatário"
               type="email"
@@ -466,7 +448,7 @@ const OrdensColeta = () => {
                 ))}
               </div>
 
-              <DataTable className="hidden md:table">
+              <DataTable className="hidden md:block">
                 <DataTableHead>
                   <tr>
                     <DataTableTh width="16%">Data</DataTableTh>
@@ -532,7 +514,7 @@ const OrdensColeta = () => {
         onClose={() => !clearingFalhas && setConfirmClearFalhas(false)}
         onConfirm={handleClearFalhas}
         title="Apagar envios com falha"
-        message="Remove todos os registros de ordem de coleta que falharam no envio (testes em produção). Esta ação não pode ser desfeita."
+        message="Remove registros de ordem de coleta que falharam no envio. Esta ação não pode ser desfeita."
         confirmText={clearingFalhas ? "Apagando..." : "Apagar falhas"}
         cancelText="Cancelar"
         warning

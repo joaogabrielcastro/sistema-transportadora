@@ -7,6 +7,12 @@ const E2E_USER = {
   role: "admin",
   nome: "E2E",
   tenantId: 1,
+  billingExempt: true,
+  hasBillingAccess: true,
+  plan: "ops",
+  subscriptionStatus: "exempt",
+  permissions: [],
+  features: { ordem_coleta: true, notas_estoque: true },
 };
 
 export async function seedAuthSession(page) {
@@ -17,6 +23,14 @@ export async function seedAuthSession(page) {
     },
     { token: E2E_TOKEN, user: E2E_USER },
   );
+
+  await page.route("**/api/auth/me", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ success: true, data: E2E_USER }),
+    });
+  });
 }
 
 /** Testes que precisam de rotas protegidas com auth ligada no build. */

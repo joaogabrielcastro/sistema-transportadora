@@ -9,6 +9,7 @@ import { extractApiArray } from "../utils/extractApiArray.js";
 const ROLE_LABEL = {
   admin: "Administrador",
   operator: "Operador",
+  viewer: "Somente leitura",
 };
 
 export default function Usuarios() {
@@ -146,6 +147,7 @@ export default function Usuarios() {
               onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
               options={[
                 { value: "operator", label: "Operador" },
+                { value: "viewer", label: "Somente leitura" },
                 { value: "admin", label: "Administrador" },
               ]}
             />
@@ -229,6 +231,7 @@ export default function Usuarios() {
                         aria-label={`Perfil de ${u.nome}`}
                       >
                         <option value="operator">Operador</option>
+                        <option value="viewer">Somente leitura</option>
                         <option value="admin">Administrador</option>
                       </select>
                       <Button

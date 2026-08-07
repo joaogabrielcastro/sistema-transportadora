@@ -54,7 +54,9 @@ jobs:
       - name: Setup test database
         # Histórico do Migrate assume schema legado já existente (sem CREATE inicial).
         # Em CI o Postgres começa vazio — db push aplica o schema.prisma atual.
-        run: npx prisma db push
+        run: |
+          npx prisma db push
+          node scripts/seed-ci-database.mjs
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/transportadora_test
           DB_SSL_MODE: disable

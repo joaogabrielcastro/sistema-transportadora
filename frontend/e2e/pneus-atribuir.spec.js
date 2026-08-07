@@ -93,7 +93,7 @@ test.describe("Instalar pneus", () => {
       page.getByRole("heading", { name: /instalar pneus no caminhão/i }),
     ).toBeVisible();
 
-    await page.getByLabel("Caminhão").click();
+    await page.getByRole("combobox", { name: /Caminhão/i }).click();
     await page.getByRole("option", { name: /ABC1D23/ }).click();
     await expect(page.getByText("Eixo dianteiro")).toBeVisible();
 

@@ -29,10 +29,44 @@ const tableExists = async (tableName) => {
   return Array.isArray(rows) && rows.length > 0;
 };
 
+const columnExists = async (tableName, columnName) => {
+  const rows = await prisma.$queryRaw`
+    SELECT 1 AS ok
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = ${tableName}
+      AND column_name = ${columnName}
+    LIMIT 1
+  `;
+  return Array.isArray(rows) && rows.length > 0;
+};
+
 const migrationApplied = async (name) => {
   try {
     const rows = await prisma.$queryRaw`
-      SELECT 1 AS ok FROM "_prisma_migrations" WHERE migration_name = ${name} LIMIT 1
+      SELECT 1 AS ok
+      FROM "_prisma_migrations"
+      WHERE migration_name = ${name}
+        AND finished_at IS NOT NULL
+        AND rolled_back_at IS NULL
+      LIMIT 1
+    `;
+    return Array.isArray(rows) && rows.length > 0;
+  } catch {
+    return false;
+  }
+};
+
+/** Prisma marca falha com finished_at NULL (e sem rollback). */
+const migrationFailed = async (name) => {
+  try {
+    const rows = await prisma.$queryRaw`
+      SELECT 1 AS ok
+      FROM "_prisma_migrations"
+      WHERE migration_name = ${name}
+        AND finished_at IS NULL
+        AND rolled_back_at IS NULL
+      LIMIT 1
     `;
     return Array.isArray(rows) && rows.length > 0;
   } catch {
@@ -46,6 +80,27 @@ const resolveIfNeeded = async (migrationName) => {
     return;
   }
   run(`npx prisma migrate resolve --applied "${migrationName}"`);
+};
+
+/**
+ * P3009: migração iniciou e falhou. Se o schema esperado já existe (SQL idempotente),
+ * marca as applied; senão marca rolled-back para o próximo deploy tentar de novo.
+ */
+const healFailedMigration = async (migrationName, isSchemaReady) => {
+  if (!(await migrationFailed(migrationName))) return;
+
+  const ready = await isSchemaReady();
+  if (ready) {
+    console.log(
+      `(heal) ${migrationName} falhou antes, mas o schema já está ok — marcando as applied.`,
+    );
+    run(`npx prisma migrate resolve --applied "${migrationName}"`);
+  } else {
+    console.log(
+      `(heal) ${migrationName} falhou e o schema está incompleto — marcando rolled-back para reaplicar.`,
+    );
+    run(`npx prisma migrate resolve --rolled-back "${migrationName}"`);
+  }
 };
 
 try {
@@ -79,6 +134,33 @@ try {
   if (await tableExists("caminhao_documentos")) {
     await resolveIfNeeded("20260518120000_caminhao_documentos");
   }
+
+  // Destrava P3009 (comum quando a migração falha no meio e trava o prestart)
+  await healFailedMigration(
+    "20260806150000_frota_tipos_notas_estoque",
+    async () =>
+      (await columnExists("caminhoes", "tipo_veiculo")) &&
+      (await tableExists("vinculos_composicao")) &&
+      (await tableExists("produtos")) &&
+      (await tableExists("notas_fiscais")),
+  );
+
+  await healFailedMigration(
+    "20260806160000_tenant_billing_stripe",
+    async () => columnExists("tenants", "billing_exempt"),
+  );
+
+  await healFailedMigration(
+    "20260806180000_motoristas_audit_alerts",
+    async () => tableExists("motoristas"),
+  );
+
+  await healFailedMigration(
+    "20260806190000_checklist_proxima_manutencao",
+    async () =>
+      (await columnExists("checklist", "proxima_km")) ||
+      (await columnExists("checklist", "proxima_data")),
+  );
 
   run("npx prisma migrate deploy");
 

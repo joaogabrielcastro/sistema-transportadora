@@ -72,35 +72,50 @@ BEGIN
         CONTINUE;
       END IF;
 
-      SELECT id INTO carreta_id
-      FROM "caminhoes"
-      WHERE tenant_id = r.tenant_id AND UPPER(REPLACE(placa, '-', '')) = UPPER(REPLACE(carreta_placa, '-', ''))
-      LIMIT 1;
-
-      IF carreta_id IS NULL THEN
-        INSERT INTO "caminhoes" (
-          tenant_id, placa, qtd_pneus, km_atual, tipo_veiculo, marca, modelo, empresa
-        ) VALUES (
-          r.tenant_id,
-          UPPER(REPLACE(carreta_placa, '-', '')),
-          12,
-          0,
-          'carreta',
-          r.marca,
-          COALESCE(r.modelo, 'Carreta'),
-          r.empresa
-        )
-        RETURNING id INTO carreta_id;
-      ELSE
-        UPDATE "caminhoes" SET tipo_veiculo = 'carreta' WHERE id = carreta_id;
+      carreta_placa := UPPER(REPLACE(carreta_placa, '-', ''));
+      -- evita placa inválida / igual ao próprio cavalo
+      IF carreta_placa = '' OR length(carreta_placa) > 10 OR carreta_placa = UPPER(REPLACE(r.placa, '-', '')) THEN
+        CONTINUE;
       END IF;
 
-      INSERT INTO "vinculos_composicao" (tenant_id, cavalo_id, carreta_id, ordem, ativo)
-      SELECT r.tenant_id, r.id, carreta_id, slot, true
-      WHERE NOT EXISTS (
-        SELECT 1 FROM "vinculos_composicao" v
-        WHERE v.tenant_id = r.tenant_id AND v.carreta_id = carreta_id AND v.ativo = true
-      );
+      BEGIN
+        SELECT id INTO carreta_id
+        FROM "caminhoes"
+        WHERE tenant_id = r.tenant_id AND UPPER(REPLACE(placa, '-', '')) = carreta_placa
+        LIMIT 1;
+
+        IF carreta_id IS NULL THEN
+          INSERT INTO "caminhoes" (
+            tenant_id, placa, qtd_pneus, km_atual, tipo_veiculo, marca, modelo, empresa
+          ) VALUES (
+            r.tenant_id,
+            carreta_placa,
+            12,
+            0,
+            'carreta',
+            r.marca,
+            COALESCE(r.modelo, 'Carreta'),
+            r.empresa
+          )
+          RETURNING id INTO carreta_id;
+        ELSIF carreta_id <> r.id THEN
+          UPDATE "caminhoes" SET tipo_veiculo = 'carreta' WHERE id = carreta_id AND tipo_veiculo <> 'carreta';
+        ELSE
+          CONTINUE;
+        END IF;
+
+        INSERT INTO "vinculos_composicao" (tenant_id, cavalo_id, carreta_id, ordem, ativo)
+        SELECT r.tenant_id, r.id, carreta_id, slot, true
+        WHERE NOT EXISTS (
+          SELECT 1 FROM "vinculos_composicao" v
+          WHERE v.tenant_id = r.tenant_id AND v.carreta_id = carreta_id AND v.ativo = true
+        );
+      EXCEPTION
+        WHEN unique_violation THEN
+          RAISE NOTICE 'Pulando carreta legado % (tenant %): conflito de unicidade', carreta_placa, r.tenant_id;
+        WHEN others THEN
+          RAISE NOTICE 'Pulando carreta legado % (tenant %): %', carreta_placa, r.tenant_id, SQLERRM;
+      END;
     END LOOP;
 
     UPDATE "caminhoes"

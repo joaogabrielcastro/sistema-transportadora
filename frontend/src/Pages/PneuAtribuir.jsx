@@ -327,12 +327,18 @@ const PneuAtribuir = () => {
               required
             />
             <FormField
-              label="KM do caminhão"
+              label="KM do caminhão na instalação"
               type="number"
               value={kmInstalacao}
               onChange={(e) => setKmInstalacao(e.target.value)}
               placeholder="Ex: 154000"
-              helperText="KM no momento da instalação"
+              helperText={
+                caminhaoSelecionado?.km_atual != null
+                  ? `Para pneu novo, use o KM atual (${Number(
+                      caminhaoSelecionado.km_atual,
+                    ).toLocaleString("pt-BR")}).`
+                  : "Odômetro do caminhão na instalação (não o desgaste do pneu)."
+              }
             />
             <FormField
               label="Status inicial"

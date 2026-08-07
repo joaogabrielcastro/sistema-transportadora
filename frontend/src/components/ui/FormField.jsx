@@ -1,6 +1,11 @@
-import React, { useId } from "react";
+import React, { useId, useMemo } from "react";
 import PropTypes from "prop-types";
 import SearchableSelect from "./SearchableSelect.jsx";
+import {
+  decimalsFromStep,
+  formatNumberInputDisplay,
+  parseNumberInputValue,
+} from "../../utils/numberInput.js";
 
 const FormField = ({
   label,
@@ -20,10 +25,21 @@ const FormField = ({
   children,
   allowEmpty = false,
   emptyLabel,
+  decimals,
+  step,
+  min,
+  max,
+  onBlur,
+  inputMode,
   ...props
 }) => {
   const generatedId = useId();
   const fieldId = name || generatedId;
+
+  const maxDecimals = useMemo(() => {
+    if (typeof decimals === "number") return decimals;
+    return decimalsFromStep(step);
+  }, [decimals, step]);
 
   const baseInputClasses = `
     block w-full rounded-lg border 
@@ -134,6 +150,71 @@ const FormField = ({
       );
     }
 
+    if (type === "number") {
+      const displayValue = formatNumberInputDisplay(value, { maxDecimals });
+
+      const handleNumberChange = (event) => {
+        if (!onChange) return;
+        const raw = parseNumberInputValue(event.target.value, { maxDecimals });
+        onChange({
+          ...event,
+          target: {
+            ...event.target,
+            name: name || event.target.name,
+            value: raw,
+          },
+        });
+      };
+
+      const handleBlur = (event) => {
+        if (onBlur) onBlur(event);
+        if (value === "" || value == null || value === "-") return;
+
+        const num = Number(value);
+        if (!Number.isFinite(num)) return;
+        let next = num;
+        if (min != null && min !== "" && num < Number(min)) next = Number(min);
+        if (max != null && max !== "" && num > Number(max)) next = Number(max);
+        if (next !== num && onChange) {
+          onChange({
+            target: {
+              name: name || "",
+              value:
+                maxDecimals == null ? String(Math.trunc(next)) : String(next),
+            },
+          });
+        }
+      };
+
+      return (
+        <div className="relative">
+          <input
+            type="text"
+            inputMode={
+              inputMode || (maxDecimals != null ? "decimal" : "numeric")
+            }
+            id={fieldId}
+            name={name}
+            value={displayValue}
+            onChange={handleNumberChange}
+            onBlur={handleBlur}
+            placeholder={placeholder}
+            disabled={disabled}
+            autoComplete="off"
+            className={`${baseInputClasses} ${icon ? "pl-10" : ""}`}
+            aria-valuemin={min != null && min !== "" ? Number(min) : undefined}
+            aria-valuemax={max != null && max !== "" ? Number(max) : undefined}
+            {...props}
+          />
+          {icon && (
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-text-light">
+              {icon}
+            </div>
+          )}
+        </div>
+      );
+    }
+
     return (
       <div className="relative">
         <input
@@ -145,6 +226,11 @@ const FormField = ({
           placeholder={placeholder}
           disabled={disabled}
           className={`${baseInputClasses} ${icon ? "pl-10" : ""}`}
+          min={min}
+          max={max}
+          step={step}
+          onBlur={onBlur}
+          inputMode={inputMode}
           {...props}
         />
         {icon && (
@@ -218,6 +304,13 @@ FormField.propTypes = {
   children: PropTypes.node,
   allowEmpty: PropTypes.bool,
   emptyLabel: PropTypes.string,
+  /** Casas decimais; se omitido, deriva de `step` (inteiro por padrão). */
+  decimals: PropTypes.number,
+  step: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  min: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  max: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  onBlur: PropTypes.func,
+  inputMode: PropTypes.string,
 };
 
 export default FormField;

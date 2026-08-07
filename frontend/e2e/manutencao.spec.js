@@ -143,7 +143,7 @@ test.describe("Manutenção e Gastos", () => {
     await page.getByRole("option", { name: /ABC1D23/ }).click();
 
     await page.getByLabel("Serviço realizado").fill("Troca de óleo");
-    await expect(page.getByLabel("Próxima troca (KM)")).toHaveValue("60000");
+    await expect(page.getByLabel("Próxima troca (KM)")).toHaveValue("60.000");
     await expect(page.getByLabel("Próxima troca (data)")).not.toHaveValue("");
 
     await page.getByLabel("Valor (R$)").fill("350");

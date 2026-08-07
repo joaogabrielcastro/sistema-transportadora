@@ -6,6 +6,7 @@
  *   node scripts/baseline-and-deploy.mjs
  */
 import { execSync } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import "dotenv/config";
@@ -113,10 +114,26 @@ try {
 
   const hasCaminhoes = await tableExists("caminhoes");
   if (!hasCaminhoes) {
-    console.error(
-      "Banco sem tabela caminhoes. Use `npx prisma migrate deploy` em banco vazio ou restaure o backup.",
+    console.log(
+      "Banco sem tabela caminhoes (vazio). Aplicando schema.prisma com db push…",
     );
-    process.exit(1);
+    run("npx prisma db push");
+
+    const migrationsDir = path.join(backendRoot, "prisma", "migrations");
+    const migrationNames = fs
+      .readdirSync(migrationsDir, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name)
+      .sort();
+
+    for (const name of migrationNames) {
+      await resolveIfNeeded(name);
+    }
+
+    console.log(
+      "\nConcluído (banco novo). Schema atual aplicado; histórico do Migrate alinhado.",
+    );
+    process.exit(0);
   }
 
   console.log("Baseline: banco já populado — alinhando histórico do Prisma Migrate…");

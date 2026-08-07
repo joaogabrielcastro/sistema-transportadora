@@ -5,6 +5,7 @@ import { Modal, Button, FormField, Alert } from "./ui";
 import PneuPositionPicker from "./pneus/PneuPositionPicker.jsx";
 import { isPosicaoAllowedForCaminhao } from "../utils/pneuPosicaoMap.js";
 import { formatCaminhaoOptions } from "../utils/caminhaoOptions.js";
+import { calcularVidaUtilPneu } from "../utils/pneuVidaUtil.js";
 
 const NovoPneuModal = ({
   isOpen,
@@ -73,6 +74,16 @@ const NovoPneuModal = ({
       }));
     }
   }, [caminhaoSelecionado, form.km_instalacao]);
+
+  const vidaPreview = useMemo(
+    () =>
+      calcularVidaUtilPneu(
+        caminhaoSelecionado?.km_atual,
+        form.km_instalacao,
+        form.vida_util_km,
+      ),
+    [caminhaoSelecionado?.km_atual, form.km_instalacao, form.vida_util_km],
+  );
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -305,12 +316,18 @@ const NovoPneuModal = ({
               error={fieldErrors.modelo}
             />
             <FormField
-              label="KM já rodados no pneu"
+              label="KM do caminhão na instalação"
               name="km_instalacao"
               type="number"
               value={form.km_instalacao}
               onChange={handleChange}
-              helperText="KM do caminhão no momento da instalação."
+              helperText={
+                caminhaoSelecionado?.km_atual != null
+                  ? `Pneu novo: use o KM atual do caminhão (${Number(
+                      caminhaoSelecionado.km_atual,
+                    ).toLocaleString("pt-BR")}). Não é o KM já rodado no pneu.`
+                  : "Odômetro do caminhão no momento da instalação (não o desgaste do pneu)."
+              }
             />
             <FormField
               label="Vida útil (km) — opcional"
@@ -318,7 +335,29 @@ const NovoPneuModal = ({
               type="number"
               value={form.vida_util_km}
               onChange={handleChange}
+              helperText="Quantos km este pneu ainda deve rodar a partir da instalação."
             />
+            {vidaPreview.percentualVidaUtil != null && (
+              <div className="sm:col-span-2">
+                <Alert
+                  type={
+                    vidaPreview.percentualVidaUtil <= 0
+                      ? "warning"
+                      : vidaPreview.percentualVidaUtil < 20
+                        ? "warning"
+                        : "info"
+                  }
+                >
+                  Prévia: {vidaPreview.kmRodado.toLocaleString("pt-BR")} km
+                  rodados no pneu ·{" "}
+                  {Math.round(vidaPreview.percentualVidaUtil)}% de vida útil
+                  restante.
+                  {vidaPreview.percentualVidaUtil <= 0
+                    ? " Para pneu novo, o KM na instalação deve ser o KM atual do caminhão."
+                    : ""}
+                </Alert>
+              </div>
+            )}
           </div>
         )}
 

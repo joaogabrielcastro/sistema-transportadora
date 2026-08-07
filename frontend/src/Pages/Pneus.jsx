@@ -31,6 +31,7 @@ import PageLayout from "../components/layout/PageLayout.jsx";
 import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
 import NovoPneuModal from "../components/NovoPneuModal.jsx";
 import { usePneuAtribuirQueries } from "../hooks";
+import { calcularVidaUtilPneu } from "../utils/pneuVidaUtil.js";
 
 const PneuVidaUtilBar = ({ percentualVidaUtil }) => {
   if (percentualVidaUtil === null) {
@@ -131,23 +132,19 @@ const PneusTable = ({
   const pneusComCalculos = useMemo(() => {
     return pneus.map((pneu) => {
       const caminhao = caminhoes.find((c) => c.id === pneu.caminhao_id);
-      const kmRodado =
-        caminhao?.km_atual && pneu.km_instalacao
-          ? caminhao.km_atual - pneu.km_instalacao
-          : null;
-
-      const vidaUtilRestante =
-        pneu.vida_util_km && kmRodado ? pneu.vida_util_km - kmRodado : null;
+      const { kmRodado, vidaUtilRestante, percentualVidaUtil } =
+        calcularVidaUtilPneu(
+          caminhao?.km_atual,
+          pneu.km_instalacao,
+          pneu.vida_util_km,
+        );
 
       return {
         ...pneu,
         caminhao,
         kmRodado,
         vidaUtilRestante,
-        percentualVidaUtil:
-          vidaUtilRestante && pneu.vida_util_km
-            ? Math.max(0, (vidaUtilRestante / pneu.vida_util_km) * 100)
-            : null,
+        percentualVidaUtil,
       };
     });
   }, [pneus, caminhoes]);

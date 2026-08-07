@@ -138,6 +138,8 @@ export function AuthProvider({ children }) {
   );
 }
 
+// Hook no mesmo arquivo do Provider é padrão de Context; o aviso de fast refresh não se aplica.
+// eslint-disable-next-line react-refresh/only-export-components -- useAuth junto do Provider
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) {

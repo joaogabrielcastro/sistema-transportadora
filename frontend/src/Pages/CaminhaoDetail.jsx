@@ -12,6 +12,7 @@ import CaminhaoDocumentos from "../components/CaminhaoDocumentos";
 import VinculosComposicao from "../components/VinculosComposicao.jsx";
 import RegistroDetailModal from "../components/RegistroDetailModal.jsx";
 import NovoPneuModal from "../components/NovoPneuModal.jsx";
+import { API_CONFIG } from "../utils/constants.js";
 
 const CaminhaoAnalysisCharts = lazy(
   () => import("../components/caminhao/CaminhaoAnalysisCharts.jsx"),

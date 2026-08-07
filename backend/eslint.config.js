@@ -3,11 +3,12 @@ import globals from "globals";
 
 export default [
   {
-    ignores: ["src/generated/**", "node_modules/**"],
+    // Contratos .ts são tipagem; o parser do ESLint aqui é só JS.
+    ignores: ["src/generated/**", "node_modules/**", "**/*.ts"],
   },
   js.configs.recommended,
   {
-    files: ["src/**/*.js", "src/types/**/*.ts", "tests/**/*.js", "scripts/**/*.mjs"],
+    files: ["src/**/*.js", "tests/**/*.js", "scripts/**/*.mjs"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",

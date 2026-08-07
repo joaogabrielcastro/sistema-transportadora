@@ -116,7 +116,15 @@ export async function createSecondaryTenantAdmin({
 } = {}) {
   const password_hash = await hashPassword(password);
   const tenant = await prisma.tenants.create({
-    data: { nome, slug, ativo: true, features },
+    data: {
+      nome,
+      slug,
+      ativo: true,
+      features,
+      // Integração não passa por Stripe; isenta cobrança como clientes legados.
+      billing_exempt: true,
+      subscription_status: "active",
+    },
   });
 
   await prisma.users.create({

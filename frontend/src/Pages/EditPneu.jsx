@@ -1,5 +1,5 @@
 // src/pages/EditPneu.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useApiMutation, useEditPneuQuery } from "../hooks";
 import PageLayout from "../components/layout/PageLayout.jsx";
@@ -13,6 +13,7 @@ import {
   PageHeader,
 } from "../components/ui";
 import { formatCaminhaoOptions } from "../utils/caminhaoOptions.js";
+import { calcularVidaUtilPneu } from "../utils/pneuVidaUtil.js";
 
 const EditPneu = () => {
   const { id } = useParams();
@@ -123,6 +124,35 @@ const EditPneu = () => {
     (c) => c.id === parseInt(formData.caminhao_id)
   );
 
+  const vidaPreview = useMemo(
+    () =>
+      calcularVidaUtilPneu(
+        caminhaoSelecionado?.km_atual,
+        formData.km_instalacao,
+        formData.vida_util_km,
+      ),
+    [
+      caminhaoSelecionado?.km_atual,
+      formData.km_instalacao,
+      formData.vida_util_km,
+    ],
+  );
+
+  const usarKmAtual = () => {
+    if (caminhaoSelecionado?.km_atual == null) return;
+    setFormData((prev) => ({
+      ...prev,
+      km_instalacao: String(caminhaoSelecionado.km_atual),
+    }));
+    if (fieldErrors.km_instalacao) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next.km_instalacao;
+        return next;
+      });
+    }
+  };
+
   const caminhaoOptions = formatCaminhaoOptions(caminhoes);
 
   const posicaoOptions = posicoes.map((p) => ({
@@ -222,6 +252,7 @@ const EditPneu = () => {
                 onChange={handleChange}
                 min="0"
                 placeholder="Ex: 80000"
+                helperText="Km que o pneu deve durar a partir da instalação."
               />
 
               <FormField
@@ -257,25 +288,59 @@ const EditPneu = () => {
                 error={fieldErrors.data_instalacao}
               />
 
-              <FormField
-                label="KM na Instalação"
-                type="number"
-                name="km_instalacao"
-                value={formData.km_instalacao}
-                onChange={handleChange}
-                min="0"
-                required
-                placeholder="KM do veículo na instalação"
-                helperText={
-                  caminhaoSelecionado
-                    ? `KM atual do caminhão: ${caminhaoSelecionado.km_atual?.toLocaleString(
-                        "pt-BR"
-                      )}`
-                    : ""
-                }
-                error={fieldErrors.km_instalacao}
-              />
+              <div className="space-y-2">
+                <FormField
+                  label="KM do caminhão na instalação"
+                  type="number"
+                  name="km_instalacao"
+                  value={formData.km_instalacao}
+                  onChange={handleChange}
+                  min="0"
+                  required
+                  placeholder="Odômetro do caminhão na instalação"
+                  helperText={
+                    caminhaoSelecionado
+                      ? `KM atual do caminhão: ${caminhaoSelecionado.km_atual?.toLocaleString(
+                          "pt-BR"
+                        )}. Para pneu novo, use esse valor.`
+                      : "Odômetro do caminhão na instalação (não o desgaste do pneu)."
+                  }
+                  error={fieldErrors.km_instalacao}
+                />
+                {caminhaoSelecionado?.km_atual != null && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={usarKmAtual}
+                    className="w-full sm:w-auto"
+                  >
+                    Usar KM atual (pneu novo)
+                  </Button>
+                )}
+              </div>
             </div>
+
+            {vidaPreview.percentualVidaUtil != null && (
+              <div className="mt-4">
+                <Alert
+                  type={
+                    vidaPreview.percentualVidaUtil <= 0
+                      ? "warning"
+                      : vidaPreview.percentualVidaUtil < 20
+                        ? "warning"
+                        : "info"
+                  }
+                >
+                  Prévia: {vidaPreview.kmRodado.toLocaleString("pt-BR")} km
+                  rodados no pneu ·{" "}
+                  {Math.round(vidaPreview.percentualVidaUtil)}% de vida útil
+                  restante.
+                  {vidaPreview.percentualVidaUtil <= 0
+                    ? " Com esses valores o pneu aparece como 0%. Para marcar como novo, clique em “Usar KM atual”."
+                    : ""}
+                </Alert>
+              </div>
+            )}
 
             <FormField
               label="Observação"

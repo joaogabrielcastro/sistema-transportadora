@@ -39,7 +39,7 @@ const toKmNumber = (value) => {
   return Number.isNaN(parsed) || parsed < 0 ? null : parsed;
 };
 
-const mergeGroupedCosts = (merged, grouped, { kmMinField, kmMaxField }) => {
+const mergeGroupedCosts = (merged, grouped) => {
   for (const item of grouped) {
     if (item.caminhao_id === null) {
       continue;
@@ -224,14 +224,8 @@ export class ReportsService {
     ]);
 
     const merged = new Map();
-    mergeGroupedCosts(merged, gastosGrouped, {
-      kmMinField: "km_registro",
-      kmMaxField: "km_registro",
-    });
-    mergeGroupedCosts(merged, checklistGrouped, {
-      kmMinField: "km_manutencao",
-      kmMaxField: "km_manutencao",
-    });
+    mergeGroupedCosts(merged, gastosGrouped);
+    mergeGroupedCosts(merged, checklistGrouped);
 
     const kmTimelineByTruck = new Map();
 

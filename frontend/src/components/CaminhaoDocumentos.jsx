@@ -4,6 +4,16 @@ import ConfirmModal from "./ConfirmModal";
 import { Button } from "./ui";
 import { useToast } from "./ui/useToast.js";
 
+const TIPOS_DOCUMENTO = [
+  "CRLV",
+  "CNH",
+  "ANTT",
+  "Seguro",
+  "Licença",
+  "Laudo",
+  "Outro",
+];
+
 const formatBytes = (bytes) => {
   if (!bytes) return "0 B";
   if (bytes < 1024) return `${bytes} B`;
@@ -11,9 +21,17 @@ const formatBytes = (bytes) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
+const formatValidade = (value) => {
+  if (!value) return null;
+  const s = String(value).slice(0, 10);
+  const [y, m, d] = s.split("-");
+  if (!y || !m || !d) return s;
+  return `${d}/${m}/${y}`;
+};
+
 const CaminhaoDocumentos = ({ placa }) => {
   const { request, loading } = useApi();
-  const { post, delete: del, isPending: mutating } = useApiMutation();
+  const { post, patch, delete: del, isPending: mutating } = useApiMutation();
   const busy = loading || mutating;
   const toast = useToast();
   const {
@@ -21,6 +39,11 @@ const CaminhaoDocumentos = ({ placa }) => {
     isLoading: carregandoLista,
   } = useCaminhaoDocumentosQuery(placa);
 
+  const [tipoDocumento, setTipoDocumento] = useState("");
+  const [validadeEm, setValidadeEm] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editTipo, setEditTipo] = useState("");
+  const [editValidade, setEditValidade] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [removing, setRemoving] = useState(false);
   const inputRef = useRef(null);
@@ -56,14 +79,46 @@ const CaminhaoDocumentos = ({ placa }) => {
     const files = event.target.files;
     if (!files?.length) return;
 
+    if (!validadeEm) {
+      toast.warning(
+        "Informe a data de validade (está no PDF, campo 4b na CNH). Sem ela o documento fica como “Sem validade” nos alertas.",
+      );
+    }
+
     const formData = new FormData();
     Array.from(files).forEach((file) => formData.append("arquivos", file));
+    if (tipoDocumento) formData.append("tipo_documento", tipoDocumento);
+    if (validadeEm) formData.append("validade_em", validadeEm);
 
     try {
       await post(`/caminhoes/${placa}/documentos`, formData);
+      setTipoDocumento("");
+      setValidadeEm("");
     } finally {
       event.target.value = "";
     }
+  };
+
+  const startEdit = (doc) => {
+    setEditingId(doc.id);
+    setEditTipo(doc.tipo_documento || "");
+    setEditValidade(
+      doc.validade_em ? String(doc.validade_em).slice(0, 10) : "",
+    );
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditTipo("");
+    setEditValidade("");
+  };
+
+  const saveEdit = async (docId) => {
+    await patch(`/caminhoes/${placa}/documentos/${docId}`, {
+      tipo_documento: editTipo || null,
+      validade_em: editValidade || null,
+    });
+    cancelEdit();
   };
 
   const handleRemoverClick = (doc) => {
@@ -84,11 +139,37 @@ const CaminhaoDocumentos = ({ placa }) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <p className="text-sm text-text-secondary">
-          Anexe PDFs obrigatórios (CRLV, seguro, ANTT, etc.). Máx. 15 MB por
-          arquivo, até 30 por caminhão.
-        </p>
+      <p className="text-sm text-text-secondary">
+        Anexe PDFs (CRLV, CNH, seguro, ANTT, etc.) e informe tipo e validade —
+        o sistema não lê a data de dentro do arquivo. Máx. 15 MB por arquivo, até
+        30 por caminhão.
+      </p>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto] items-end p-4 border border-border rounded-lg bg-slate-50/80">
+        <label className="block text-sm">
+          <span className="font-medium text-text-primary">Tipo</span>
+          <select
+            value={tipoDocumento}
+            onChange={(e) => setTipoDocumento(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm"
+          >
+            <option value="">Selecione…</option>
+            {TIPOS_DOCUMENTO.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-sm">
+          <span className="font-medium text-text-primary">Validade</span>
+          <input
+            type="date"
+            value={validadeEm}
+            onChange={(e) => setValidadeEm(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm"
+          />
+        </label>
         <div>
           <input
             ref={inputRef}
@@ -103,6 +184,7 @@ const CaminhaoDocumentos = ({ placa }) => {
             variant="secondary"
             loading={busy}
             onClick={() => inputRef.current?.click()}
+            className="w-full sm:w-auto"
           >
             Adicionar PDFs
           </Button>
@@ -113,52 +195,128 @@ const CaminhaoDocumentos = ({ placa }) => {
         <p className="text-sm text-text-light">Carregando documentos…</p>
       ) : documentos.length === 0 ? (
         <p className="text-sm text-text-secondary py-6 text-center border border-dashed border-border rounded-lg">
-          Nenhum PDF anexado. Use &quot;Adicionar PDFs&quot; para enviar os
-          documentos deste veículo.
+          Nenhum PDF anexado. Preencha tipo e validade e use &quot;Adicionar
+          PDFs&quot;.
         </p>
       ) : (
         <ul className="divide-y divide-border border border-border rounded-lg overflow-hidden">
           {documentos.map((doc) => (
             <li
               key={doc.id}
-              className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 bg-white hover:bg-gray-50"
+              className="flex flex-col gap-3 px-4 py-3 bg-white hover:bg-gray-50"
             >
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-text-primary truncate">
-                  {doc.nome_original}
-                </p>
-                <p className="text-xs text-text-light mt-0.5">
-                  {formatBytes(doc.tamanho_bytes)}
-                  {doc.criado_em &&
-                    ` · ${new Date(doc.criado_em).toLocaleString("pt-BR")}`}
-                </p>
-                {doc.arquivo_disponivel === false && (
-                  <p className="text-xs text-amber-700 mt-1">
-                    Arquivo ausente no servidor — remova e envie o PDF novamente.
+              <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-text-primary truncate">
+                    {doc.nome_original}
                   </p>
-                )}
+                  <p className="text-xs text-text-light mt-0.5">
+                    {formatBytes(doc.tamanho_bytes)}
+                    {doc.criado_em &&
+                      ` · ${new Date(doc.criado_em).toLocaleString("pt-BR")}`}
+                  </p>
+                  {editingId !== doc.id && (
+                    <p className="text-sm text-text-secondary mt-1.5">
+                      <span className="font-medium">
+                        {doc.tipo_documento || "Sem tipo"}
+                      </span>
+                      {" · "}
+                      {doc.validade_em
+                        ? `Validade ${formatValidade(doc.validade_em)}`
+                        : "Sem validade"}
+                    </p>
+                  )}
+                  {doc.arquivo_disponivel === false && (
+                    <p className="text-xs text-amber-700 mt-1">
+                      Arquivo ausente no servidor — remova e envie o PDF
+                      novamente.
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2 shrink-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={doc.arquivo_disponivel === false}
+                    onClick={() => abrirPdf(doc)}
+                  >
+                    Abrir
+                  </Button>
+                  {editingId === doc.id ? (
+                    <>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        loading={busy}
+                        onClick={() => saveEdit(doc.id)}
+                      >
+                        Salvar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={busy}
+                        onClick={cancelEdit}
+                      >
+                        Cancelar
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => startEdit(doc)}
+                    >
+                      Editar
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    loading={busy}
+                    onClick={() => handleRemoverClick(doc)}
+                    className="text-danger border-danger/30 hover:bg-red-50"
+                  >
+                    Remover
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-2 shrink-0">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={doc.arquivo_disponivel === false}
-                  onClick={() => abrirPdf(doc)}
-                >
-                  Abrir
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  loading={busy}
-                  onClick={() => handleRemoverClick(doc)}
-                  className="text-danger border-danger/30 hover:bg-red-50"
-                >
-                  Remover
-                </Button>
-              </div>
+
+              {editingId === doc.id && (
+                <div className="grid gap-3 sm:grid-cols-2 max-w-xl">
+                  <label className="block text-sm">
+                    <span className="font-medium text-text-primary">Tipo</span>
+                    <select
+                      value={editTipo}
+                      onChange={(e) => setEditTipo(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm"
+                    >
+                      <option value="">Selecione…</option>
+                      {TIPOS_DOCUMENTO.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block text-sm">
+                    <span className="font-medium text-text-primary">
+                      Validade
+                    </span>
+                    <input
+                      type="date"
+                      value={editValidade}
+                      onChange={(e) => setEditValidade(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm"
+                    />
+                  </label>
+                </div>
+              )}
             </li>
           ))}
         </ul>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import {
@@ -11,7 +11,7 @@ import { trialDaysRemaining } from "../utils/billing.js";
 import { PERMISSIONS, userHasPermission } from "../utils/permissions.js";
 
 const pneusSubLinks = [
-  { path: "/pneus", label: "Pneus em uso" },
+  { path: "/pneus", label: "Pneus em uso", exact: true },
   { path: "/pneus/estoque", label: "Estoque" },
   { path: "/pneus/atribuir", label: "Instalar pneus" },
 ];
@@ -36,6 +36,11 @@ function buildMainLinks(features = {}) {
   return links;
 }
 
+const isActivePath = (pathname, path, exact = false) => {
+  if (exact) return pathname === path;
+  return pathname === path || pathname.startsWith(`${path}/`);
+};
+
 const navItemClass = (active) =>
   `inline-flex h-9 items-center px-3 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
     active
@@ -43,12 +48,12 @@ const navItemClass = (active) =>
       : "text-gray-300 hover:bg-white/5 hover:text-white border border-transparent"
   }`;
 
-const Navbar = () => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [pneusMenuOpen, setPneusMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [navHeight, setNavHeight] = useState(64);
-  const navRef = useRef(null);
+/**
+ * Shell autenticado: barra superior no desktop, menu drawer no mobile.
+ */
+const Navbar = ({ children }) => {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [pneusOpen, setPneusOpen] = useState(false);
   const pneusMenuRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -66,42 +71,21 @@ const Navbar = () => {
   const showPastDueBanner =
     showBillingLink && user?.subscriptionStatus === "past_due";
   const showBanner = showTrialBanner || showPastDueBanner;
-
-  useLayoutEffect(() => {
-    const el = navRef.current;
-    if (!el) return undefined;
-
-    const update = () => setNavHeight(el.getBoundingClientRect().height || 64);
-    update();
-
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
-    ro?.observe(el);
-    window.addEventListener("resize", update);
-    return () => {
-      ro?.disconnect();
-      window.removeEventListener("resize", update);
-    };
-  }, [showBanner, scrolled, isMobileMenuOpen]);
+  const isPneusSection = location.pathname.startsWith("/pneus");
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  useEffect(() => {
-    setIsMobileMenuOpen(false);
-    setPneusMenuOpen(false);
+    setMobileOpen(false);
+    setPneusOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
-    if (!isMobileMenuOpen) return undefined;
+    if (!mobileOpen) return undefined;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = previous;
     };
-  }, [isMobileMenuOpen]);
+  }, [mobileOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -109,36 +93,24 @@ const Navbar = () => {
         pneusMenuRef.current &&
         !pneusMenuRef.current.contains(event.target)
       ) {
-        setPneusMenuOpen(false);
+        setPneusOpen(false);
       }
     };
-
-    if (pneusMenuOpen) {
+    if (pneusOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
-
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [pneusMenuOpen]);
+  }, [pneusOpen]);
 
-  const isActive = (path, exact = false) => {
-    if (exact) return location.pathname === path;
-    return (
-      location.pathname === path || location.pathname.startsWith(`${path}/`)
-    );
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+    setMobileOpen(false);
   };
 
-  const isPneusSection = location.pathname.startsWith("/pneus");
-
   return (
-    <>
-      <nav
-        ref={navRef}
-        className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-300 ${
-          scrolled
-            ? "bg-primary/95 backdrop-blur-md shadow-lg"
-            : "bg-primary"
-        }`}
-      >
+    <div className="min-h-screen bg-background">
+      <nav className="sticky top-0 z-50 bg-primary shadow-md">
         {showBanner && (
           <div
             className={`text-center text-xs sm:text-sm px-3 py-1.5 leading-snug ${
@@ -167,11 +139,7 @@ const Navbar = () => {
           </div>
         )}
 
-        <div
-          className={`container mx-auto px-4 md:px-6 flex items-center justify-between gap-3 ${
-            scrolled ? "h-14" : "h-16"
-          }`}
-        >
+        <div className="container mx-auto px-4 md:px-6 h-14 md:h-16 flex items-center justify-between gap-3">
           <Link
             to="/"
             className="flex items-center group min-w-0 max-w-[calc(100%-3.5rem)] xl:max-w-none"
@@ -191,67 +159,73 @@ const Navbar = () => {
             </div>
           </Link>
 
-          <div className="hidden xl:flex items-center min-w-0 flex-1 justify-end gap-1 overflow-x-auto">
-            <div className="flex items-center gap-0.5 min-w-0">
+          {/* Desktop: links fora de overflow-x para o dropdown de Pneus não ser cortado */}
+          <div className="hidden xl:flex items-center min-w-0 flex-1 justify-end gap-1 overflow-visible">
+            <div className="flex items-center gap-0.5 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {mainLinks.map((link) => (
                 <Link
                   key={link.path}
                   to={link.path}
-                  className={navItemClass(isActive(link.path, link.exact))}
+                  className={navItemClass(
+                    isActivePath(location.pathname, link.path, link.exact),
+                  )}
                 >
                   {link.label}
                 </Link>
               ))}
-
-              <div className="relative" ref={pneusMenuRef}>
-                <button
-                  type="button"
-                  className={`${navItemClass(isPneusSection)} gap-1`}
-                  aria-expanded={pneusMenuOpen}
-                  aria-haspopup="true"
-                  onClick={() => setPneusMenuOpen((open) => !open)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Escape") {
-                      setPneusMenuOpen(false);
-                    }
-                  }}
-                >
-                  Pneus
-                  <svg
-                    className={`w-3.5 h-3.5 transition-transform ${pneusMenuOpen ? "rotate-180" : ""}`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-                {pneusMenuOpen && (
-                  <div className="absolute top-full left-0 mt-1 w-52 py-2 bg-slate-900 border border-white/10 rounded-xl shadow-xl z-50">
-                    {pneusSubLinks.map((sub) => (
-                      <Link
-                        key={sub.path}
-                        to={sub.path}
-                        className={`block px-4 py-2.5 text-sm transition-colors ${
-                          isActive(sub.path, sub.path === "/pneus")
-                            ? "text-white bg-white/10"
-                            : "text-gray-300 hover:text-white hover:bg-white/5"
-                        }`}
-                      >
-                        {sub.label}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
             </div>
 
-            <div className="flex items-center gap-1.5 pl-2 ml-1 border-l border-white/15 shrink-0">
+            <div className="relative shrink-0" ref={pneusMenuRef}>
+              <button
+                type="button"
+                className={`${navItemClass(isPneusSection)} gap-1`}
+                aria-expanded={pneusOpen}
+                aria-haspopup="true"
+                onClick={() => setPneusOpen((open) => !open)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") setPneusOpen(false);
+                }}
+              >
+                Pneus
+                <svg
+                  className={`w-3.5 h-3.5 transition-transform ${pneusOpen ? "rotate-180" : ""}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+              {pneusOpen && (
+                <div className="absolute top-full right-0 mt-1 w-52 py-2 bg-slate-900 border border-white/10 rounded-xl shadow-xl z-[70]">
+                  {pneusSubLinks.map((sub) => (
+                    <Link
+                      key={sub.path}
+                      to={sub.path}
+                      className={`block px-4 py-2.5 text-sm transition-colors ${
+                        isActivePath(
+                          location.pathname,
+                          sub.path,
+                          sub.exact || sub.path === "/pneus",
+                        )
+                          ? "text-white bg-white/10"
+                          : "text-gray-300 hover:text-white hover:bg-white/5"
+                      }`}
+                    >
+                      {sub.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 pl-1 shrink-0">
               {canWriteFrota && (
                 <Link
                   to="/cadastro-caminhao"
@@ -263,7 +237,9 @@ const Navbar = () => {
               {showBillingLink && (
                 <Link
                   to="/assinatura"
-                  className={navItemClass(isActive("/assinatura"))}
+                  className={navItemClass(
+                    isActivePath(location.pathname, "/assinatura"),
+                  )}
                 >
                   Assinatura
                 </Link>
@@ -271,7 +247,9 @@ const Navbar = () => {
               {isAuthenticated && canManageUsers && (
                 <Link
                   to="/usuarios"
-                  className={navItemClass(isActive("/usuarios"))}
+                  className={navItemClass(
+                    isActivePath(location.pathname, "/usuarios"),
+                  )}
                 >
                   Usuários
                 </Link>
@@ -279,10 +257,7 @@ const Navbar = () => {
               {isAuthenticated && (
                 <button
                   type="button"
-                  onClick={() => {
-                    logout();
-                    navigate("/login");
-                  }}
+                  onClick={handleLogout}
                   className={navItemClass(false)}
                   title={user?.email || "Sair"}
                 >
@@ -295,25 +270,35 @@ const Navbar = () => {
           <button
             type="button"
             className="xl:hidden text-gray-300 hover:text-white focus:outline-none p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-white/10 transition-colors shrink-0"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            aria-expanded={isMobileMenuOpen}
-            aria-label={isMobileMenuOpen ? "Fechar menu" : "Abrir menu"}
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-expanded={mobileOpen}
+            aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
           >
-            {isMobileMenuOpen ? (
+            {mobileOpen ? (
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             ) : (
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
               </svg>
             )}
           </button>
         </div>
 
         <div
-          className={`xl:hidden absolute top-full left-0 right-0 z-[60] bg-primary border-t border-white/10 shadow-xl transition-all duration-300 ease-in-out overflow-hidden ${
-            isMobileMenuOpen
+          className={`xl:hidden absolute left-0 right-0 z-[60] bg-primary border-t border-white/10 shadow-xl transition-all duration-300 ease-in-out overflow-hidden ${
+            mobileOpen
               ? "max-h-[min(85vh,calc(100dvh-4rem))] opacity-100 overflow-y-auto"
               : "max-h-0 opacity-0 pointer-events-none"
           }`}
@@ -324,7 +309,7 @@ const Navbar = () => {
                 key={link.path}
                 to={link.path}
                 className={`px-4 py-3 rounded-lg transition-colors ${
-                  isActive(link.path, link.exact)
+                  isActivePath(location.pathname, link.path, link.exact)
                     ? "bg-secondary text-white"
                     : "text-gray-300 hover:bg-white/5 hover:text-white"
                 }`}
@@ -341,7 +326,11 @@ const Navbar = () => {
                 key={sub.path}
                 to={sub.path}
                 className={`px-4 py-3 rounded-lg pl-8 transition-colors ${
-                  isActive(sub.path, sub.path === "/pneus")
+                  isActivePath(
+                    location.pathname,
+                    sub.path,
+                    sub.exact || sub.path === "/pneus",
+                  )
                     ? "bg-secondary text-white"
                     : "text-gray-300 hover:bg-white/5 hover:text-white"
                 }`}
@@ -362,7 +351,7 @@ const Navbar = () => {
               <Link
                 to="/assinatura"
                 className={`mx-4 mt-2 px-4 py-3 rounded-lg transition-colors ${
-                  isActive("/assinatura")
+                  isActivePath(location.pathname, "/assinatura")
                     ? "bg-secondary text-white"
                     : "text-gray-300 hover:bg-white/5 hover:text-white"
                 }`}
@@ -374,7 +363,7 @@ const Navbar = () => {
               <Link
                 to="/usuarios"
                 className={`mx-4 mt-2 px-4 py-3 rounded-lg transition-colors ${
-                  isActive("/usuarios")
+                  isActivePath(location.pathname, "/usuarios")
                     ? "bg-secondary text-white"
                     : "text-gray-300 hover:bg-white/5 hover:text-white"
                 }`}
@@ -385,11 +374,7 @@ const Navbar = () => {
             {isAuthenticated && (
               <button
                 type="button"
-                onClick={() => {
-                  logout();
-                  navigate("/login");
-                  setIsMobileMenuOpen(false);
-                }}
+                onClick={handleLogout}
                 className="mt-2 mx-4 py-3 rounded-lg text-center text-gray-300 hover:text-white hover:bg-white/10"
               >
                 Sair{user?.email ? ` (${user.email})` : ""}
@@ -399,17 +384,17 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {isMobileMenuOpen && (
+      {mobileOpen && (
         <button
           type="button"
           className="xl:hidden fixed inset-0 z-40 bg-black/40"
           aria-label="Fechar menu"
-          onClick={() => setIsMobileMenuOpen(false)}
+          onClick={() => setMobileOpen(false)}
         />
       )}
 
-      <div aria-hidden style={{ height: navHeight }} />
-    </>
+      <div className="min-w-0">{children}</div>
+    </div>
   );
 };
 

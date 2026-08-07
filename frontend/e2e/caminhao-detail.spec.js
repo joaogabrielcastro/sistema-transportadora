@@ -10,6 +10,7 @@ const CAMINHAO = {
   km_atual: 50000,
   qtd_pneus: 6,
   status: "Operacional",
+  tipo_veiculo: "truck",
 };
 
 const posicoes = [
@@ -163,7 +164,7 @@ test.describe("Detalhe do caminhão", () => {
     await page.goto(`/caminhao/${PLACA}`);
 
     await expect(
-      page.getByRole("heading", { name: `Caminhão ${PLACA}` }),
+      page.getByRole("heading", { name: `Veículo ${PLACA}` }),
     ).toBeVisible();
     await expect(page.getByText("KM Atual")).toBeVisible();
     await expect(page.getByText(/50[.,]000\s*km/)).toBeVisible();

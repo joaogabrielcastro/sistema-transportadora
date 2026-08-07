@@ -51,8 +51,10 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Migrate test database
-        run: npx prisma migrate deploy
+      - name: Setup test database
+        # Histórico do Migrate assume schema legado já existente (sem CREATE inicial).
+        # Em CI o Postgres começa vazio — db push aplica o schema.prisma atual.
+        run: npx prisma db push
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/transportadora_test
           DB_SSL_MODE: disable

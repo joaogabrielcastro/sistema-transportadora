@@ -1,5 +1,4 @@
 import fs from "node:fs/promises";
-import path from "node:path";
 import { createReadStream, createWriteStream } from "node:fs";
 import { pipeline } from "node:stream/promises";
 import { config } from "../config/index.js";

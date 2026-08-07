@@ -56,7 +56,7 @@ test(
   { skip: shouldRunDbTests ? false : "Defina RUN_DB_TESTS=1 ou rode no CI" },
   async () => {
     const { authHeader } = await loginAsAdmin(app);
-    const falha = await createFailedOrdemEnvio();
+    await createFailedOrdemEnvio();
 
     const res = await request(app)
       .delete("/api/ordem-coleta/historico/falhas")

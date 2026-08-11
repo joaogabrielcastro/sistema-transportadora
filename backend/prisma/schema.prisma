@@ -83,6 +83,7 @@ model caminhoes {
   vinculos_como_cavalo  vinculos_composicao[] @relation("VinculoCavalo")
   vinculos_como_carreta vinculos_composicao[] @relation("VinculoCarreta")
   estoque_movimentos  estoque_movimentos[]
+  notas_fiscais       notas_fiscais[]
 
   @@unique([tenant_id, placa])
   @@index([tenant_id])
@@ -236,6 +237,7 @@ model gastos {
   tenant_id              Int
   caminhao_id            Int?
   tipo_gasto_id          Int?
+  produto_id             Int?
   valor                  Decimal       @db.Decimal(10, 2)
   data_gasto             DateTime      @db.Date
   descricao              String?
@@ -244,12 +246,14 @@ model gastos {
   tenants                tenants       @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   caminhoes              caminhoes?    @relation(fields: [caminhao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   tipos_gastos           tipos_gastos? @relation(fields: [tipo_gasto_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  produtos               produtos?     @relation(fields: [produto_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([caminhao_id])
   @@index([data_gasto])
   @@index([tipo_gasto_id])
   @@index([caminhao_id, data_gasto])
   @@index([tenant_id])
+  @@index([produto_id])
 }
 
 model itens_checklist {
@@ -313,6 +317,7 @@ model produtos {
   tenants            tenants              @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   nota_itens         nota_itens[]
   estoque_movimentos estoque_movimentos[]
+  gastos             gastos[]
 
   @@index([tenant_id])
   @@index([tenant_id, codigo])
@@ -320,26 +325,29 @@ model produtos {
 }
 
 model notas_fiscais {
-  id           Int         @id @default(autoincrement())
-  tenant_id    Int
-  chave_acesso String?     @db.VarChar(44)
-  numero       String      @db.VarChar(20)
-  serie        String?     @db.VarChar(10)
-  emitente     String?     @db.VarChar(255)
-  cnpj_emitente String?    @db.VarChar(18)
-  data_emissao DateTime?   @db.Date
-  valor_total  Decimal?    @db.Decimal(14, 2)
-  pdf_path     String?     @db.VarChar(500)
-  xml_path     String?     @db.VarChar(500)
-  status       String      @default("confirmada") @db.VarChar(32)
-  criado_em    DateTime    @default(now()) @db.Timestamptz(6)
-  tenants      tenants     @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  itens        nota_itens[]
-  movimentos   estoque_movimentos[]
+  id            Int         @id @default(autoincrement())
+  tenant_id     Int
+  chave_acesso  String?     @db.VarChar(44)
+  numero        String      @db.VarChar(20)
+  serie         String?     @db.VarChar(10)
+  emitente      String?     @db.VarChar(255)
+  cnpj_emitente String?     @db.VarChar(18)
+  data_emissao  DateTime?   @db.Date
+  valor_total   Decimal?    @db.Decimal(14, 2)
+  pdf_path      String?     @db.VarChar(500)
+  xml_path      String?     @db.VarChar(500)
+  status        String      @default("confirmada") @db.VarChar(32)
+  caminhao_id   Int?
+  criado_em     DateTime    @default(now()) @db.Timestamptz(6)
+  tenants       tenants     @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  caminhoes     caminhoes?  @relation(fields: [caminhao_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  itens         nota_itens[]
+  movimentos    estoque_movimentos[]
 
   @@index([tenant_id])
   @@index([tenant_id, numero])
   @@index([tenant_id, chave_acesso])
+  @@index([caminhao_id])
 }
 
 model nota_itens {

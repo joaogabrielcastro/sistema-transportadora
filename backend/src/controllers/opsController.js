@@ -42,6 +42,9 @@ export const opsController = {
     const data = await AuditService.list(tenantId, {
       limit: req.query.limit,
       offset: req.query.offset,
+      userEmail: req.query.userEmail || req.query.email,
+      action: req.query.action,
+      q: req.query.q || req.query.path,
     });
     res.json({ success: true, data });
   }),

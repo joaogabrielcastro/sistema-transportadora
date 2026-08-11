@@ -35,6 +35,7 @@ const Assinatura = lazy(() => import("./Pages/Assinatura.jsx"));
 const Motoristas = lazy(() => import("./Pages/Motoristas.jsx"));
 const Documentos = lazy(() => import("./Pages/Documentos.jsx"));
 const Alertas = lazy(() => import("./Pages/Alertas.jsx"));
+const Auditoria = lazy(() => import("./Pages/Auditoria.jsx"));
 const NotFound = lazy(() => import("./Pages/NotFound.jsx"));
 
 function RedirectCadastroLote() {
@@ -93,6 +94,16 @@ function AppRoutes() {
             <ProtectedRoute>
               <BillingGate>
                 <Alertas />
+              </BillingGate>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/auditoria"
+          element={
+            <ProtectedRoute>
+              <BillingGate>
+                <Auditoria />
               </BillingGate>
             </ProtectedRoute>
           }

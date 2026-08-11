@@ -39,10 +39,25 @@ export class AuditService {
     }
   }
 
-  static async list(tenantId, { limit = 50, offset = 0 } = {}) {
+  static async list(
+    tenantId,
+    { limit = 50, offset = 0, userEmail, action, q } = {},
+  ) {
     const take = Math.min(Math.max(Number(limit) || 50, 1), 200);
     const skip = Math.max(Number(offset) || 0, 0);
     const where = { tenant_id: Number(tenantId) };
+    if (userEmail && String(userEmail).trim()) {
+      where.user_email = {
+        contains: String(userEmail).trim(),
+        mode: "insensitive",
+      };
+    }
+    if (action && String(action).trim()) {
+      where.action = String(action).trim().toUpperCase();
+    }
+    if (q && String(q).trim()) {
+      where.path = { contains: String(q).trim(), mode: "insensitive" };
+    }
     const [rows, total] = await Promise.all([
       prisma.audit_logs.findMany({
         where,

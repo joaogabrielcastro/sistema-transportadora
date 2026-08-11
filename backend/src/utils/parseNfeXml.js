@@ -54,6 +54,44 @@ function parseDate(value) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/** Normaliza placa BR (antiga ou Mercosul). */
+function normalizePlaca(placa) {
+  return String(placa || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 10);
+}
+
+/**
+ * Extrai placas de textos livres (infAdic, observações, xPed, etc.).
+ * @returns {string[]}
+ */
+function extractPlacasFromText(text) {
+  const raw = String(text || "").toUpperCase();
+  if (!raw.trim()) return [];
+  const found = new Set();
+  const patterns = [
+    /\b([A-Z]{3}\d[A-Z]\d{2})\b/g,
+    /\b([A-Z]{3}[-\s]?\d{4})\b/g,
+  ];
+  for (const re of patterns) {
+    let m;
+    while ((m = re.exec(raw)) !== null) {
+      const p = normalizePlaca(m[1]);
+      if (p.length >= 7 && p.length <= 8) found.add(p);
+    }
+  }
+  // "PLACA: ABC1D23" / "placa ABC1234"
+  const labeled = raw.matchAll(
+    /PLACA[:\s#-]*([A-Z0-9]{7,8})/g,
+  );
+  for (const m of labeled) {
+    const p = normalizePlaca(m[1]);
+    if (p.length >= 7 && p.length <= 8) found.add(p);
+  }
+  return [...found];
+}
+
 /**
  * @param {string} xmlContent
  */
@@ -91,6 +129,7 @@ export function parseNfeXml(xmlContent) {
   const ide = allBlocks(xml, "ide")[0] || xml;
   const emit = allBlocks(xml, "emit")[0] || "";
   const total = allBlocks(xml, "total")[0] || xml;
+  const infAdic = allBlocks(xml, "infAdic")[0] || "";
 
   const numero = textOf(ide, "nNF") || textOf(xml, "nNF");
   const serie = textOf(ide, "serie") || textOf(xml, "serie") || null;
@@ -125,6 +164,7 @@ export function parseNfeXml(xmlContent) {
       toNumber(textOf(prod, "vUnCom")) ||
       toNumber(textOf(prod, "vUnTrib"));
     const valor_total_item = toNumber(textOf(prod, "vProd"));
+    const xPed = textOf(prod, "xPed") || "";
 
     return {
       codigo,
@@ -134,6 +174,7 @@ export function parseNfeXml(xmlContent) {
       quantidade,
       valor_unitario,
       valor_total: valor_total_item,
+      _ped: xPed,
     };
   });
 
@@ -143,6 +184,17 @@ export function parseNfeXml(xmlContent) {
     throw err;
   }
 
+  const obsText = [
+    textOf(infAdic, "infCpl"),
+    textOf(infAdic, "infAdFisco"),
+    textOf(xml, "infCpl"),
+    ...itens.map((i) => i._ped || ""),
+    ...itens.map((i) => i.descricao || ""),
+  ].join(" ");
+
+  const placas_sugeridas = extractPlacasFromText(obsText);
+  const itensLimpos = itens.map(({ _ped, ...rest }) => rest);
+
   return {
     chave_acesso: chave_acesso ? chave_acesso.slice(0, 44) : null,
     numero: String(numero).slice(0, 20),
@@ -151,8 +203,10 @@ export function parseNfeXml(xmlContent) {
     cnpj_emitente: cnpj_emitente ? cnpj_emitente.slice(0, 18) : null,
     data_emissao: parseDate(dataRaw),
     valor_total,
-    itens,
+    itens: itensLimpos,
+    placas_sugeridas,
+    placa_sugerida: placas_sugeridas[0] || null,
   };
 }
 
-export { stripNs };
+export { stripNs, extractPlacasFromText, normalizePlaca };

@@ -262,6 +262,9 @@ export const auditLog = (req, res, next) => {
   }
 
   const summary = summarizeAuditBody(req.body);
+  const fullPath = req.originalUrl || req.path || "";
+  const { entity, entityId } = parseAuditEntity(fullPath);
+
   logger.info("Audit log", {
     requestId: req.context?.requestId,
     userId: req.context?.user?.id,
@@ -269,6 +272,8 @@ export const auditLog = (req, res, next) => {
     tenantId: req.context?.user?.tenantId,
     method: req.method,
     path: req.path,
+    entity,
+    entityId,
     bodyKeys:
       req.body && typeof req.body === "object" ? Object.keys(req.body) : null,
     bodySummary: summary,
@@ -280,7 +285,9 @@ export const auditLog = (req, res, next) => {
     userEmail: req.context?.user?.email,
     action: method,
     method,
-    path: req.originalUrl || req.path,
+    path: fullPath,
+    entity,
+    entityId,
     ip: req.ip,
     requestId: req.context?.requestId,
     summary,
@@ -288,3 +295,31 @@ export const auditLog = (req, res, next) => {
 
   return next();
 };
+
+/** Extrai entity / entity_id a partir do path da API. */
+function parseAuditEntity(fullPath) {
+  const pathOnly = String(fullPath || "").split("?")[0];
+  const parts = pathOnly.split("/").filter(Boolean);
+  const start = parts[0] === "api" ? 1 : 0;
+  const entity = parts[start] ? String(parts[start]).slice(0, 64) : null;
+  const rest = parts.slice(start + 1);
+  const skip = new Set([
+    "arquivo",
+    "documentos",
+    "estoque",
+    "baixa",
+    "preview",
+    "importar",
+    "search",
+    "id",
+  ]);
+  let entityId = null;
+  for (const seg of rest) {
+    if (skip.has(seg)) continue;
+    if (/^\d+$/.test(seg) || /^[A-Z0-9]{6,10}$/i.test(seg)) {
+      entityId = String(seg).slice(0, 64);
+      break;
+    }
+  }
+  return { entity, entityId };
+}

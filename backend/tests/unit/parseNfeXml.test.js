@@ -34,5 +34,33 @@ describe("parseNfeXml", () => {
     assert.equal(parsed.itens[0].descricao, "OXIGENIO IND GAS");
     assert.equal(parsed.itens[0].quantidade, 14);
     assert.ok(parsed.chave_acesso?.startsWith("4126"));
+    assert.equal(parsed.placa_sugerida, null);
+  });
+
+  it("detecta placa em infCpl", () => {
+    const xml = `<?xml version="1.0"?>
+<nfeProc>
+  <NFe>
+    <infNFe Id="NFe412608150253900001215500500000005951000005961">
+      <ide><nNF>596</nNF><serie>5</serie><dhEmi>2026-08-05T15:39:29-03:00</dhEmi></ide>
+      <emit><CNPJ>15025390000121</CNPJ><xNome>OXIDAKAR</xNome></emit>
+      <det nItem="1">
+        <prod>
+          <cProd>1</cProd>
+          <xProd>FILTRO</xProd>
+          <uCom>UN</uCom>
+          <qCom>1</qCom>
+          <vUnCom>10</vUnCom>
+          <vProd>10</vProd>
+        </prod>
+      </det>
+      <total><ICMSTot><vNF>10</vNF></ICMSTot></total>
+      <infAdic><infCpl>PECA PARA PLACA ABC1D23 CAMINHAO</infCpl></infAdic>
+    </infNFe>
+  </NFe>
+</nfeProc>`;
+    const parsed = parseNfeXml(xml);
+    assert.equal(parsed.placa_sugerida, "ABC1D23");
+    assert.ok(parsed.placas_sugeridas.includes("ABC1D23"));
   });
 });

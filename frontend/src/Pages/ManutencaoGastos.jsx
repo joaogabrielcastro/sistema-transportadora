@@ -27,6 +27,10 @@ import EmptyState from "../components/EmptyState.jsx";
 import { TableSkeleton } from "../components/Skeleton.jsx";
 import { isCombustivelTipo } from "../utils/tipoGastoUtils.js";
 import { formatDate } from "../utils/formatters.js";
+import { useAuth } from "../context/AuthContext.jsx";
+import { apiFetch } from "../lib/apiClient.js";
+import { extractApiArray } from "../utils/extractApiArray.js";
+import { featureEnabled } from "../utils/billing.js";
 
 /** Intervalo sugerido para óleo / lubrificação (km e meses). */
 const OLEO_INTERVALO_KM = 10000;
@@ -74,6 +78,8 @@ const RegistroForm = ({
   form,
   caminhoes,
   tiposGastos,
+  produtosEstoque = [],
+  showEstoque = false,
   onChange,
   onCaminhaoChange,
   onTipoChange,
@@ -102,6 +108,18 @@ const RegistroForm = ({
       value: t.id,
       label: t.nome_tipo,
     }),
+  );
+
+  const produtoOptions = (Array.isArray(produtosEstoque) ? produtosEstoque : [])
+    .filter((p) => Number(p.saldo) > 0)
+    .map((p) => ({
+      value: String(p.id),
+      label: `${p.descricao} — saldo ${Number(p.saldo)} ${p.unidade || ""}`,
+      searchText: [p.codigo, p.descricao].filter(Boolean).join(" "),
+    }));
+
+  const produtoSelecionado = produtosEstoque.find(
+    (p) => String(p.id) === String(form.produto_id),
   );
 
   const campoTipo = (
@@ -307,6 +325,41 @@ const RegistroForm = ({
                 placeholder="0,00"
                 className="mb-0"
               />
+            )}
+            {showEstoque && produtoOptions.length > 0 && (
+              <>
+                <FormField
+                  label="Usar do estoque (opcional)"
+                  type="typeahead"
+                  name="produto_id"
+                  value={form.produto_id || ""}
+                  onChange={onChange}
+                  options={produtoOptions}
+                  allowEmpty
+                  emptyLabel="Não usar estoque"
+                  placeholder="Peça importada na NF-e…"
+                  helperText="Dá baixa automática no estoque ao cadastrar o gasto."
+                  className="mb-0 sm:col-span-2"
+                />
+                {form.produto_id && (
+                  <FormField
+                    label="Qtd. do estoque"
+                    type="number"
+                    name="quantidade_estoque"
+                    value={form.quantidade_estoque || "1"}
+                    onChange={onChange}
+                    step="0.001"
+                    min="0.001"
+                    required
+                    helperText={
+                      produtoSelecionado
+                        ? `Saldo: ${Number(produtoSelecionado.saldo)} ${produtoSelecionado.unidade || ""}`
+                        : ""
+                    }
+                    className="mb-0"
+                  />
+                )}
+              </>
             )}
             <FormField
               label="Observação"
@@ -625,10 +678,33 @@ const ManutencaoGastos = () => {
     quantidade_combustivel: "",
     proxima_km: "",
     proxima_data: "",
+    produto_id: "",
+    quantidade_estoque: "1",
   });
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [produtosEstoque, setProdutosEstoque] = useState([]);
+  const { user } = useAuth();
+  const showEstoque = featureEnabled(user, "notas_estoque");
+
+  useEffect(() => {
+    if (!showEstoque) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiFetch({
+          url: "/notas-fiscais/produtos?limit=200",
+        });
+        if (!cancelled) setProdutosEstoque(extractApiArray(res));
+      } catch {
+        if (!cancelled) setProdutosEstoque([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [showEstoque]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -682,6 +758,8 @@ const ManutencaoGastos = () => {
       quantidade_combustivel: "",
       proxima_km: "",
       proxima_data: "",
+      produto_id: "",
+      quantidade_estoque: "1",
     });
   };
 
@@ -740,6 +818,12 @@ const ManutencaoGastos = () => {
             ? parseFloat(String(form.quantidade_combustivel).replace(",", "."))
             : null,
         };
+        if (form.produto_id) {
+          payload.produto_id = parseInt(form.produto_id, 10);
+          payload.quantidade_estoque = form.quantidade_estoque
+            ? parseFloat(String(form.quantidade_estoque).replace(",", "."))
+            : 1;
+        }
         await post("/gastos", payload, { skipSuccessToast: true });
       } else {
         const payload = {
@@ -775,7 +859,19 @@ const ManutencaoGastos = () => {
         quantidade_combustivel: "",
         proxima_km: "",
         proxima_data: "",
+        produto_id: "",
+        quantidade_estoque: "1",
       });
+      if (showEstoque) {
+        try {
+          const res = await apiFetch({
+            url: "/notas-fiscais/produtos?limit=200",
+          });
+          setProdutosEstoque(extractApiArray(res));
+        } catch {
+          /* ignore */
+        }
+      }
     } catch (err) {
       console.error("Erro ao cadastrar registro:", err);
       toast.error(err.message || "Não foi possível salvar o registro.");
@@ -853,6 +949,8 @@ const ManutencaoGastos = () => {
           form={form}
           caminhoes={caminhoes}
           tiposGastos={tiposGastos}
+          produtosEstoque={produtosEstoque}
+          showEstoque={showEstoque}
           onChange={handleChange}
           onCaminhaoChange={handleCaminhaoChange}
           onTipoChange={handleTipoChange}

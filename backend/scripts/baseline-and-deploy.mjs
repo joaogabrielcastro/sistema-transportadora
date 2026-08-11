@@ -179,6 +179,13 @@ try {
       (await columnExists("checklist", "proxima_data")),
   );
 
+  await healFailedMigration(
+    "20260811120000_nota_caminhao_gasto_produto",
+    async () =>
+      (await columnExists("notas_fiscais", "caminhao_id")) &&
+      (await columnExists("gastos", "produto_id")),
+  );
+
   run("npx prisma migrate deploy");
 
   console.log("\nConcluído. Verifique se caminhao_documentos existe (PDFs por caminhão).");

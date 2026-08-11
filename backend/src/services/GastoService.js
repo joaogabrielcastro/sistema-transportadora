@@ -14,21 +14,74 @@ const assertCaminhaoPertenceAoTenant = async (tenantId, caminhaoId) => {
   return caminhao;
 };
 
+async function baixarEstoqueTx(
+  tx,
+  tenantId,
+  { produto_id, quantidade, motivo, caminhao_id },
+) {
+  const qtd = Number(quantidade);
+  if (!Number.isFinite(qtd) || qtd <= 0) {
+    const err = new Error("Quantidade de estoque inválida");
+    err.statusCode = 400;
+    throw err;
+  }
+  const produto = await tx.produtos.findFirst({
+    where: { id: Number(produto_id), tenant_id: Number(tenantId) },
+  });
+  if (!produto) {
+    const err = new Error("Produto não encontrado no estoque");
+    err.statusCode = 404;
+    throw err;
+  }
+  if (Number(produto.saldo) < qtd) {
+    const err = new Error(
+      `Saldo insuficiente (disponível: ${Number(produto.saldo)})`,
+    );
+    err.statusCode = 400;
+    throw err;
+  }
+  await tx.produtos.update({
+    where: { id: produto.id },
+    data: { saldo: { decrement: qtd } },
+  });
+  await tx.estoque_movimentos.create({
+    data: {
+      tenant_id: Number(tenantId),
+      produto_id: produto.id,
+      tipo: "baixa",
+      quantidade: qtd,
+      caminhao_id: caminhao_id ? Number(caminhao_id) : null,
+      motivo: motivo || "Baixa vinculada a gasto",
+    },
+  });
+  return produto;
+}
+
 export class GastoService {
   static async createWithCaminhaoUpdate(tenantId, gastoData) {
-    const novoKm = gastoData.km_registro;
-    const caminhaoId = gastoData.caminhao_id;
+    const {
+      produto_id,
+      quantidade_estoque,
+      ...rest
+    } = gastoData;
+    const novoKm = rest.km_registro;
+    const caminhaoId = rest.caminhao_id;
 
     if (caminhaoId) {
       await assertCaminhaoPertenceAoTenant(tenantId, caminhaoId);
     }
 
     const novoGasto = await prisma.$transaction(async (tx) => {
+      const createData = {
+        ...rest,
+        tenant_id: Number(tenantId),
+      };
+      if (produto_id) {
+        createData.produto_id = Number(produto_id);
+      }
+
       const gastoCriado = await tx.gastos.create({
-        data: {
-          ...gastoData,
-          tenant_id: Number(tenantId),
-        },
+        data: createData,
         include: {
           caminhoes: {
             select: { placa: true },
@@ -38,6 +91,21 @@ export class GastoService {
           },
         },
       });
+
+      if (produto_id) {
+        const qtd =
+          quantidade_estoque != null && quantidade_estoque !== ""
+            ? Number(quantidade_estoque)
+            : 1;
+        await baixarEstoqueTx(tx, tenantId, {
+          produto_id,
+          quantidade: qtd,
+          caminhao_id: caminhaoId,
+          motivo: `Gasto #${gastoCriado.id}${
+            rest.descricao ? ` — ${String(rest.descricao).slice(0, 120)}` : ""
+          }`,
+        });
+      }
 
       if (caminhaoId && novoKm != null) {
         await syncKmFromRegistro(caminhaoId, novoKm, { tx });
@@ -55,19 +123,23 @@ export class GastoService {
       throw new Error("Gasto não encontrado");
     }
 
-    if (gastoData.caminhao_id) {
-      await assertCaminhaoPertenceAoTenant(tenantId, gastoData.caminhao_id);
+    const { produto_id, quantidade_estoque, ...rest } = gastoData;
+    void produto_id;
+    void quantidade_estoque;
+
+    if (rest.caminhao_id) {
+      await assertCaminhaoPertenceAoTenant(tenantId, rest.caminhao_id);
     }
 
     const parsedId = Number(id);
-    const caminhaoId = gastoData.caminhao_id ?? existing.caminhao_id;
-    const kmAlterado = gastoData.km_registro !== undefined;
-    const novoKm = kmAlterado ? gastoData.km_registro : undefined;
+    const caminhaoId = rest.caminhao_id ?? existing.caminhao_id;
+    const kmAlterado = rest.km_registro !== undefined;
+    const novoKm = kmAlterado ? rest.km_registro : undefined;
 
     await prisma.$transaction(async (tx) => {
       await tx.gastos.update({
         where: { id: parsedId },
-        data: gastoData,
+        data: rest,
       });
 
       if (!caminhaoId) return;

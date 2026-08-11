@@ -10,7 +10,7 @@ export default defineConfig({
       registerType: "autoUpdate",
       injectRegister: "auto",
       workbox: {
-        globPatterns: ["**/*.{js,css,ico,png,svg,woff2}"],
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         navigateFallback: "index.html",
         cleanupOutdatedCaches: true,
         skipWaiting: true,
@@ -57,7 +57,7 @@ export default defineConfig({
         display: "standalone",
       },
       devOptions: {
-        enabled: true,
+        enabled: false,
       },
     }),
   ],

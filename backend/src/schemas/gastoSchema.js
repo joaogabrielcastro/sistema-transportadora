@@ -13,6 +13,8 @@ export const gastoSchema = z.object({
     .nonnegative()
     .optional()
     .nullable(),
+  produto_id: z.coerce.number().int().positive().optional().nullable(),
+  quantidade_estoque: z.coerce.number().positive().optional().nullable(),
 });
 
 export const gastoUpdateSchema = gastoSchema.partial();

@@ -2,13 +2,38 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import prisma from "../lib/prisma.js";
 import { serializePrisma } from "../utils/prismaSerialization.js";
-import { parseNfeXml } from "../utils/parseNfeXml.js";
+import { parseNfeXml, normalizePlaca } from "../utils/parseNfeXml.js";
 import { NOTAS_ROOT, notaDocsDir } from "../utils/uploadPaths.js";
 
 const withTenant = (tenantId, where = {}) => ({
   ...where,
   tenant_id: Number(tenantId),
 });
+
+async function resolveCaminhaoId(tx, tenantId, parsed) {
+  if (parsed.caminhao_id) {
+    const byId = await tx.caminhoes.findFirst({
+      where: withTenant(tenantId, { id: Number(parsed.caminhao_id) }),
+      select: { id: true },
+    });
+    if (byId) return byId.id;
+  }
+  const placas = [
+    parsed.placa_sugerida,
+    ...(Array.isArray(parsed.placas_sugeridas) ? parsed.placas_sugeridas : []),
+  ]
+    .map(normalizePlaca)
+    .filter(Boolean);
+  for (const placa of [...new Set(placas)]) {
+    const all = await tx.caminhoes.findMany({
+      where: { tenant_id: Number(tenantId) },
+      select: { id: true, placa: true },
+    });
+    const hit = all.find((c) => normalizePlaca(c.placa) === placa);
+    if (hit) return hit.id;
+  }
+  return null;
+}
 
 async function findOrCreateProduto(tx, tenantId, item) {
   const codigo = item.codigo?.trim() || null;
@@ -114,6 +139,8 @@ export class NotaFiscalService {
     }
 
     const nota = await prisma.$transaction(async (tx) => {
+      const caminhaoId = await resolveCaminhaoId(tx, tenantId, parsed);
+
       const created = await tx.notas_fiscais.create({
         data: {
           tenant_id: Number(tenantId),
@@ -129,6 +156,7 @@ export class NotaFiscalService {
           xml_path: files.xmlPath || null,
           pdf_path: files.pdfPath || null,
           status: "confirmada",
+          caminhao_id: caminhaoId,
         },
       });
 
@@ -164,7 +192,10 @@ export class NotaFiscalService {
             tipo: "entrada",
             quantidade: qtd,
             nota_id: created.id,
-            motivo: `Entrada NF ${parsed.numero}`,
+            caminhao_id: caminhaoId,
+            motivo: caminhaoId
+              ? `Entrada NF ${parsed.numero} (destino sugerido)`
+              : `Entrada NF ${parsed.numero}`,
           },
         });
       }

@@ -17,6 +17,7 @@ import {
   extractApiArray,
   extractApiData,
 } from "../utils/extractApiArray.js";
+import { formatCaminhaoOptions } from "../utils/caminhaoOptions.js";
 
 function formatMoney(value) {
   if (value == null || value === "") return "—";
@@ -147,19 +148,24 @@ const NotasEstoque = () => {
     produto_id: "",
     quantidade: "",
     motivo: "",
+    caminhao_id: "",
   });
   const [msg, setMsg] = useState("");
   const [erro, setErro] = useState("");
+  const [caminhoes, setCaminhoes] = useState([]);
+  const [previewCaminhaoId, setPreviewCaminhaoId] = useState("");
 
   const loadLists = useCallback(async () => {
     setLoadingLists(true);
     try {
-      const [nRes, pRes] = await Promise.all([
+      const [nRes, pRes, cRes] = await Promise.all([
         apiFetch({ url: "/notas-fiscais?limit=30" }),
         apiFetch({ url: "/notas-fiscais/produtos?limit=100" }),
+        apiFetch({ url: "/caminhoes?limit=500" }),
       ]);
       setNotas(extractApiArray(nRes));
       setProdutos(extractApiArray(pRes));
+      setCaminhoes(extractApiArray(cRes));
     } catch (e) {
       const parsed = await parseApiError(e);
       setErro(parsed.message || "Falha ao carregar listas");
@@ -196,10 +202,29 @@ const NotasEstoque = () => {
       });
       const data = extractApiData(res);
       setPreview(data);
+      // tenta pré-selecionar caminhão pela placa sugerida no XML
+      const placa = String(data?.placa_sugerida || "")
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "");
+      if (placa && caminhoes.length) {
+        const hit = caminhoes.find(
+          (c) =>
+            String(c.placa || "")
+              .toUpperCase()
+              .replace(/[^A-Z0-9]/g, "") === placa,
+        );
+        setPreviewCaminhaoId(hit ? String(hit.id) : "");
+      } else {
+        setPreviewCaminhaoId("");
+      }
       setMsg(
         `XML lido: NF-e ${data?.numero || ""}${
           data?.serie ? `/${data.serie}` : ""
-        } com ${data?.itens?.length || 0} item(ns). Revise e confirme.`,
+        } com ${data?.itens?.length || 0} item(ns)${
+          data?.placa_sugerida
+            ? ` · placa detectada: ${data.placa_sugerida}`
+            : ""
+        }. Revise e confirme.`,
       );
     } catch (e) {
       const parsed = await parseApiError(e);
@@ -226,7 +251,13 @@ const NotasEstoque = () => {
     setMsg("");
     try {
       const fd = new FormData();
-      fd.append("payload", JSON.stringify(preview));
+      const payload = {
+        ...preview,
+        caminhao_id: previewCaminhaoId
+          ? Number(previewCaminhaoId)
+          : null,
+      };
+      fd.append("payload", JSON.stringify(payload));
       if (xmlFile) fd.append("xml", xmlFile);
       if (pdfFile) fd.append("pdf", pdfFile);
       await apiFetch({
@@ -236,6 +267,7 @@ const NotasEstoque = () => {
       });
       setMsg("Nota importada e estoque atualizado.");
       setPreview(null);
+      setPreviewCaminhaoId("");
       setXmlFile(null);
       setPdfFile(null);
       await loadLists();
@@ -259,11 +291,14 @@ const NotasEstoque = () => {
           produto_id: Number(baixa.produto_id),
           quantidade: Number(baixa.quantidade),
           motivo: baixa.motivo || "Baixa de estoque",
+          caminhao_id: baixa.caminhao_id
+            ? Number(baixa.caminhao_id)
+            : null,
         },
         { skipErrorToast: true },
       );
       setMsg("Baixa registrada.");
-      setBaixa({ produto_id: "", quantidade: "", motivo: "" });
+      setBaixa({ produto_id: "", quantidade: "", motivo: "", caminhao_id: "" });
       await loadLists();
     } catch (err) {
       const parsed = await parseApiError(err);
@@ -276,6 +311,8 @@ const NotasEstoque = () => {
     label: `${p.descricao} — saldo ${Number(p.saldo)} ${p.unidade || ""}`,
     searchText: [p.codigo, p.descricao, p.unidade].filter(Boolean).join(" "),
   }));
+
+  const caminhaoOptions = formatCaminhaoOptions(caminhoes);
 
   return (
     <PageLayout className="space-y-6">
@@ -417,6 +454,20 @@ const NotasEstoque = () => {
                 ))}
               </div>
 
+              <SearchableSelect
+                label="Caminhão de destino (opcional)"
+                value={previewCaminhaoId}
+                onChange={setPreviewCaminhaoId}
+                options={caminhaoOptions}
+                placeholder="Placa detectada no XML ou escolha manualmente…"
+                helperText={
+                  preview.placa_sugerida
+                    ? `Placa lida do XML: ${preview.placa_sugerida}. A peça entra no estoque; use na manutenção depois.`
+                    : "Se a peça for para um veículo específico, selecione a placa. Continua entrando no estoque."
+                }
+                className="mb-0 max-w-xl"
+              />
+
               <div className="overflow-x-auto rounded-lg border border-border">
                 <table className="min-w-full text-sm">
                   <thead className="bg-gray-50">
@@ -495,7 +546,7 @@ const NotasEstoque = () => {
             </div>
             <form
               onSubmit={handleBaixa}
-              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-end"
+              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 items-end"
             >
               <SearchableSelect
                 label="Produto"
@@ -506,6 +557,16 @@ const NotasEstoque = () => {
                 options={produtoOptions}
                 placeholder="Digite o produto..."
                 required
+                className="mb-0"
+              />
+              <SearchableSelect
+                label="Caminhão (opcional)"
+                value={baixa.caminhao_id}
+                onChange={(value) =>
+                  setBaixa((p) => ({ ...p, caminhao_id: value }))
+                }
+                options={caminhaoOptions}
+                placeholder="Placa do veículo..."
                 className="mb-0"
               />
               <FormField

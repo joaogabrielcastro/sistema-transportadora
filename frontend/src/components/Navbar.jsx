@@ -42,14 +42,14 @@ const isActivePath = (pathname, path, exact = false) => {
 };
 
 const navItemClass = (active) =>
-  `inline-flex h-9 items-center px-3 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+  `inline-flex h-8 lg:h-9 items-center px-2 lg:px-2.5 rounded-lg text-xs lg:text-sm font-medium whitespace-nowrap transition-colors ${
     active
       ? "bg-white/10 text-white border border-white/10"
       : "text-gray-300 hover:bg-white/5 hover:text-white border border-transparent"
   }`;
 
 /**
- * Shell autenticado: barra superior no desktop, menu drawer no mobile.
+ * Shell autenticado: barra superior no desktop (lg+), menu drawer no mobile.
  */
 const Navbar = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -63,6 +63,7 @@ const Navbar = ({ children }) => {
   const showBillingLink = isAuthenticated && user?.billingExempt === false;
   const canWriteFrota = userHasPermission(user, PERMISSIONS.FROTA_WRITE);
   const canManageUsers = userHasPermission(user, PERMISSIONS.USERS_MANAGE);
+  const canReadAudit = userHasPermission(user, PERMISSIONS.AUDIT_READ);
   const trialDays = trialDaysRemaining(user);
   const showTrialBanner =
     showBillingLink &&
@@ -139,18 +140,18 @@ const Navbar = ({ children }) => {
           </div>
         )}
 
-        <div className="container mx-auto px-4 md:px-6 h-14 md:h-16 relative flex items-center justify-between gap-3">
+        <div className="container mx-auto px-3 md:px-6 h-14 md:h-16 relative flex items-center justify-between gap-2">
           <Link
             to="/"
-            className="relative z-10 flex items-center group min-w-0 max-w-[calc(100%-3.5rem)] xl:max-w-[14rem] shrink-0"
+            className="relative z-10 flex items-center group min-w-0 max-w-[calc(100%-3.5rem)] lg:max-w-[11rem] shrink-0"
           >
             <img
               src={PRODUCT_LOGO_SRC}
               alt={PRODUCT_LOGO_ALT}
-              className="h-9 w-9 object-contain rounded-lg bg-white p-1 mr-2.5 flex-shrink-0 group-hover:opacity-90 transition-opacity"
+              className="h-8 w-8 lg:h-9 lg:w-9 object-contain rounded-lg bg-white p-1 mr-2 flex-shrink-0 group-hover:opacity-90 transition-opacity"
             />
             <div className="flex flex-col min-w-0 leading-tight">
-              <span className="text-base md:text-lg font-bold text-white tracking-tight truncate">
+              <span className="text-sm lg:text-base font-bold text-white tracking-tight truncate">
                 {PRODUCT_NAME}
               </span>
               <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider truncate">
@@ -159,9 +160,9 @@ const Navbar = ({ children }) => {
             </div>
           </Link>
 
-          {/* Desktop: opções centralizadas na barra */}
-          <div className="hidden xl:flex absolute inset-x-0 justify-center pointer-events-none">
-            <div className="pointer-events-auto flex items-center gap-0.5 max-w-[min(100%,52rem)] px-2 overflow-x-auto overflow-y-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {/* Desktop lg+: sem overflow-x no ancestral do dropdown (evita clip) */}
+          <div className="hidden lg:flex absolute inset-x-0 justify-center pointer-events-none px-[11rem] xl:px-[14rem]">
+            <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-0.5 max-w-full">
               {mainLinks.map((link) => (
                 <Link
                   key={link.path}
@@ -226,11 +227,11 @@ const Navbar = ({ children }) => {
             </div>
           </div>
 
-          <div className="hidden xl:flex relative z-10 items-center gap-1.5 shrink-0 ml-auto">
+          <div className="hidden lg:flex relative z-10 items-center gap-1 shrink-0 ml-auto">
             {canWriteFrota && (
               <Link
                 to="/cadastro-caminhao"
-                className="inline-flex h-9 items-center px-3.5 rounded-lg text-sm font-semibold bg-secondary text-white hover:bg-secondary-dark transition-colors whitespace-nowrap"
+                className="inline-flex h-8 lg:h-9 items-center px-2.5 lg:px-3 rounded-lg text-xs lg:text-sm font-semibold bg-secondary text-white hover:bg-secondary-dark transition-colors whitespace-nowrap"
               >
                 + Caminhão
               </Link>
@@ -255,6 +256,16 @@ const Navbar = ({ children }) => {
                 Usuários
               </Link>
             )}
+            {isAuthenticated && canReadAudit && (
+              <Link
+                to="/auditoria"
+                className={navItemClass(
+                  isActivePath(location.pathname, "/auditoria"),
+                )}
+              >
+                Auditoria
+              </Link>
+            )}
             {isAuthenticated && (
               <button
                 type="button"
@@ -269,7 +280,7 @@ const Navbar = ({ children }) => {
 
           <button
             type="button"
-            className="xl:hidden relative z-10 text-gray-300 hover:text-white focus:outline-none p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-white/10 transition-colors shrink-0"
+            className="lg:hidden relative z-10 text-gray-300 hover:text-white focus:outline-none p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-white/10 transition-colors shrink-0"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-expanded={mobileOpen}
             aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
@@ -297,7 +308,7 @@ const Navbar = ({ children }) => {
         </div>
 
         <div
-          className={`xl:hidden absolute left-0 right-0 z-[60] bg-primary border-t border-white/10 shadow-xl transition-all duration-300 ease-in-out overflow-hidden ${
+          className={`lg:hidden absolute left-0 right-0 z-[60] bg-primary border-t border-white/10 shadow-xl transition-all duration-300 ease-in-out overflow-hidden ${
             mobileOpen
               ? "max-h-[min(85vh,calc(100dvh-4rem))] opacity-100 overflow-y-auto"
               : "max-h-0 opacity-0 pointer-events-none"
@@ -371,6 +382,18 @@ const Navbar = ({ children }) => {
                 Usuários
               </Link>
             )}
+            {isAuthenticated && canReadAudit && (
+              <Link
+                to="/auditoria"
+                className={`mx-4 mt-2 px-4 py-3 rounded-lg transition-colors ${
+                  isActivePath(location.pathname, "/auditoria")
+                    ? "bg-secondary text-white"
+                    : "text-gray-300 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                Auditoria
+              </Link>
+            )}
             {isAuthenticated && (
               <button
                 type="button"
@@ -387,7 +410,7 @@ const Navbar = ({ children }) => {
       {mobileOpen && (
         <button
           type="button"
-          className="xl:hidden fixed inset-0 z-40 bg-black/40"
+          className="lg:hidden fixed inset-0 z-40 bg-black/40"
           aria-label="Fechar menu"
           onClick={() => setMobileOpen(false)}
         />

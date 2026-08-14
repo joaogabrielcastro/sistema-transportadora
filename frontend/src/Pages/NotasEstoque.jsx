@@ -507,7 +507,10 @@ const NotasEstoque = () => {
                       <th className="px-3 py-2.5 font-medium">Descrição</th>
                       <th className="px-3 py-2.5 font-medium">Qtd</th>
                       <th className="px-3 py-2.5 font-medium">Un</th>
-                      <th className="px-3 py-2.5 font-medium">Valor un.</th>
+                      <th className="px-3 py-2.5 font-medium">
+                        Valor un. (líquido)
+                      </th>
+                      <th className="px-3 py-2.5 font-medium">Desconto</th>
                       <th className="px-3 py-2.5 font-medium">Total</th>
                     </tr>
                   </thead>
@@ -560,7 +563,12 @@ const NotasEstoque = () => {
                           <input
                             type="number"
                             step="0.01"
-                            className="w-28 rounded-md border border-border px-2 py-1.5"
+                            className="w-28 rounded-md border border-border px-2 py-1.5 font-semibold"
+                            title={
+                              item.valor_unitario_bruto != null
+                                ? `Bruto na DANFE: ${formatMoney(item.valor_unitario_bruto)}`
+                                : undefined
+                            }
                             value={
                               item.valor_unitario != null
                                 ? item.valor_unitario
@@ -577,7 +585,12 @@ const NotasEstoque = () => {
                             }
                           />
                         </td>
-                        <td className="px-3 py-2 whitespace-nowrap text-text-primary">
+                        <td className="px-3 py-2 whitespace-nowrap text-text-secondary">
+                          {item.valor_desconto
+                            ? formatMoney(item.valor_desconto)
+                            : "—"}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap font-medium text-text-primary">
                           {formatMoney(item.valor_total)}
                         </td>
                       </tr>

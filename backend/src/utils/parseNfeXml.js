@@ -160,10 +160,28 @@ export function parseNfeXml(xmlContent) {
       toNumber(textOf(prod, "qCom")) ||
       toNumber(textOf(prod, "qTrib")) ||
       0;
-    const valor_unitario =
+    const valor_unitario_bruto =
       toNumber(textOf(prod, "vUnCom")) ||
       toNumber(textOf(prod, "vUnTrib"));
-    const valor_total_item = toNumber(textOf(prod, "vProd"));
+    const valor_prod = toNumber(textOf(prod, "vProd"));
+    const valor_desconto = toNumber(textOf(prod, "vDesc")) || 0;
+    // Custo real: (vProd - desconto) / qtd — o que a oficina pagou pela peça
+    let valor_total_item = null;
+    if (valor_prod != null) {
+      valor_total_item =
+        Math.round(Math.max(0, valor_prod - valor_desconto) * 100) / 100;
+    }
+    let valor_unitario = null;
+    if (
+      valor_total_item != null &&
+      Number.isFinite(quantidade) &&
+      quantidade > 0
+    ) {
+      valor_unitario =
+        Math.round((valor_total_item / quantidade) * 10000) / 10000;
+    } else if (valor_unitario_bruto != null) {
+      valor_unitario = valor_unitario_bruto;
+    }
     const xPed = textOf(prod, "xPed") || "";
 
     return {
@@ -173,6 +191,8 @@ export function parseNfeXml(xmlContent) {
       ncm: ncm ? ncm.slice(0, 20) : null,
       quantidade,
       valor_unitario,
+      valor_unitario_bruto,
+      valor_desconto: valor_desconto || null,
       valor_total: valor_total_item,
       _ped: xPed,
     };

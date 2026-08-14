@@ -53,6 +53,8 @@ export const checklistSchema = z.object({
     (v) => (v === "" || v === undefined ? null : v),
     dataStringSchema.optional().nullable(),
   ),
+  produto_id: z.coerce.number().int().positive().optional().nullable(),
+  quantidade_estoque: z.coerce.number().positive().optional().nullable(),
 });
 
 export const checklistUpdateSchema = checklistSchema.partial();

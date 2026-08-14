@@ -1,5 +1,13 @@
-# Postgres para desenvolvimento (credenciais alinhadas ao backend/.env).
-# Porta 5434 no host: evita 5432 (Postgres local) e 5433 (outros projetos, ex. Benny).
+# Stack local completo:
+#   docker compose up --build
+#
+# Front:  http://localhost:8080
+# API:    http://localhost:3020
+# Postgres (host): localhost:5434
+# Redis (host):    localhost:6379
+#
+# Só banco/redis (como antes):
+#   docker compose up db redis
 services:
   db:
     image: postgres:16-alpine
@@ -19,7 +27,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Opcional: fila durable local (REDIS_URL=redis://localhost:6379/0)
   redis:
     image: redis:7-alpine
     container_name: transportadora_redis_dev
@@ -35,6 +42,52 @@ services:
       timeout: 3s
       retries: 5
 
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: transportadora_api_dev
+    restart: unless-stopped
+    ports:
+      - "3020:3020"
+    environment:
+      NODE_ENV: production
+      PORT: "3020"
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/transportadora_dev
+      DB_SSL_MODE: disable
+      PRISMA_CLIENT_ENGINE_TYPE: library
+      REDIS_URL: redis://redis:6379/0
+      AUTH_ENABLED: "true"
+      JWT_SECRET: local-dev-jwt-secret-atrack
+      CORS_ORIGINS: http://localhost:8080,http://localhost:5173,http://localhost:5174
+      FRONTEND_URL: http://localhost:8080
+      ADMIN_EMAIL: admin@abrotto.local
+      ADMIN_PASSWORD: admin123456
+      ADMIN_NOME: Administrador
+      UPLOADS_DIR: /app/uploads
+    volumes:
+      - transportadora_uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:3020
+        VITE_AUTH_REQUIRED: "true"
+    container_name: transportadora_web_dev
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
 volumes:
   transportadora_pgdata:
   transportadora_redisdata:
+  transportadora_uploads:

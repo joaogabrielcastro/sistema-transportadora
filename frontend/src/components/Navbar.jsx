@@ -42,14 +42,14 @@ const isActivePath = (pathname, path, exact = false) => {
 };
 
 const navItemClass = (active) =>
-  `inline-flex h-8 lg:h-9 items-center px-2 lg:px-2.5 rounded-lg text-xs lg:text-sm font-medium whitespace-nowrap transition-colors ${
+  `inline-flex h-9 items-center px-3 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
     active
       ? "bg-white/10 text-white border border-white/10"
       : "text-gray-300 hover:bg-white/5 hover:text-white border border-transparent"
   }`;
 
 /**
- * Shell autenticado: barra superior no desktop (lg+), menu drawer no mobile.
+ * Barra superior (estilo produção): menus à esquerda, ações à direita.
  */
 const Navbar = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -140,18 +140,18 @@ const Navbar = ({ children }) => {
           </div>
         )}
 
-        <div className="container mx-auto px-3 md:px-6 h-14 md:h-16 relative flex items-center justify-between gap-2">
+        <div className="w-full px-4 md:px-6 h-14 md:h-16 flex items-center gap-2">
           <Link
             to="/"
-            className="relative z-10 flex items-center group min-w-0 max-w-[calc(100%-3.5rem)] lg:max-w-[11rem] shrink-0"
+            className="flex items-center group min-w-0 shrink-0 mr-1"
           >
             <img
               src={PRODUCT_LOGO_SRC}
               alt={PRODUCT_LOGO_ALT}
-              className="h-8 w-8 lg:h-9 lg:w-9 object-contain rounded-lg bg-white p-1 mr-2 flex-shrink-0 group-hover:opacity-90 transition-opacity"
+              className="h-9 w-9 object-contain rounded-lg bg-white p-1 mr-2.5 flex-shrink-0 group-hover:opacity-90 transition-opacity"
             />
             <div className="flex flex-col min-w-0 leading-tight">
-              <span className="text-sm lg:text-base font-bold text-white tracking-tight truncate">
+              <span className="text-base md:text-lg font-bold text-white tracking-tight truncate">
                 {PRODUCT_NAME}
               </span>
               <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider truncate">
@@ -160,78 +160,75 @@ const Navbar = ({ children }) => {
             </div>
           </Link>
 
-          {/* Desktop lg+: sem overflow-x no ancestral do dropdown (evita clip) */}
-          <div className="hidden lg:flex absolute inset-x-0 justify-center pointer-events-none px-[11rem] xl:px-[14rem]">
-            <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-0.5 max-w-full">
-              {mainLinks.map((link) => (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  className={navItemClass(
-                    isActivePath(location.pathname, link.path, link.exact),
-                  )}
-                >
-                  {link.label}
-                </Link>
-              ))}
-
-              <div className="relative shrink-0" ref={pneusMenuRef}>
-                <button
-                  type="button"
-                  className={`${navItemClass(isPneusSection)} gap-1`}
-                  aria-expanded={pneusOpen}
-                  aria-haspopup="true"
-                  onClick={() => setPneusOpen((open) => !open)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Escape") setPneusOpen(false);
-                  }}
-                >
-                  Pneus
-                  <svg
-                    className={`w-3.5 h-3.5 transition-transform ${pneusOpen ? "rotate-180" : ""}`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    aria-hidden
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-                {pneusOpen && (
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-52 py-2 bg-slate-900 border border-white/10 rounded-xl shadow-xl z-[70]">
-                    {pneusSubLinks.map((sub) => (
-                      <Link
-                        key={sub.path}
-                        to={sub.path}
-                        className={`block px-4 py-2.5 text-sm transition-colors ${
-                          isActivePath(
-                            location.pathname,
-                            sub.path,
-                            sub.exact || sub.path === "/pneus",
-                          )
-                            ? "text-white bg-white/10"
-                            : "text-gray-300 hover:text-white hover:bg-white/5"
-                        }`}
-                      >
-                        {sub.label}
-                      </Link>
-                    ))}
-                  </div>
+          <div className="hidden lg:flex items-center gap-0.5 min-w-0 flex-1">
+            {mainLinks.map((link) => (
+              <Link
+                key={link.path}
+                to={link.path}
+                className={navItemClass(
+                  isActivePath(location.pathname, link.path, link.exact),
                 )}
-              </div>
+              >
+                {link.label}
+              </Link>
+            ))}
+
+            <div className="relative shrink-0" ref={pneusMenuRef}>
+              <button
+                type="button"
+                className={`${navItemClass(isPneusSection)} gap-1`}
+                aria-expanded={pneusOpen}
+                aria-haspopup="true"
+                onClick={() => setPneusOpen((open) => !open)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") setPneusOpen(false);
+                }}
+              >
+                Pneus
+                <svg
+                  className={`w-3.5 h-3.5 transition-transform ${pneusOpen ? "rotate-180" : ""}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+              {pneusOpen && (
+                <div className="absolute top-full left-0 mt-1 w-52 py-2 bg-slate-900 border border-white/10 rounded-xl shadow-xl z-[70]">
+                  {pneusSubLinks.map((sub) => (
+                    <Link
+                      key={sub.path}
+                      to={sub.path}
+                      className={`block px-4 py-2.5 text-sm transition-colors ${
+                        isActivePath(
+                          location.pathname,
+                          sub.path,
+                          sub.exact || sub.path === "/pneus",
+                        )
+                          ? "text-white bg-white/10"
+                          : "text-gray-300 hover:text-white hover:bg-white/5"
+                      }`}
+                    >
+                      {sub.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="hidden lg:flex relative z-10 items-center gap-1 shrink-0 ml-auto">
+          <div className="hidden lg:flex items-center gap-1.5 shrink-0 ml-auto">
             {canWriteFrota && (
               <Link
                 to="/cadastro-caminhao"
-                className="inline-flex h-8 lg:h-9 items-center px-2.5 lg:px-3 rounded-lg text-xs lg:text-sm font-semibold bg-secondary text-white hover:bg-secondary-dark transition-colors whitespace-nowrap"
+                className="inline-flex h-9 items-center px-3.5 rounded-lg text-sm font-semibold bg-secondary text-white hover:bg-secondary-dark transition-colors whitespace-nowrap"
               >
                 + Caminhão
               </Link>
@@ -280,7 +277,7 @@ const Navbar = ({ children }) => {
 
           <button
             type="button"
-            className="lg:hidden relative z-10 text-gray-300 hover:text-white focus:outline-none p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-white/10 transition-colors shrink-0"
+            className="lg:hidden ml-auto text-gray-300 hover:text-white focus:outline-none p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-white/10 transition-colors shrink-0"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-expanded={mobileOpen}
             aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}

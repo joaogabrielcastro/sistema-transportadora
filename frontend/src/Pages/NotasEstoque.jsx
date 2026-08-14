@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useId, useState } from "react";
+import React, { useCallback, useEffect, useId, useMemo, useState } from "react";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
 import {
@@ -154,6 +154,7 @@ const NotasEstoque = () => {
   const [erro, setErro] = useState("");
   const [caminhoes, setCaminhoes] = useState([]);
   const [previewCaminhaoId, setPreviewCaminhaoId] = useState("");
+  const [filtroEstoqueCaminhao, setFiltroEstoqueCaminhao] = useState("");
 
   const loadLists = useCallback(async () => {
     setLoadingLists(true);
@@ -239,7 +240,15 @@ const NotasEstoque = () => {
     setPreview((prev) => {
       if (!prev) return prev;
       const itens = [...prev.itens];
-      itens[index] = { ...itens[index], [field]: value };
+      const next = { ...itens[index], [field]: value };
+      if (field === "quantidade" || field === "valor_unitario") {
+        const q = Number(next.quantidade);
+        const u = Number(next.valor_unitario);
+        if (Number.isFinite(q) && Number.isFinite(u)) {
+          next.valor_total = Math.round(q * u * 100) / 100;
+        }
+      }
+      itens[index] = next;
       return { ...prev, itens };
     });
   };
@@ -308,11 +317,33 @@ const NotasEstoque = () => {
 
   const produtoOptions = produtos.map((p) => ({
     value: String(p.id),
-    label: `${p.descricao} — saldo ${Number(p.saldo)} ${p.unidade || ""}`,
+    label: `${p.descricao} — saldo ${Number(p.saldo)} ${p.unidade || ""}${
+      p.preco_custo != null ? ` · ${formatMoney(p.preco_custo)}` : ""
+    }`,
     searchText: [p.codigo, p.descricao, p.unidade].filter(Boolean).join(" "),
   }));
 
   const caminhaoOptions = formatCaminhaoOptions(caminhoes);
+
+  const produtosFiltrados = useMemo(() => {
+    if (!filtroEstoqueCaminhao) return produtos;
+    return produtos.filter((p) =>
+      (p.destinos || []).some(
+        (d) => String(d.caminhao_id) === String(filtroEstoqueCaminhao),
+      ),
+    );
+  }, [produtos, filtroEstoqueCaminhao]);
+
+  const formatDestinos = (destinos) => {
+    if (!Array.isArray(destinos) || !destinos.length) return "—";
+    return destinos
+      .map((d) =>
+        d.geral
+          ? `Geral (${Number(d.saldo)})`
+          : `${d.placa || "Placa?"} (${Number(d.saldo)})`,
+      )
+      .join(", ");
+  };
 
   return (
     <PageLayout className="space-y-6">
@@ -462,8 +493,8 @@ const NotasEstoque = () => {
                 placeholder="Placa detectada no XML ou escolha manualmente…"
                 helperText={
                   preview.placa_sugerida
-                    ? `Placa lida do XML: ${preview.placa_sugerida}. A peça entra no estoque; use na manutenção depois.`
-                    : "Se a peça for para um veículo específico, selecione a placa. Continua entrando no estoque."
+                    ? `Placa lida do XML: ${preview.placa_sugerida}. As peças entram no estoque ligadas a este caminhão. Na manutenção você escolhe a peça — o valor vem da NF-e e a quantidade sai do estoque.`
+                    : "Se escolher um caminhão, as peças ficam ligadas a ele no estoque. Sem caminhão, entram no estoque geral."
                 }
                 className="mb-0 max-w-xl"
               />
@@ -476,6 +507,8 @@ const NotasEstoque = () => {
                       <th className="px-3 py-2.5 font-medium">Descrição</th>
                       <th className="px-3 py-2.5 font-medium">Qtd</th>
                       <th className="px-3 py-2.5 font-medium">Un</th>
+                      <th className="px-3 py-2.5 font-medium">Valor un.</th>
+                      <th className="px-3 py-2.5 font-medium">Total</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -522,6 +555,30 @@ const NotasEstoque = () => {
                               updateItem(idx, "unidade", e.target.value)
                             }
                           />
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="w-28 rounded-md border border-border px-2 py-1.5"
+                            value={
+                              item.valor_unitario != null
+                                ? item.valor_unitario
+                                : ""
+                            }
+                            onChange={(e) =>
+                              updateItem(
+                                idx,
+                                "valor_unitario",
+                                e.target.value === ""
+                                  ? null
+                                  : Number(e.target.value),
+                              )
+                            }
+                          />
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-text-primary">
+                          {formatMoney(item.valor_total)}
                         </td>
                       </tr>
                     ))}
@@ -596,9 +653,27 @@ const NotasEstoque = () => {
           </Card>
 
           <Card className="p-6">
-            <h3 className="mb-4 text-base font-semibold text-text-primary">
-              Produtos em estoque
-            </h3>
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h3 className="text-base font-semibold text-text-primary">
+                  Produtos em estoque
+                </h3>
+                <p className="text-sm text-text-secondary">
+                  Saldo total da oficina e quanto está ligado a cada caminhão
+                  (pela NF-e ou pela baixa).
+                </p>
+              </div>
+              <SearchableSelect
+                label="Filtrar por caminhão"
+                value={filtroEstoqueCaminhao}
+                onChange={setFiltroEstoqueCaminhao}
+                options={caminhaoOptions}
+                placeholder="Todos os caminhões…"
+                allowEmpty
+                emptyLabel="Todos os caminhões"
+                className="mb-0 w-full max-w-xs"
+              />
+            </div>
             {loadingLists ? (
               <LoadingSpinner />
             ) : (
@@ -610,10 +685,12 @@ const NotasEstoque = () => {
                       <th className="px-3 py-2.5 font-medium">Descrição</th>
                       <th className="px-3 py-2.5 font-medium">Un</th>
                       <th className="px-3 py-2.5 font-medium">Saldo</th>
+                      <th className="px-3 py-2.5 font-medium">Preço</th>
+                      <th className="px-3 py-2.5 font-medium">Por caminhão</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {produtos.map((p) => (
+                    {produtosFiltrados.map((p) => (
                       <tr key={p.id} className="border-t border-border">
                         <td className="px-3 py-2.5">{p.codigo || "—"}</td>
                         <td className="px-3 py-2.5">{p.descricao}</td>
@@ -621,16 +698,23 @@ const NotasEstoque = () => {
                         <td className="px-3 py-2.5 font-semibold">
                           {Number(p.saldo)}
                         </td>
+                        <td className="px-3 py-2.5">
+                          {formatMoney(p.preco_custo)}
+                        </td>
+                        <td className="px-3 py-2.5 text-text-secondary">
+                          {formatDestinos(p.destinos)}
+                        </td>
                       </tr>
                     ))}
-                    {!produtos.length && (
+                    {!produtosFiltrados.length && (
                       <tr>
                         <td
-                          colSpan={4}
+                          colSpan={6}
                           className="px-3 py-8 text-center text-text-secondary"
                         >
-                          Nenhum produto ainda. Importe uma NF-e na aba
-                          Importar.
+                          {filtroEstoqueCaminhao
+                            ? "Nenhuma peça ligada a este caminhão. Importe a NF-e com a placa selecionada."
+                            : "Nenhum produto ainda. Importe uma NF-e na aba Importar."}
                         </td>
                       </tr>
                     )}

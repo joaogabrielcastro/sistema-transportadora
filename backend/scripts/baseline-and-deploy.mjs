@@ -186,6 +186,13 @@ try {
       (await columnExists("gastos", "produto_id")),
   );
 
+  await healFailedMigration(
+    "20260814120000_produto_preco_estoque_caminhao",
+    async () =>
+      (await columnExists("produtos", "preco_custo")) &&
+      (await columnExists("checklist", "produto_id")),
+  );
+
   run("npx prisma migrate deploy");
 
   console.log("\nConcluído. Verifique se caminhao_documentos existe (PDFs por caminhão).");

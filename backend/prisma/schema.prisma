@@ -212,6 +212,7 @@ model checklist {
   tenant_id       Int
   caminhao_id     Int?
   item_id         Int?
+  produto_id      Int?
   data_manutencao DateTime         @db.Date
   observacao      String?
   oficina         String?
@@ -225,8 +226,10 @@ model checklist {
   tenants         tenants          @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   caminhoes       caminhoes?       @relation(fields: [caminhao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   itens_checklist itens_checklist? @relation(fields: [item_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  produtos        produtos?        @relation(fields: [produto_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([caminhao_id])
+  @@index([produto_id])
   @@index([data_manutencao])
   @@index([tenant_id])
   @@index([proxima_data])
@@ -312,12 +315,15 @@ model produtos {
   unidade            String               @default("UN") @db.VarChar(20)
   ncm                String?              @db.VarChar(20)
   saldo              Decimal              @default(0) @db.Decimal(14, 3)
+  /** Último preço unitário da NF-e (usado para preencher gasto/manutenção). */
+  preco_custo        Decimal?             @db.Decimal(14, 4)
   criado_em          DateTime             @default(now()) @db.Timestamptz(6)
   atualizado_em      DateTime             @default(now()) @updatedAt @db.Timestamptz(6)
   tenants            tenants              @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   nota_itens         nota_itens[]
   estoque_movimentos estoque_movimentos[]
   gastos             gastos[]
+  checklist          checklist[]
 
   @@index([tenant_id])
   @@index([tenant_id, codigo])

@@ -92,6 +92,7 @@ export const notasFiscaisController = {
       page,
       limit,
       termo: req.query.termo,
+      caminhao_id: req.query.caminhao_id,
     });
     res.json({
       success: true,

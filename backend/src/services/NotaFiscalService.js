@@ -35,8 +35,14 @@ async function resolveCaminhaoId(tx, tenantId, parsed) {
   return null;
 }
 
+function unitPriceOf(item) {
+  const n = Number(item?.valor_unitario);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 async function findOrCreateProduto(tx, tenantId, item) {
   const codigo = item.codigo?.trim() || null;
+  const precoCusto = unitPriceOf(item);
   let produto = null;
 
   if (codigo) {
@@ -62,11 +68,12 @@ async function findOrCreateProduto(tx, tenantId, item) {
         unidade: item.unidade || "UN",
         ncm: item.ncm,
         saldo: 0,
+        preco_custo: precoCusto,
       },
     });
   }
 
-  return produto;
+  return { produto, precoCusto };
 }
 
 export class NotaFiscalService {
@@ -164,7 +171,11 @@ export class NotaFiscalService {
         const qtd = Number(item.quantidade);
         if (!Number.isFinite(qtd) || qtd <= 0) continue;
 
-        const produto = await findOrCreateProduto(tx, tenantId, item);
+        const { produto, precoCusto } = await findOrCreateProduto(
+          tx,
+          tenantId,
+          item,
+        );
 
         await tx.nota_itens.create({
           data: {
@@ -182,7 +193,10 @@ export class NotaFiscalService {
 
         await tx.produtos.update({
           where: { id: produto.id },
-          data: { saldo: { increment: qtd } },
+          data: {
+            saldo: { increment: qtd },
+            ...(precoCusto != null ? { preco_custo: precoCusto } : {}),
+          },
         });
 
         await tx.estoque_movimentos.create({
@@ -194,7 +208,7 @@ export class NotaFiscalService {
             nota_id: created.id,
             caminhao_id: caminhaoId,
             motivo: caminhaoId
-              ? `Entrada NF ${parsed.numero} (destino sugerido)`
+              ? `Entrada NF ${parsed.numero} (estoque do caminhão)`
               : `Entrada NF ${parsed.numero}`,
           },
         });
@@ -240,8 +254,67 @@ export class NotaFiscalService {
   }
 }
 
+function signMovimento(tipo) {
+  if (tipo === "entrada") return 1;
+  if (tipo === "baixa") return -1;
+  return 0;
+}
+
 export class EstoqueService {
-  static async listarProdutos(tenantId, { page = 1, limit = 50, termo } = {}) {
+  /**
+   * Baixa estoque dentro de uma transação já aberta (gasto/manutenção).
+   */
+  static async baixarComTx(
+    tx,
+    tenantId,
+    { produto_id, quantidade, motivo, caminhao_id },
+  ) {
+    const qtd = Number(quantidade);
+    if (!Number.isFinite(qtd) || qtd <= 0) {
+      const err = new Error("Quantidade de estoque inválida");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const produto = await tx.produtos.findFirst({
+      where: withTenant(tenantId, { id: Number(produto_id) }),
+    });
+    if (!produto) {
+      const err = new Error("Produto não encontrado no estoque");
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const saldo = Number(produto.saldo);
+    if (saldo < qtd) {
+      const err = new Error(`Saldo insuficiente (disponível: ${saldo})`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    await tx.produtos.update({
+      where: { id: produto.id },
+      data: { saldo: { decrement: qtd } },
+    });
+
+    await tx.estoque_movimentos.create({
+      data: {
+        tenant_id: Number(tenantId),
+        produto_id: produto.id,
+        tipo: "baixa",
+        quantidade: qtd,
+        caminhao_id: caminhao_id ? Number(caminhao_id) : null,
+        motivo: motivo || "Baixa de estoque",
+      },
+    });
+
+    return produto;
+  }
+
+  static async listarProdutos(
+    tenantId,
+    { page = 1, limit = 50, termo, caminhao_id } = {},
+  ) {
     const where = withTenant(tenantId);
     if (termo?.trim()) {
       where.OR = [
@@ -260,50 +333,105 @@ export class EstoqueService {
       prisma.produtos.count({ where }),
     ]);
 
-    return { data: serializePrisma(data), count };
+    const serialized = serializePrisma(data);
+    const produtoIds = serialized.map((p) => p.id);
+    if (!produtoIds.length) {
+      return { data: serialized, count };
+    }
+
+    const grouped = await prisma.estoque_movimentos.groupBy({
+      by: ["produto_id", "caminhao_id", "tipo"],
+      where: {
+        tenant_id: Number(tenantId),
+        produto_id: { in: produtoIds },
+      },
+      _sum: { quantidade: true },
+    });
+
+    const saldoPorDestino = new Map();
+    for (const row of grouped) {
+      const sign = signMovimento(row.tipo);
+      const qtd = Number(row._sum?.quantidade || 0) * sign;
+      if (!saldoPorDestino.has(row.produto_id)) {
+        saldoPorDestino.set(row.produto_id, new Map());
+      }
+      const destKey = row.caminhao_id == null ? 0 : Number(row.caminhao_id);
+      const destMap = saldoPorDestino.get(row.produto_id);
+      destMap.set(destKey, (destMap.get(destKey) || 0) + qtd);
+    }
+
+    const caminhaoIds = [
+      ...new Set(
+        grouped
+          .map((row) => row.caminhao_id)
+          .filter((id) => id != null)
+          .map(Number),
+      ),
+    ];
+    const placas = caminhaoIds.length
+      ? await prisma.caminhoes.findMany({
+          where: withTenant(tenantId, { id: { in: caminhaoIds } }),
+          select: { id: true, placa: true },
+        })
+      : [];
+    const placaMap = new Map(placas.map((c) => [c.id, c.placa]));
+
+    const cid = caminhao_id ? Number(caminhao_id) : null;
+    const enriched = serialized.map((p) => {
+      const destMap = saldoPorDestino.get(p.id) || new Map();
+      const destinos = [];
+      for (const [destId, saldoDest] of destMap.entries()) {
+        if (saldoDest <= 0) continue;
+        if (destId === 0) {
+          destinos.push({
+            caminhao_id: null,
+            placa: null,
+            saldo: saldoDest,
+            geral: true,
+          });
+        } else {
+          destinos.push({
+            caminhao_id: destId,
+            placa: placaMap.get(destId) || null,
+            saldo: saldoDest,
+            geral: false,
+          });
+        }
+      }
+      destinos.sort((a, b) => Number(b.saldo) - Number(a.saldo));
+      const saldo_caminhao = cid ? Number(destMap.get(cid) || 0) : null;
+      return { ...p, destinos, saldo_caminhao };
+    });
+
+    if (cid) {
+      enriched.sort((a, b) => {
+        const da = Number(a.saldo_caminhao) > 0 ? 0 : 1;
+        const db = Number(b.saldo_caminhao) > 0 ? 0 : 1;
+        if (da !== db) return da - db;
+        return String(a.descricao || "").localeCompare(
+          String(b.descricao || ""),
+          "pt-BR",
+        );
+      });
+    }
+
+    return { data: enriched, count };
   }
 
   static async baixar(tenantId, { produto_id, quantidade, motivo, caminhao_id }) {
-    const qtd = Number(quantidade);
-    if (!Number.isFinite(qtd) || qtd <= 0) {
-      const err = new Error("Quantidade inválida");
-      err.statusCode = 400;
-      throw err;
-    }
-
     const result = await prisma.$transaction(async (tx) => {
-      const produto = await tx.produtos.findFirst({
-        where: withTenant(tenantId, { id: Number(produto_id) }),
+      await EstoqueService.baixarComTx(tx, tenantId, {
+        produto_id,
+        quantidade,
+        motivo,
+        caminhao_id,
       });
-      if (!produto) {
-        const err = new Error("Produto não encontrado");
-        err.statusCode = 404;
-        throw err;
-      }
-
-      const saldo = Number(produto.saldo);
-      if (saldo < qtd) {
-        const err = new Error(
-          `Saldo insuficiente (disponível: ${saldo})`,
-        );
-        err.statusCode = 400;
-        throw err;
-      }
-
-      await tx.produtos.update({
-        where: { id: produto.id },
-        data: { saldo: { decrement: qtd } },
-      });
-
-      return tx.estoque_movimentos.create({
-        data: {
-          tenant_id: Number(tenantId),
-          produto_id: produto.id,
+      return tx.estoque_movimentos.findFirst({
+        where: withTenant(tenantId, {
+          produto_id: Number(produto_id),
           tipo: "baixa",
-          quantidade: qtd,
-          caminhao_id: caminhao_id ? Number(caminhao_id) : null,
-          motivo: motivo || "Baixa de estoque",
-        },
+        }),
+        orderBy: { id: "desc" },
       });
     });
 

@@ -5,6 +5,7 @@ import {
   syncKmFromRegistro,
   recalculateKmAtual,
 } from "./KmCaminhaoService.js";
+import { EstoqueService } from "./NotaFiscalService.js";
 
 const assertCaminhaoPertenceAoTenant = async (tenantId, caminhaoId) => {
   const caminhao = await caminhoesModel.getById(tenantId, caminhaoId);
@@ -13,49 +14,6 @@ const assertCaminhaoPertenceAoTenant = async (tenantId, caminhaoId) => {
   }
   return caminhao;
 };
-
-async function baixarEstoqueTx(
-  tx,
-  tenantId,
-  { produto_id, quantidade, motivo, caminhao_id },
-) {
-  const qtd = Number(quantidade);
-  if (!Number.isFinite(qtd) || qtd <= 0) {
-    const err = new Error("Quantidade de estoque inválida");
-    err.statusCode = 400;
-    throw err;
-  }
-  const produto = await tx.produtos.findFirst({
-    where: { id: Number(produto_id), tenant_id: Number(tenantId) },
-  });
-  if (!produto) {
-    const err = new Error("Produto não encontrado no estoque");
-    err.statusCode = 404;
-    throw err;
-  }
-  if (Number(produto.saldo) < qtd) {
-    const err = new Error(
-      `Saldo insuficiente (disponível: ${Number(produto.saldo)})`,
-    );
-    err.statusCode = 400;
-    throw err;
-  }
-  await tx.produtos.update({
-    where: { id: produto.id },
-    data: { saldo: { decrement: qtd } },
-  });
-  await tx.estoque_movimentos.create({
-    data: {
-      tenant_id: Number(tenantId),
-      produto_id: produto.id,
-      tipo: "baixa",
-      quantidade: qtd,
-      caminhao_id: caminhao_id ? Number(caminhao_id) : null,
-      motivo: motivo || "Baixa vinculada a gasto",
-    },
-  });
-  return produto;
-}
 
 export class GastoService {
   static async createWithCaminhaoUpdate(tenantId, gastoData) {
@@ -97,7 +55,7 @@ export class GastoService {
           quantidade_estoque != null && quantidade_estoque !== ""
             ? Number(quantidade_estoque)
             : 1;
-        await baixarEstoqueTx(tx, tenantId, {
+        await EstoqueService.baixarComTx(tx, tenantId, {
           produto_id,
           quantidade: qtd,
           caminhao_id: caminhaoId,

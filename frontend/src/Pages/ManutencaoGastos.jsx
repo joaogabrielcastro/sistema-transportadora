@@ -60,6 +60,20 @@ const tipoToModal = (registro) => ({
   tipo: registro.tipo_registro === "Manutenção" ? "manutencao" : "gasto",
 });
 
+function formatBRL(value) {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function valorFromProduto(produto, qtdRaw) {
+  const unit = Number(produto?.preco_custo);
+  const qty = Number(String(qtdRaw ?? "1").replace(",", ".")) || 1;
+  if (!Number.isFinite(unit) || unit < 0) return null;
+  return (unit * qty).toFixed(2);
+}
+
 const FormSection = ({ step, title, children }) => (
   <section className="rounded-lg border border-border bg-white p-4">
     <div className="mb-3 flex items-center gap-2">
@@ -112,15 +126,74 @@ const RegistroForm = ({
 
   const produtoOptions = (Array.isArray(produtosEstoque) ? produtosEstoque : [])
     .filter((p) => Number(p.saldo) > 0)
-    .map((p) => ({
-      value: String(p.id),
-      label: `${p.descricao} — saldo ${Number(p.saldo)} ${p.unidade || ""}`,
-      searchText: [p.codigo, p.descricao].filter(Boolean).join(" "),
-    }));
+    .map((p) => {
+      const preco = formatBRL(p.preco_custo);
+      const neste =
+        Number(p.saldo_caminhao) > 0
+          ? ` · neste caminhão ${Number(p.saldo_caminhao)}`
+          : "";
+      return {
+        value: String(p.id),
+        label: `${p.descricao}${p.codigo ? ` (${p.codigo})` : ""} — saldo ${Number(p.saldo)}${neste}${preco ? ` · ${preco}` : ""}`,
+        searchText: [p.codigo, p.descricao].filter(Boolean).join(" "),
+      };
+    });
 
   const produtoSelecionado = produtosEstoque.find(
     (p) => String(p.id) === String(form.produto_id),
   );
+
+  const campoEstoque = showEstoque ? (
+    <FormSection step={3} title="Estoque (opcional)">
+      <FormField
+        label="Usar do estoque"
+        type="typeahead"
+        name="produto_id"
+        value={form.produto_id || ""}
+        onChange={onChange}
+        options={produtoOptions}
+        allowEmpty
+        emptyLabel="Não usar estoque"
+        placeholder={
+          form.caminhao_id
+            ? "Peças deste caminhão aparecem primeiro…"
+            : "Selecione o caminhão para priorizar as peças da nota…"
+        }
+        helperText={
+          produtoOptions.length
+            ? "Ao cadastrar, dá baixa no estoque e preenche o valor com o preço da NF-e."
+            : "Nenhuma peça em estoque. Importe a NF-e em Notas e estoque."
+        }
+        className="mb-0 sm:col-span-2"
+      />
+      {form.produto_id && (
+        <FormField
+          label="Qtd. do estoque"
+          type="number"
+          name="quantidade_estoque"
+          value={form.quantidade_estoque || "1"}
+          onChange={onChange}
+          step="0.001"
+          min="0.001"
+          required
+          helperText={
+            produtoSelecionado
+              ? `Saldo geral: ${Number(produtoSelecionado.saldo)} ${produtoSelecionado.unidade || ""}${
+                  Number(produtoSelecionado.saldo_caminhao) > 0
+                    ? ` · deste caminhão: ${Number(produtoSelecionado.saldo_caminhao)}`
+                    : ""
+                }${
+                  formatBRL(produtoSelecionado.preco_custo)
+                    ? ` · ${formatBRL(produtoSelecionado.preco_custo)} / un.`
+                    : ""
+                }`
+              : ""
+          }
+          className="mb-0"
+        />
+      )}
+    </FormSection>
+  ) : null;
 
   const campoTipo = (
     <FormField
@@ -232,7 +305,9 @@ const RegistroForm = ({
               />
             </FormSection>
 
-            <FormSection step={3} title="Valor">
+            {campoEstoque}
+
+            <FormSection step={showEstoque ? 4 : 3} title="Valor">
               {campoValor}
             </FormSection>
 
@@ -240,7 +315,7 @@ const RegistroForm = ({
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-white">
-                    4
+                    {showEstoque ? 5 : 4}
                   </span>
                   <div>
                     <h3 className="text-sm font-semibold text-text-primary">
@@ -296,82 +371,60 @@ const RegistroForm = ({
             </section>
           </>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
-            {campoTipo}
-            {campoCaminhao}
-            <FormField
-              label="Tipo de Gasto"
-              type="select"
-              name="tipo_id"
-              value={form.tipo_id}
-              onChange={onChange}
-              required
-              options={tipoGastoOptions}
-              className="mb-0"
-            />
-            {campoValor}
-            {campoData}
-            {campoKm}
-            {isCombustivel && (
+          <>
+            <FormSection step={1} title="Caminhão, KM e data">
+              {campoTipo}
+              {campoCaminhao}
+              {campoKm}
+              {campoData}
+            </FormSection>
+
+            <FormSection step={2} title="Tipo e valor">
               <FormField
-                label="Quantidade (Litros)"
-                type="number"
-                name="quantidade_combustivel"
-                value={form.quantidade_combustivel}
+                label="Tipo de Gasto"
+                type="select"
+                name="tipo_id"
+                value={form.tipo_id}
                 onChange={onChange}
-                step="0.01"
-                min="0"
                 required
-                placeholder="0,00"
+                options={tipoGastoOptions}
                 className="mb-0"
               />
-            )}
-            {showEstoque && produtoOptions.length > 0 && (
-              <>
+              {campoValor}
+              {isCombustivel && (
                 <FormField
-                  label="Usar do estoque (opcional)"
-                  type="typeahead"
-                  name="produto_id"
-                  value={form.produto_id || ""}
+                  label="Quantidade (Litros)"
+                  type="number"
+                  name="quantidade_combustivel"
+                  value={form.quantidade_combustivel}
                   onChange={onChange}
-                  options={produtoOptions}
-                  allowEmpty
-                  emptyLabel="Não usar estoque"
-                  placeholder="Peça importada na NF-e…"
-                  helperText="Dá baixa automática no estoque ao cadastrar o gasto."
-                  className="mb-0 sm:col-span-2"
+                  step="0.01"
+                  min="0"
+                  required
+                  placeholder="0,00"
+                  className="mb-0"
                 />
-                {form.produto_id && (
-                  <FormField
-                    label="Qtd. do estoque"
-                    type="number"
-                    name="quantidade_estoque"
-                    value={form.quantidade_estoque || "1"}
-                    onChange={onChange}
-                    step="0.001"
-                    min="0.001"
-                    required
-                    helperText={
-                      produtoSelecionado
-                        ? `Saldo: ${Number(produtoSelecionado.saldo)} ${produtoSelecionado.unidade || ""}`
-                        : ""
-                    }
-                    className="mb-0"
-                  />
-                )}
-              </>
-            )}
-            <FormField
-              label="Observação"
-              type="textarea"
-              name="observacao"
-              value={form.observacao}
-              onChange={onChange}
-              rows={3}
-              placeholder="Detalhes adicionais sobre o registro..."
-              className="mb-0 sm:col-span-2 lg:col-span-3 xl:col-span-4"
-            />
-          </div>
+              )}
+            </FormSection>
+
+            {campoEstoque}
+
+            <FormSection
+              step={showEstoque ? 4 : 3}
+              title="Observações"
+            >
+              <FormField
+                label="Observação"
+                type="textarea"
+                name="observacao"
+                value={form.observacao}
+                onChange={onChange}
+                rows={3}
+                placeholder="Detalhes adicionais sobre o registro..."
+                className="mb-0 sm:col-span-2 lg:col-span-3"
+              />
+            </FormSection>
+          </>
         )}
 
         <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
@@ -691,10 +744,13 @@ const ManutencaoGastos = () => {
   useEffect(() => {
     if (!showEstoque) return undefined;
     let cancelled = false;
+    const cid = form.caminhao_id
+      ? `&caminhao_id=${encodeURIComponent(form.caminhao_id)}`
+      : "";
     (async () => {
       try {
         const res = await apiFetch({
-          url: "/notas-fiscais/produtos?limit=200",
+          url: `/notas-fiscais/produtos?limit=200${cid}`,
         });
         if (!cancelled) setProdutosEstoque(extractApiArray(res));
       } catch {
@@ -704,7 +760,7 @@ const ManutencaoGastos = () => {
     return () => {
       cancelled = true;
     };
-  }, [showEstoque]);
+  }, [showEstoque, form.caminhao_id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -724,6 +780,24 @@ const ManutencaoGastos = () => {
         }
         next.proxima_data =
           addMonthsYmd(prev.data, OLEO_INTERVALO_MESES) || prev.proxima_data;
+      }
+      if (name === "produto_id" || name === "quantidade_estoque") {
+        const pid = name === "produto_id" ? value : next.produto_id;
+        const qtd =
+          name === "quantidade_estoque" ? value : next.quantidade_estoque;
+        const produto = produtosEstoque.find(
+          (p) => String(p.id) === String(pid),
+        );
+        const auto = valorFromProduto(produto, qtd);
+        if (auto != null) next.valor = auto;
+        if (
+          name === "produto_id" &&
+          produto &&
+          prev.tipo === "manutencao" &&
+          !String(prev.nome_item || "").trim()
+        ) {
+          next.nome_item = produto.descricao || "";
+        }
       }
       return next;
     });
@@ -839,6 +913,12 @@ const ManutencaoGastos = () => {
             : null,
           proxima_data: form.proxima_data || null,
         };
+        if (form.produto_id) {
+          payload.produto_id = parseInt(form.produto_id, 10);
+          payload.quantidade_estoque = form.quantidade_estoque
+            ? parseFloat(String(form.quantidade_estoque).replace(",", "."))
+            : 1;
+        }
         await post("/checklist", payload, { skipSuccessToast: true });
       }
 

@@ -5,6 +5,7 @@ import {
   syncKmFromRegistro,
   recalculateKmAtual,
 } from "./KmCaminhaoService.js";
+import { EstoqueService } from "./NotaFiscalService.js";
 
 const assertCaminhaoPertenceAoTenant = async (tenantId, caminhaoId) => {
   const caminhao = await caminhoesModel.getById(tenantId, caminhaoId);
@@ -16,7 +17,11 @@ const assertCaminhaoPertenceAoTenant = async (tenantId, caminhaoId) => {
 
 /** Remove campos de API que não existem na tabela checklist. */
 const stripApiOnlyFields = (data) => {
-  const { nome_item: _nomeItem, ...rest } = data;
+  const {
+    nome_item: _nomeItem,
+    quantidade_estoque: _qtdEstoque,
+    ...rest
+  } = data;
   return rest;
 };
 
@@ -44,6 +49,8 @@ export class ChecklistService {
   static async createWithCaminhaoUpdate(tenantId, checklistData) {
     const kmManutencao = checklistData.km_manutencao;
     const caminhaoId = checklistData.caminhao_id;
+    const produtoId = checklistData.produto_id;
+    const quantidadeEstoque = checklistData.quantidade_estoque;
 
     if (caminhaoId) {
       await assertCaminhaoPertenceAoTenant(tenantId, caminhaoId);
@@ -54,6 +61,9 @@ export class ChecklistService {
       const data = stripApiOnlyFields(checklistData);
       if (itemId !== undefined) {
         data.item_id = itemId;
+      }
+      if (produtoId) {
+        data.produto_id = Number(produtoId);
       }
 
       const checklistCriado = await tx.checklist.create({
@@ -70,6 +80,19 @@ export class ChecklistService {
           },
         },
       });
+
+      if (produtoId) {
+        const qtd =
+          quantidadeEstoque != null && quantidadeEstoque !== ""
+            ? Number(quantidadeEstoque)
+            : 1;
+        await EstoqueService.baixarComTx(tx, tenantId, {
+          produto_id: produtoId,
+          quantidade: qtd,
+          caminhao_id: caminhaoId,
+          motivo: `Manutenção #${checklistCriado.id}`,
+        });
+      }
 
       if (caminhaoId && kmManutencao != null) {
         await syncKmFromRegistro(caminhaoId, kmManutencao, { tx });
@@ -109,6 +132,9 @@ export class ChecklistService {
           data.item_id = itemId;
         }
       }
+
+      // Não altera estoque em edição (evita baixa duplicada).
+      delete data.produto_id;
 
       await tx.checklist.update({
         where: { id: parsedId },

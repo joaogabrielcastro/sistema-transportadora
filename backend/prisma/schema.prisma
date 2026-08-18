@@ -340,10 +340,14 @@ model notas_fiscais {
   cnpj_emitente String?     @db.VarChar(18)
   data_emissao  DateTime?   @db.Date
   valor_total   Decimal?    @db.Decimal(14, 2)
-  pdf_path      String?     @db.VarChar(500)
-  xml_path      String?     @db.VarChar(500)
-  status        String      @default("confirmada") @db.VarChar(32)
-  caminhao_id   Int?
+  pdf_path            String?     @db.VarChar(500)
+  xml_path            String?     @db.VarChar(500)
+  status              String      @default("confirmada") @db.VarChar(32)
+  origem              String      @default("xml") @db.VarChar(20)
+  observacao          String?
+  data_vencimento     DateTime?   @db.Date
+  condicao_pagamento  String?     @db.VarChar(80)
+  caminhao_id         Int?
   criado_em     DateTime    @default(now()) @db.Timestamptz(6)
   tenants       tenants     @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   caminhoes     caminhoes?  @relation(fields: [caminhao_id], references: [id], onDelete: SetNull, onUpdate: NoAction)

@@ -136,6 +136,23 @@ export class NotaFiscalService {
         err.statusCode = 409;
         throw err;
       }
+    } else if (parsed.numero) {
+      const dup = await prisma.notas_fiscais.findFirst({
+        where: withTenant(tenantId, {
+          numero: String(parsed.numero),
+          serie: parsed.serie || null,
+          ...(parsed.cnpj_emitente
+            ? { cnpj_emitente: String(parsed.cnpj_emitente).replace(/\D/g, "") }
+            : {}),
+        }),
+      });
+      if (dup) {
+        const err = new Error(
+          `Nota ${parsed.numero}${parsed.serie ? `/${parsed.serie}` : ""} já cadastrada`,
+        );
+        err.statusCode = 409;
+        throw err;
+      }
     }
 
     const itens = Array.isArray(parsed.itens) ? parsed.itens : [];
@@ -163,6 +180,12 @@ export class NotaFiscalService {
           xml_path: files.xmlPath || null,
           pdf_path: files.pdfPath || null,
           status: "confirmada",
+          origem: parsed.origem || (files.xmlPath ? "xml" : "manual"),
+          observacao: parsed.observacao || null,
+          data_vencimento: parsed.data_vencimento
+            ? new Date(parsed.data_vencimento)
+            : null,
+          condicao_pagamento: parsed.condicao_pagamento || null,
           caminhao_id: caminhaoId,
         },
       });

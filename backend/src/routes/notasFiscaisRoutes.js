@@ -49,6 +49,11 @@ router.post(
   ]),
   notasFiscaisController.importar,
 );
+router.post(
+  "/manual",
+  requirePermission(PERMISSIONS.NOTAS_WRITE),
+  notasFiscaisController.criarManual,
+);
 router.get(
   "/:id",
   requirePermission(PERMISSIONS.NOTAS_READ),

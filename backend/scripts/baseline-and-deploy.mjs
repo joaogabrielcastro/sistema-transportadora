@@ -193,6 +193,13 @@ try {
       (await columnExists("checklist", "produto_id")),
   );
 
+  await healFailedMigration(
+    "20260818120000_nota_cadastro_manual",
+    async () =>
+      (await columnExists("notas_fiscais", "origem")) &&
+      (await columnExists("notas_fiscais", "observacao")),
+  );
+
   run("npx prisma migrate deploy");
 
   console.log("\nConcluído. Verifique se caminhao_documentos existe (PDFs por caminhão).");

@@ -1,6 +1,8 @@
 import { NotaFiscalService, EstoqueService } from "../services/NotaFiscalService.js";
 import { catchAsync } from "../utils/catchAsync.js";
 import { requireTenantId } from "../utils/tenant.js";
+import { notaManualSchema } from "../schemas/notaFiscalSchema.js";
+import { normalizeDatesForDb } from "../utils/dates.js";
 
 function bufferFromFile(file) {
   if (!file) return null;
@@ -81,6 +83,51 @@ export const notasFiscaisController = {
       success: true,
       data: completa,
       message: "Nota importada e estoque atualizado",
+    });
+  }),
+
+  criarManual: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    const parsed = notaManualSchema.parse(req.body || {});
+    const itens = parsed.itens.map((item) => {
+      const qtd = Number(item.quantidade);
+      const unit = Number(item.valor_unitario);
+      const total =
+        item.valor_total != null && item.valor_total !== ""
+          ? Number(item.valor_total)
+          : Number.isFinite(qtd) && Number.isFinite(unit)
+            ? Math.round(qtd * unit * 100) / 100
+            : null;
+      return {
+        ...item,
+        unidade: item.unidade || "UN",
+        valor_total: total,
+      };
+    });
+    const valorTotal =
+      parsed.valor_total != null
+        ? parsed.valor_total
+        : itens.reduce((acc, item) => acc + Number(item.valor_total || 0), 0);
+
+    const payload = normalizeDatesForDb({
+      ...parsed,
+      cnpj_emitente: parsed.cnpj_emitente
+        ? String(parsed.cnpj_emitente).replace(/\D/g, "")
+        : null,
+      chave_acesso: parsed.chave_acesso
+        ? String(parsed.chave_acesso).replace(/\D/g, "")
+        : null,
+      origem: "manual",
+      itens,
+      valor_total: valorTotal,
+    });
+
+    const nota = await NotaFiscalService.confirmarImportacao(tenantId, payload);
+    const completa = await NotaFiscalService.getById(tenantId, nota.id);
+    res.status(201).json({
+      success: true,
+      data: completa,
+      message: "Nota cadastrada e estoque atualizado",
     });
   }),
 

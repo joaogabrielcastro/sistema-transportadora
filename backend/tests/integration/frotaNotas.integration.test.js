@@ -287,6 +287,61 @@ test(
 );
 
 test(
+  "cadastro manual de nota entra no estoque (tenant com notas_estoque)",
+  { skip: shouldRunDbTests ? false : "Defina RUN_DB_TESTS=1 ou rode no CI" },
+  async () => {
+    const slug = `man-${Date.now().toString(36)}`.slice(0, 30);
+    const secondary = await createSecondaryTenantAdmin({
+      slug,
+      email: `man-${Date.now().toString(36)}@test.local`,
+      features: { ordem_coleta: false, notas_estoque: true },
+    });
+    const session = await loginWithCredentials(
+      app,
+      secondary.email,
+      secondary.password,
+    );
+
+    try {
+      const created = await request(app)
+        .post("/api/notas-fiscais/manual")
+        .set(session.authHeader)
+        .send({
+          numero: "597",
+          serie: "1",
+          emitente: "OXIDAKAR",
+          cnpj_emitente: "15.025.390/0001-21",
+          data_emissao: "2026-08-12",
+          condicao_pagamento: "À vista",
+          itens: [
+            {
+              codigo: "5801516883",
+              descricao: "ELEM. FILTRO COMBU",
+              unidade: "PC",
+              quantidade: 1,
+              valor_unitario: 853.19,
+            },
+          ],
+        });
+
+      assert.equal(created.status, 201, created.body?.error);
+      assert.equal(created.body.data.origem, "manual");
+      assert.equal(created.body.data.numero, "597");
+
+      const produtos = await request(app)
+        .get("/api/notas-fiscais/produtos")
+        .set(session.authHeader);
+      const peca = produtos.body.data.find((p) => p.codigo === "5801516883");
+      assert.ok(peca);
+      assert.equal(Number(peca.saldo), 1);
+      assert.equal(Number(peca.preco_custo), 853.19);
+    } finally {
+      await cleanupTenant(secondary.tenant.id);
+    }
+  },
+);
+
+test(
   "GET /auth/me retorna features do tenant",
   { skip: shouldRunDbTests ? false : "Defina RUN_DB_TESTS=1 ou rode no CI" },
   async () => {

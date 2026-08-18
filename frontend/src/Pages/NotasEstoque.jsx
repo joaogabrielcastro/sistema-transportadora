@@ -18,6 +18,7 @@ import {
   extractApiData,
 } from "../utils/extractApiArray.js";
 import { formatCaminhaoOptions } from "../utils/caminhaoOptions.js";
+import NotaManualForm from "../components/NotaManualForm.jsx";
 
 function formatMoney(value) {
   if (value == null || value === "") return "—";
@@ -155,6 +156,7 @@ const NotasEstoque = () => {
   const [caminhoes, setCaminhoes] = useState([]);
   const [previewCaminhaoId, setPreviewCaminhaoId] = useState("");
   const [filtroEstoqueCaminhao, setFiltroEstoqueCaminhao] = useState("");
+  const [savingManual, setSavingManual] = useState(false);
 
   const loadLists = useCallback(async () => {
     setLoadingLists(true);
@@ -289,6 +291,26 @@ const NotasEstoque = () => {
     }
   };
 
+  const handleManual = async (payload) => {
+    setSavingManual(true);
+    setErro("");
+    setMsg("");
+    try {
+      await post("/notas-fiscais/manual", payload, {
+        skipErrorToast: true,
+        skipSuccessToast: true,
+      });
+      setMsg("Nota cadastrada e estoque atualizado.");
+      await loadLists();
+      setTab("notas");
+    } catch (err) {
+      const parsed = await parseApiError(err);
+      setErro(parsed.message || "Falha no cadastro manual");
+    } finally {
+      setSavingManual(false);
+    }
+  };
+
   const handleBaixa = async (e) => {
     e.preventDefault();
     setErro("");
@@ -355,7 +377,7 @@ const NotasEstoque = () => {
       />
       <PageHeader
         title="Notas fiscais e estoque"
-        subtitle="Importe o XML da NF-e (e o PDF DANFE se quiser) e controle o estoque"
+        subtitle="Importe o XML ou cadastre a nota na mão — os itens entram no estoque"
       />
 
       {msg && (
@@ -378,7 +400,8 @@ const NotasEstoque = () => {
 
       <Tabs
         tabs={[
-          { id: "importar", label: "Importar NF-e" },
+          { id: "importar", label: "Importar XML" },
+          { id: "manual", label: "Cadastro manual" },
           { id: "estoque", label: `Estoque (${produtos.length})` },
           { id: "notas", label: `Notas (${notas.length})` },
         ]}
@@ -603,6 +626,15 @@ const NotasEstoque = () => {
         </div>
       )}
 
+      {tab === "manual" && (
+        <NotaManualForm
+          caminhoes={caminhoes}
+          produtos={produtos}
+          submitting={savingManual}
+          onSubmit={handleManual}
+        />
+      )}
+
       {tab === "estoque" && (
         <div className="space-y-6">
           <Card className="p-6 space-y-4">
@@ -750,8 +782,9 @@ const NotasEstoque = () => {
             <div className="overflow-x-auto rounded-lg border border-border">
               <table className="min-w-full text-sm">
                 <thead className="bg-gray-50">
-                  <tr className="text-left text-text-secondary">
+                    <tr className="text-left text-text-secondary">
                     <th className="px-3 py-2.5 font-medium">Número</th>
+                    <th className="px-3 py-2.5 font-medium">Origem</th>
                     <th className="px-3 py-2.5 font-medium">Emitente</th>
                     <th className="px-3 py-2.5 font-medium">Itens</th>
                     <th className="px-3 py-2.5 font-medium">Total</th>
@@ -764,6 +797,9 @@ const NotasEstoque = () => {
                       <td className="px-3 py-2.5 font-medium">
                         {n.numero}
                         {n.serie ? `/${n.serie}` : ""}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        {n.origem === "manual" ? "Manual" : "XML"}
                       </td>
                       <td className="px-3 py-2.5">{n.emitente || "—"}</td>
                       <td className="px-3 py-2.5">{n.itens?.length || 0}</td>
@@ -780,7 +816,7 @@ const NotasEstoque = () => {
                   {!notas.length && (
                     <tr>
                       <td
-                        colSpan={5}
+                          colSpan={6}
                         className="px-3 py-8 text-center text-text-secondary"
                       >
                         Nenhuma nota importada ainda.

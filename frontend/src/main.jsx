@@ -8,6 +8,9 @@ import { ToastProvider } from "./components/ui/ToastProvider.jsx";
 import { queryClient } from "./lib/queryClient.js";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import { initPwaAutoUpdate } from "./pwaRegister.js";
+
+initPwaAutoUpdate();
 
 const CHUNK_RELOAD_KEY = "atrack_chunk_reload";
 

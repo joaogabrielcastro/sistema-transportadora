@@ -8,13 +8,24 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      injectRegister: "auto",
+      injectRegister: false,
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         navigateFallback: "index.html",
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
+        navigationPreload: true,
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === "navigate",
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "atrack-html",
+              networkTimeoutSeconds: 3,
+            },
+          },
+        ],
       },
       includeAssets: [
         "favicon.ico",

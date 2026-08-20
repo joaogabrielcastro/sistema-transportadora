@@ -534,22 +534,29 @@ export class OrdemColetaService {
     ]);
 
     return {
-      data: rows.map((r) => ({
-        id: r.id,
-        tipo: r.tipo,
-        email_destinatario: r.email_destinatario,
-        assunto: r.assunto,
-        criado_em: r.criado_em,
-        enviado_em: r.enviado_em,
-        erro_envio: r.erro_envio,
-        status: r.enviado_em
-          ? "sent"
-          : r.erro_envio
-            ? "failed"
-            : "processing",
-        caminhao_placa: r.caminhoes?.placa ?? null,
-        caminhao_motorista: r.caminhoes?.motorista ?? null,
-      })),
+      data: rows.map((r) => {
+        const dados =
+          r.dados && typeof r.dados === "object" && !Array.isArray(r.dados)
+            ? r.dados
+            : {};
+        return {
+          id: r.id,
+          tipo: r.tipo,
+          email_destinatario: r.email_destinatario,
+          assunto: r.assunto,
+          criado_em: r.criado_em,
+          enviado_em: r.enviado_em,
+          erro_envio: r.erro_envio,
+          status: r.enviado_em
+            ? "sent"
+            : r.erro_envio
+              ? "failed"
+              : "processing",
+          caminhao_placa: r.caminhoes?.placa ?? dados.placa ?? null,
+          caminhao_motorista: r.caminhoes?.motorista ?? null,
+          pode_pdf: Boolean(dados.dadosVariaveis || dados.placa || r.tipo),
+        };
+      }),
       pagination: {
         currentPage: page,
         totalPages: Math.max(1, Math.ceil(total / limit)),
@@ -558,6 +565,57 @@ export class OrdemColetaService {
       },
       totalFalhas,
     };
+  }
+
+  /**
+   * Regenera o PDF de um envio já registrado (histórico),
+   * usando placa + dadosVariaveis gravados em `dados`.
+   */
+  static async gerarPdfDoEnvio(tenantId, envioId) {
+    const row = await prisma.ordens_coleta_envio.findFirst({
+      where: {
+        id: Number(envioId),
+        tenant_id: Number(tenantId),
+      },
+      include: {
+        caminhoes: { select: { placa: true } },
+      },
+    });
+
+    if (!row) {
+      const err = new Error("Envio não encontrado");
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const dados =
+      row.dados && typeof row.dados === "object" && !Array.isArray(row.dados)
+        ? row.dados
+        : {};
+    const placa =
+      dados.placa || row.caminhoes?.placa || null;
+    const dadosVariaveis =
+      dados.dadosVariaveis && typeof dados.dadosVariaveis === "object"
+        ? dados.dadosVariaveis
+        : {};
+
+    const vars = await OrdemColetaService.mergeVars({
+      tenantId,
+      placa,
+      dadosVariaveis,
+    });
+    const html = OrdemColetaService.buildHtml(row.tipo, vars);
+    const pdfBuffer = await OrdemColetaService.htmlToPdfBuffer(html);
+    const prefix = OrdemColetaService.filenamePrefix(row.tipo);
+    const placaSafe = String(placa || "sem_placa")
+      .replace(/[^A-Za-z0-9]/g, "")
+      .toUpperCase();
+    const datePart = row.criado_em
+      ? new Date(row.criado_em).toISOString().slice(0, 10)
+      : new Date().toISOString().slice(0, 10);
+    const filename = `${prefix}_${placaSafe}_${datePart}.pdf`;
+
+    return { pdfBuffer, filename, tipo: row.tipo };
   }
 
   static async resolverCaminhaoId(tenantId, placa) {

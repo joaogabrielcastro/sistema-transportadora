@@ -27,6 +27,11 @@ router.post(
   ordemColetaController.enviar,
 );
 router.get(
+  "/envio/:id/pdf",
+  requirePermission(PERMISSIONS.ORDEM_SEND),
+  ordemColetaController.pdfDoEnvio,
+);
+router.get(
   "/envio/:id",
   requirePermission(PERMISSIONS.ORDEM_SEND),
   ordemColetaController.statusEnvio,

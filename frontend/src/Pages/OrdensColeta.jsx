@@ -76,6 +76,7 @@ const OrdensColeta = () => {
   const [localError, setLocalError] = useState("");
   const [confirmClearFalhas, setConfirmClearFalhas] = useState(false);
   const [clearingFalhas, setClearingFalhas] = useState(false);
+  const [printingId, setPrintingId] = useState(null);
 
   const {
     data: historicoData,
@@ -102,6 +103,55 @@ const OrdensColeta = () => {
       toast.error(err?.message || "Não foi possível remover os registros.");
     } finally {
       setClearingFalhas(false);
+    }
+  };
+
+  const handleImprimirEnvio = async (row) => {
+    if (!row?.id) return;
+    setLocalError("");
+    setPrintingId(row.id);
+    try {
+      const res = await request({
+        method: "GET",
+        url: `/ordem-coleta/envio/${row.id}/pdf`,
+        responseType: "blob",
+        skipSuccessToast: true,
+        skipErrorToast: true,
+        timeout: 120_000,
+      });
+      const blob = res?.data;
+      if (!(blob instanceof Blob)) {
+        throw new Error("Resposta inválida do servidor.");
+      }
+      const prefix =
+        row.tipo === "CANOINHAS"
+          ? "autorizacao_coleta_compacta"
+          : "ordem_coleta";
+      const placaSafe = String(row.caminhao_placa || "sem_placa").replace(
+        /[^A-Za-z0-9]/g,
+        "",
+      );
+      const datePart = row.criado_em
+        ? new Date(row.criado_em).toISOString().slice(0, 10)
+        : new Date().toISOString().slice(0, 10);
+      const filename = `${prefix}_${placaSafe}_${datePart}.pdf`;
+
+      const url = URL.createObjectURL(blob);
+      const printWindow = window.open(url, "_blank", "noopener,noreferrer");
+      saveAs(blob, filename);
+      if (!printWindow) {
+        toast.info(
+          "O navegador bloqueou a nova aba. O PDF foi baixado — abra o arquivo e use Ctrl+P.",
+        );
+      } else {
+        toast.success("PDF aberto. Use Ctrl+P (ou Cmd+P) para imprimir.");
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e) {
+      setLocalError(e.message || "Não foi possível gerar o PDF desta ordem.");
+      toast.error(e.message || "Falha ao gerar o PDF.");
+    } finally {
+      setPrintingId(null);
     }
   };
 
@@ -420,7 +470,7 @@ const OrdensColeta = () => {
             <>
               <div className="md:hidden divide-y divide-border">
                 {historico.map((row) => (
-                  <div key={`${row.id}-m`} className="px-4 py-3 space-y-1">
+                  <div key={`${row.id}-m`} className="px-4 py-3 space-y-2">
                     <div className="flex justify-between gap-2">
                       <span className="font-medium text-text-primary">
                         {labelTipoHistorico(row.tipo)}
@@ -434,7 +484,7 @@ const OrdensColeta = () => {
                     <p className="text-sm text-text-secondary truncate">
                       {row.email_destinatario}
                     </p>
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between items-center gap-2 text-sm">
                       <span>{row.caminhao_placa || "—"}</span>
                       {row.status === "sent" || row.enviado_em ? (
                         <span className="text-success font-medium">Enviado</span>
@@ -444,6 +494,17 @@ const OrdensColeta = () => {
                         <span className="text-warning font-medium">Processando…</span>
                       )}
                     </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      loading={printingId === row.id}
+                      disabled={printingId != null && printingId !== row.id}
+                      onClick={() => handleImprimirEnvio(row)}
+                    >
+                      Imprimir / PDF
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -451,11 +512,14 @@ const OrdensColeta = () => {
               <DataTable className="hidden md:block">
                 <DataTableHead>
                   <tr>
-                    <DataTableTh width="16%">Data</DataTableTh>
-                    <DataTableTh width="18%">Tipo</DataTableTh>
-                    <DataTableTh width="32%">E-mail</DataTableTh>
+                    <DataTableTh width="15%">Data</DataTableTh>
+                    <DataTableTh width="16%">Tipo</DataTableTh>
+                    <DataTableTh width="28%">E-mail</DataTableTh>
                     <DataTableTh width="12%">Placa</DataTableTh>
-                    <DataTableTh width="22%">Status</DataTableTh>
+                    <DataTableTh width="14%">Status</DataTableTh>
+                    <DataTableTh width="15%" align="right">
+                      Ações
+                    </DataTableTh>
                   </tr>
                 </DataTableHead>
                 <DataTableBody>
@@ -488,6 +552,19 @@ const OrdensColeta = () => {
                         ) : (
                           <span className="text-warning font-medium">Processando…</span>
                         )}
+                      </DataTableTd>
+                      <DataTableTd align="right">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          loading={printingId === row.id}
+                          disabled={printingId != null && printingId !== row.id}
+                          onClick={() => handleImprimirEnvio(row)}
+                          title="Abrir PDF para imprimir"
+                        >
+                          Imprimir
+                        </Button>
                       </DataTableTd>
                     </DataTableRow>
                   ))}

@@ -72,6 +72,20 @@ export const ordemColetaController = {
     res.status(200).json({ success: true, data: status });
   }),
 
+  pdfDoEnvio: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    const { pdfBuffer, filename } = await OrdemColetaService.gerarPdfDoEnvio(
+      tenantId,
+      req.params.id,
+    );
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="${filename}"`,
+    );
+    res.send(Buffer.from(pdfBuffer));
+  }),
+
   excluirFalhas: catchAsync(async (req, res) => {
     const tenantId = requireTenantId(req);
     const dias = req.query.dias ? Number(req.query.dias) : 30;

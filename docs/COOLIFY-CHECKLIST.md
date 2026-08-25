@@ -158,14 +158,20 @@ npm run db:migrate
 
 ## Atualizar nos navegadores dos usuários
 
-Depois de um deploy novo do frontend:
+Depois deste deploy do frontend, o app detecta versão nova sozinho:
 
-1. Feche **todas** as abas do domínio `abbroto.jwsoftware.com.br`.
-2. Abra de novo (ou aba anônima para testar).
-3. Se ainda estiver velho: DevTools (F12) → **Application** → **Service Workers** → *Unregister* → recarregar.
-4. Opcional: **Clear site data** (só se necessário; apaga preferências locais de tema/página).
+1. Consulta `/version.json` a cada ~1 minuto e ao voltar para a aba.
+2. Mostra faixa **“Nova versão disponível → Atualizar agora”** (não precisa pedir hard refresh).
+3. No login, atualiza automaticamente.
+4. O service worker também tenta `autoUpdate`.
 
-O app usa PWA com atualização automática; com `skipWaiting` no Workbox, a nova versão tende a aplicar mais rápido após o servidor voltar com 200.
+**Primeiro deploy desta melhoria:** clientes que ainda estão na versão antiga precisam **abrir o site uma vez** (ou um hard refresh / desinstalar o atalho PWA). Depois disso, deploys futuros atualizam sozinhos em todos os tenants.
+
+Se alguém continuar na tela velha:
+
+1. Clique em **Atualizar agora** na faixa amarela, se aparecer.
+2. Ou feche todas as abas do domínio e abra de novo.
+3. Último recurso: F12 → Application → Service Workers → Unregister → limpar site data.
 
 ---
 

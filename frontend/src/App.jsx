@@ -13,6 +13,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 import { FeatureRoute } from "./components/FeatureRoute.jsx";
 import { BillingGate } from "./components/BillingGate.jsx";
 import { LoadingSpinner } from "./components/ui";
+import AppUpdateBanner from "./components/AppUpdateBanner.jsx";
 
 const Home = lazy(() => import("./Pages/Home.jsx"));
 const Login = lazy(() => import("./Pages/Login.jsx"));
@@ -292,6 +293,7 @@ function App() {
   return (
     <ErrorBoundary>
       <Router>
+        <AppUpdateBanner />
         <AppRoutes />
       </Router>
     </ErrorBoundary>

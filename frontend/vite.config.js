@@ -1,11 +1,40 @@
 // frontend/vite.config.js
+import fs from "node:fs";
+import path from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
+const buildId =
+  process.env.BUILD_ID ||
+  process.env.COOLIFY_BUILD_ID ||
+  process.env.SOURCE_COMMIT ||
+  `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
+function atrackVersionPlugin() {
+  return {
+    name: "atrack-version",
+    writeBundle(outputOptions) {
+      const outDir = outputOptions.dir || path.resolve("dist");
+      const payload = {
+        buildId,
+        builtAt: new Date().toISOString(),
+      };
+      fs.writeFileSync(
+        path.join(outDir, "version.json"),
+        `${JSON.stringify(payload, null, 2)}\n`,
+      );
+    },
+  };
+}
+
 export default defineConfig({
+  define: {
+    __ATRACK_BUILD_ID__: JSON.stringify(buildId),
+  },
   plugins: [
     react(),
+    atrackVersionPlugin(),
     VitePWA({
       registerType: "autoUpdate",
       injectRegister: false,
@@ -16,7 +45,13 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         navigationPreload: true,
+        // version.json nunca no precache — sempre rede
+        navigateFallbackDenylist: [/^\/version\.json$/],
         runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname === "/version.json",
+            handler: "NetworkOnly",
+          },
           {
             urlPattern: ({ request }) => request.mode === "navigate",
             handler: "NetworkFirst",

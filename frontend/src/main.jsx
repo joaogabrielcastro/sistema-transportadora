@@ -9,8 +9,10 @@ import { queryClient } from "./lib/queryClient.js";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import { initPwaAutoUpdate } from "./pwaRegister.js";
+import { initVersionWatch } from "./versionWatch.js";
 
 initPwaAutoUpdate();
+initVersionWatch();
 
 const CHUNK_RELOAD_KEY = "atrack_chunk_reload";
 

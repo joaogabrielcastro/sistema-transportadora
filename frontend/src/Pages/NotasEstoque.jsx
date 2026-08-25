@@ -19,6 +19,7 @@ import {
 } from "../utils/extractApiArray.js";
 import { formatCaminhaoOptions } from "../utils/caminhaoOptions.js";
 import NotaManualForm from "../components/NotaManualForm.jsx";
+import NotaDetailModal from "../components/NotaDetailModal.jsx";
 
 function formatMoney(value) {
   if (value == null || value === "") return "—";
@@ -157,6 +158,8 @@ const NotasEstoque = () => {
   const [previewCaminhaoId, setPreviewCaminhaoId] = useState("");
   const [filtroEstoqueCaminhao, setFiltroEstoqueCaminhao] = useState("");
   const [savingManual, setSavingManual] = useState(false);
+  const [notaDetalhe, setNotaDetalhe] = useState(null);
+  const [loadingNota, setLoadingNota] = useState(false);
 
   const loadLists = useCallback(async () => {
     setLoadingLists(true);
@@ -308,6 +311,22 @@ const NotasEstoque = () => {
       setErro(parsed.message || "Falha no cadastro manual");
     } finally {
       setSavingManual(false);
+    }
+  };
+
+  const handleAbrirNota = async (notaId) => {
+    setErro("");
+    setLoadingNota(true);
+    setNotaDetalhe(null);
+    try {
+      const res = await apiFetch({ url: `/notas-fiscais/${notaId}` });
+      setNotaDetalhe(extractApiData(res));
+    } catch (err) {
+      const parsed = await parseApiError(err);
+      setErro(parsed.message || "Não foi possível abrir a nota");
+      setNotaDetalhe(null);
+    } finally {
+      setLoadingNota(false);
     }
   };
 
@@ -773,27 +792,37 @@ const NotasEstoque = () => {
 
       {tab === "notas" && (
         <Card className="p-6">
-          <h3 className="mb-4 text-base font-semibold text-text-primary">
-            Notas importadas
-          </h3>
+          <div className="mb-4">
+            <h3 className="text-base font-semibold text-text-primary">
+              Notas importadas
+            </h3>
+            <p className="text-sm text-text-secondary">
+              Clique em uma linha ou em Ver para abrir itens e dados completos.
+            </p>
+          </div>
           {loadingLists ? (
             <LoadingSpinner />
           ) : (
             <div className="overflow-x-auto rounded-lg border border-border">
               <table className="min-w-full text-sm">
                 <thead className="bg-gray-50">
-                    <tr className="text-left text-text-secondary">
+                  <tr className="text-left text-text-secondary">
                     <th className="px-3 py-2.5 font-medium">Número</th>
                     <th className="px-3 py-2.5 font-medium">Origem</th>
                     <th className="px-3 py-2.5 font-medium">Emitente</th>
                     <th className="px-3 py-2.5 font-medium">Itens</th>
                     <th className="px-3 py-2.5 font-medium">Total</th>
                     <th className="px-3 py-2.5 font-medium">Data</th>
+                    <th className="px-3 py-2.5 font-medium text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
                   {notas.map((n) => (
-                    <tr key={n.id} className="border-t border-border">
+                    <tr
+                      key={n.id}
+                      className="border-t border-border hover:bg-gray-50/80 cursor-pointer"
+                      onClick={() => handleAbrirNota(n.id)}
+                    >
                       <td className="px-3 py-2.5 font-medium">
                         {n.numero}
                         {n.serie ? `/${n.serie}` : ""}
@@ -811,12 +840,25 @@ const NotasEstoque = () => {
                           ? new Date(n.criado_em).toLocaleDateString("pt-BR")
                           : "—"}
                       </td>
+                      <td className="px-3 py-2.5 text-right">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAbrirNota(n.id);
+                          }}
+                        >
+                          Ver
+                        </Button>
+                      </td>
                     </tr>
                   ))}
                   {!notas.length && (
                     <tr>
                       <td
-                          colSpan={6}
+                        colSpan={7}
                         className="px-3 py-8 text-center text-text-secondary"
                       >
                         Nenhuma nota importada ainda.
@@ -829,6 +871,16 @@ const NotasEstoque = () => {
           )}
         </Card>
       )}
+
+      <NotaDetailModal
+        isOpen={loadingNota || Boolean(notaDetalhe)}
+        onClose={() => {
+          setNotaDetalhe(null);
+          setLoadingNota(false);
+        }}
+        nota={notaDetalhe}
+        loading={loadingNota}
+      />
     </PageLayout>
   );
 };

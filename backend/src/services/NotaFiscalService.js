@@ -94,10 +94,16 @@ export class NotaFiscalService {
           itens: {
             select: {
               id: true,
+              codigo: true,
               descricao: true,
+              unidade: true,
               quantidade: true,
+              valor_unitario: true,
               valor_total: true,
             },
+          },
+          caminhoes: {
+            select: { id: true, placa: true, modelo: true, tipo_veiculo: true },
           },
         },
       }),
@@ -109,7 +115,20 @@ export class NotaFiscalService {
   static async getById(tenantId, id) {
     const nota = await prisma.notas_fiscais.findFirst({
       where: withTenant(tenantId, { id: Number(id) }),
-      include: { itens: true },
+      include: {
+        itens: {
+          orderBy: { id: "asc" },
+        },
+        caminhoes: {
+          select: {
+            id: true,
+            placa: true,
+            modelo: true,
+            marca: true,
+            tipo_veiculo: true,
+          },
+        },
+      },
     });
     if (!nota) {
       const err = new Error("Nota não encontrada");

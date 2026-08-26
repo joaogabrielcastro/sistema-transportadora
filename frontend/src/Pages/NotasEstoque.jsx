@@ -157,6 +157,7 @@ const NotasEstoque = () => {
   const [caminhoes, setCaminhoes] = useState([]);
   const [previewCaminhaoId, setPreviewCaminhaoId] = useState("");
   const [filtroEstoqueCaminhao, setFiltroEstoqueCaminhao] = useState("");
+  const [buscaNotas, setBuscaNotas] = useState("");
   const [savingManual, setSavingManual] = useState(false);
   const [notaDetalhe, setNotaDetalhe] = useState(null);
   const [loadingNota, setLoadingNota] = useState(false);
@@ -165,7 +166,7 @@ const NotasEstoque = () => {
     setLoadingLists(true);
     try {
       const [nRes, pRes, cRes] = await Promise.all([
-        apiFetch({ url: "/notas-fiscais?limit=30" }),
+        apiFetch({ url: "/notas-fiscais?limit=200" }),
         apiFetch({ url: "/notas-fiscais/produtos?limit=100" }),
         apiFetch({ url: "/caminhoes?limit=500" }),
       ]);
@@ -374,6 +375,27 @@ const NotasEstoque = () => {
       ),
     );
   }, [produtos, filtroEstoqueCaminhao]);
+
+  const notasFiltradas = useMemo(() => {
+    const q = buscaNotas.trim().toLowerCase();
+    if (!q) return notas;
+    return notas.filter((n) => {
+      const numero = [n.numero, n.serie].filter(Boolean).join("/");
+      const origem = n.origem === "manual" ? "manual" : "xml";
+      const haystack = [
+        numero,
+        n.emitente,
+        n.cnpj_emitente,
+        n.chave_acesso,
+        origem,
+        n.observacao,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [notas, buscaNotas]);
 
   const formatDestinos = (destinos) => {
     if (!Array.isArray(destinos) || !destinos.length) return "—";
@@ -792,13 +814,22 @@ const NotasEstoque = () => {
 
       {tab === "notas" && (
         <Card className="p-6">
-          <div className="mb-4">
-            <h3 className="text-base font-semibold text-text-primary">
-              Notas importadas
-            </h3>
-            <p className="text-sm text-text-secondary">
-              Clique em uma linha ou em Ver para abrir itens e dados completos.
-            </p>
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h3 className="text-base font-semibold text-text-primary">
+                Notas importadas
+              </h3>
+              <p className="text-sm text-text-secondary">
+                Clique em uma linha ou em Ver para abrir itens e dados completos.
+              </p>
+            </div>
+            <FormField
+              label="Buscar nota"
+              value={buscaNotas}
+              onChange={(e) => setBuscaNotas(e.target.value)}
+              placeholder="Número, emitente, CNPJ ou origem…"
+              className="mb-0 w-full max-w-xs"
+            />
           </div>
           {loadingLists ? (
             <LoadingSpinner />
@@ -817,7 +848,7 @@ const NotasEstoque = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {notas.map((n) => (
+                  {notasFiltradas.map((n) => (
                     <tr
                       key={n.id}
                       className="border-t border-border hover:bg-gray-50/80 cursor-pointer"
@@ -855,13 +886,15 @@ const NotasEstoque = () => {
                       </td>
                     </tr>
                   ))}
-                  {!notas.length && (
+                  {!notasFiltradas.length && (
                     <tr>
                       <td
                         colSpan={7}
                         className="px-3 py-8 text-center text-text-secondary"
                       >
-                        Nenhuma nota importada ainda.
+                        {buscaNotas.trim()
+                          ? "Nenhuma nota encontrada com esse filtro."
+                          : "Nenhuma nota importada ainda."}
                       </td>
                     </tr>
                   )}

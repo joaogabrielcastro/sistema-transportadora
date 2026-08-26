@@ -18,8 +18,26 @@ export function initPwaAutoUpdate() {
   if (!import.meta.env.PROD) return;
   if (!("serviceWorker" in navigator)) return;
 
+  // Limpa params de reload forçado (SW / bootstrap) da barra de endereço
+  try {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("_atrack_sw") || url.searchParams.has("_atrack")) {
+      url.searchParams.delete("_atrack_sw");
+      url.searchParams.delete("_atrack");
+      window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+    }
+  } catch {
+    /* ignore */
+  }
+
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     reloadOnce();
+  });
+
+  navigator.serviceWorker.addEventListener("message", (event) => {
+    if (event?.data?.type === "ATRACK_FORCE_RELOAD") {
+      void forceAppReload();
+    }
   });
 
   const updateSW = registerSW({

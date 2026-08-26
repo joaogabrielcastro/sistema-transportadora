@@ -14,6 +14,50 @@ const buildId =
 function atrackVersionPlugin() {
   return {
     name: "atrack-version",
+    transformIndexHtml(html) {
+      const bootstrap = `
+    <meta name="atrack-build" content="${buildId}" />
+    <script>
+      (function () {
+        var KEY = "atrack_boot_reload";
+        try {
+          if (sessionStorage.getItem(KEY) === "1") {
+            sessionStorage.removeItem(KEY);
+            return;
+          }
+        } catch (e) {}
+        fetch("/version.json?t=" + Date.now(), { cache: "no-store" })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (data) {
+            if (!data || !data.buildId) return;
+            var meta = document.querySelector('meta[name="atrack-build"]');
+            var local = meta && meta.getAttribute("content");
+            if (!local || local === data.buildId) return;
+            try { sessionStorage.setItem(KEY, "1"); } catch (e) {}
+            var done = Promise.resolve();
+            if ("serviceWorker" in navigator) {
+              done = navigator.serviceWorker.getRegistrations().then(function (regs) {
+                return Promise.all(regs.map(function (r) { return r.unregister(); }));
+              });
+            }
+            if (typeof caches !== "undefined") {
+              done = done.then(function () {
+                return caches.keys().then(function (keys) {
+                  return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+                });
+              });
+            }
+            return done.then(function () {
+              var url = new URL(window.location.href);
+              url.searchParams.set("_atrack", Date.now().toString(36));
+              window.location.replace(url.toString());
+            });
+          })
+          .catch(function () {});
+      })();
+    </script>`;
+      return html.replace("</head>", `${bootstrap}\n  </head>`);
+    },
     writeBundle(outputOptions) {
       const outDir = outputOptions.dir || path.resolve("dist");
       const payload = {
@@ -39,26 +83,29 @@ export default defineConfig({
       registerType: "autoUpdate",
       injectRegister: false,
       workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-        navigateFallback: "index.html",
+        // Não precachear HTML — senão o "Ver" some até hard refresh.
+        // navigateFallback null: sem NavigationRoute servindo index.html velho.
+        globPatterns: ["**/*.{js,css,ico,png,svg,woff2}"],
+        globIgnores: ["**/atrack-sw-clients.js", "**/version.json"],
+        navigateFallback: null,
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
-        navigationPreload: true,
-        // version.json nunca no precache — sempre rede
-        navigateFallbackDenylist: [/^\/version\.json$/],
+        navigationPreload: false,
+        importScripts: ["atrack-sw-clients.js"],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname === "/version.json",
             handler: "NetworkOnly",
           },
           {
+            urlPattern: ({ url }) => url.pathname === "/atrack-sw-clients.js",
+            handler: "NetworkOnly",
+          },
+          {
+            // Toda navegação (/, /notas-estoque, …) só pela rede
             urlPattern: ({ request }) => request.mode === "navigate",
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "atrack-html",
-              networkTimeoutSeconds: 3,
-            },
+            handler: "NetworkOnly",
           },
         ],
       },

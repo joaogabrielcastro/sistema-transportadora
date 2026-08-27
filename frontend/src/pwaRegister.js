@@ -1,24 +1,13 @@
 /**
- * Impede o PWA de ficar preso na versão antiga:
- * procura update ao abrir/voltar e recarrega quando a versão nova assume.
+ * O ATrack é um SaaS online: PWA/offline atrapalhava (tela antiga até hard refresh).
+ * Esta rotina só DESREGISTRA service workers e limpa Cache Storage.
  */
-import { registerSW } from "virtual:pwa-register";
 import { forceAppReload } from "./versionWatch.js";
-
-const POLL_MS = 60_000;
-let reloading = false;
-
-function reloadOnce() {
-  if (reloading) return;
-  reloading = true;
-  window.location.reload();
-}
 
 export function initPwaAutoUpdate() {
   if (!import.meta.env.PROD) return;
   if (!("serviceWorker" in navigator)) return;
 
-  // Limpa params de reload forçado (SW / bootstrap) da barra de endereço
   try {
     const url = new URL(window.location.href);
     if (url.searchParams.has("_atrack_sw") || url.searchParams.has("_atrack")) {
@@ -30,44 +19,34 @@ export function initPwaAutoUpdate() {
     /* ignore */
   }
 
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    reloadOnce();
-  });
-
   navigator.serviceWorker.addEventListener("message", (event) => {
     if (event?.data?.type === "ATRACK_FORCE_RELOAD") {
       void forceAppReload();
     }
   });
 
-  const updateSW = registerSW({
-    immediate: true,
-    onNeedRefresh() {
-      updateSW(true);
-      window.dispatchEvent(new CustomEvent("atrack:update-available"));
-    },
-    onOfflineReady() {
-      /* ok */
-    },
-    onRegisteredSW(_url, registration) {
-      if (!registration) return;
+  void (async () => {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      if (!regs.length) return;
 
-      const check = () => {
-        void registration.update().catch(() => {});
-      };
+      await Promise.all(regs.map((r) => r.unregister()));
 
-      check();
-      window.setInterval(check, POLL_MS);
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") check();
-      });
-      window.addEventListener("focus", check);
-    },
-    onRegisterError() {
-      // Se o SW falhar, ainda dá para forçar limpeza quando houver versão nova
-      window.addEventListener("atrack:update-available", () => {
-        void forceAppReload();
-      });
-    },
-  });
+      if (typeof caches !== "undefined") {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+
+      // Uma vez: recarrega para sair do HTML/JS que o SW antigo estava segurando
+      const flag = "atrack_sw_cleared";
+      if (sessionStorage.getItem(flag) !== "1") {
+        sessionStorage.setItem(flag, "1");
+        const next = new URL(window.location.href);
+        next.searchParams.set("_atrack", Date.now().toString(36));
+        window.location.replace(next.toString());
+      }
+    } catch {
+      /* ignore */
+    }
+  })();
 }

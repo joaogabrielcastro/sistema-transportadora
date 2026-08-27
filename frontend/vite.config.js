@@ -20,38 +20,45 @@ function atrackVersionPlugin() {
     <script>
       (function () {
         var KEY = "atrack_boot_reload";
+        var STORE = "atrack_build_id";
         try {
           if (sessionStorage.getItem(KEY) === "1") {
             sessionStorage.removeItem(KEY);
             return;
           }
         } catch (e) {}
+        function wipeAndReload() {
+          try { sessionStorage.setItem(KEY, "1"); } catch (e) {}
+          var done = Promise.resolve();
+          if ("serviceWorker" in navigator) {
+            done = navigator.serviceWorker.getRegistrations().then(function (regs) {
+              return Promise.all(regs.map(function (r) { return r.unregister(); }));
+            });
+          }
+          if (typeof caches !== "undefined") {
+            done = done.then(function () {
+              return caches.keys().then(function (keys) {
+                return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+              });
+            });
+          }
+          return done.then(function () {
+            var url = new URL(window.location.href);
+            url.searchParams.set("_atrack", Date.now().toString(36));
+            window.location.replace(url.toString());
+          });
+        }
         fetch("/version.json?t=" + Date.now(), { cache: "no-store" })
           .then(function (r) { return r.ok ? r.json() : null; })
           .then(function (data) {
             if (!data || !data.buildId) return;
             var meta = document.querySelector('meta[name="atrack-build"]');
             var local = meta && meta.getAttribute("content");
-            if (!local || local === data.buildId) return;
-            try { sessionStorage.setItem(KEY, "1"); } catch (e) {}
-            var done = Promise.resolve();
-            if ("serviceWorker" in navigator) {
-              done = navigator.serviceWorker.getRegistrations().then(function (regs) {
-                return Promise.all(regs.map(function (r) { return r.unregister(); }));
-              });
-            }
-            if (typeof caches !== "undefined") {
-              done = done.then(function () {
-                return caches.keys().then(function (keys) {
-                  return Promise.all(keys.map(function (k) { return caches.delete(k); }));
-                });
-              });
-            }
-            return done.then(function () {
-              var url = new URL(window.location.href);
-              url.searchParams.set("_atrack", Date.now().toString(36));
-              window.location.replace(url.toString());
-            });
+            var stored = null;
+            try { stored = localStorage.getItem(STORE); } catch (e) {}
+            if (local && local !== data.buildId) return wipeAndReload();
+            if (stored && stored !== data.buildId) return wipeAndReload();
+            try { localStorage.setItem(STORE, data.buildId); } catch (e) {}
           })
           .catch(function () {});
       })();
@@ -80,34 +87,15 @@ export default defineConfig({
     react(),
     atrackVersionPlugin(),
     VitePWA({
+      // SW que se auto-destrói: limpa clientes presos no cache antigo.
+      // O app não depende mais de PWA offline.
+      selfDestroying: true,
       registerType: "autoUpdate",
       injectRegister: false,
       workbox: {
-        // Não precachear HTML — senão o "Ver" some até hard refresh.
-        // navigateFallback null: sem NavigationRoute servindo index.html velho.
-        globPatterns: ["**/*.{js,css,ico,png,svg,woff2}"],
-        globIgnores: ["**/atrack-sw-clients.js", "**/version.json"],
-        navigateFallback: null,
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
-        navigationPreload: false,
-        importScripts: ["atrack-sw-clients.js"],
-        runtimeCaching: [
-          {
-            urlPattern: ({ url }) => url.pathname === "/version.json",
-            handler: "NetworkOnly",
-          },
-          {
-            urlPattern: ({ url }) => url.pathname === "/atrack-sw-clients.js",
-            handler: "NetworkOnly",
-          },
-          {
-            // Toda navegação (/, /notas-estoque, …) só pela rede
-            urlPattern: ({ request }) => request.mode === "navigate",
-            handler: "NetworkOnly",
-          },
-        ],
       },
       includeAssets: [
         "favicon.ico",
@@ -115,40 +103,7 @@ export default defineConfig({
         "atrack-192x192.png",
         "atrack-512x512.png",
       ],
-      manifest: {
-        name: "ATrack — Gestão de Frotas",
-        short_name: "ATrack",
-        description: "Sistema multi-empresa de gestão de frota e manutenção",
-        theme_color: "#0F172A",
-        background_color: "#0F172A",
-        icons: [
-          {
-            src: "atrack-512x512.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "any",
-          },
-          {
-            src: "atrack-512x512.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "maskable",
-          },
-          {
-            src: "atrack-192x192.png",
-            sizes: "192x192",
-            type: "image/png",
-            purpose: "any",
-          },
-          {
-            src: "atrack-180x180.png",
-            sizes: "180x180",
-            type: "image/png",
-            purpose: "any",
-          },
-        ],
-        display: "standalone",
-      },
+      manifest: false,
       devOptions: {
         enabled: false,
       },

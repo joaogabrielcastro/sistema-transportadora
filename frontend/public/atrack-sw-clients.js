@@ -1,26 +1,28 @@
 /**
- * Roda no service worker (importScripts).
- * Em deploy novo, força as abas abertas a recarregarem pela rede —
- * assim o cliente não precisa de hard refresh para ver botões novos (ex.: Ver).
+ * SW suicida: ao ativar, limpa caches, desregistra e manda as abas recarregarem.
+ * Quebra o ciclo de clientes presos na versão antiga do PWA.
  */
 /* eslint-disable no-restricted-globals */
-let replacingPrevious = false;
-
-self.addEventListener("install", () => {
-  // Se já havia um SW ativo, esta instalação é um update
-  replacingPrevious = Boolean(self.registration.active);
+self.addEventListener("install", (event) => {
+  self.skipWaiting();
+  event.waitUntil(Promise.resolve());
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
       try {
-        await self.clients.claim();
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
       } catch {
         /* ignore */
       }
 
-      if (!replacingPrevious) return;
+      try {
+        await self.registration.unregister();
+      } catch {
+        /* ignore */
+      }
 
       const clients = await self.clients.matchAll({
         type: "window",

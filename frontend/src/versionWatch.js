@@ -1,9 +1,10 @@
 /**
- * Detecta deploy novo sem depender só do service worker.
- * Compara o build embutido no JS com /version.json (sempre sem cache).
+ * Detecta deploy novo sem depender do service worker.
+ * Se /version.json mudou, limpa cache e recarrega sozinho (qualquer tela).
  */
-const POLL_MS = 60_000;
+const POLL_MS = 15_000;
 const STORAGE_KEY = "atrack_build_id";
+const RELOAD_GUARD = "atrack_boot_reload";
 
 function currentBuildId() {
   return typeof __ATRACK_BUILD_ID__ !== "undefined"
@@ -14,7 +15,7 @@ function currentBuildId() {
 async function fetchRemoteBuildId() {
   const res = await fetch(`/version.json?t=${Date.now()}`, {
     cache: "no-store",
-    headers: { "Cache-Control": "no-cache" },
+    headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
   });
   if (!res.ok) return null;
   const data = await res.json();
@@ -22,6 +23,16 @@ async function fetchRemoteBuildId() {
 }
 
 export async function forceAppReload() {
+  try {
+    if (sessionStorage.getItem(RELOAD_GUARD) === "1") {
+      sessionStorage.removeItem(RELOAD_GUARD);
+    } else {
+      sessionStorage.setItem(RELOAD_GUARD, "1");
+    }
+  } catch {
+    /* ignore */
+  }
+
   try {
     if ("serviceWorker" in navigator) {
       const regs = await navigator.serviceWorker.getRegistrations();
@@ -34,6 +45,7 @@ export async function forceAppReload() {
   } catch {
     /* ainda recarrega */
   }
+
   const url = new URL(window.location.href);
   url.searchParams.set("_atrack", Date.now().toString(36));
   window.location.replace(url.toString());
@@ -45,15 +57,21 @@ function notifyUpdateAvailable(remoteId) {
       detail: { buildId: remoteId },
     }),
   );
-  // Na tela de login, atualiza sozinho (não perde formulário de trabalho)
-  const path = window.location.pathname || "";
-  if (path === "/login" || path === "/register") {
-    void forceAppReload();
-  }
+  // Qualquer tela: atualiza sozinho (antes só login fazia isso)
+  void forceAppReload();
 }
 
 export function initVersionWatch() {
   if (!import.meta.env.PROD) return;
+
+  try {
+    if (sessionStorage.getItem(RELOAD_GUARD) === "1") {
+      sessionStorage.removeItem(RELOAD_GUARD);
+    }
+  } catch {
+    /* ignore */
+  }
+
   const localId = currentBuildId();
   if (!localId) return;
 
@@ -70,7 +88,27 @@ export function initVersionWatch() {
     checking = true;
     try {
       const remoteId = await fetchRemoteBuildId();
-      if (!remoteId || remoteId === localId) return;
+      if (!remoteId) return;
+
+      // Compara JS embutido E o que ficou salvo da visita anterior
+      let stored = null;
+      try {
+        stored = localStorage.getItem(STORAGE_KEY);
+      } catch {
+        /* ignore */
+      }
+
+      if (remoteId === localId) {
+        if (stored && stored !== remoteId) {
+          try {
+            localStorage.setItem(STORAGE_KEY, remoteId);
+          } catch {
+            /* ignore */
+          }
+        }
+        return;
+      }
+
       notifyUpdateAvailable(remoteId);
     } catch {
       /* rede offline — ignora */

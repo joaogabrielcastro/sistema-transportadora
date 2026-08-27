@@ -59,4 +59,15 @@ test("getProductionConfigWarnings alerta API_TOKEN, SSL e S3", () => {
   assert.ok(warnings.some((w) => w.includes("API_TOKEN")));
   assert.ok(warnings.some((w) => w.includes("DB_SSL_MODE")));
   assert.ok(warnings.some((w) => w.includes("S3")));
+  assert.ok(warnings.some((w) => w.includes("Worker de PDF rodando na API")));
+});
+
+test("getProductionConfigWarnings alerta worker desligado na API", () => {
+  const warnings = getProductionConfigWarnings({
+    ...validProductionConfig,
+    workers: { runInApiProcess: false },
+  });
+  assert.ok(
+    warnings.some((w) => w.includes("DESLIGADO") || w.includes("Processando")),
+  );
 });

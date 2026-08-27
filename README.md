@@ -28,7 +28,7 @@ Plataforma **multi-empresa** (SaaS) para gestão de frota, manutenção, pneus, 
 
 - **Alertas / documentos / motoristas:** `/alertas`, `/documentos`, `/motoristas` (+ APIs `/api/ops/*`, `/api/motoristas`)
 - **Digest semanal:** `npm run job:weekly-digest` (cron recomendado: segunda 8h)
-- **Worker PDF:** em produção `REDIS_URL` obrigatório; `RUN_ORDEM_WORKER_IN_API=false` + `npm run worker:ordem-coleta`
+- **Worker PDF:** por padrão roda na API; use `RUN_ORDEM_WORKER_IN_API=false` + `npm run worker:ordem-coleta` só se quiser processo separado
 - **S3:** `S3_BUCKET` + keys (AWS/R2/MinIO) — uploads de documentos saem do disco local
 - **WhatsApp:** `WHATSAPP_API_URL` + `WHATSAPP_TOKEN` — teste em `POST /api/ops/whatsapp/test`
 - **Auditoria:** mutações gravadas em `audit_logs`; listar em `GET /api/ops/audit-logs` (admin)

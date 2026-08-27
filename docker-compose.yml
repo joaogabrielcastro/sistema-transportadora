@@ -57,6 +57,7 @@ services:
       DB_SSL_MODE: disable
       PRISMA_CLIENT_ENGINE_TYPE: library
       REDIS_URL: redis://redis:6379/0
+      RUN_ORDEM_WORKER_IN_API: "true"
       AUTH_ENABLED: "true"
       JWT_SECRET: local-dev-jwt-secret-atrack
       CORS_ORIGINS: http://localhost:8080,http://localhost:5173,http://localhost:5174

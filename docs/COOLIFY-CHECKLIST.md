@@ -207,13 +207,15 @@ Monte um volume em `/app/backups` (ou use snapshot do Postgres gerenciado). Guar
 
 ## Worker PDF / e-mail (ordem de coleta) e digest
 
-Em produção, preferível **não** rodar o worker dentro da API (`RUN_ORDEM_WORKER_IN_API=false`).
+Em produção, o worker roda **dentro da API por padrão**. Só desligue se tiver um serviço separado:
 
-### Serviço worker (Coolify)
+`RUN_ORDEM_WORKER_IN_API=false` + comando `npm run worker:ordem-coleta`.
+
+### Serviço worker (Coolify) — opcional / escala
 
 1. Novo serviço a partir do mesmo `backend/Dockerfile`.
 2. Command / start: `npm run worker:ordem-coleta`
-3. Mesmas env da API: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` (se necessário), SMTP, `NODE_ENV=production`.
+3. Mesmas env da API: `DATABASE_URL`, `REDIS_URL`, SMTP, `NODE_ENV=production`, e `RUN_ORDEM_WORKER_IN_API=false` na API.
 4. Sem porta HTTP pública.
 
 ### Digest semanal

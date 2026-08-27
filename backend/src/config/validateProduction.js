@@ -64,9 +64,13 @@ export function getProductionConfigWarnings(cfg = config) {
     );
   }
 
-  if (cfg.workers?.runInApiProcess) {
+  if (cfg.workers?.runInApiProcess === false) {
     warnings.push(
-      "Worker de PDF rodando na API — em escala use scripts/worker-ordem-coleta.mjs e RUN_ORDEM_WORKER_IN_API=false.",
+      "Worker de ordem de coleta DESLIGADO na API (RUN_ORDEM_WORKER_IN_API=false) — rode scripts/worker-ordem-coleta.mjs ou os envios ficam em Processando… para sempre.",
+    );
+  } else if (cfg.workers?.runInApiProcess) {
+    warnings.push(
+      "Worker de PDF rodando na API — em escala horizontal use scripts/worker-ordem-coleta.mjs e RUN_ORDEM_WORKER_IN_API=false.",
     );
   }
 

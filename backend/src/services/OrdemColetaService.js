@@ -338,6 +338,14 @@ export class OrdemColetaService {
     }
 
     if ((registro.retry_count ?? 0) >= MAX_ENVIO_RETRIES) {
+      // Garante status "failed" no histórico (evita Processando… eterno)
+      if (!registro.erro_envio) {
+        await OrdemColetaService.atualizarRegistroEnvio(envioId, {
+          erro_envio: "Limite de tentativas de envio atingido",
+        }).catch((e) =>
+          logger.error("Falha ao marcar envio esgotado", { err: e?.message }),
+        );
+      }
       return { id: envioId, status: "failed", skipped: true };
     }
 

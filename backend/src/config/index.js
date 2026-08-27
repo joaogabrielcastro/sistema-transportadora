@@ -174,10 +174,11 @@ export const config = {
   },
   workers: {
     get runInApiProcess() {
-      // Em produção com REDIS, preferir worker separado (WORKER_MODE=standalone)
+      // Default: worker na própria API (Coolify 1 serviço).
+      // Só desliga com RUN_ORDEM_WORKER_IN_API=false + processo worker separado.
       if (process.env.RUN_ORDEM_WORKER_IN_API === "false") return false;
       if (process.env.RUN_ORDEM_WORKER_IN_API === "true") return true;
-      return process.env.NODE_ENV !== "production";
+      return true;
     },
   },
 };

@@ -48,6 +48,27 @@ const labelTipoHistorico = (tipoApi) => {
   return tipoApi || "—";
 };
 
+const STUCK_MS = 10 * 60 * 1000;
+
+function statusEnvioLabel(row) {
+  if (row.status === "sent" || row.enviado_em) {
+    return { kind: "sent", text: "Enviado" };
+  }
+  if (row.status === "failed" || row.erro_envio) {
+    return { kind: "failed", text: "Falha", title: row.erro_envio || "" };
+  }
+  const created = row.criado_em ? new Date(row.criado_em).getTime() : 0;
+  if (created && Date.now() - created > STUCK_MS) {
+    return {
+      kind: "stuck",
+      text: "Demorando…",
+      title:
+        "Envio ainda não concluiu. Se persistir, reinicie a API (worker) ou confira SMTP/Redis.",
+    };
+  }
+  return { kind: "processing", text: "Processando…" };
+}
+
 const OrdensColeta = () => {
   const { get, request } = useApi();
   const { post, delete: del } = useApiMutation();
@@ -81,6 +102,7 @@ const OrdensColeta = () => {
   const {
     data: historicoData,
     refetch: refetchHistorico,
+    isFetching: fetchingHistorico,
   } = useOrdemColetaHistoricoQuery(historicoPage);
 
   const historico = historicoData?.rows ?? [];
@@ -261,6 +283,9 @@ const OrdensColeta = () => {
         "Gerando PDF e enviando e-mail em segundo plano. Aguarde alguns instantes…",
       );
 
+      setHistoricoPage(1);
+      void refetchHistorico();
+
       const maxAttempts = 90;
       for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
         setSendProgress(`Processando envio… (${attempt + 1}/${maxAttempts})`);
@@ -270,6 +295,10 @@ const OrdensColeta = () => {
           skipSuccessToast: true,
         });
         const status = extractApiData(statusRes);
+
+        if (attempt % 2 === 1) {
+          void refetchHistorico();
+        }
 
         if (status?.status === "sent") {
           toast.success("E-mail enviado com sucesso.");
@@ -286,6 +315,7 @@ const OrdensColeta = () => {
         }
       }
 
+      void refetchHistorico();
       throw new Error(
         "O envio ainda está em processamento. Confira o histórico em alguns minutos.",
       );
@@ -453,23 +483,36 @@ const OrdensColeta = () => {
                 ? `${totalFalhas} envio(s) com falha no total`
                 : "Histórico de envios por e-mail"}
             </p>
-            {totalFalhas > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => setConfirmClearFalhas(true)}
-                className="text-danger border-danger/30 hover:bg-red-50"
+                loading={fetchingHistorico}
+                onClick={() => void refetchHistorico()}
               >
-                Apagar todas com falha ({totalFalhas})
+                Atualizar
               </Button>
-            )}
+              {totalFalhas > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setConfirmClearFalhas(true)}
+                  className="text-danger border-danger/30 hover:bg-red-50"
+                >
+                  Apagar todas com falha ({totalFalhas})
+                </Button>
+              )}
+            </div>
           </div>
           {historico.length === 0 ? (
             <p className="text-sm text-text-secondary p-5">Nenhum registro ainda.</p>
           ) : (
             <>
               <div className="md:hidden divide-y divide-border">
-                {historico.map((row) => (
+                {historico.map((row) => {
+                  const st = statusEnvioLabel(row);
+                  return (
                   <div key={`${row.id}-m`} className="px-4 py-3 space-y-2">
                     <div className="flex justify-between gap-2">
                       <span className="font-medium text-text-primary">
@@ -486,12 +529,19 @@ const OrdensColeta = () => {
                     </p>
                     <div className="flex justify-between items-center gap-2 text-sm">
                       <span>{row.caminhao_placa || "—"}</span>
-                      {row.status === "sent" || row.enviado_em ? (
-                        <span className="text-success font-medium">Enviado</span>
-                      ) : row.status === "failed" || row.erro_envio ? (
-                        <span className="text-danger font-medium">Falha</span>
+                      {st.kind === "sent" ? (
+                        <span className="text-success font-medium">{st.text}</span>
+                      ) : st.kind === "failed" ? (
+                        <span className="text-danger font-medium" title={st.title}>
+                          {st.text}
+                        </span>
                       ) : (
-                        <span className="text-warning font-medium">Processando…</span>
+                        <span
+                          className="text-warning font-medium"
+                          title={st.title || undefined}
+                        >
+                          {st.text}
+                        </span>
                       )}
                     </div>
                     <Button
@@ -506,7 +556,8 @@ const OrdensColeta = () => {
                       Imprimir / PDF
                     </Button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
               <DataTable className="hidden md:block">
@@ -523,7 +574,9 @@ const OrdensColeta = () => {
                   </tr>
                 </DataTableHead>
                 <DataTableBody>
-                  {historico.map((row) => (
+                  {historico.map((row) => {
+                    const st = statusEnvioLabel(row);
+                    return (
                     <DataTableRow key={row.id}>
                       <DataTableTd className="whitespace-nowrap text-text-secondary">
                         {row.criado_em
@@ -540,17 +593,22 @@ const OrdensColeta = () => {
                         {row.caminhao_placa || "—"}
                       </DataTableTd>
                       <DataTableTd>
-                        {row.status === "sent" || row.enviado_em ? (
-                          <span className="text-success font-medium">Enviado</span>
-                        ) : row.status === "failed" || row.erro_envio ? (
+                        {st.kind === "sent" ? (
+                          <span className="text-success font-medium">{st.text}</span>
+                        ) : st.kind === "failed" ? (
                           <span
                             className="text-danger font-medium line-clamp-1"
-                            title={row.erro_envio || ""}
+                            title={st.title || ""}
                           >
-                            Falha
+                            {st.text}
                           </span>
                         ) : (
-                          <span className="text-warning font-medium">Processando…</span>
+                          <span
+                            className="text-warning font-medium"
+                            title={st.title || undefined}
+                          >
+                            {st.text}
+                          </span>
                         )}
                       </DataTableTd>
                       <DataTableTd align="right">
@@ -567,7 +625,8 @@ const OrdensColeta = () => {
                         </Button>
                       </DataTableTd>
                     </DataTableRow>
-                  ))}
+                    );
+                  })}
                 </DataTableBody>
               </DataTable>
               {pagination && (

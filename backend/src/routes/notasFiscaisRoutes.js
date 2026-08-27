@@ -54,6 +54,11 @@ router.post(
   requirePermission(PERMISSIONS.NOTAS_WRITE),
   notasFiscaisController.criarManual,
 );
+router.put(
+  "/:id",
+  requirePermission(PERMISSIONS.NOTAS_WRITE),
+  notasFiscaisController.atualizar,
+);
 router.get(
   "/:id",
   requirePermission(PERMISSIONS.NOTAS_READ),

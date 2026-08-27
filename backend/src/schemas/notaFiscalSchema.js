@@ -3,7 +3,13 @@ import { dataStringSchema } from "./shared.js";
 
 const emptyToNull = (v) => (v === "" || v === undefined ? null : v);
 
+const moneyOptional = z.preprocess(
+  emptyToNull,
+  z.coerce.number().nonnegative().optional().nullable(),
+);
+
 const itemManualSchema = z.object({
+  id: z.coerce.number().int().positive().optional().nullable(),
   codigo: z.preprocess(emptyToNull, z.string().trim().max(60).optional().nullable()),
   descricao: z.string().trim().min(1, "Informe a descrição do item").max(500),
   unidade: z.preprocess(
@@ -14,6 +20,8 @@ const itemManualSchema = z.object({
   quantidade: z.coerce.number().positive("Quantidade deve ser maior que zero"),
   valor_unitario: z.coerce.number().nonnegative().optional().nullable(),
   valor_total: z.coerce.number().nonnegative().optional().nullable(),
+  valor_desconto: moneyOptional,
+  valor_ipi: moneyOptional,
 });
 
 export const notaManualSchema = z.object({
@@ -45,6 +53,11 @@ export const notaManualSchema = z.object({
     emptyToNull,
     z.coerce.number().int().positive().optional().nullable(),
   ),
-  valor_total: z.coerce.number().nonnegative().optional().nullable(),
+  valor_total: moneyOptional,
+  valor_desconto: moneyOptional,
+  valor_frete: moneyOptional,
+  valor_ipi: moneyOptional,
   itens: z.array(itemManualSchema).min(1, "Inclua ao menos um item"),
 });
+
+export const notaAtualizarSchema = notaManualSchema;

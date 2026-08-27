@@ -100,6 +100,8 @@ export class NotaFiscalService {
               quantidade: true,
               valor_unitario: true,
               valor_total: true,
+              valor_desconto: true,
+              valor_ipi: true,
             },
           },
           caminhoes: {
@@ -196,6 +198,9 @@ export class NotaFiscalService {
             ? new Date(parsed.data_emissao)
             : null,
           valor_total: parsed.valor_total ?? null,
+          valor_desconto: parsed.valor_desconto ?? null,
+          valor_frete: parsed.valor_frete ?? null,
+          valor_ipi: parsed.valor_ipi ?? null,
           xml_path: files.xmlPath || null,
           pdf_path: files.pdfPath || null,
           status: "confirmada",
@@ -230,6 +235,8 @@ export class NotaFiscalService {
             quantidade: qtd,
             valor_unitario: item.valor_unitario ?? null,
             valor_total: item.valor_total ?? null,
+            valor_desconto: item.valor_desconto ?? null,
+            valor_ipi: item.valor_ipi ?? null,
           },
         });
 
@@ -263,6 +270,180 @@ export class NotaFiscalService {
     });
 
     return serializePrisma(nota);
+  }
+
+  /**
+   * Reabre/edita nota já lançada: atualiza cabeçalho e reconcilia itens no estoque.
+   */
+  static async atualizar(tenantId, notaId, parsed) {
+    const id = Number(notaId);
+    const itensNovos = Array.isArray(parsed.itens) ? parsed.itens : [];
+    if (!itensNovos.length) {
+      const err = new Error("Informe ao menos um item");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const existente = await tx.notas_fiscais.findFirst({
+        where: withTenant(tenantId, { id }),
+        include: { itens: true },
+      });
+      if (!existente) {
+        const err = new Error("Nota não encontrada");
+        err.statusCode = 404;
+        throw err;
+      }
+
+      const caminhaoId = await resolveCaminhaoId(tx, tenantId, {
+        ...parsed,
+        caminhao_id:
+          parsed.caminhao_id !== undefined
+            ? parsed.caminhao_id
+            : existente.caminhao_id,
+      });
+
+      // Reverte entradas desta nota no estoque
+      const entradas = await tx.estoque_movimentos.findMany({
+        where: {
+          tenant_id: Number(tenantId),
+          nota_id: id,
+          tipo: "entrada",
+        },
+      });
+      for (const mov of entradas) {
+        const produto = await tx.produtos.findFirst({
+          where: withTenant(tenantId, { id: mov.produto_id }),
+        });
+        if (!produto) continue;
+        const qtd = Number(mov.quantidade);
+        if (Number(produto.saldo) < qtd) {
+          const err = new Error(
+            `Não é possível editar: o item "${produto.descricao}" já foi usado no estoque (saldo ${produto.saldo}, entrada da nota ${qtd}). Dê entrada manual ou ajuste as baixas antes.`,
+          );
+          err.statusCode = 400;
+          throw err;
+        }
+        await tx.produtos.update({
+          where: { id: produto.id },
+          data: { saldo: { decrement: qtd } },
+        });
+      }
+      await tx.estoque_movimentos.deleteMany({
+        where: {
+          tenant_id: Number(tenantId),
+          nota_id: id,
+          tipo: "entrada",
+        },
+      });
+      await tx.nota_itens.deleteMany({ where: { nota_id: id } });
+
+      await tx.notas_fiscais.update({
+        where: { id },
+        data: {
+          chave_acesso:
+            parsed.chave_acesso !== undefined
+              ? parsed.chave_acesso || null
+              : existente.chave_acesso,
+          numero: String(parsed.numero || existente.numero),
+          serie:
+            parsed.serie !== undefined ? parsed.serie || null : existente.serie,
+          emitente:
+            parsed.emitente !== undefined
+              ? parsed.emitente || null
+              : existente.emitente,
+          cnpj_emitente:
+            parsed.cnpj_emitente !== undefined
+              ? parsed.cnpj_emitente || null
+              : existente.cnpj_emitente,
+          data_emissao:
+            parsed.data_emissao !== undefined
+              ? parsed.data_emissao
+                ? new Date(parsed.data_emissao)
+                : null
+              : existente.data_emissao,
+          data_vencimento:
+            parsed.data_vencimento !== undefined
+              ? parsed.data_vencimento
+                ? new Date(parsed.data_vencimento)
+                : null
+              : existente.data_vencimento,
+          condicao_pagamento:
+            parsed.condicao_pagamento !== undefined
+              ? parsed.condicao_pagamento || null
+              : existente.condicao_pagamento,
+          observacao:
+            parsed.observacao !== undefined
+              ? parsed.observacao || null
+              : existente.observacao,
+          valor_total: parsed.valor_total ?? existente.valor_total,
+          valor_desconto:
+            parsed.valor_desconto !== undefined
+              ? parsed.valor_desconto
+              : existente.valor_desconto,
+          valor_frete:
+            parsed.valor_frete !== undefined
+              ? parsed.valor_frete
+              : existente.valor_frete,
+          valor_ipi:
+            parsed.valor_ipi !== undefined
+              ? parsed.valor_ipi
+              : existente.valor_ipi,
+          caminhao_id: caminhaoId,
+        },
+      });
+
+      for (const item of itensNovos) {
+        const qtd = Number(item.quantidade);
+        if (!Number.isFinite(qtd) || qtd <= 0) continue;
+
+        const { produto, precoCusto } = await findOrCreateProduto(
+          tx,
+          tenantId,
+          item,
+        );
+
+        await tx.nota_itens.create({
+          data: {
+            nota_id: id,
+            produto_id: produto.id,
+            codigo: item.codigo || null,
+            descricao: item.descricao,
+            unidade: item.unidade || "UN",
+            ncm: item.ncm || null,
+            quantidade: qtd,
+            valor_unitario: item.valor_unitario ?? null,
+            valor_total: item.valor_total ?? null,
+            valor_desconto: item.valor_desconto ?? null,
+            valor_ipi: item.valor_ipi ?? null,
+          },
+        });
+
+        await tx.produtos.update({
+          where: { id: produto.id },
+          data: {
+            saldo: { increment: qtd },
+            ...(precoCusto != null ? { preco_custo: precoCusto } : {}),
+          },
+        });
+
+        await tx.estoque_movimentos.create({
+          data: {
+            tenant_id: Number(tenantId),
+            produto_id: produto.id,
+            tipo: "entrada",
+            quantidade: qtd,
+            nota_id: id,
+            caminhao_id: caminhaoId,
+            motivo: caminhaoId
+              ? `Ajuste NF ${parsed.numero || existente.numero} (estoque do caminhão)`
+              : `Ajuste NF ${parsed.numero || existente.numero}`,
+          },
+        });
+      }
+    });
+
+    return NotaFiscalService.getById(tenantId, id);
   }
 
   static async salvarArquivos(tenantId, notaId, { xmlBuffer, xmlName, pdfBuffer, pdfName }) {

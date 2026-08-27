@@ -1,12 +1,63 @@
 import { NotaFiscalService, EstoqueService } from "../services/NotaFiscalService.js";
 import { catchAsync } from "../utils/catchAsync.js";
 import { requireTenantId } from "../utils/tenant.js";
-import { notaManualSchema } from "../schemas/notaFiscalSchema.js";
+import {
+  notaManualSchema,
+  notaAtualizarSchema,
+} from "../schemas/notaFiscalSchema.js";
 import { normalizeDatesForDb } from "../utils/dates.js";
 
 function bufferFromFile(file) {
   if (!file) return null;
   return file.buffer;
+}
+
+function buildNotaPayload(parsed, { origem } = {}) {
+  const itens = parsed.itens.map((item) => {
+    const qtd = Number(item.quantidade);
+    const unit = Number(item.valor_unitario);
+    const total =
+      item.valor_total != null && item.valor_total !== ""
+        ? Number(item.valor_total)
+        : Number.isFinite(qtd) && Number.isFinite(unit)
+          ? Math.round(qtd * unit * 100) / 100
+          : null;
+    return {
+      ...item,
+      unidade: item.unidade || "UN",
+      valor_total: total,
+      valor_desconto: item.valor_desconto ?? null,
+      valor_ipi: item.valor_ipi ?? null,
+    };
+  });
+
+  const itensSoma = itens.reduce(
+    (acc, item) => acc + Number(item.valor_total || 0),
+    0,
+  );
+  const desconto = Number(parsed.valor_desconto || 0);
+  const frete = Number(parsed.valor_frete || 0);
+  const ipi = Number(parsed.valor_ipi || 0);
+  const valorTotal =
+    parsed.valor_total != null
+      ? parsed.valor_total
+      : Math.round((itensSoma - desconto + frete + ipi) * 100) / 100;
+
+  return normalizeDatesForDb({
+    ...parsed,
+    cnpj_emitente: parsed.cnpj_emitente
+      ? String(parsed.cnpj_emitente).replace(/\D/g, "")
+      : null,
+    chave_acesso: parsed.chave_acesso
+      ? String(parsed.chave_acesso).replace(/\D/g, "")
+      : null,
+    ...(origem ? { origem } : {}),
+    itens,
+    valor_total: valorTotal,
+    valor_desconto: parsed.valor_desconto ?? null,
+    valor_frete: parsed.valor_frete ?? null,
+    valor_ipi: parsed.valor_ipi ?? null,
+  });
 }
 
 export const notasFiscaisController = {
@@ -89,38 +140,7 @@ export const notasFiscaisController = {
   criarManual: catchAsync(async (req, res) => {
     const tenantId = requireTenantId(req);
     const parsed = notaManualSchema.parse(req.body || {});
-    const itens = parsed.itens.map((item) => {
-      const qtd = Number(item.quantidade);
-      const unit = Number(item.valor_unitario);
-      const total =
-        item.valor_total != null && item.valor_total !== ""
-          ? Number(item.valor_total)
-          : Number.isFinite(qtd) && Number.isFinite(unit)
-            ? Math.round(qtd * unit * 100) / 100
-            : null;
-      return {
-        ...item,
-        unidade: item.unidade || "UN",
-        valor_total: total,
-      };
-    });
-    const valorTotal =
-      parsed.valor_total != null
-        ? parsed.valor_total
-        : itens.reduce((acc, item) => acc + Number(item.valor_total || 0), 0);
-
-    const payload = normalizeDatesForDb({
-      ...parsed,
-      cnpj_emitente: parsed.cnpj_emitente
-        ? String(parsed.cnpj_emitente).replace(/\D/g, "")
-        : null,
-      chave_acesso: parsed.chave_acesso
-        ? String(parsed.chave_acesso).replace(/\D/g, "")
-        : null,
-      origem: "manual",
-      itens,
-      valor_total: valorTotal,
-    });
+    const payload = buildNotaPayload(parsed, { origem: "manual" });
 
     const nota = await NotaFiscalService.confirmarImportacao(tenantId, payload);
     const completa = await NotaFiscalService.getById(tenantId, nota.id);
@@ -128,6 +148,22 @@ export const notasFiscaisController = {
       success: true,
       data: completa,
       message: "Nota cadastrada e estoque atualizado",
+    });
+  }),
+
+  atualizar: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    const parsed = notaAtualizarSchema.parse(req.body || {});
+    const payload = buildNotaPayload(parsed);
+    const completa = await NotaFiscalService.atualizar(
+      tenantId,
+      req.params.id,
+      payload,
+    );
+    res.json({
+      success: true,
+      data: completa,
+      message: "Nota atualizada e estoque reconciliado",
     });
   }),
 

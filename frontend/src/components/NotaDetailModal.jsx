@@ -1,5 +1,6 @@
 import React from "react";
 import { Button, LoadingSpinner, Modal } from "./ui";
+import NotaManualForm from "./NotaManualForm.jsx";
 
 function formatMoney(value) {
   if (value == null || value === "") return "—";
@@ -30,6 +31,13 @@ export default function NotaDetailModal({
   onClose,
   nota,
   loading = false,
+  editing = false,
+  onStartEdit,
+  onCancelEdit,
+  onSaveEdit,
+  savingEdit = false,
+  caminhoes = [],
+  produtos = [],
 }) {
   const caminhao = nota?.caminhoes;
   const placaLabel = caminhao
@@ -41,9 +49,11 @@ export default function NotaDetailModal({
       isOpen={isOpen}
       onClose={onClose}
       title={
-        nota
-          ? `Nota ${nota.numero}${nota.serie ? `/${nota.serie}` : ""}`
-          : "Detalhe da nota"
+        editing
+          ? `Editar nota ${nota?.numero || ""}${nota?.serie ? `/${nota.serie}` : ""}`
+          : nota
+            ? `Nota ${nota.numero}${nota.serie ? `/${nota.serie}` : ""}`
+            : "Detalhe da nota"
       }
       size="xl"
     >
@@ -51,16 +61,32 @@ export default function NotaDetailModal({
         <div className="flex justify-center py-10">
           <LoadingSpinner />
         </div>
+      ) : editing ? (
+        <NotaManualForm
+          embedded
+          mode="edit"
+          initialNota={nota}
+          caminhoes={caminhoes}
+          produtos={produtos}
+          submitting={savingEdit}
+          onCancel={onCancelEdit}
+          onSubmit={onSaveEdit}
+        />
       ) : (
         <div className="space-y-5">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <InfoItem
               label="Origem"
-              value={nota.origem === "manual" ? "Cadastro manual" : "Importação XML"}
+              value={
+                nota.origem === "manual" ? "Cadastro manual" : "Importação XML"
+              }
             />
             <InfoItem label="Emitente / Fornecedor" value={nota.emitente} />
             <InfoItem label="CNPJ / CPF" value={nota.cnpj_emitente} />
-            <InfoItem label="Data de emissão" value={formatDate(nota.data_emissao)} />
+            <InfoItem
+              label="Data de emissão"
+              value={formatDate(nota.data_emissao)}
+            />
             <InfoItem
               label="Data de vencimento"
               value={formatDate(nota.data_vencimento)}
@@ -69,6 +95,12 @@ export default function NotaDetailModal({
               label="Cond. pagamento"
               value={nota.condicao_pagamento}
             />
+            <InfoItem
+              label="Desconto"
+              value={formatMoney(nota.valor_desconto)}
+            />
+            <InfoItem label="Frete" value={formatMoney(nota.valor_frete)} />
+            <InfoItem label="IPI" value={formatMoney(nota.valor_ipi)} />
             <InfoItem label="Valor total" value={formatMoney(nota.valor_total)} />
             <InfoItem label="Veículo" value={placaLabel} />
             <InfoItem
@@ -79,14 +111,8 @@ export default function NotaDetailModal({
                   : "—"
               }
             />
-            <InfoItem
-              label="Chave NF-e"
-              value={nota.chave_acesso}
-            />
-            <InfoItem
-              label="Status"
-              value={nota.status || "confirmada"}
-            />
+            <InfoItem label="Chave NF-e" value={nota.chave_acesso} />
+            <InfoItem label="Status" value={nota.status || "confirmada"} />
           </div>
 
           {nota.observacao ? (
@@ -111,6 +137,8 @@ export default function NotaDetailModal({
                     <th className="px-3 py-2.5 font-medium">Qtd</th>
                     <th className="px-3 py-2.5 font-medium">Un</th>
                     <th className="px-3 py-2.5 font-medium">Valor un.</th>
+                    <th className="px-3 py-2.5 font-medium">Desc.</th>
+                    <th className="px-3 py-2.5 font-medium">IPI</th>
                     <th className="px-3 py-2.5 font-medium">Total</th>
                   </tr>
                 </thead>
@@ -128,6 +156,12 @@ export default function NotaDetailModal({
                       <td className="px-3 py-2.5 whitespace-nowrap">
                         {formatMoney(item.valor_unitario)}
                       </td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">
+                        {formatMoney(item.valor_desconto)}
+                      </td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">
+                        {formatMoney(item.valor_ipi)}
+                      </td>
                       <td className="px-3 py-2.5 whitespace-nowrap font-medium">
                         {formatMoney(
                           item.valor_total != null
@@ -141,7 +175,7 @@ export default function NotaDetailModal({
                   {!(nota.itens || []).length && (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={8}
                         className="px-3 py-8 text-center text-text-secondary"
                       >
                         Nenhum item nesta nota.
@@ -153,10 +187,15 @@ export default function NotaDetailModal({
             </div>
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose}>
               Fechar
             </Button>
+            {onStartEdit && (
+              <Button type="button" onClick={onStartEdit}>
+                Editar nota
+              </Button>
+            )}
           </div>
         </div>
       )}

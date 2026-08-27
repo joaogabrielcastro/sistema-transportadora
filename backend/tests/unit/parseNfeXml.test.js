@@ -21,7 +21,14 @@ describe("parseNfeXml", () => {
           <vProd>200.20</vProd>
         </prod>
       </det>
-      <total><ICMSTot><vNF>200.20</vNF></ICMSTot></total>
+      <total>
+        <ICMSTot>
+          <vDesc>10.00</vDesc>
+          <vFrete>25.50</vFrete>
+          <vIPI>8.00</vIPI>
+          <vNF>223.70</vNF>
+        </ICMSTot>
+      </total>
     </infNFe>
   </NFe>
 </nfeProc>`;
@@ -30,6 +37,10 @@ describe("parseNfeXml", () => {
     assert.equal(parsed.numero, "595");
     assert.equal(parsed.serie, "5");
     assert.equal(parsed.emitente, "OXIDAKAR");
+    assert.equal(parsed.valor_desconto, 10);
+    assert.equal(parsed.valor_frete, 25.5);
+    assert.equal(parsed.valor_ipi, 8);
+    assert.equal(parsed.valor_total, 223.7);
     assert.equal(parsed.itens.length, 1);
     assert.equal(parsed.itens[0].descricao, "OXIGENIO IND GAS");
     assert.equal(parsed.itens[0].quantidade, 14);

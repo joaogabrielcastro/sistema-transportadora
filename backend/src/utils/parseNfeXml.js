@@ -142,6 +142,15 @@ export function parseNfeXml(xmlContent) {
   const valor_total =
     toNumber(textOf(total, "vNF")) ||
     toNumber(textOf(xml, "vNF"));
+  const valor_desconto =
+    toNumber(textOf(total, "vDesc")) ||
+    toNumber(textOf(xml, "vDesc"));
+  const valor_frete =
+    toNumber(textOf(total, "vFrete")) ||
+    toNumber(textOf(xml, "vFrete"));
+  const valor_ipi =
+    toNumber(textOf(total, "vIPI")) ||
+    toNumber(textOf(xml, "vIPI"));
 
   if (!numero) {
     const err = new Error("Não foi possível ler o número da NF-e no XML");
@@ -165,6 +174,9 @@ export function parseNfeXml(xmlContent) {
       toNumber(textOf(prod, "vUnTrib"));
     const valor_prod = toNumber(textOf(prod, "vProd"));
     const valor_desconto = toNumber(textOf(prod, "vDesc")) || 0;
+    const imposto = allBlocks(det, "imposto")[0] || "";
+    const ipiBlock = allBlocks(imposto, "IPI")[0] || imposto;
+    const valor_ipi_item = toNumber(textOf(ipiBlock, "vIPI"));
     // Custo real: (vProd - desconto) / qtd — o que a oficina pagou pela peça
     let valor_total_item = null;
     if (valor_prod != null) {
@@ -193,6 +205,7 @@ export function parseNfeXml(xmlContent) {
       valor_unitario,
       valor_unitario_bruto,
       valor_desconto: valor_desconto || null,
+      valor_ipi: valor_ipi_item,
       valor_total: valor_total_item,
       _ped: xPed,
     };
@@ -223,6 +236,9 @@ export function parseNfeXml(xmlContent) {
     cnpj_emitente: cnpj_emitente ? cnpj_emitente.slice(0, 18) : null,
     data_emissao: parseDate(dataRaw),
     valor_total,
+    valor_desconto,
+    valor_frete,
+    valor_ipi,
     itens: itensLimpos,
     placas_sugeridas,
     placa_sugerida: placas_sugeridas[0] || null,

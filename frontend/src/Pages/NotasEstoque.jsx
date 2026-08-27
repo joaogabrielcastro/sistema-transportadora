@@ -136,7 +136,7 @@ function FileDropField({
 }
 
 const NotasEstoque = () => {
-  const { post } = useApiMutation();
+  const { post, put } = useApiMutation();
   const [tab, setTab] = useState("importar");
   const [xmlFile, setXmlFile] = useState(null);
   const [pdfFile, setPdfFile] = useState(null);
@@ -161,6 +161,8 @@ const NotasEstoque = () => {
   const [savingManual, setSavingManual] = useState(false);
   const [notaDetalhe, setNotaDetalhe] = useState(null);
   const [loadingNota, setLoadingNota] = useState(false);
+  const [editingNota, setEditingNota] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const loadLists = useCallback(async () => {
     setLoadingLists(true);
@@ -315,19 +317,43 @@ const NotasEstoque = () => {
     }
   };
 
-  const handleAbrirNota = async (notaId) => {
+  const handleAbrirNota = async (notaId, { edit = false } = {}) => {
     setErro("");
     setLoadingNota(true);
     setNotaDetalhe(null);
+    setEditingNota(false);
     try {
       const res = await apiFetch({ url: `/notas-fiscais/${notaId}` });
       setNotaDetalhe(extractApiData(res));
+      setEditingNota(Boolean(edit));
     } catch (err) {
       const parsed = await parseApiError(err);
       setErro(parsed.message || "Não foi possível abrir a nota");
       setNotaDetalhe(null);
     } finally {
       setLoadingNota(false);
+    }
+  };
+
+  const handleSalvarEdicao = async (payload) => {
+    if (!notaDetalhe?.id) return;
+    setSavingEdit(true);
+    setErro("");
+    setMsg("");
+    try {
+      const res = await put(`/notas-fiscais/${notaDetalhe.id}`, payload, {
+        skipErrorToast: true,
+        skipSuccessToast: true,
+      });
+      setNotaDetalhe(extractApiData(res) || notaDetalhe);
+      setEditingNota(false);
+      setMsg("Nota atualizada e estoque reconciliado.");
+      await loadLists();
+    } catch (err) {
+      const parsed = await parseApiError(err);
+      setErro(parsed.message || "Falha ao atualizar a nota");
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -535,7 +561,13 @@ const NotasEstoque = () => {
                   { label: "Número", value: preview.numero },
                   { label: "Série", value: preview.serie || "—" },
                   { label: "Emitente", value: preview.emitente || "—" },
-                  { label: "Total", value: formatMoney(preview.valor_total) },
+                  { label: "Total NF", value: formatMoney(preview.valor_total) },
+                  {
+                    label: "Desconto",
+                    value: formatMoney(preview.valor_desconto),
+                  },
+                  { label: "Frete", value: formatMoney(preview.valor_frete) },
+                  { label: "IPI", value: formatMoney(preview.valor_ipi) },
                 ].map((item) => (
                   <div
                     key={item.label}
@@ -575,6 +607,7 @@ const NotasEstoque = () => {
                         Valor un. (líquido)
                       </th>
                       <th className="px-3 py-2.5 font-medium">Desconto</th>
+                      <th className="px-3 py-2.5 font-medium">IPI</th>
                       <th className="px-3 py-2.5 font-medium">Total</th>
                     </tr>
                   </thead>
@@ -653,6 +686,9 @@ const NotasEstoque = () => {
                           {item.valor_desconto
                             ? formatMoney(item.valor_desconto)
                             : "—"}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-text-secondary">
+                          {item.valor_ipi ? formatMoney(item.valor_ipi) : "—"}
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap font-medium text-text-primary">
                           {formatMoney(item.valor_total)}
@@ -872,17 +908,30 @@ const NotasEstoque = () => {
                           : "—"}
                       </td>
                       <td className="px-3 py-2.5 text-right">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAbrirNota(n.id);
-                          }}
-                        >
-                          Ver
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAbrirNota(n.id);
+                            }}
+                          >
+                            Ver
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAbrirNota(n.id, { edit: true });
+                            }}
+                          >
+                            Editar
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -910,9 +959,17 @@ const NotasEstoque = () => {
         onClose={() => {
           setNotaDetalhe(null);
           setLoadingNota(false);
+          setEditingNota(false);
         }}
         nota={notaDetalhe}
         loading={loadingNota}
+        editing={editingNota}
+        onStartEdit={() => setEditingNota(true)}
+        onCancelEdit={() => setEditingNota(false)}
+        onSaveEdit={handleSalvarEdicao}
+        savingEdit={savingEdit}
+        caminhoes={caminhoes}
+        produtos={produtos}
       />
     </PageLayout>
   );

@@ -340,6 +340,9 @@ model notas_fiscais {
   cnpj_emitente String?     @db.VarChar(18)
   data_emissao  DateTime?   @db.Date
   valor_total   Decimal?    @db.Decimal(14, 2)
+  valor_desconto      Decimal?    @db.Decimal(14, 2)
+  valor_frete         Decimal?    @db.Decimal(14, 2)
+  valor_ipi           Decimal?    @db.Decimal(14, 2)
   pdf_path            String?     @db.VarChar(500)
   xml_path            String?     @db.VarChar(500)
   status              String      @default("confirmada") @db.VarChar(32)
@@ -371,6 +374,8 @@ model nota_itens {
   quantidade      Decimal       @db.Decimal(14, 3)
   valor_unitario  Decimal?      @db.Decimal(14, 4)
   valor_total     Decimal?      @db.Decimal(14, 2)
+  valor_desconto  Decimal?      @db.Decimal(14, 2)
+  valor_ipi       Decimal?      @db.Decimal(14, 2)
   notas_fiscais   notas_fiscais @relation(fields: [nota_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   produtos        produtos?     @relation(fields: [produto_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 

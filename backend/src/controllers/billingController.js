@@ -2,10 +2,10 @@ import { z } from "zod";
 import { BillingService } from "../services/BillingService.js";
 import { catchAsync } from "../utils/catchAsync.js";
 import { requireTenantId } from "../utils/tenant.js";
-import { PLANS } from "../utils/tenantFeatures.js";
+import { PLANS, PUBLIC_BILLING_PLANS } from "../utils/tenantFeatures.js";
 
 const checkoutSchema = z.object({
-  plan: z.enum([PLANS.starter, PLANS.ops, PLANS.fiscal, PLANS.complete]),
+  plan: z.enum(PUBLIC_BILLING_PLANS),
 });
 
 const adminPatchSchema = z.object({

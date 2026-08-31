@@ -19,7 +19,7 @@ Plataforma **multi-empresa** (SaaS) para gestão de frota, manutenção, pneus, 
 ## Billing (Stripe)
 
 - **Clientes atuais** (pré-migração): `billing_exempt=true` — usam o sistema sem Stripe e sem tela de cobrança.
-- **Novos tenants** (register ou `tenant:create` sem `--exempt=true`): trial de 14 dias no plano **ops**, depois precisam assinar em `/assinatura`.
+- **Novos tenants** (register ou `tenant:create` sem `--exempt=true`): trial de 14 dias no plano **starter** (frota básica), depois precisam assinar em `/assinatura`. Ordem de coleta e NF-e/estoque vêm nos planos **ops**, **fiscal** ou **complete**.
 - Planos: `starter` | `ops` (ordem de coleta) | `fiscal` (NF-e/estoque) | `complete` (ambos).
 - Ativar cobrança depois em um isento: `npm run tenant:billing -- --slug=empresa --exempt=false --plan=ops`
 - Webhook: `POST /api/billing/webhook` (raw body). Local: `stripe listen --forward-to localhost:3020/api/billing/webhook`

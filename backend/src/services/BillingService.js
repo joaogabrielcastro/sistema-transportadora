@@ -5,9 +5,11 @@ import { logger } from "../utils/logger.js";
 import {
   buildBillingPublic,
   featuresForPlan,
+  isPublicBillingPlan,
   isValidPlan,
   PLANS,
 } from "../utils/tenantFeatures.js";
+import { buildPlansPublic } from "../utils/planCatalog.js";
 
 let stripeClient = null;
 
@@ -82,11 +84,9 @@ export class BillingService {
     const billing = buildBillingPublic(tenant);
     return {
       ...billing,
-      plans: Object.keys(PLANS).map((key) => ({
-        id: key,
-        features: featuresForPlan(key),
-        priceConfigured: Boolean(priceIdForPlan(key)),
-      })),
+      plans: buildPlansPublic({
+        priceConfiguredFor: (key) => Boolean(priceIdForPlan(key)),
+      }),
       stripeConfigured: config.billing.enabled,
     };
   }
@@ -118,8 +118,8 @@ export class BillingService {
    * @param {{ tenantId: number, plan: string, email?: string }} opts
    */
   static async createCheckoutSession({ tenantId, plan, email }) {
-    if (!isValidPlan(plan)) {
-      const err = new Error("Plano inválido");
+    if (!isValidPlan(plan) || !isPublicBillingPlan(plan)) {
+      const err = new Error("Plano inválido ou indisponível para contratação");
       err.statusCode = 400;
       throw err;
     }
@@ -249,7 +249,7 @@ export class BillingService {
     const planFromMeta = isValidPlan(subscription.metadata?.plan)
       ? subscription.metadata.plan
       : null;
-    const plan = planFromPrice || planFromMeta || tenant.plan || PLANS.ops;
+    const plan = planFromPrice || planFromMeta || tenant.plan || PLANS.starter;
     const status = mapStripeSubscriptionStatus(subscription.status);
 
     const trialEnd = subscription.trial_end
@@ -301,7 +301,7 @@ export class BillingService {
     if (!subscriptionId) {
       const plan = isValidPlan(session.metadata?.plan)
         ? session.metadata.plan
-        : PLANS.ops;
+        : PLANS.starter;
       return prisma.tenants.update({
         where: { id: tenantId },
         data: {
@@ -442,8 +442,8 @@ export class BillingService {
           trialEnds.setDate(trialEnds.getDate() + config.billing.trialDays);
           data.subscription_status = "trialing";
           data.trial_ends_at = trialEnds;
-          data.plan = existing.plan || PLANS.ops;
-          data.features = featuresForPlan(existing.plan || PLANS.ops);
+          data.plan = existing.plan || PLANS.starter;
+          data.features = featuresForPlan(existing.plan || PLANS.starter);
         }
       }
     }

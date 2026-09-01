@@ -8,8 +8,14 @@ import {
 function CellValue({ value }) {
   if (value === true) {
     return (
-      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">
-        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-secondary/10 text-secondary">
+        <svg
+          className="h-3.5 w-3.5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2.5}
+        >
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
         </svg>
       </span>
@@ -17,28 +23,30 @@ function CellValue({ value }) {
   }
   if (value === false) {
     return (
-      <span className="text-slate-500" aria-label="Não incluído">
+      <span className="text-text-light" aria-label="Não incluído">
         —
       </span>
     );
   }
-  return <span className="text-sm text-slate-200">{String(value)}</span>;
+  return <span className="text-sm font-medium text-text-primary">{String(value)}</span>;
 }
 
 function CompareSection({ section, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-700/80 bg-slate-800/40">
+    <div className="overflow-hidden rounded-xl border border-border bg-white shadow-card">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-800/60"
+        className="flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left transition-colors hover:bg-background sm:px-5"
         aria-expanded={open}
       >
-        <span className="text-base font-medium text-white">{section.title}</span>
+        <span className="text-sm font-semibold text-text-primary sm:text-base">
+          {section.title}
+        </span>
         <svg
-          className={`h-5 w-5 shrink-0 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`h-5 w-5 shrink-0 text-secondary transition-transform ${open ? "rotate-180" : ""}`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -49,14 +57,17 @@ function CompareSection({ section, defaultOpen = false }) {
       </button>
 
       {open && (
-        <div className="border-t border-slate-700/80 px-2 pb-4 pt-2 sm:px-4">
+        <div className="border-t border-border px-2 pb-3 pt-1 sm:px-4 sm:pb-4">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[32rem] text-sm">
+            <table className="w-full min-w-[36rem] text-sm">
               <thead>
-                <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+                <tr className="text-left text-xs uppercase tracking-wide text-text-light">
                   <th className="px-3 py-2 font-semibold">Recurso</th>
                   {COMPARE_PLAN_IDS.map((id) => (
-                    <th key={id} className="px-3 py-2 text-center font-semibold">
+                    <th
+                      key={id}
+                      className="px-3 py-2 text-center font-semibold text-text-secondary"
+                    >
                       {COMPARE_PLAN_HEADERS[id]}
                     </th>
                   ))}
@@ -66,11 +77,13 @@ function CompareSection({ section, defaultOpen = false }) {
                 {section.rows.map((row) => (
                   <tr
                     key={row.label}
-                    className="border-t border-slate-700/50 text-slate-300"
+                    className="border-t border-border/80 text-text-secondary"
                   >
-                    <td className="px-3 py-3 pr-4 text-slate-200">{row.label}</td>
+                    <td className="px-3 py-2.5 pr-4 text-text-primary">
+                      {row.label}
+                    </td>
                     {COMPARE_PLAN_IDS.map((id) => (
-                      <td key={id} className="px-3 py-3 text-center align-middle">
+                      <td key={id} className="px-3 py-2.5 text-center align-middle">
                         <CellValue value={row[id]} />
                       </td>
                     ))}
@@ -87,17 +100,17 @@ function CompareSection({ section, defaultOpen = false }) {
 
 export default function PlanComparison() {
   return (
-    <section className="rounded-2xl bg-slate-900 px-4 py-10 sm:px-8 sm:py-12">
-      <div className="mx-auto max-w-3xl text-center">
-        <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+    <section className="rounded-2xl border border-border bg-background px-4 py-8 sm:px-6 sm:py-10">
+      <div className="text-center">
+        <h2 className="text-xl font-bold tracking-tight text-text-primary sm:text-2xl">
           Compare os planos
         </h2>
-        <p className="mt-2 text-sm text-slate-400 sm:text-base">
-          Veja o que cada plano inclui para escolher o melhor para sua operação.
+        <p className="mt-1.5 text-sm text-text-secondary">
+          Detalhes do que cada plano inclui na ATrack.
         </p>
       </div>
 
-      <div className="mx-auto mt-8 flex max-w-3xl flex-col gap-3">
+      <div className="mt-6 flex flex-col gap-2.5">
         {PLAN_COMPARE_SECTIONS.map((section, index) => (
           <CompareSection
             key={section.id}

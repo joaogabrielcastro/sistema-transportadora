@@ -5,6 +5,7 @@ import PageLayout from "../components/layout/PageLayout.jsx";
 import PlanComparison from "../components/PlanComparison.jsx";
 import { Alert, Button, Card, PageHeader } from "../components/ui";
 import { apiFetch, parseApiError } from "../lib/apiClient.js";
+import { PRODUCT_NAME, PRODUCT_TAGLINE } from "../brand.js";
 import {
   hasBillingAccess,
   planDisplayName,
@@ -15,15 +16,15 @@ import {
 function PlanBadge({ children, variant = "default" }) {
   const styles =
     variant === "popular"
-      ? "bg-secondary/15 text-secondary"
+      ? "bg-secondary/10 text-secondary"
       : variant === "current"
-        ? "bg-emerald-50 text-emerald-800"
+        ? "bg-success/10 text-success-dark"
         : variant === "value"
-          ? "bg-amber-50 text-amber-900"
-          : "bg-slate-100 text-slate-700";
+          ? "bg-primary/10 text-primary"
+          : "bg-background text-text-secondary";
   return (
     <span
-      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${styles}`}
+      className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${styles}`}
     >
       {children}
     </span>
@@ -42,42 +43,40 @@ function PlanCard({
 }) {
   const isCurrent = currentPlan === plan.id;
   const onTrialThisPlan = isTrialing && isCurrent;
-  const priceOk = plan.priceConfigured !== false;
   const showAsCurrent = isCurrent && (isActive || isTrialing);
 
-  const ringClass = plan.popular
-    ? "ring-2 ring-secondary shadow-lg shadow-secondary/10"
-    : plan.bestValue
-      ? "ring-2 ring-amber-400/90 shadow-lg shadow-amber-400/10"
-      : "ring-1 ring-slate-200/80 shadow-sm";
+  const accent =
+    plan.popular
+      ? "border-t-4 border-t-secondary"
+      : plan.bestValue
+        ? "border-t-4 border-t-primary"
+        : "border-t-4 border-t-border";
 
   return (
     <Card
-      className={`flex h-full w-full max-w-sm flex-col transition-transform hover:-translate-y-0.5 ${ringClass} ${
-        plan.popular ? "md:scale-[1.02]" : ""
-      }`}
+      className={`flex h-full min-w-0 flex-col shadow-card transition-shadow hover:shadow-soft ${accent}`}
     >
-      <div className="flex h-full flex-col p-1">
-        <div className="mb-4">
-          <div className="mb-2 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-            <h3 className="text-xl font-bold text-slate-900">{plan.name}</h3>
+      <div className="flex h-full flex-col p-5 sm:p-6">
+        <div className="mb-4 min-h-[7.5rem]">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <h3 className="text-lg font-bold text-text-primary">{plan.name}</h3>
             {showAsCurrent && (
               <PlanBadge variant="current">Seu plano</PlanBadge>
             )}
             {plan.popular && !showAsCurrent && (
-              <PlanBadge variant="popular">Mais pedido</PlanBadge>
+              <PlanBadge variant="popular">Popular</PlanBadge>
             )}
             {plan.bestValue && !plan.popular && (
-              <PlanBadge variant="value">Melhor valor</PlanBadge>
+              <PlanBadge variant="value">Completo</PlanBadge>
             )}
           </div>
           {plan.tagline && (
-            <p className="text-center text-xs font-semibold uppercase tracking-widest text-secondary sm:text-left">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-secondary">
               {plan.tagline}
             </p>
           )}
-          <div className="mt-4 flex items-baseline justify-center gap-1 sm:justify-start">
-            <span className="text-4xl font-bold tracking-tight text-slate-900">
+          <div className="mt-3 flex items-baseline gap-1">
+            <span className="text-3xl font-bold tracking-tight text-primary">
               {plan.priceLabel ||
                 new Intl.NumberFormat("pt-BR", {
                   style: "currency",
@@ -85,28 +84,29 @@ function PlanCard({
                   maximumFractionDigits: 0,
                 }).format(plan.priceMonthlyBrl)}
             </span>
-            <span className="text-sm text-slate-500">/mês</span>
+            <span className="text-sm text-text-light">/mês</span>
           </div>
           {plan.trialEligible && !isActive && (
-            <p className="mt-2 text-center text-xs font-medium text-emerald-700 sm:text-left">
+            <p className="mt-1.5 text-xs font-medium text-success-dark">
               14 dias grátis no cadastro
             </p>
           )}
-          <p className="mt-4 text-center text-sm leading-relaxed text-slate-600 sm:text-left">
-            {plan.description}
-          </p>
         </div>
 
-        <ul className="mb-6 flex-1 space-y-2 text-sm text-slate-700">
+        <p className="mb-4 text-sm leading-relaxed text-text-secondary">
+          {plan.description}
+        </p>
+
+        <ul className="mb-5 flex-1 space-y-2 text-sm text-text-primary">
           {plan.highlights.map((h) => (
             <li key={h} className="flex gap-2">
               <span
-                className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-secondary/10 text-secondary"
+                className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-secondary/15 text-[10px] font-bold text-secondary"
                 aria-hidden
               >
                 ✓
               </span>
-              <span>{h}</span>
+              <span className="leading-snug">{h}</span>
             </li>
           ))}
         </ul>
@@ -131,11 +131,6 @@ function PlanCard({
                 ? "Continuar no trial"
                 : "Assinar"}
         </Button>
-        {!priceOk && (
-          <p className="mt-2 text-center text-xs text-amber-700">
-            Price ID deste plano não configurado no servidor.
-          </p>
-        )}
       </div>
     </Card>
   );
@@ -181,6 +176,11 @@ export default function Assinatura() {
     () => resolvePlanCards(status?.plans),
     [status?.plans],
   );
+
+  const stripeMissingPrices = useMemo(() => {
+    if (status?.stripeConfigured !== false) return false;
+    return planCards.some((p) => p.priceConfigured === false);
+  }, [status?.stripeConfigured, planCards]);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -252,10 +252,14 @@ export default function Assinatura() {
 
   return (
     <PageLayout>
-      <div className="mx-auto w-full max-w-6xl space-y-10 pb-8">
-        <PageHeader
-            title="Planos e assinatura"
-            subtitle="Preços por empresa/mês. Escolha o módulo que combina com sua operação — você pode evoluir quando precisar."
+      <div className="mx-auto w-full max-w-[72rem] space-y-8 pb-10">
+        <div className="text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary">
+            {PRODUCT_NAME} · {PRODUCT_TAGLINE}
+          </p>
+          <PageHeader
+            title="Escolha seu plano"
+            subtitle="Três opções para sua transportadora — cobrança mensal por empresa, sem surpresas."
             centered
             actions={
               canManage ? (
@@ -269,8 +273,9 @@ export default function Assinatura() {
               ) : null
             }
           />
+        </div>
 
-        <div className="mx-auto max-w-3xl space-y-4">
+        <div className="mx-auto max-w-3xl space-y-3">
           {info && <Alert type="success">{info}</Alert>}
           {error && <Alert type="error">{error}</Alert>}
 
@@ -284,35 +289,26 @@ export default function Assinatura() {
           {accessOk && isTrialing && days != null && (
             <Alert type="info">
               Trial no plano <strong>{planDisplayName(currentPlan)}</strong>:{" "}
-              {days === 0 ? "último dia" : `${days} dia(s) restante(s)`}. Depois
-              do trial, assine um plano abaixo para manter o acesso.
+              {days === 0 ? "último dia" : `${days} dia(s) restante(s)`}.
             </Alert>
           )}
 
           {isActive && currentPlan && (
             <Alert type="success">
-              Plano ativo: <strong>{planDisplayName(currentPlan)}</strong>. Use
-              &quot;Gerenciar no Stripe&quot; para trocar cartão ou cancelar.
+              Plano ativo: <strong>{planDisplayName(currentPlan)}</strong>.
             </Alert>
           )}
 
-          {status && status.stripeConfigured === false && (
+          {status?.stripeConfigured === false && (
             <Alert type="warning">
-              Stripe ainda não está configurado neste ambiente. Os preços abaixo
-              são referência — configure STRIPE_SECRET_KEY e os Price IDs no
-              backend.
+              Pagamentos ainda não estão ativos neste ambiente. Os valores abaixo
+              são referência até configurar o Stripe no servidor.
             </Alert>
           )}
         </div>
 
-        <div className="text-center">
-          <p className="text-sm text-slate-600">
-            Valores em reais (R$/mês) · cobrança recorrente via Stripe
-          </p>
-        </div>
-
-        {/* Planos centralizados */}
-        <div className="flex flex-wrap items-stretch justify-center gap-6 px-2">
+        {/* 3 colunas fixas — lado a lado no desktop */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-5 lg:gap-6">
           {planCards.map((plan) => (
             <PlanCard
               key={plan.id}
@@ -328,13 +324,11 @@ export default function Assinatura() {
           ))}
         </div>
 
-        {/* Comparação detalhada — estilo acordeão */}
         <PlanComparison />
 
         {user?.role !== "admin" && (
-          <p className="text-center text-sm text-slate-600">
-            Apenas administradores da empresa podem alterar o plano. Peça ao admin
-            da conta.
+          <p className="text-center text-sm text-text-secondary">
+            Apenas administradores podem alterar o plano.
           </p>
         )}
 
@@ -342,33 +336,18 @@ export default function Assinatura() {
           <p className="text-center">
             <Link
               to="/"
-              className="font-medium text-secondary hover:underline"
+              className="font-medium text-secondary hover:text-secondary-dark"
             >
               ← Voltar ao sistema
             </Link>
           </p>
         )}
 
-        {user?.role === "admin" && status?.stripeConfigured === false && (
-          <details className="mx-auto max-w-2xl rounded-lg border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
-            <summary className="cursor-pointer font-medium text-slate-800">
-              Referência Stripe (admin)
-            </summary>
-            <ul className="mt-2 space-y-1">
-              <li>
-                <strong>Starter</strong> — R$ 199/mês · STRIPE_PRICE_STARTER
-              </li>
-              <li>
-                <strong>Fiscal</strong> — R$ 499/mês · STRIPE_PRICE_FISCAL
-              </li>
-              <li>
-                <strong>Completo</strong> — R$ 699/mês · STRIPE_PRICE_COMPLETE
-              </li>
-            </ul>
-            <p className="mt-2 text-xs text-slate-500">
-              Ordem de coleta não é vendida (exclusiva ABroto).
-            </p>
-          </details>
+        {user?.role === "admin" && stripeMissingPrices && (
+          <p className="text-center text-xs text-text-light">
+            Admin: configure STRIPE_PRICE_STARTER, STRIPE_PRICE_FISCAL e
+            STRIPE_PRICE_COMPLETE no Coolify.
+          </p>
         )}
       </div>
     </PageLayout>

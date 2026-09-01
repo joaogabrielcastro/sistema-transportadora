@@ -19,4 +19,7 @@ export {
   useEditGastoQuery,
   useEditChecklistQuery,
   useEditPneuQuery,
+  useCteListQuery,
+  useMdfeListQuery,
+  useFiscalClientesQuery,
 } from "./queries/index.js";

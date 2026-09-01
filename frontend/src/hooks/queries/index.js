@@ -15,3 +15,8 @@ export {
   useEditChecklistQuery,
   useEditPneuQuery,
 } from "./useEditFormQueries.js";
+export {
+  useCteListQuery,
+  useMdfeListQuery,
+  useFiscalClientesQuery,
+} from "./useFiscalQueries.js";

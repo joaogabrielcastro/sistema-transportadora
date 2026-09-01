@@ -31,6 +31,8 @@ const EditChecklist = lazy(() => import("./Pages/EditChecklist.jsx"));
 const Relatorios = lazy(() => import("./Pages/Relatorios.jsx"));
 const OrdensColeta = lazy(() => import("./Pages/OrdensColeta.jsx"));
 const NotasEstoque = lazy(() => import("./Pages/NotasEstoque.jsx"));
+const FiscalCte = lazy(() => import("./Pages/FiscalCte.jsx"));
+const FiscalMdfe = lazy(() => import("./Pages/FiscalMdfe.jsx"));
 const Usuarios = lazy(() => import("./Pages/Usuarios.jsx"));
 const Assinatura = lazy(() => import("./Pages/Assinatura.jsx"));
 const Motoristas = lazy(() => import("./Pages/Motoristas.jsx"));
@@ -259,6 +261,28 @@ function AppRoutes() {
                 <FeatureRoute feature="notas_estoque">
                   <NotasEstoque />
                 </FeatureRoute>
+              </BillingGate>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/fiscal/cte"
+          element={
+            <ProtectedRoute>
+              <BillingGate>
+                {/* TODO: reativar gate por feature flag depois da demo */}
+                <FiscalCte />
+              </BillingGate>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/fiscal/mdfe"
+          element={
+            <ProtectedRoute>
+              <BillingGate>
+                {/* TODO: reativar gate por feature flag depois da demo */}
+                <FiscalMdfe />
               </BillingGate>
             </ProtectedRoute>
           }

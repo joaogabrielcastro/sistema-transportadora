@@ -31,6 +31,7 @@ import notasFiscaisRoutes from "./routes/notasFiscaisRoutes.js";
 import billingRoutes from "./routes/billingRoutes.js";
 import motoristasRoutes from "./routes/motoristasRoutes.js";
 import opsRoutes from "./routes/opsRoutes.js";
+import fiscalRoutes from "./routes/fiscalRoutes.js";
 import { requireFeature } from "./middleware/requireFeature.js";
 import { requireActiveSubscription } from "./middleware/requireActiveSubscription.js";
 import { ensureUploadDirs } from "./utils/uploadPaths.js";
@@ -150,6 +151,11 @@ apiRouter.use("/users", usersRoutes);
 apiRouter.use("/motoristas", motoristasRoutes);
 apiRouter.use("/ops", opsRoutes);
 apiRouter.use("/notas-fiscais", notasFiscaisRoutes);
+apiRouter.use(
+  "/fiscal",
+  requireFeature("transporte_fiscal"),
+  fiscalRoutes,
+);
 apiRouter.use(
   "/ordem-coleta",
   requireFeature("ordem_coleta"),

@@ -403,3 +403,168 @@ model estoque_movimentos {
   @@index([nota_id])
   @@index([caminhao_id])
 }
+
+// =====================================================================
+// Módulo fiscal de transporte (CT-e / MDF-e / CIOT).
+//
+// Todas as tabelas usam o prefixo fiscal_ e são independentes das tabelas
+// já existentes: NÃO há `@relation` para caminhoes / motoristas / tenants /
+// fiscal_mdfes. Os vínculos (tenant_id, caminhao_id, motorista_id,
+// cliente_id, manifesto_id, fiscal_empresa_id) são colunas escalares Int; as
+// FOREIGN KEYs reais são criadas nas migrations SQL
+// (20260827200000_fiscal_transporte + 20260828120000_fiscal_provider_generico)
+// e revalidadas por tenant no service com
+// findFirst({ where: { id, tenant_id } }), mesmo padrão de applyMotoristaLink.
+//
+// O provedor externo (CT-e/MDF-e e CIOT) ainda não foi decidido: nenhum nome
+// de fornecedor aparece em coluna, classe ou env var — só "cte_mdfe_provider_*"
+// / "ciot_*" genéricos.
+//
+// Sem enum Prisma: `status` é String; os valores válidos ficam no comentário
+// `///` de cada campo e são validados via Zod nos controllers.
+// =====================================================================
+
+model fiscal_empresas {
+  id                      Int       @id @default(autoincrement())
+  tenant_id               Int
+  cnpj                    String    @db.VarChar(18)
+  razao_social            String    @db.VarChar(255)
+  /// RNTRC do contratado/transportadora (só dígitos, 8-9 chars)
+  rntrc                   String?   @db.VarChar(9)
+  /// Token do provedor de CT-e/MDF-e (fornecedor ainda não decidido) — cifrado (AES-256-GCM, FISCAL_SECRETS_KEY) antes de gravar
+  cte_mdfe_provider_token String?
+  certificado_pfx_path    String?   @db.VarChar(500)
+  /// Senha do certificado A1 — cifrada (AES-256-GCM, FISCAL_SECRETS_KEY) antes de gravar
+  certificado_senha       String?
+  certificado_valido_ate  DateTime? @db.Date
+  ativo                   Boolean   @default(true)
+  criado_em               DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@unique([tenant_id, cnpj])
+  @@index([tenant_id])
+}
+
+model fiscal_veiculo_dados {
+  id              Int      @id @default(autoincrement())
+  /// FK -> caminhoes.id (constraint na migration SQL). Único: 1 extensão fiscal por caminhão.
+  caminhao_id     Int      @unique
+  rntrc_veiculo   String?  @db.VarChar(9)
+  /// Dados do grupo veicReboque do MDF-e (SEFAZ) — usados quando este caminhão
+  /// é uma carreta acoplada a um cavalo mecânico. Todos opcionais; os
+  /// obrigatórios para emitir (tara_kg, cap_kg, tipo_carroceria) são checados
+  /// no MdfeService antes de chamar o provedor.
+  renavam         String?  @db.VarChar(20)
+  /// Tara em quilos (inteiro, igual ao XML da SEFAZ)
+  tara_kg         Int?
+  /// Capacidade de carga em quilos (inteiro)
+  cap_kg          Int?
+  /// Capacidade em metros cúbicos (opcional no MDF-e)
+  cap_m3          Decimal? @db.Decimal(10, 2)
+  /// Código do tipo de carroceria da SEFAZ (00..05) ou descrição curta
+  tipo_carroceria String?  @db.VarChar(20)
+  /// UF de licenciamento do reboque
+  uf              String?  @db.VarChar(2)
+  criado_em       DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([caminhao_id])
+}
+
+model fiscal_clientes {
+  id           Int      @id @default(autoincrement())
+  tenant_id    Int
+  razao_social String   @db.VarChar(255)
+  /// CNPJ/CPF do tomador — normalizado (só dígitos) antes de salvar
+  cnpj_cpf     String   @db.VarChar(14)
+  criado_em    DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([tenant_id, cnpj_cpf])
+  @@index([tenant_id])
+}
+
+model fiscal_ctes {
+  id                  Int       @id @default(autoincrement())
+  tenant_id           Int
+  /// FK -> fiscal_empresas.id (CNPJ emissor; resolvido na emissão). Opcional para linhas antigas.
+  fiscal_empresa_id   Int?
+  /// FK -> fiscal_clientes.id
+  cliente_id          Int
+  /// FK -> caminhoes.id (opcional)
+  caminhao_id         Int?
+  /// FK -> motoristas.id (opcional)
+  motorista_id        Int?
+  /// FK -> fiscal_mdfes.id (opcional)
+  manifesto_id        Int?
+  /// FK -> fiscal_ctes.id — CT-e original referenciado por Complemento (1) / Substituto (3)
+  cte_referenciado_id Int?
+  chave_acesso        String    @unique @db.VarChar(44)
+  /// pendente | processado | cancelado | erro
+  status              String    @default("pendente") @db.VarChar(20)
+  numero              String?   @db.VarChar(20)
+  serie               String?   @db.VarChar(10)
+  data_emissao        DateTime? @db.Timestamptz(6)
+  valor_frete         Decimal?  @db.Decimal(14, 2)
+  xml_path            String?   @db.VarChar(500)
+  /// DACTE (PDF) decodificado do base64DACTe do provedor — mesmo padrão de xml_path
+  pdf_path            String?   @db.VarChar(500)
+  criado_em           DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([tenant_id])
+  @@index([tenant_id, cliente_id])
+  @@index([tenant_id, fiscal_empresa_id])
+  @@index([manifesto_id])
+  @@index([cte_referenciado_id])
+}
+
+model fiscal_mdfes {
+  id                Int       @id @default(autoincrement())
+  tenant_id         Int
+  /// FK -> fiscal_empresas.id (CNPJ emissor; resolvido na emissão). Opcional para linhas antigas.
+  fiscal_empresa_id Int?
+  /// FK -> caminhoes.id (opcional)
+  caminhao_id       Int?
+  /// FK -> motoristas.id (opcional)
+  motorista_id      Int?
+  chave_acesso      String    @unique @db.VarChar(44)
+  numero            String?   @db.VarChar(20)
+  serie             String?   @db.VarChar(10)
+  numero_protocolo  String?   @db.VarChar(30)
+  /// pendente | processado | encerrado | cancelado | erro
+  status            String    @default("pendente") @db.VarChar(20)
+  data_emissao      DateTime? @db.Timestamptz(6)
+  xml_path          String?   @db.VarChar(500)
+  /// DAMDFE (PDF) decodificado do base64DAMDFe do provedor — mesmo padrão de xml_path
+  pdf_path          String?   @db.VarChar(500)
+  criado_em         DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([tenant_id])
+  @@index([tenant_id, fiscal_empresa_id])
+}
+
+model fiscal_ciots {
+  id                            Int      @id @default(autoincrement())
+  tenant_id                     Int
+  /// FK -> fiscal_empresas.id
+  fiscal_empresa_id             Int
+  /// FK -> caminhoes.id (opcional)
+  caminhao_id                   Int?
+  /// FK -> motoristas.id (opcional)
+  motorista_id                  Int?
+  /// Gerado por nós (12 chars hex), unicidade global garantida com retry
+  id_operacao_transporte        String   @unique @db.VarChar(12)
+  /// O código do CIOT em si — vem da resposta de sucesso da ANTT
+  codigo_identificacao_operacao String?  @db.VarChar(20)
+  codigo_verificador            String?  @db.VarChar(20)
+  protocolo                     String?  @db.VarChar(40)
+  /// pendente | declarado | cancelado | encerrado | erro
+  status                        String   @default("pendente") @db.VarChar(20)
+  valor_frete                   Decimal  @db.Decimal(14, 2)
+  data_declaracao               DateTime @db.Timestamptz(6)
+  data_inicio_viagem            DateTime @db.Timestamptz(6)
+  data_fim_viagem               DateTime @db.Timestamptz(6)
+  veiculos                      Json     @db.JsonB
+  inf_pagamento                 Json     @db.JsonB
+  criado_em                     DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([tenant_id])
+  @@index([tenant_id, fiscal_empresa_id])
+}

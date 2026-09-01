@@ -1,7 +1,7 @@
 /**
  * Detecta deploy novo sem depender do service worker.
- * Se /version.json mudou, limpa cache e recarrega sozinho (qualquer tela).
  */
+import { purgePwaStorage } from "./utils/serviceWorkerCleanup.js";
 const POLL_MS = 15_000;
 const STORAGE_KEY = "atrack_build_id";
 const RELOAD_GUARD = "atrack_boot_reload";
@@ -34,14 +34,7 @@ export async function forceAppReload() {
   }
 
   try {
-    if ("serviceWorker" in navigator) {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map((r) => r.unregister()));
-    }
-    if (typeof caches !== "undefined") {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((k) => caches.delete(k)));
-    }
+    await purgePwaStorage();
   } catch {
     /* ainda recarrega */
   }

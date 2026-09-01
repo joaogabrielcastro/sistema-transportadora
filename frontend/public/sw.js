@@ -1,5 +1,6 @@
 /**
- * Legado: mesmo comportamento de /sw.js para clientes com SW antigo neste path.
+ * Substitui o Workbox antigo: desliga preload, limpa cache e se desregistra.
+ * Não intercepta fetch (sem listener) — evita app preso em versão antiga.
  */
 /* eslint-disable no-restricted-globals */
 self.addEventListener("install", () => {

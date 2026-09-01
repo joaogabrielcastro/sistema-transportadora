@@ -10,6 +10,7 @@ import { AuthProvider } from "./context/AuthContext.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import { initPwaAutoUpdate } from "./pwaRegister.js";
 import { initVersionWatch } from "./versionWatch.js";
+import { purgePwaStorage } from "./utils/serviceWorkerCleanup.js";
 
 initPwaAutoUpdate();
 initVersionWatch();
@@ -32,14 +33,7 @@ async function recoverFromStaleCache() {
   if (sessionStorage.getItem(CHUNK_RELOAD_KEY) === "1") return;
   sessionStorage.setItem(CHUNK_RELOAD_KEY, "1");
   try {
-    if ("serviceWorker" in navigator) {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map((r) => r.unregister()));
-    }
-    if (typeof caches !== "undefined") {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((k) => caches.delete(k)));
-    }
+    await purgePwaStorage();
   } catch {
     /* still reload */
   }

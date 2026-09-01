@@ -6,6 +6,7 @@ import RegistroDetailModal from "../components/RegistroDetailModal.jsx";
 import RegistroEditModal from "../components/RegistroEditModal.jsx";
 import Pagination from "../components/Pagination.jsx";
 import { formatCaminhaoOptions } from "../utils/caminhaoOptions.js";
+import { FIELD_LIMITS } from "../utils/fieldLimits.js";
 import {
   Card,
   Button,
@@ -294,6 +295,7 @@ const RegistroForm = ({
                 required
                 placeholder="Ex.: Troca de óleo, filtros, pastilhas..."
                 className="mb-0 sm:col-span-2"
+                maxLength={FIELD_LIMITS.NOME_ITEM}
               />
               <FormField
                 label="Oficina"
@@ -302,6 +304,7 @@ const RegistroForm = ({
                 onChange={onChange}
                 placeholder="Nome da oficina"
                 className="mb-0"
+                maxLength={FIELD_LIMITS.OFICINA}
               />
             </FormSection>
 
@@ -365,6 +368,7 @@ const RegistroForm = ({
                   onChange={onChange}
                   rows={3}
                   placeholder="Detalhes adicionais sobre o registro..."
+                  maxLength={FIELD_LIMITS.OBSERVACAO}
                   className="mb-0 sm:col-span-2"
                 />
               </div>
@@ -422,6 +426,7 @@ const RegistroForm = ({
                 rows={3}
                 placeholder="Detalhes adicionais sobre o registro..."
                 className="mb-0 sm:col-span-2 lg:col-span-3"
+                maxLength={FIELD_LIMITS.OBSERVACAO}
               />
             </FormSection>
           </>

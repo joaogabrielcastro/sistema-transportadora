@@ -407,13 +407,14 @@ const OrdensColeta = () => {
               helperText="Obrigatório apenas para enviar por e-mail."
             />
             <div className="md:col-span-2">
-              <FormField
-                label="Assunto do e-mail (opcional)"
-                name="assunto"
-                value={assunto}
-                onChange={(e) => setAssunto(e.target.value)}
-                placeholder="Deixe em branco para usar o assunto padrão do sistema"
-              />
+            <FormField
+              label="Assunto do e-mail (opcional)"
+              name="assunto"
+              value={assunto}
+              onChange={(e) => setAssunto(e.target.value)}
+              maxLength={500}
+              placeholder="Deixe em branco para usar o assunto padrão do sistema"
+            />
             </div>
           </div>
 
@@ -425,6 +426,8 @@ const OrdensColeta = () => {
                 label={campo.label}
                 type={campo.type || "text"}
                 rows={campo.rows}
+                mask={campo.mask}
+                maxLength={campo.maxLength}
                 value={dadosVariaveis[campo.key] ?? ""}
                 onChange={(e) => handleCampoChange(campo.key, e.target.value)}
               />

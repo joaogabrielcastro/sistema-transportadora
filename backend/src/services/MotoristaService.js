@@ -1,17 +1,9 @@
 import { z } from "zod";
 import prisma from "../lib/prisma.js";
-
-const motoristaSchema = z.object({
-  nome: z.string().trim().min(2).max(120),
-  cpf: z.string().trim().max(14).optional().nullable(),
-  cnh: z.string().trim().max(30).optional().nullable(),
-  cnh_categoria: z.string().trim().max(8).optional().nullable(),
-  cnh_validade: z.string().optional().nullable(),
-  telefone: z.string().trim().max(30).optional().nullable(),
-  whatsapp: z.string().trim().max(30).optional().nullable(),
-  ativo: z.boolean().optional(),
-  observacao: z.string().optional().nullable(),
-});
+import {
+  motoristaSchema,
+  motoristaUpdateSchema,
+} from "../schemas/motoristaSchema.js";
 
 function parseDate(value) {
   if (value === undefined || value === null || value === "") return null;
@@ -77,7 +69,7 @@ export class MotoristaService {
 
   static async update(tenantId, id, body) {
     await this.getById(tenantId, id);
-    const data = motoristaSchema.partial().parse(body);
+    const data = motoristaUpdateSchema.parse(body);
     return prisma.motoristas.update({
       where: { id: Number(id) },
       data: {

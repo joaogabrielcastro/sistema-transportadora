@@ -12,6 +12,11 @@ import {
   SearchableSelect,
 } from "../components/ui";
 import { TIPO_VEICULO_OPTIONS } from "../utils/caminhaoOptions.js";
+import { FIELD_LIMITS } from "../utils/fieldLimits.js";
+import {
+  maskDigitsInput,
+  maskPersonNameInput,
+} from "../utils/inputMasks.js";
 import { apiFetch } from "../lib/apiClient.js";
 
 const CadastroCaminhao = () => {
@@ -123,31 +128,15 @@ const CadastroCaminhao = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const formatPlaca = (value) => {
-    const cleaned = value
-      .replace(/[^a-zA-Z0-9]/g, "")
-      .toUpperCase()
-      .slice(0, 7);
-    if (cleaned.length === 7) {
-      return cleaned.replace(
-        /([A-Z]{3})([0-9])([A-Z0-9])([0-9]{2})/,
-        "$1$2$3$4",
-      );
-    }
-    return cleaned;
-  };
-
   const handleInputChange = (field, value) => {
     let formattedValue = value;
 
-    if (field.startsWith("placa")) {
-      formattedValue = formatPlaca(value);
-    } else if (
-      ["qtd_pneus", "km_atual", "numero_cavalo", "ano"].includes(field)
-    ) {
-      formattedValue = value.replace(/[^0-9]/g, "");
-    } else if (field === "motorista") {
-      formattedValue = value.replace(/[^a-zA-ZÀ-ÿ\s]/g, "");
+    if (field === "motorista") {
+      formattedValue = maskPersonNameInput(value, FIELD_LIMITS.MOTORISTA_TEXTO);
+    } else if (field === "ano") {
+      formattedValue = maskDigitsInput(value, 4);
+    } else if (["qtd_pneus", "km_atual", "numero_cavalo"].includes(field)) {
+      formattedValue = maskDigitsInput(value, 8);
     }
 
     setForm((prev) => ({ ...prev, [field]: formattedValue }));
@@ -250,10 +239,12 @@ const CadastroCaminhao = () => {
               label="Placa"
               name="placa"
               value={form.placa}
-              onChange={(e) => handleInputChange("placa", e.target.value)}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, placa: e.target.value }))
+              }
               required
               placeholder="ABC1D23"
-              maxLength={7}
+              mask="placa"
               error={errors.placa || fieldErrors.placa}
             />
 
@@ -267,6 +258,8 @@ const CadastroCaminhao = () => {
                   handleInputChange("numero_cavalo", e.target.value)
                 }
                 placeholder="Opcional"
+                min={0}
+                max={FIELD_LIMITS.NUMERO_CAVALO_MAX}
                 error={errors.numero_cavalo || fieldErrors.numero_cavalo}
               />
             )}
@@ -316,6 +309,7 @@ const CadastroCaminhao = () => {
                   }
                   required
                   placeholder="Nome completo"
+                  maxLength={FIELD_LIMITS.MOTORISTA_TEXTO}
                   error={errors.motorista || fieldErrors.motorista}
                   helperText="Nenhum motorista cadastrado ainda — use o texto ou cadastre em Motoristas."
                 />
@@ -330,6 +324,7 @@ const CadastroCaminhao = () => {
               value={form.marca}
               onChange={(e) => handleInputChange("marca", e.target.value)}
               placeholder="Ex: Volvo, Iveco"
+              maxLength={FIELD_LIMITS.MARCA}
             />
             <FormField
               label="Modelo"
@@ -337,6 +332,7 @@ const CadastroCaminhao = () => {
               value={form.modelo}
               onChange={(e) => handleInputChange("modelo", e.target.value)}
               placeholder="Ex: FH 460 6x2T"
+              maxLength={FIELD_LIMITS.MODELO}
             />
             <FormField
               label="Ano"
@@ -345,7 +341,8 @@ const CadastroCaminhao = () => {
               value={form.ano}
               onChange={(e) => handleInputChange("ano", e.target.value)}
               placeholder="Ex: 2020"
-              maxLength={4}
+              min={FIELD_LIMITS.ANO_MIN}
+              max={FIELD_LIMITS.ANO_MAX}
             />
           </div>
 
@@ -358,6 +355,7 @@ const CadastroCaminhao = () => {
                 setForm((prev) => ({ ...prev, config_eixos: e.target.value }))
               }
               placeholder="Ex: 6x2, 6x4, 8x2"
+              maxLength={FIELD_LIMITS.CONFIG_EIXOS}
             />
             <FormField
               label="Chassi"
@@ -367,6 +365,7 @@ const CadastroCaminhao = () => {
                 setForm((prev) => ({ ...prev, chassi: e.target.value }))
               }
               placeholder="Opcional"
+              mask="chassi"
             />
             <FormField
               label="Empresa / frota"
@@ -376,6 +375,7 @@ const CadastroCaminhao = () => {
                 setForm((prev) => ({ ...prev, empresa: e.target.value }))
               }
               placeholder="Ex: Solofino, Colombocal"
+              maxLength={FIELD_LIMITS.EMPRESA}
             />
           </div>
 
@@ -402,6 +402,8 @@ const CadastroCaminhao = () => {
               onChange={(e) => handleInputChange("qtd_pneus", e.target.value)}
               required
               placeholder={isCarreta ? "Ex: 12" : "Ex: 6"}
+              min={1}
+              max={30}
               error={errors.qtd_pneus || fieldErrors.qtd_pneus}
             />
 
@@ -413,6 +415,8 @@ const CadastroCaminhao = () => {
               onChange={(e) => handleInputChange("km_atual", e.target.value)}
               required={!isCarreta}
               placeholder="Ex: 150000"
+              min={0}
+              max={FIELD_LIMITS.KM_MAX}
               error={errors.km_atual || fieldErrors.km_atual}
             />
           </div>

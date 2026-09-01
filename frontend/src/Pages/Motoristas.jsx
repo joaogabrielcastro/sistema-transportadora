@@ -6,6 +6,7 @@ import EmptyState from "../components/EmptyState.jsx";
 import { apiFetch, parseApiError } from "../lib/apiClient.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { PERMISSIONS, userHasPermission } from "../utils/permissions.js";
+import { FIELD_LIMITS } from "../utils/fieldLimits.js";
 
 const emptyForm = {
   nome: "",
@@ -123,26 +124,37 @@ export default function Motoristas() {
           >
             <FormField
               label="Nome"
+              name="nome"
               value={form.nome}
               onChange={(e) => setForm({ ...form, nome: e.target.value })}
               required
+              maxLength={FIELD_LIMITS.NOME}
             />
             <FormField
               label="CPF"
+              name="cpf"
               value={form.cpf}
               onChange={(e) => setForm({ ...form, cpf: e.target.value })}
+              mask="cpf"
+              inputMode="numeric"
             />
             <FormField
               label="CNH"
+              name="cnh"
               value={form.cnh}
               onChange={(e) => setForm({ ...form, cnh: e.target.value })}
+              mask="cnh"
+              maxLength={FIELD_LIMITS.CNH}
+              inputMode="numeric"
             />
             <FormField
               label="Categoria CNH"
+              name="cnh_categoria"
               value={form.cnh_categoria}
               onChange={(e) =>
                 setForm({ ...form, cnh_categoria: e.target.value })
               }
+              mask="cnhCategoria"
               placeholder="E"
             />
             <FormField
@@ -155,13 +167,33 @@ export default function Motoristas() {
             />
             <FormField
               label="Telefone"
+              name="telefone"
               value={form.telefone}
               onChange={(e) => setForm({ ...form, telefone: e.target.value })}
+              mask="phone"
+              type="tel"
+              inputMode="tel"
             />
             <FormField
               label="WhatsApp"
+              name="whatsapp"
               value={form.whatsapp}
               onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
+              mask="phone"
+              type="tel"
+              inputMode="tel"
+            />
+            <FormField
+              label="Observações"
+              name="observacao"
+              type="textarea"
+              rows={2}
+              value={form.observacao}
+              onChange={(e) =>
+                setForm({ ...form, observacao: e.target.value })
+              }
+              maxLength={FIELD_LIMITS.OBSERVACAO}
+              className="md:col-span-2 xl:col-span-3"
             />
             <div className="md:col-span-2 xl:col-span-3 flex gap-2">
               <Button type="submit" loading={saving}>

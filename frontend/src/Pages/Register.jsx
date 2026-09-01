@@ -10,6 +10,7 @@ import {
   PRODUCT_TAGLINE,
   PUBLIC_REGISTER_ENABLED,
 } from "../brand.js";
+import { FIELD_LIMITS } from "../utils/fieldLimits.js";
 
 export default function Register() {
   const { register, isAuthenticated } = useAuth();
@@ -116,6 +117,7 @@ export default function Register() {
                 onChange={(e) => setEmpresaNome(e.target.value)}
                 placeholder="Ex.: Transportes Silva"
                 required
+                maxLength={FIELD_LIMITS.EMPRESA_NOME}
                 autoComplete="organization"
               />
 
@@ -126,6 +128,7 @@ export default function Register() {
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 placeholder="Administrador"
+                maxLength={FIELD_LIMITS.NOME}
                 autoComplete="name"
               />
 
@@ -149,6 +152,8 @@ export default function Register() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Mínimo 8 caracteres"
                   required
+                  minLength={FIELD_LIMITS.PASSWORD_MIN}
+                  maxLength={FIELD_LIMITS.PASSWORD_MAX}
                   autoComplete="new-password"
                   className="mb-0"
                 />

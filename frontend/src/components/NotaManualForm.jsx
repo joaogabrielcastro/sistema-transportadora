@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Button, Card, FormField, SearchableSelect } from "./ui";
 import { formatCaminhaoOptions } from "../utils/caminhaoOptions.js";
+import { FIELD_LIMITS } from "../utils/fieldLimits.js";
 
 function toInputDate(value) {
   if (!value) return "";
@@ -188,6 +189,7 @@ export default function NotaManualForm({
             required
             className="mb-0 sm:col-span-2"
             placeholder="Razão social"
+            maxLength={FIELD_LIMITS.EMITENTE}
           />
           <FormField
             label="CNPJ / CPF"
@@ -195,6 +197,8 @@ export default function NotaManualForm({
             value={form.cnpj_emitente}
             onChange={(e) => setField("cnpj_emitente", e.target.value)}
             className="mb-0"
+            mask="cpfCnpj"
+            inputMode="numeric"
             placeholder="00.000.000/0000-00"
           />
           <FormField
@@ -204,6 +208,7 @@ export default function NotaManualForm({
             onChange={(e) => setField("numero", e.target.value)}
             required
             className="mb-0"
+            maxLength={FIELD_LIMITS.NOTA_NUMERO}
           />
           <FormField
             label="Série"
@@ -211,6 +216,7 @@ export default function NotaManualForm({
             value={form.serie}
             onChange={(e) => setField("serie", e.target.value)}
             className="mb-0"
+            maxLength={FIELD_LIMITS.NOTA_SERIE}
           />
           <FormField
             label="Data de emissão"
@@ -284,6 +290,8 @@ export default function NotaManualForm({
             value={form.chave_acesso}
             onChange={(e) => setField("chave_acesso", e.target.value)}
             className="mb-0 sm:col-span-2"
+            mask="chaveNfe"
+            inputMode="numeric"
             placeholder="Opcional — 44 dígitos"
           />
           <SearchableSelect
@@ -305,6 +313,7 @@ export default function NotaManualForm({
             onChange={(e) => setField("observacao", e.target.value)}
             rows={2}
             className="mb-0 sm:col-span-2 lg:col-span-4"
+            maxLength={FIELD_LIMITS.OBSERVACAO}
           />
         </div>
       </section>
@@ -356,6 +365,7 @@ export default function NotaManualForm({
                     <input
                       className="w-28 rounded-md border border-border px-2 py-1.5"
                       value={item.codigo}
+                      maxLength={FIELD_LIMITS.CODIGO_PRODUTO}
                       onChange={(e) =>
                         updateItem(idx, "codigo", e.target.value)
                       }
@@ -366,6 +376,7 @@ export default function NotaManualForm({
                       className="w-full min-w-[12rem] rounded-md border border-border px-2 py-1.5"
                       value={item.descricao}
                       required
+                      maxLength={FIELD_LIMITS.DESCRICAO}
                       onChange={(e) =>
                         updateItem(idx, "descricao", e.target.value)
                       }
@@ -388,6 +399,7 @@ export default function NotaManualForm({
                     <input
                       className="w-16 rounded-md border border-border px-2 py-1.5"
                       value={item.unidade}
+                      maxLength={FIELD_LIMITS.UNIDADE}
                       onChange={(e) =>
                         updateItem(idx, "unidade", e.target.value)
                       }

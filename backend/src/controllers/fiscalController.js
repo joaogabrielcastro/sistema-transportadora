@@ -220,7 +220,7 @@ export const mdfeController = {
     const tenantId = requireTenantId(req);
     res.json({
       success: true,
-      data: await MdfeService.encerrar(tenantId, req.params.id),
+      data: await MdfeService.encerrar(tenantId, req.params.id, req.body),
       message: "Encerramento de MDF-e processado",
     });
   }),

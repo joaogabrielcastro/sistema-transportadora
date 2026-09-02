@@ -185,6 +185,26 @@ export const config = {
       const n = Number(process.env.FISCAL_HTTP_TIMEOUT_MS || 30000);
       return Number.isFinite(n) && n > 0 ? Math.floor(n) : 30000;
     },
+    /**
+     * Alíquota de retenção de INSS do comprovante de CIOT (item 3.3), como
+     * fração (0.022 = 2,2%). SEM default numérico — null quando não configurada
+     * (não se inventa percentual; mesma filosofia do piso mínimo de frete).
+     */
+    get retencaoInssAliquota() {
+      const raw = (process.env.FISCAL_CIOT_RETENCAO_INSS_ALIQUOTA || "").trim();
+      if (!raw) return null;
+      const n = Number(raw);
+      return Number.isFinite(n) && n >= 0 ? n : null;
+    },
+    /** Alíquota de retenção de SEST/SENAT do comprovante de CIOT (fração). Null sem config. */
+    get retencaoSestSenatAliquota() {
+      const raw = (
+        process.env.FISCAL_CIOT_RETENCAO_SEST_SENAT_ALIQUOTA || ""
+      ).trim();
+      if (!raw) return null;
+      const n = Number(raw);
+      return Number.isFinite(n) && n >= 0 ? n : null;
+    },
   },
   whatsapp: {
     get apiUrl() {

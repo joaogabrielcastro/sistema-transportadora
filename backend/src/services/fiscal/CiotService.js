@@ -1,6 +1,7 @@
 import prisma from "../../lib/prisma.js";
 import { serializePrisma } from "../../utils/prismaSerialization.js";
 import { logger } from "../../utils/logger.js";
+import { config } from "../../config/index.js";
 import {
   declararCiotSchema,
   consultarSituacaoTransportadorSchema,
@@ -19,6 +20,42 @@ import {
 const CODIGO_SUCESSO_OPERACAO = 110;
 // Regra B34: cancelamento só até 24h após o início da viagem declarada.
 const JANELA_CANCELAMENTO_HORAS = 24;
+
+// Janela de cancelamento (horas) por categoria de operação (item 3.2). Hoje
+// TODAS usam as mesmas 24h da regra B34 — o mapa é só o ponto único para
+// ajustar prazo/retificação por categoria quando as regras forem confirmadas.
+const JANELA_CANCELAMENTO_HORAS_POR_CATEGORIA = {
+  lotacao: JANELA_CANCELAMENTO_HORAS,
+  fracionada: JANELA_CANCELAMENTO_HORAS,
+  tac_agregado: JANELA_CANCELAMENTO_HORAS,
+};
+
+/** Mapeia tipo_operacao (1/2/3) para a categoria explícita (item 3.2). */
+const CATEGORIA_POR_TIPO_OPERACAO = {
+  1: "lotacao",
+  2: "fracionada",
+  3: "tac_agregado",
+};
+
+/**
+ * Resolve a categoria da operação (3.2): usa `categoria_operacao` do corpo
+ * quando informada, senão deriva de `tipo_operacao`.
+ */
+export function resolverCategoriaOperacao(dto) {
+  return (
+    dto.categoria_operacao ??
+    CATEGORIA_POR_TIPO_OPERACAO[dto.tipo_operacao] ??
+    null
+  );
+}
+
+/** Janela de cancelamento (horas) para uma categoria — 24h por padrão. */
+export function janelaCancelamentoHoras(categoria) {
+  return (
+    JANELA_CANCELAMENTO_HORAS_POR_CATEGORIA[categoria] ??
+    JANELA_CANCELAMENTO_HORAS
+  );
+}
 
 function badRequest(message, extra) {
   const err = new Error(message);
@@ -39,7 +76,106 @@ function validarCnpjCertificado(cnpjEmpresa, contratado, contratante) {
   }
 }
 
-function montarPayloadDeclaracao(dto, idOperacaoTransporte) {
+/**
+ * Piso mínimo de frete (item 3.3). Bloqueio explícito: exige piso informado
+ * positivo e frete não inferior ao piso.
+ *
+ * TODO: consultar automaticamente o piso mínimo da ANTT (Política Nacional de
+ * Pisos Mínimos do Transporte Rodoviário de Cargas — Lei 13.703/2018 e
+ * resoluções ANTT). Enquanto não há consulta automática, não se inventa o
+ * valor: bloqueia quando o piso não é informado (<= 0) ou quando o frete fica
+ * abaixo do piso informado pelo usuário.
+ */
+export function verificarPisoMinimoFrete(dto) {
+  if (!(Number(dto.valor_piso_minimo_frete) > 0)) {
+    throw badRequest(
+      "Piso mínimo de frete (ANTT) não informado. A consulta automática ao " +
+        "piso ainda não está disponível — informe valor_piso_minimo_frete " +
+        "calculado conforme a tabela ANTT vigente para a operação.",
+    );
+  }
+  if (Number(dto.valor_frete) < Number(dto.valor_piso_minimo_frete)) {
+    throw badRequest(
+      "O valor do frete está abaixo do piso mínimo ANTT informado " +
+        `(frete ${dto.valor_frete} < piso ${dto.valor_piso_minimo_frete}).`,
+    );
+  }
+}
+
+/**
+ * Colunas do snapshot da situação do RNTRC do contratado (item 3.1). Só usa o
+ * que veio no corpo da declaração — nenhuma consulta automática à ANTT nesta
+ * rodada. `rntrc_contratado_snapshot` (JSONB) só entra quando há valor, para
+ * não gravar null cru em campo Json.
+ */
+export function colunasRntrcSnapshot(dto) {
+  const temAlgo =
+    dto.rntrc_contratado_situacao != null ||
+    dto.rntrc_contratado_snapshot != null;
+  const cols = {
+    rntrc_contratado_situacao: dto.rntrc_contratado_situacao ?? null,
+    rntrc_contratado_situacao_em: temAlgo ? new Date() : null,
+  };
+  if (dto.rntrc_contratado_snapshot != null) {
+    cols.rntrc_contratado_snapshot = dto.rntrc_contratado_snapshot;
+  }
+  return cols;
+}
+
+/**
+ * Retenções do comprovante de pagamento do CIOT (item 3.3): INSS e SEST/SENAT.
+ * NADA de percentual hardcoded — a alíquota vem do corpo da declaração
+ * (`dto.retencoes.*_aliquota`) ou da config (FISCAL_CIOT_RETENCAO_*_ALIQUOTA).
+ * Sem alíquota, a retenção fica toda null e não entra no comprovante. Alíquota
+ * como fração (0.022 = 2,2%). Função pura (recebe a config por parâmetro).
+ *
+ * @param {object} dto
+ * @param {{ inssAliquota?: number|null, sestSenatAliquota?: number|null }} [cfg]
+ */
+export function calcularRetencoes(dto, cfg = {}) {
+  const r = dto.retencoes ?? {};
+  const round2 = (n) => Math.round(Number(n) * 100) / 100;
+  const inssAliq = r.inss_aliquota ?? cfg.inssAliquota ?? null;
+  const sestAliq = r.sest_senat_aliquota ?? cfg.sestSenatAliquota ?? null;
+  const temAliquota = inssAliq != null || sestAliq != null;
+  const base = r.base ?? (temAliquota ? (dto.valor_frete ?? null) : null);
+  const inssValor =
+    r.inss_valor ??
+    (base != null && inssAliq != null ? round2(base * inssAliq) : null);
+  const sestValor =
+    r.sest_senat_valor ??
+    (base != null && sestAliq != null ? round2(base * sestAliq) : null);
+  return {
+    retencao_base: base,
+    retencao_inss_aliquota: inssAliq,
+    retencao_inss_valor: inssValor,
+    retencao_sest_senat_aliquota: sestAliq,
+    retencao_sest_senat_valor: sestValor,
+  };
+}
+
+/** Bloco Retencoes do payload do provedor, ou undefined quando não há retenção. */
+export function montarRetencoesPayload(retencoes) {
+  if (
+    retencoes.retencao_inss_valor == null &&
+    retencoes.retencao_sest_senat_valor == null
+  ) {
+    return undefined;
+  }
+  return {
+    BaseCalculo: retencoes.retencao_base ?? undefined,
+    INSS: {
+      Aliquota: retencoes.retencao_inss_aliquota ?? undefined,
+      Valor: retencoes.retencao_inss_valor ?? undefined,
+    },
+    SestSenat: {
+      Aliquota: retencoes.retencao_sest_senat_aliquota ?? undefined,
+      Valor: retencoes.retencao_sest_senat_valor ?? undefined,
+    },
+  };
+}
+
+function montarPayloadDeclaracao(dto, idOperacaoTransporte, retencoes) {
   return {
     IdOperacaoTransporte: idOperacaoTransporte,
     TipoOperacao: dto.tipo_operacao,
@@ -73,6 +209,7 @@ function montarPayloadDeclaracao(dto, idOperacaoTransporte) {
           CodigoNaturezaCarga: dto.dados_carga.codigo_natureza_carga,
           PesoCarga: dto.dados_carga.peso_carga,
           CodigoTipoCarga: dto.dados_carga.codigo_tipo_carga,
+          NCM: dto.dados_carga.ncm ?? undefined,
         }
       : undefined,
     InfPagamento: dto.inf_pagamento.map((p) => ({
@@ -87,6 +224,8 @@ function montarPayloadDeclaracao(dto, idOperacaoTransporte) {
             dto.inf_indicadores_operacionais.possui_seguro_carga,
         }
       : undefined,
+    // Retenções do comprovante (3.3) — só entra quando há alíquota configurada.
+    Retencoes: retencoes ? montarRetencoesPayload(retencoes) : undefined,
   };
 }
 
@@ -127,12 +266,29 @@ export class CiotService {
       "Motorista",
       { optional: true },
     );
+    // mdfe_id é opcional (3.2): revalida no tenant só quando informado.
+    const mdfeId = await assertTenantFk(
+      "fiscal_mdfes",
+      dto.mdfe_id,
+      tenantId,
+      "MDF-e",
+      { optional: true },
+    );
 
     validarCnpjCertificado(
       empresa.cnpj,
       dto.cpf_cnpj_contratado,
       dto.cpf_cnpj_contratante,
     );
+    // Piso mínimo de frete (3.3): bloqueio explícito antes de declarar.
+    verificarPisoMinimoFrete(dto);
+
+    // Retenções do comprovante (3.3): alíquota do corpo ou da config; sem
+    // alíquota, tudo fica null e nada entra no comprovante.
+    const retencoes = calcularRetencoes(dto, {
+      inssAliquota: config.fiscal.retencaoInssAliquota,
+      sestSenatAliquota: config.fiscal.retencaoSestSenatAliquota,
+    });
 
     const idOperacaoTransporte = await gerarIdOperacaoUnico(async (candidato) => {
       const existente = await prisma.fiscal_ciots.findUnique({
@@ -143,7 +299,7 @@ export class CiotService {
     });
 
     const resposta = await CiotProviderClient.declararOperacaoTransporte(
-      montarPayloadDeclaracao(dto, idOperacaoTransporte),
+      montarPayloadDeclaracao(dto, idOperacaoTransporte, retencoes),
       certificado,
     );
 
@@ -160,6 +316,10 @@ export class CiotService {
         fiscal_empresa_id: empresa.id,
         caminhao_id: caminhaoId,
         motorista_id: motoristaId,
+        mdfe_id: mdfeId,
+        carga_ncm: dto.dados_carga?.ncm ?? null,
+        categoria_operacao: resolverCategoriaOperacao(dto),
+        ...retencoes,
         id_operacao_transporte: idOperacaoTransporte,
         codigo_identificacao_operacao:
           resposta.CodigoIdentificacaoOperacao ?? null,
@@ -172,6 +332,7 @@ export class CiotService {
         data_fim_viagem: new Date(dto.data_fim_viagem),
         veiculos: dto.veiculos,
         inf_pagamento: dto.inf_pagamento,
+        ...colunasRntrcSnapshot(dto),
       },
     });
 
@@ -190,11 +351,12 @@ export class CiotService {
       ciot.fiscal_empresa_id,
     );
 
+    const janelaHoras = janelaCancelamentoHoras(ciot.categoria_operacao);
     const prazoLimite = new Date(ciot.data_inicio_viagem);
-    prazoLimite.setHours(prazoLimite.getHours() + JANELA_CANCELAMENTO_HORAS);
+    prazoLimite.setHours(prazoLimite.getHours() + janelaHoras);
     if (new Date() > prazoLimite) {
       throw badRequest(
-        `Cancelamento não permitido: prazo de ${JANELA_CANCELAMENTO_HORAS}h após o início da viagem já expirou`,
+        `Cancelamento não permitido: prazo de ${janelaHoras}h após o início da viagem já expirou`,
       );
     }
     if (!ciot.codigo_identificacao_operacao) {

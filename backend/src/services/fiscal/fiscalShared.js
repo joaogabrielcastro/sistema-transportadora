@@ -20,6 +20,40 @@ function notFound(message) {
 }
 
 /**
+ * Monta o grupo `seguros` (seg do MDF-e / CT-e). Extraído do MdfeService (item
+ * 1.6) para ser reaproveitado pelo CteService — o comportamento para o MDF-e é
+ * idêntico ao anterior: se `dto.seguros` (array livre) veio, respeita; senão
+ * monta uma entrada a partir dos campos planos.
+ *
+ * resp_seg / indicadorResponsavel: no MDF-e 1 = emitente do MDF-e, 2 =
+ * contratante. No CT-e o CteService faz o de-para do seu objeto `seg` aninhado
+ * para estes mesmos nomes de campo antes de chamar aqui.
+ *
+ * `nomeSegurador` / `xSeg` NÃO entra no payload (mantido como estava no MDF-e);
+ * o nome da seguradora é só persistido em coluna. Confirmar em sandbox se o
+ * provedor exige.
+ */
+export function montarGrupoSeguro(dto) {
+  if (Array.isArray(dto.seguros) && dto.seguros.length > 0) return dto.seguros;
+  if (
+    dto.resp_seg == null &&
+    dto.cnpj_seguradora == null &&
+    dto.numero_apolice == null &&
+    dto.numero_averbacao == null
+  ) {
+    return undefined;
+  }
+  return [
+    {
+      indicadorResponsavel: dto.resp_seg ?? undefined,
+      cnpjSegurador: dto.cnpj_seguradora ?? undefined,
+      numeroApolice: dto.numero_apolice ?? undefined,
+      numerosAverbacao: dto.numero_averbacao ? [dto.numero_averbacao] : undefined,
+    },
+  ];
+}
+
+/**
  * Revalida que um id de FK cruzada pertence ao MESMO tenant antes de usar.
  * Mesmo princípio de CaminhaoService.applyMotoristaLink / NotaFiscalService.resolveCaminhaoId.
  *

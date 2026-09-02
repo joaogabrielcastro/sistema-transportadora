@@ -3,10 +3,14 @@ import { serializePrisma } from "../../utils/prismaSerialization.js";
 import { logger } from "../../utils/logger.js";
 import { config } from "../../config/index.js";
 import { normalizePlaca } from "../../utils/placa.js";
-import { emitirMdfeSchema } from "../../schemas/fiscalSchema.js";
+import {
+  emitirMdfeSchema,
+  encerrarMdfeSchema,
+} from "../../schemas/fiscalSchema.js";
 import { CteMdfeProviderClient } from "./CteMdfeProviderClient.js";
 import {
   findOwnedOr404,
+  montarGrupoSeguro,
   resolveEmpresaCteMdfe,
   salvarPdfBase64,
   salvarXmlBase64,
@@ -224,32 +228,167 @@ async function resolveCondutores(tenantId, dto) {
   throw badRequest("Informe motorista_id ou rodoviario.condutores");
 }
 
+// Grupo `seguros` (seg do MDF-e): montagem movida para fiscalShared.js
+// (montarGrupoSeguro) no item 1.6, para o CteService reaproveitar. Comportamento
+// para o MDF-e inalterado.
+
+// ---------------------------------------------------------------------
+// Grupos seg / infANTT / tot / prodPred / ide (itens 2.1 a 2.5)
+// ---------------------------------------------------------------------
+
 /**
- * Monta o grupo `seguros` (seg do MDF-e). Se o DTO já traz `seguros` (array
- * livre), respeita o que veio. Senão, monta uma entrada a partir dos campos
- * planos resp_seg / cnpj_seguradora / numero_apolice / numero_averbacao.
+ * Os grupos infANTT (2.2) e prodPred (2.4) só são exigidos quando `tipo_emitente`
+ * vier EXPLICITAMENTE 1 (prestador de serviço de transporte) ou 3 (prestador
+ * CT-e globalizado).
  *
- * resp_seg: 1 = emitente do MDF-e, 2 = contratante do serviço de transporte.
- * `nomeSegurador` não é coletado (não há cadastro de seguradora) — ver relatório.
+ * `tipo_emitente` ausente NÃO dispara a exigência: antes desta mudança o fluxo
+ * de emissão de MDF-e de frota própria podia não mandar o campo, e uma empresa
+ * de frota própria sem RNTRC cadastrado emitia normalmente — a nova regra vale
+ * só para quem se declara prestador. `tipo_emitente === 2` (carga própria)
+ * também não exige.
  */
-function montarSeguros(dto) {
-  if (Array.isArray(dto.seguros) && dto.seguros.length > 0) return dto.seguros;
-  if (
-    dto.resp_seg == null &&
-    dto.cnpj_seguradora == null &&
-    dto.numero_apolice == null &&
-    dto.numero_averbacao == null
-  ) {
-    return undefined;
+export function exigeGruposAntt(dto) {
+  return dto.tipo_emitente === 1 || dto.tipo_emitente === 3;
+}
+
+/**
+ * Grupo seg (2.1): exige o responsável pelo seguro na emissão nova, exceto
+ * quando o DTO já traz `seguros[]` explícito. MDF-e já emitidos não são
+ * afetados — a checagem roda só na emissão nova.
+ */
+export function assertSeguroMdfe(dto) {
+  if (Array.isArray(dto.seguros) && dto.seguros.length > 0) return;
+  if (dto.resp_seg == null) {
+    throw badRequest(
+      "Informe o responsável pelo seguro da carga (grupo seg) para emitir o " +
+        "MDF-e: resp_seg = 1 (emitente do MDF-e) ou 2 (contratante do serviço).",
+    );
   }
-  return [
-    {
-      indicadorResponsavel: dto.resp_seg ?? undefined,
-      cnpjSegurador: dto.cnpj_seguradora ?? undefined,
-      numeroApolice: dto.numero_apolice ?? undefined,
-      numerosAverbacao: dto.numero_averbacao ? [dto.numero_averbacao] : undefined,
-    },
-  ];
+}
+
+/**
+ * Grupo infANTT (2.2): quando o emitente se declara prestador (tipo_emitente
+ * 1 ou 3), exige um RNTRC — informado em `inf_antt.rntrc` ou já cadastrado na
+ * empresa fiscal emissora. Frota própria / tipo_emitente ausente não exige.
+ */
+export function validarInfAnttMdfe(dto, empresa) {
+  if (!exigeGruposAntt(dto)) return;
+  const rntrc = dto.inf_antt?.rntrc || empresa?.rntrc;
+  if (!rntrc) {
+    throw badRequest(
+      "MDF-e de prestador de serviço de transporte exige RNTRC (grupo " +
+        "infANTT) — cadastre o RNTRC da empresa fiscal ou informe inf_antt.rntrc.",
+    );
+  }
+}
+
+/**
+ * infMunDescarga (2.1): quando o DTO traz `municipios_descarga`, cada CT-e
+ * informado (tipo 'cte') precisa também estar vinculado ao MDF-e via `cte_ids`
+ * — a chave tem de estar entre `chavesCteVinculadas`. NF-e/MDF-e não são
+ * checados. Só roda quando o campo novo é usado; MDF-e sem ele não é afetado.
+ */
+export function validarMunicipiosDescarga(dto, chavesCteVinculadas = []) {
+  if (
+    !Array.isArray(dto.municipios_descarga) ||
+    dto.municipios_descarga.length === 0
+  ) {
+    return;
+  }
+  const permitidas = new Set(chavesCteVinculadas);
+  const orfas = [];
+  for (const m of dto.municipios_descarga) {
+    for (const d of m.documentos ?? []) {
+      if (d.tipo === "cte" && d.chave && !permitidas.has(d.chave)) {
+        orfas.push(d.chave);
+      }
+    }
+  }
+  if (orfas.length > 0) {
+    throw badRequest(
+      "infMunDescarga (2.1): CT-e informado em município de descarga sem " +
+        "vínculo com este MDF-e — envie a chave também em cte_ids: " +
+        orfas.join(", "),
+    );
+  }
+}
+
+/** Grupo prodPred (2.4): mesmo critério do infANTT (só prestador 1 ou 3). */
+export function validarProdPredMdfe(dto) {
+  if (!exigeGruposAntt(dto)) return;
+  const temProdPred =
+    Boolean(dto.prod_pred?.descricao) ||
+    (dto.produto_predominante != null &&
+      Object.keys(dto.produto_predominante).length > 0);
+  if (!temProdPred) {
+    throw badRequest(
+      "MDF-e de prestador de serviço de transporte exige o produto " +
+        "predominante (grupo prodPred) — informe prod_pred.descricao.",
+    );
+  }
+}
+
+/**
+ * Grupo tot (2.3): totais calculados a partir dos CT-e vinculados. O peso não
+ * é persistido nos CT-e — `qCarga` fica indefinido aqui e é resolvido na
+ * emissão com fallback para `dto.peso`.
+ */
+export function calcularTotMdfe(ctes) {
+  const lista = Array.isArray(ctes) ? ctes : [];
+  const vCarga = lista.reduce(
+    (soma, c) =>
+      soma + (Number(c.valor_frete ?? c.valor_carga ?? 0) || 0),
+    0,
+  );
+  return {
+    qCTe: lista.length,
+    vCarga: vCarga || undefined,
+    qCarga: undefined,
+  };
+}
+
+/** Valores das colunas novas (seg / infANTT / tot / prodPred / ide) a persistir. */
+function colunasMdfeExtras(dto, tot) {
+  const base = {
+    seg_responsavel: dto.resp_seg ?? null,
+    seg_cnpj_seguradora: dto.cnpj_seguradora ?? null,
+    seg_numero_apolice: dto.numero_apolice ?? null,
+    seg_numero_averbacao: dto.numero_averbacao ?? null,
+    seg_nome_seguradora: dto.nome_seguradora ?? null,
+    antt_rntrc: dto.inf_antt?.rntrc ?? null,
+    antt_ciot: dto.inf_antt?.ciot ?? null,
+    tot_qcte: tot?.qCTe ?? null,
+    tot_valor_carga: tot?.vCarga ?? null,
+    tot_peso_bruto: tot?.qCarga ?? dto.peso ?? null,
+    prod_pred_descricao: dto.prod_pred?.descricao ?? null,
+    prod_pred_ncm: dto.prod_pred?.ncm ?? null,
+    prod_pred_tp_carga: dto.prod_pred?.tp_carga ?? null,
+    ide_uf_ini: dto.ide?.uf_ini ?? dto.uf_carregamento ?? null,
+    ide_uf_fim: dto.ide?.uf_fim ?? dto.uf_descarregamento ?? null,
+    ide_dh_ini_viagem: dto.ide?.dh_ini_viagem
+      ? new Date(dto.ide.dh_ini_viagem)
+      : null,
+    ide_tp_transp: dto.ide?.tp_transp ?? null,
+    ide_modal: dto.ide?.modal ?? null,
+  };
+  // JSONB: só inclui a chave quando há valor (evita null cru em campo Json).
+  if (dto.inf_antt?.vale_pedagio != null) {
+    base.antt_vale_pedagio = dto.inf_antt.vale_pedagio;
+  }
+  return base;
+}
+
+/**
+ * Colunas do evento de cancelamento estruturado do MDF-e (2.3), a partir da
+ * justificativa usada e da resposta do provedor. Função pura.
+ */
+export function colunasCancelamentoMdfe(justificativa, resposta) {
+  return {
+    status: "cancelado",
+    cancelado_em: new Date(),
+    cancelado_justificativa: justificativa ?? null,
+    cancelado_protocolo: resposta?.NuProtocolo ?? null,
+  };
 }
 
 export function montarPayloadMdfe(
@@ -258,6 +397,7 @@ export function montarPayloadMdfe(
   condutores,
   reboques = [],
   chavesCteVinculados = [],
+  tot,
 ) {
   const {
     placa: _p,
@@ -265,6 +405,67 @@ export function montarPayloadMdfe(
     reboques: _r,
     ...restRodoviario
   } = dto.rodoviario ?? {};
+
+  const infANTT =
+    dto.inf_antt && Object.keys(dto.inf_antt).length > 0
+      ? {
+          RNTRC: dto.inf_antt.rntrc ?? undefined,
+          infCIOT: dto.inf_antt.ciot ?? undefined,
+          valePedagio: dto.inf_antt.vale_pedagio ?? undefined,
+        }
+      : undefined;
+
+  const prodPred = dto.prod_pred
+    ? {
+        xProd: dto.prod_pred.descricao ?? undefined,
+        NCM: dto.prod_pred.ncm ?? undefined,
+        tpCarga: dto.prod_pred.tp_carga ?? undefined,
+      }
+    : (dto.produto_predominante ?? undefined);
+
+  const infMunCarrega = Array.isArray(dto.municipios_carrega)
+    ? dto.municipios_carrega.map((m) => ({
+        cMunCarrega: m.codigo_municipio,
+        xMunCarrega: m.nome_municipio ?? undefined,
+      }))
+    : undefined;
+
+  // infMunDescarga (2.1): documentos vinculados agrupados por município de
+  // descarga. Só entra no payload quando o DTO traz `municipios_descarga`;
+  // senão, segue a lista plana `documentosVinculados` (comportamento atual).
+  const infMunDescarga = Array.isArray(dto.municipios_descarga)
+    ? dto.municipios_descarga.map((m) => {
+        const docs = Array.isArray(m.documentos) ? m.documentos : [];
+        const infCTe = docs
+          .filter((d) => d.tipo === "cte" && d.chave)
+          .map((d) => ({ chCTe: d.chave }));
+        const infNFe = docs
+          .filter((d) => d.tipo === "nfe" && d.chave)
+          .map((d) => ({ chNFe: d.chave }));
+        const infMDFeTransp = docs
+          .filter((d) => d.tipo === "mdfe" && d.chave)
+          .map((d) => ({ chMDFe: d.chave }));
+        return {
+          cMunDescarga: m.codigo_municipio,
+          xMunDescarga: m.nome_municipio ?? undefined,
+          ...(infCTe.length > 0 ? { infCTe } : {}),
+          ...(infNFe.length > 0 ? { infNFe } : {}),
+          ...(infMDFeTransp.length > 0 ? { infMDFeTransp } : {}),
+        };
+      })
+    : undefined;
+
+  const ide =
+    dto.ide && Object.keys(dto.ide).length > 0
+      ? {
+          UFIni: dto.ide.uf_ini ?? undefined,
+          UFFim: dto.ide.uf_fim ?? undefined,
+          dhIniViagem: dto.ide.dh_ini_viagem ?? undefined,
+          tpTransp: dto.ide.tp_transp ?? undefined,
+          modal: dto.ide.modal ?? undefined,
+        }
+      : undefined;
+
   return {
     serie: dto.serie ?? undefined,
     numero: dto.numero ?? undefined,
@@ -275,15 +476,28 @@ export function montarPayloadMdfe(
     ufCarregamento: dto.uf_carregamento,
     ufDescarregamento: dto.uf_descarregamento,
     modalidade: dto.modalidade ?? MODALIDADE_RODOVIARIO,
-    valor: dto.valor ?? undefined,
-    peso: dto.peso ?? undefined,
+    // tot (2.3): quando há CT-e vinculados, os totais calculados têm precedência
+    // sobre valor/peso informados manualmente; sem vínculo, mantém o DTO.
+    valor: (tot?.vCarga ?? dto.valor) ?? undefined,
+    peso: (tot?.qCarga ?? dto.peso) ?? undefined,
     Rodoviario: {
       ...restRodoviario,
       placa,
       condutores,
       ...(reboques.length > 0 ? { veicReboque: reboques } : {}),
     },
-    seguros: montarSeguros(dto),
+    infANTT,
+    ide,
+    ...(infMunCarrega && infMunCarrega.length > 0 ? { infMunCarrega } : {}),
+    ...(infMunDescarga && infMunDescarga.length > 0 ? { infMunDescarga } : {}),
+    tot: tot
+      ? {
+          qCTe: tot.qCTe,
+          vCarga: tot.vCarga ?? undefined,
+          qCarga: tot.qCarga ?? undefined,
+        }
+      : undefined,
+    seguros: montarGrupoSeguro(dto),
     carregamentos: dto.carregamentos ?? undefined,
     descarregamentos: dto.descarregamentos ?? undefined,
     // Chaves dos CT-e vinculados a este MDF-e. O agrupamento por município de
@@ -294,7 +508,7 @@ export function montarPayloadMdfe(
         ? chavesCteVinculados.map((chaveDfe) => ({ chaveDfe }))
         : undefined,
     percursoUfs: dto.percurso_ufs ?? undefined,
-    produtoPredominante: dto.produto_predominante ?? undefined,
+    produtoPredominante: prodPred,
   };
 }
 
@@ -305,12 +519,19 @@ export function montarPayloadMdfe(
  */
 async function resolveCtesVinculados(tenantId, cteIds) {
   if (!Array.isArray(cteIds) || cteIds.length === 0) {
-    return { ids: [], chaves: [] };
+    return { ids: [], chaves: [], ctes: [] };
   }
   const unicos = [...new Set(cteIds.map(Number))];
   const rows = await prisma.fiscal_ctes.findMany({
     where: { id: { in: unicos }, tenant_id: Number(tenantId) },
-    select: { id: true, chave_acesso: true, status: true, manifesto_id: true },
+    select: {
+      id: true,
+      chave_acesso: true,
+      status: true,
+      manifesto_id: true,
+      valor_frete: true,
+      valor_carga: true,
+    },
   });
   const byId = new Map(rows.map((r) => [r.id, r]));
   const problemas = [];
@@ -334,6 +555,7 @@ async function resolveCtesVinculados(tenantId, cteIds) {
   return {
     ids: unicos,
     chaves: unicos.map((id) => byId.get(id).chave_acesso),
+    ctes: unicos.map((id) => byId.get(id)),
   };
 }
 
@@ -369,6 +591,18 @@ export class MdfeService {
       dto.fiscal_empresa_id,
     );
 
+    // Validações que precisam rodar ANTES da chamada irreversível ao provedor:
+    // seguro_responsavel (2.1); infANTT (2.2) e prodPred (2.4) quando não é
+    // frota própria. tot (2.3) é calculado dos CT-e vinculados.
+    assertSeguroMdfe(dto);
+    validarInfAnttMdfe(dto, empresa);
+    validarProdPredMdfe(dto);
+    validarMunicipiosDescarga(dto, ctesVinculados.chaves);
+    const tot =
+      ctesVinculados.ids.length > 0
+        ? calcularTotMdfe(ctesVinculados.ctes)
+        : undefined;
+
     const resposta = await CteMdfeProviderClient.enviarManifestoTransporte(
       montarPayloadMdfe(
         dto,
@@ -376,6 +610,7 @@ export class MdfeService {
         condutores,
         reboques,
         ctesVinculados.chaves,
+        tot,
       ),
       token,
     );
@@ -408,6 +643,7 @@ export class MdfeService {
         serie: dto.serie ?? null,
         status: "processado",
         data_emissao: new Date(),
+        ...colunasMdfeExtras(dto, tot),
       },
     });
 
@@ -433,6 +669,72 @@ export class MdfeService {
         chave: resposta.chave,
         message: err.message,
       });
+    }
+
+    // Municípios de carregamento (infMunCarrega, item 2.5). Best-effort — MDF-e
+    // já emitido; uma falha aqui não invalida o manifesto.
+    if (Array.isArray(dto.municipios_carrega) && dto.municipios_carrega.length > 0) {
+      try {
+        await prisma.fiscal_mdfe_municipios_carrega.createMany({
+          data: dto.municipios_carrega.map((m) => ({
+            tenant_id: Number(tenantId),
+            mdfe_id: mdfe.id,
+            codigo_municipio: m.codigo_municipio ?? null,
+            nome_municipio: m.nome_municipio ?? null,
+          })),
+        });
+      } catch (err) {
+        logger.error("Falha ao gravar municípios de carregamento do MDF-e", {
+          tenantId,
+          mdfeId: mdfe.id,
+          message: err.message,
+        });
+      }
+    }
+
+    // Municípios de descarga (infMunDescarga, item 2.1). Best-effort — MDF-e já
+    // emitido. Uma linha por documento; município sem documentos vira 1 linha.
+    if (
+      Array.isArray(dto.municipios_descarga) &&
+      dto.municipios_descarga.length > 0
+    ) {
+      try {
+        const linhas = [];
+        for (const m of dto.municipios_descarga) {
+          const docs = Array.isArray(m.documentos) ? m.documentos : [];
+          if (docs.length === 0) {
+            linhas.push({
+              tenant_id: Number(tenantId),
+              mdfe_id: mdfe.id,
+              codigo_municipio: m.codigo_municipio ?? null,
+              nome_municipio: m.nome_municipio ?? null,
+              tipo: null,
+              chave_acesso: null,
+            });
+          }
+          for (const d of docs) {
+            linhas.push({
+              tenant_id: Number(tenantId),
+              mdfe_id: mdfe.id,
+              codigo_municipio: m.codigo_municipio ?? null,
+              nome_municipio: m.nome_municipio ?? null,
+              tipo: d.tipo ?? null,
+              chave_acesso: d.chave ?? null,
+            });
+          }
+        }
+        if (linhas.length > 0) {
+          await prisma.fiscal_mdfe_documentos_descarga.createMany({
+            data: linhas,
+          });
+        }
+      } catch (err) {
+        logger.error("Falha ao gravar infMunDescarga do MDF-e", {
+          tenantId,
+          mdfeId: mdfe.id,
+          message: err.message,
+        });
+      }
     }
 
     // Vincula os CT-e informados a este MDF-e. Já emitido com sucesso — uma
@@ -499,18 +801,27 @@ export class MdfeService {
     }
   }
 
-  static async encerrar(tenantId, id) {
+  static async encerrar(tenantId, id, body) {
+    const dados = encerrarMdfeSchema.parse(body) ?? {};
     const mdfe = await findOwnedOr404("fiscal_mdfes", id, tenantId, "MDF-e");
     const { token } = await resolveEmpresaCteMdfe(
       tenantId,
       mdfe.fiscal_empresa_id ?? undefined,
     );
 
+    const dataEvento = dados.data_encerramento
+      ? new Date(dados.data_encerramento).toISOString()
+      : new Date().toISOString();
+
     const resposta = await CteMdfeProviderClient.encerrarManifestoTransporte(
       {
         ChaveNF: mdfe.chave_acesso,
         NumeroProtocolo: mdfe.numero_protocolo ?? undefined,
-        DataEvento: new Date().toISOString(),
+        DataEvento: dataEvento,
+        // Dados estruturados do encerramento (2.2) — só quando informados.
+        UF: dados.uf ?? undefined,
+        CodigoMunicipio: dados.codigo_municipio ?? undefined,
+        NomeMunicipio: dados.nome_municipio ?? undefined,
       },
       token,
     );
@@ -525,11 +836,17 @@ export class MdfeService {
       return serializePrisma(mdfe);
     }
 
+    const protocolo = resposta?.NuProtocolo ?? mdfe.numero_protocolo ?? null;
     const updated = await prisma.fiscal_mdfes.update({
       where: { id: mdfe.id },
       data: {
         status: "encerrado",
-        numero_protocolo: resposta?.NuProtocolo ?? mdfe.numero_protocolo,
+        numero_protocolo: protocolo,
+        encerrado_em: new Date(),
+        encerrado_uf: dados.uf ?? null,
+        encerrado_codigo_municipio: dados.codigo_municipio ?? null,
+        encerrado_nome_municipio: dados.nome_municipio ?? null,
+        encerrado_protocolo: protocolo,
       },
     });
     return serializePrisma(updated);
@@ -563,7 +880,7 @@ export class MdfeService {
 
     const updated = await prisma.fiscal_mdfes.update({
       where: { id: mdfe.id },
-      data: { status: "cancelado" },
+      data: colunasCancelamentoMdfe(justificativa, resposta),
     });
     return serializePrisma(updated);
   }

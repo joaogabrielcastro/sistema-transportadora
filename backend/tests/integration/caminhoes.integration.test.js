@@ -8,6 +8,7 @@ import app from "../../src/app.js";
 import {
   loginAsAdmin,
   createCaminhaoViaApi,
+  testPlaca,
   cleanupCaminhao,
 } from "../helpers/dbTestFixtures.js";
 
@@ -47,7 +48,7 @@ test(
   { skip: shouldRunDbTests ? false : "Defina RUN_DB_TESTS=1 ou rode no CI" },
   async () => {
     const { authHeader } = await loginAsAdmin(app);
-    const placa = `S${Date.now().toString().slice(-6)}`;
+    const placa = testPlaca("SRC");
     const caminhao = await createCaminhaoViaApi(app, authHeader, {
       placa,
       motorista: "Motorista Busca Teste",

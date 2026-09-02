@@ -215,8 +215,23 @@ export async function ensureRegistroLookups() {
   return { tipoGastoId: tipoGasto.id, itemChecklistId: itemChecklist.id };
 }
 
+/** Gera placa válida (Mercosul) para testes — 7 caracteres. */
+export function testPlaca(prefix = "TST") {
+  const p = String(prefix)
+    .toUpperCase()
+    .replace(/[^A-Z]/g, "")
+    .padEnd(3, "X")
+    .slice(0, 3);
+  const seed = Date.now() % 100000;
+  const digit = seed % 10;
+  const letters = "ABCDEFGHJKLMNPRSTUVWXYZ";
+  const letter = letters[(seed >> 4) % letters.length];
+  const tail = String(seed % 100).padStart(2, "0");
+  return `${p}${digit}${letter}${tail}`;
+}
+
 export async function createCaminhaoViaApi(app, authHeader, overrides = {}) {
-  const placa = overrides.placa || `T${Date.now().toString().slice(-6)}`;
+  const placa = overrides.placa || testPlaca();
   const res = await request(app)
     .post("/api/caminhoes")
     .set(authHeader)

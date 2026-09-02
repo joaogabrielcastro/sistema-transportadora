@@ -33,7 +33,9 @@ export function requiredString(max, min = 1) {
     .max(max, `Máximo ${max} caracteres.`);
 }
 
-const PLACA_REGEX = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/;
+/** Antigo ABC1234 ou Mercosul ABC1D23 */
+const PLACA_REGEX =
+  /^(?:[A-Z]{3}[0-9]{4}|[A-Z]{3}[0-9][A-Z0-9][0-9]{2})$/;
 
 export const placaSchema = z
   .string()

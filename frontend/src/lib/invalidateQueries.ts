@@ -54,4 +54,7 @@ export function invalidateQueriesFromMutation(
   if (/^fiscal\/clientes/.test(path)) {
     queryClient.invalidateQueries({ queryKey: ["fiscal", "clientes"] });
   }
+  if (/^fiscal\/veiculo-dados/.test(path)) {
+    queryClient.invalidateQueries({ queryKey: ["fiscal", "veiculo-dados"] });
+  }
 }

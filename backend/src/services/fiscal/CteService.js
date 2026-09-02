@@ -160,11 +160,10 @@ export class CteService {
       );
     }
 
-    const [xmlPath, pdfPath] = await Promise.all([
-      salvarXmlBase64("cte", tenantId, resposta.chave, resposta.base64Xml),
-      salvarPdfBase64("cte", tenantId, resposta.chave, resposta.base64DACTe),
-    ]);
-
+    // A partir daqui o CT-e já foi emitido de verdade na SEFAZ (irreversível).
+    // O registro local precisa existir ANTES de qualquer passo que possa falhar
+    // (gravação de arquivo em disco); caso contrário a emissão real ficaria sem
+    // rastro e uma nova tentativa geraria um documento duplicado.
     const cte = await prisma.fiscal_ctes.create({
       data: {
         tenant_id: Number(tenantId),
@@ -179,14 +178,36 @@ export class CteService {
         serie: resposta.serie != null ? String(resposta.serie) : null,
         data_emissao: new Date(),
         valor_frete: dto.servico?.valor_prestacao ?? null,
-        xml_path: xmlPath,
-        pdf_path: pdfPath,
       },
     });
 
-    logger.info("CT-e emitido", { tenantId, chave: cte.chave_acesso });
+    // CT-e já emitido com sucesso — uma falha ao gravar/registrar o XML/PDF não
+    // invalida o documento. Loga e segue, sem transformar erro de disco em erro
+    // de emissão para o usuário; os arquivos podem ser reobtidos depois.
+    let cteComArquivos = cte;
+    try {
+      const [xmlPath, pdfPath] = await Promise.all([
+        salvarXmlBase64("cte", tenantId, resposta.chave, resposta.base64Xml),
+        salvarPdfBase64("cte", tenantId, resposta.chave, resposta.base64DACTe),
+      ]);
+      if (xmlPath || pdfPath) {
+        cteComArquivos = await prisma.fiscal_ctes.update({
+          where: { id: cte.id },
+          data: { xml_path: xmlPath, pdf_path: pdfPath },
+        });
+      }
+    } catch (err) {
+      logger.error("Falha ao gravar XML/PDF do CT-e recém-emitido", {
+        tenantId,
+        cteId: cte.id,
+        chave: resposta.chave,
+        message: err.message,
+      });
+    }
+
+    logger.info("CT-e emitido", { tenantId, chave: cteComArquivos.chave_acesso });
     return {
-      ...serializePrisma(cte),
+      ...serializePrisma(cteComArquivos),
       base64DACTe: resposta.base64DACTe ?? null,
     };
   }

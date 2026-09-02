@@ -48,6 +48,18 @@ const CAMPOS_REBOQUE_OBRIGATORIOS = [
   ["tipo_carroceria", "tipo de carroceria"],
 ];
 
+// Teto de reboques por veículo tracionado aceito pela SEFAZ (ex.: rodotrem = 3).
+const MAX_REBOQUES = 3;
+
+function assertLimiteReboques(quantidade, origem) {
+  if (quantidade > MAX_REBOQUES) {
+    throw badRequest(
+      `O MDF-e admite no máximo ${MAX_REBOQUES} reboques (ex.: rodotrem); ` +
+        `${origem} tem ${quantidade}.`,
+    );
+  }
+}
+
 /**
  * Monta uma entrada do grupo veicReboque no formato do provedor a partir dos
  * campos snake_case (vindos de fiscal_veiculo_dados ou do array manual do DTO).
@@ -106,6 +118,7 @@ export async function resolveReboques(
   // Rígido ou carreta sozinha: SEFAZ não exige reboque. Se mesmo assim vieram
   // reboques manuais no payload, respeitamos.
   if (!ehCavalo) {
+    assertLimiteReboques(manuais.length, "o payload");
     return manuais.map(montarVeicReboque);
   }
 
@@ -124,6 +137,7 @@ export async function resolveReboques(
     });
 
     if (vinculos.length > 0) {
+      assertLimiteReboques(vinculos.length, "a composição do cavalo");
       const carretaIds = vinculos.map((v) => v.carreta_id);
       const [carretas, dados] = await Promise.all([
         prisma.caminhoes.findMany({
@@ -176,6 +190,7 @@ export async function resolveReboques(
 
   // Cavalo sem vínculo ativo: aceita o fallback manual, se informado.
   if (manuais.length > 0) {
+    assertLimiteReboques(manuais.length, "o payload");
     return manuais.map(montarVeicReboque);
   }
 
@@ -378,11 +393,10 @@ export class MdfeService {
       );
     }
 
-    const [xmlPath, pdfPath] = await Promise.all([
-      salvarXmlBase64("mdfe", tenantId, resposta.chave, resposta.base64Xml),
-      salvarPdfBase64("mdfe", tenantId, resposta.chave, resposta.base64DAMDFe),
-    ]);
-
+    // A partir daqui o MDF-e já foi emitido de verdade na SEFAZ (irreversível).
+    // O registro local precisa existir ANTES de qualquer passo que possa falhar
+    // (gravação de arquivo em disco); caso contrário a emissão real ficaria sem
+    // rastro e uma nova tentativa geraria um documento duplicado.
     const mdfe = await prisma.fiscal_mdfes.create({
       data: {
         tenant_id: Number(tenantId),
@@ -394,10 +408,32 @@ export class MdfeService {
         serie: dto.serie ?? null,
         status: "processado",
         data_emissao: new Date(),
-        xml_path: xmlPath,
-        pdf_path: pdfPath,
       },
     });
+
+    // MDF-e já emitido com sucesso — uma falha ao gravar/registrar o XML/PDF não
+    // invalida o manifesto. Loga e segue, sem transformar erro de disco em erro
+    // de emissão para o usuário; os arquivos podem ser reobtidos depois.
+    let mdfeComArquivos = mdfe;
+    try {
+      const [xmlPath, pdfPath] = await Promise.all([
+        salvarXmlBase64("mdfe", tenantId, resposta.chave, resposta.base64Xml),
+        salvarPdfBase64("mdfe", tenantId, resposta.chave, resposta.base64DAMDFe),
+      ]);
+      if (xmlPath || pdfPath) {
+        mdfeComArquivos = await prisma.fiscal_mdfes.update({
+          where: { id: mdfe.id },
+          data: { xml_path: xmlPath, pdf_path: pdfPath },
+        });
+      }
+    } catch (err) {
+      logger.error("Falha ao gravar XML/PDF do MDF-e recém-emitido", {
+        tenantId,
+        mdfeId: mdfe.id,
+        chave: resposta.chave,
+        message: err.message,
+      });
+    }
 
     // Vincula os CT-e informados a este MDF-e. Já emitido com sucesso — uma
     // falha aqui não invalida o manifesto, só registra para reconciliação.
@@ -421,11 +457,46 @@ export class MdfeService {
       }
     }
 
-    logger.info("MDF-e emitido", { tenantId, chave: mdfe.chave_acesso });
+    logger.info("MDF-e emitido", { tenantId, chave: mdfeComArquivos.chave_acesso });
     return {
-      ...serializePrisma(mdfe),
+      ...serializePrisma(mdfeComArquivos),
       base64DAMDFe: resposta.base64DAMDFe ?? null,
     };
+  }
+
+  /**
+   * Pré-visualização (somente leitura) dos reboques que entrarão no MDF-e para
+   * um veículo numa data, pela MESMA resolução usada na emissão
+   * (`resolveReboques`). Não emite nada. Os erros de validação amigáveis (400)
+   * viram `aviso` em vez de estourar, para o formulário mostrar a pendência
+   * antes de tentar emitir.
+   */
+  static async previewReboques(tenantId, { caminhao_id, data_emissao } = {}) {
+    const dto = {
+      caminhao_id: caminhao_id != null ? Number(caminhao_id) : null,
+      rodoviario: {},
+    };
+    const { caminhaoId, placa, tipoVeiculo } = await resolvePlaca(tenantId, dto);
+    const ref = data_emissao || new Date().toISOString();
+    try {
+      const reboques = await resolveReboques(
+        tenantId,
+        { caminhaoId, tipoVeiculo },
+        dto,
+        ref,
+      );
+      return { placa, tipo_veiculo: tipoVeiculo, reboques, aviso: null };
+    } catch (err) {
+      if (err.statusCode === 400) {
+        return {
+          placa,
+          tipo_veiculo: tipoVeiculo,
+          reboques: [],
+          aviso: err.message,
+        };
+      }
+      throw err;
+    }
   }
 
   static async encerrar(tenantId, id) {

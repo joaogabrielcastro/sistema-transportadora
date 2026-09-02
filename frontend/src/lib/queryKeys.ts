@@ -59,5 +59,9 @@ export const queryKeys = {
     mdfeList: (params: ListParams) =>
       ["fiscal", "mdfe", "list", params] as const,
     clientes: (term: string) => ["fiscal", "clientes", term || ""] as const,
+    veiculoDados: (caminhaoId: number | string) =>
+      ["fiscal", "veiculo-dados", String(caminhaoId ?? "")] as const,
+    reboquesPreview: (params: ListParams) =>
+      ["fiscal", "mdfe", "reboques-preview", params] as const,
   },
 };

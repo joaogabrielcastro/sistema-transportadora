@@ -198,6 +198,16 @@ export const mdfeController = {
       data: await MdfeService.getById(tenantId, req.params.id),
     });
   }),
+  previewReboques: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.json({
+      success: true,
+      data: await MdfeService.previewReboques(tenantId, {
+        caminhao_id: req.query.caminhao_id,
+        data_emissao: req.query.data_emissao,
+      }),
+    });
+  }),
   emitir: catchAsync(async (req, res) => {
     const tenantId = requireTenantId(req);
     res.status(201).json({

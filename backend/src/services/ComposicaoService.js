@@ -127,8 +127,9 @@ export class ComposicaoService {
         ativo: true,
       }),
     });
-    if (ativoNoCavalo >= 2) {
-      const err = new Error("Cavalo já possui 2 carretas vinculadas");
+    // SEFAZ admite até 3 reboques por veículo tracionado (ex.: rodotrem).
+    if (ativoNoCavalo >= 3) {
+      const err = new Error("Cavalo já possui 3 carretas vinculadas");
       err.statusCode = 400;
       throw err;
     }

@@ -19,4 +19,7 @@ export {
   useCteListQuery,
   useMdfeListQuery,
   useFiscalClientesQuery,
+  useFiscalVeiculoDadosQuery,
+  useSaveFiscalVeiculoDadosMutation,
+  useReboquesPreviewQuery,
 } from "./useFiscalQueries.js";

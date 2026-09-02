@@ -22,4 +22,7 @@ export {
   useCteListQuery,
   useMdfeListQuery,
   useFiscalClientesQuery,
+  useFiscalVeiculoDadosQuery,
+  useSaveFiscalVeiculoDadosMutation,
+  useReboquesPreviewQuery,
 } from "./queries/index.js";

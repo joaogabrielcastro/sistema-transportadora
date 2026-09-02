@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
-import { Button, Card, FormField, SearchableSelect } from "../ui";
+import { Alert, Button, Card, FormField, SearchableSelect } from "../ui";
 import { formatCaminhaoOptions } from "../../utils/caminhaoOptions.js";
+import { useReboquesPreviewQuery } from "../../hooks";
 
 function nowLocalInput() {
   const d = new Date();
@@ -74,6 +75,19 @@ export default function MdfeForm({
       })),
     [motoristas],
   );
+
+  // Data de emissão em ISO para a pré-visualização dos reboques (mesma regra do
+  // submit). Vazia/ inválida => usa "agora" no backend.
+  const dataEmissaoIso = useMemo(() => {
+    const d = new Date(form.data_emissao);
+    return Number.isNaN(d.getTime()) ? "" : d.toISOString();
+  }, [form.data_emissao]);
+
+  const reboquesPreview = useReboquesPreviewQuery({
+    caminhaoId: form.caminhao_id || "",
+    dataEmissao: dataEmissaoIso,
+  });
+  const previewData = reboquesPreview.data;
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -204,6 +218,58 @@ export default function MdfeForm({
             helperText="Siglas separadas por vírgula ou espaço"
             className="mb-0 md:col-span-2"
           />
+        </div>
+
+        <div className="rounded-lg border border-border p-4 space-y-3">
+          <div>
+            <p className="text-sm font-medium text-text-primary">
+              Reboques do manifesto
+            </p>
+            <p className="text-xs text-text-secondary">
+              Resolvidos automaticamente pela composição do veículo na data de
+              emissão. Confira antes de emitir — o MDF-e usa exatamente estes
+              reboques.
+            </p>
+          </div>
+
+          {!form.caminhao_id ? (
+            <p className="text-sm text-text-secondary">
+              Selecione o caminhão para ver os reboques.
+            </p>
+          ) : reboquesPreview.isLoading ? (
+            <p className="text-sm text-text-secondary">Carregando reboques…</p>
+          ) : reboquesPreview.isError ? (
+            <Alert
+              type="error"
+              message="Não foi possível pré-visualizar os reboques."
+            />
+          ) : previewData?.aviso ? (
+            <Alert type="warning" message={previewData.aviso} />
+          ) : previewData?.reboques?.length ? (
+            <ul className="space-y-1 text-sm">
+              {previewData.reboques.map((r, i) => (
+                <li
+                  key={r.placa || i}
+                  className="flex items-center gap-2 rounded px-1 py-1"
+                >
+                  <span className="font-medium text-text-primary">
+                    {i + 1}.
+                  </span>
+                  <span className="font-mono">{r.placa || "—"}</span>
+                  {r.tpCarroceria ? (
+                    <span className="text-xs text-text-secondary">
+                      carroceria {r.tpCarroceria}
+                      {r.uf ? ` · ${r.uf}` : ""}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-text-secondary">
+              Nenhum reboque — o veículo entra sozinho no manifesto.
+            </p>
+          )}
         </div>
 
         <div className="rounded-lg border border-border p-4 space-y-4">

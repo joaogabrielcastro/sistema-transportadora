@@ -246,6 +246,7 @@ export const emitirMdfeSchema = z.object({
       // Fallback manual: só usado quando o cavalo mecânico ainda não tem
       // reboque vinculado em vinculos_composicao. O caminho principal é o
       // vínculo cadastrado — o MdfeService resolve os reboques sozinho.
+      // Teto de 3: a SEFAZ admite no máximo 3 reboques (ex.: rodotrem).
       reboques: z
         .array(
           z
@@ -266,6 +267,7 @@ export const emitirMdfeSchema = z.object({
             })
             .catchall(z.any()),
         )
+        .max(3, "O MDF-e admite no máximo 3 reboques")
         .optional(),
     })
     .catchall(z.any()),

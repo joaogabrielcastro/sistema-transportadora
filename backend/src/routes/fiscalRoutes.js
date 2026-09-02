@@ -120,6 +120,11 @@ router.use("/cte", cte);
 // --------------------------------- MDF-e --------------------------------
 const mdfe = Router();
 mdfe.get("/", requirePermission(PERMISSIONS.MDFE_READ), mdfeController.list);
+mdfe.get(
+  "/reboques-preview",
+  requirePermission(PERMISSIONS.MDFE_READ),
+  mdfeController.previewReboques,
+);
 mdfe.get("/:id", requirePermission(PERMISSIONS.MDFE_READ), mdfeController.get);
 mdfe.post(
   "/emitir",

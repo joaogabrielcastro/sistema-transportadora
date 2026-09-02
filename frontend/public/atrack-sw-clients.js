@@ -1,7 +1,6 @@
 /**
  * Legado: mesmo comportamento de /sw.js para clientes com SW antigo neste path.
  */
-/* eslint-disable no-restricted-globals */
 self.addEventListener("install", () => {
   self.skipWaiting();
 });

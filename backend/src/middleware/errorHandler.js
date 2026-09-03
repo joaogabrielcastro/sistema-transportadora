@@ -1,5 +1,6 @@
 // backend/src/middleware/errorHandler.js
 import { logger } from "../utils/logger.js";
+import { captureException } from "../lib/sentry.js";
 import prismaClientPkg from "@prisma/client";
 import { ZodError } from "zod";
 import { formatZodIssueLines } from "../utils/zodIssues.js";
@@ -45,7 +46,7 @@ const resolveSmtpError = (err) => {
     return {
       status: 503,
       error:
-        "O Microsoft 365 bloqueou o envio SMTP nesta caixa de e-mail. Um administrador do domínio precisa habilitar “SMTP autenticado” para logistica@abrottotransportes.com.br no centro de administração M365 (Exchange → caixa de correio → autenticação SMTP). Guia: https://aka.ms/smtp_auth_disabled",
+        "O servidor de e-mail recusou autenticação SMTP nesta caixa. No Microsoft 365, um administrador precisa habilitar “SMTP autenticado” para o usuário de SMTP_USER. Guia: https://aka.ms/smtp_auth_disabled",
       code: "SMTP_AUTH_DISABLED",
     };
   }
@@ -66,7 +67,7 @@ const resolveSmtpError = (err) => {
     return {
       status: 503,
       error:
-        "Não foi possível conectar ao servidor SMTP. Verifique SMTP_HOST e SMTP_PORT (Microsoft 365: smtp.office365.com, porta 587).",
+        "Não foi possível conectar ao servidor SMTP. Verifique SMTP_HOST e SMTP_PORT (Microsoft 365: smtp.office365.com, porta 587; Resend/Mailgun: consulte o painel).",
       code: "SMTP_CONNECTION_FAILED",
     };
   }
@@ -114,6 +115,15 @@ export const errorHandler = (err, req, res, _next) => {
       success: false,
       error: err.message,
       code: err.code,
+    });
+  }
+
+  if (err.code === "PLAN_QUOTA_EXCEEDED") {
+    return res.status(403).json({
+      success: false,
+      error: err.message || "Limite do plano atingido.",
+      code: "PLAN_QUOTA_EXCEEDED",
+      quota: err.quota,
     });
   }
 
@@ -284,6 +294,10 @@ export const errorHandler = (err, req, res, _next) => {
   }
 
   // Erro genérico do servidor
+  captureException(err, {
+    path: req.path,
+    method: req.method,
+  });
   res.status(500).json({
     success: false,
     error: friendlyServerMessage(req),

@@ -1,17 +1,8 @@
-import { z } from "zod";
 import prisma from "../lib/prisma.js";
-
-const motoristaSchema = z.object({
-  nome: z.string().trim().min(2).max(120),
-  cpf: z.string().trim().max(14).optional().nullable(),
-  cnh: z.string().trim().max(30).optional().nullable(),
-  cnh_categoria: z.string().trim().max(8).optional().nullable(),
-  cnh_validade: z.string().optional().nullable(),
-  telefone: z.string().trim().max(30).optional().nullable(),
-  whatsapp: z.string().trim().max(30).optional().nullable(),
-  ativo: z.boolean().optional(),
-  observacao: z.string().optional().nullable(),
-});
+import {
+  motoristaSchema,
+  motoristaUpdateSchema,
+} from "../schemas/motoristaSchema.js";
 
 function parseDate(value) {
   if (value === undefined || value === null || value === "") return null;
@@ -34,6 +25,7 @@ export class MotoristaService {
     return prisma.motoristas.findMany({
       where,
       orderBy: [{ ativo: "desc" }, { nome: "asc" }],
+      take: 500,
       include: {
         _count: { select: { caminhoes: true } },
       },
@@ -77,9 +69,9 @@ export class MotoristaService {
 
   static async update(tenantId, id, body) {
     await this.getById(tenantId, id);
-    const data = motoristaSchema.partial().parse(body);
-    return prisma.motoristas.update({
-      where: { id: Number(id) },
+    const data = motoristaUpdateSchema.parse(body);
+    const updated = await prisma.motoristas.updateMany({
+      where: { id: Number(id), tenant_id: Number(tenantId) },
       data: {
         ...(data.nome !== undefined ? { nome: data.nome } : {}),
         ...(data.cpf !== undefined ? { cpf: data.cpf || null } : {}),
@@ -102,6 +94,12 @@ export class MotoristaService {
           : {}),
       },
     });
+    if (updated.count === 0) {
+      const err = new Error("Motorista não encontrado");
+      err.statusCode = 404;
+      throw err;
+    }
+    return this.getById(tenantId, id);
   }
 
   static async remove(tenantId, id) {
@@ -110,7 +108,9 @@ export class MotoristaService {
       where: { tenant_id: Number(tenantId), motorista_id: Number(id) },
       data: { motorista_id: null },
     });
-    await prisma.motoristas.delete({ where: { id: Number(id) } });
+    await prisma.motoristas.deleteMany({
+      where: { id: Number(id), tenant_id: Number(tenantId) },
+    });
     return { deleted: true };
   }
 }

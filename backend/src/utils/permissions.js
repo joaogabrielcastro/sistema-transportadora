@@ -86,3 +86,11 @@ export function hasPermission(userPerms, required) {
 export function listPermissionCatalog() {
   return ALL.map((id) => ({ id }));
 }
+
+const KNOWN_ROLES = new Set(["admin", "operator", "viewer"]);
+
+/** Persist only catalog roles; anything else becomes operator. */
+export function normalizeRole(role) {
+  const value = String(role || "").trim().toLowerCase();
+  return KNOWN_ROLES.has(value) ? value : "operator";
+}

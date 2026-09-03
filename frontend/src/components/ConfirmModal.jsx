@@ -11,18 +11,19 @@ const ConfirmModal = ({
   cancelText,
   warning = false,
   dependencias = null,
+  loading = false,
 }) => {
-  const loading = Boolean(confirmText?.includes("Excluindo"));
+  const busy = Boolean(loading);
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={loading ? undefined : onClose}
+      onClose={busy ? undefined : onClose}
       title={title}
       size="md"
-      showCloseButton={!loading}
-      closeOnOverlayClick={!loading}
-      closeOnEscape={!loading}
+      showCloseButton={!busy}
+      closeOnOverlayClick={!busy}
+      closeOnEscape={!busy}
     >
       <div
         className={`flex items-start gap-3 mb-4 ${
@@ -97,13 +98,13 @@ const ConfirmModal = ({
       )}
 
       <div className="flex justify-end gap-3 pt-2">
-        <Button variant="ghost" onClick={onClose} disabled={loading}>
+        <Button variant="ghost" onClick={onClose} disabled={busy}>
           {cancelText || "Cancelar"}
         </Button>
         <Button
           variant={warning ? "danger" : "primary"}
           onClick={onConfirm}
-          loading={loading}
+          loading={busy}
         >
           {confirmText || "Confirmar"}
         </Button>

@@ -9,6 +9,12 @@ export const createUserSchema = z.object({
   role: z.enum(["admin", "operator", "viewer"]).default("operator"),
 });
 
+export const inviteUserSchema = z.object({
+  email: z.string().trim().email("E-mail inválido"),
+  nome: z.string().trim().min(2, "Nome obrigatório").max(120),
+  role: z.enum(["admin", "operator", "viewer"]).default("operator"),
+});
+
 export const updateUserSchema = z
   .object({
     nome: z.string().trim().min(2).max(120).optional(),

@@ -30,9 +30,14 @@ const storage = multer.diskStorage({
 });
 
 const pdfFilter = (_req, file, cb) => {
-  const mimeOk = file.mimetype === "application/pdf";
   const extOk = path.extname(file.originalname).toLowerCase() === ".pdf";
-  if (mimeOk || extOk) {
+  const mime = String(file.mimetype || "").toLowerCase();
+  const mimeOk =
+    mime === "application/pdf" ||
+    mime === "application/x-pdf" ||
+    mime === "application/octet-stream" ||
+    mime === "";
+  if (extOk && mimeOk) {
     cb(null, true);
     return;
   }

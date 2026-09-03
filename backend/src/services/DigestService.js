@@ -1,24 +1,8 @@
 import prisma from "../lib/prisma.js";
-import { config } from "../config/index.js";
 import { logger } from "../utils/logger.js";
 import { AlertsService } from "./AlertsService.js";
 import { WhatsAppService } from "./WhatsAppService.js";
-import nodemailer from "nodemailer";
-
-function getMailTransport() {
-  if (!config.mail.smtpHost || !config.mail.smtpPort || !config.mail.mailFrom) {
-    return null;
-  }
-  return nodemailer.createTransport({
-    host: config.mail.smtpHost,
-    port: config.mail.smtpPort,
-    secure: config.mail.smtpSecure,
-    auth:
-      config.mail.smtpUser && config.mail.smtpPass
-        ? { user: config.mail.smtpUser, pass: config.mail.smtpPass }
-        : undefined,
-  });
-}
+import { isMailConfigured, sendMail } from "../utils/mailer.js";
 
 function buildDigestHtml(tenantNome, alertsPayload, overview) {
   const rows = (alertsPayload.alerts || [])
@@ -62,10 +46,8 @@ export class DigestService {
       )?.email;
 
     let emailSent = false;
-    const transport = getMailTransport();
-    if (transport && to) {
-      await transport.sendMail({
-        from: config.mail.mailFrom,
+    if (isMailConfigured() && to) {
+      await sendMail({
         to,
         subject: `[ATrack] Resumo semanal — ${tenant.nome}`,
         html: buildDigestHtml(tenant.nome, alerts, overview),

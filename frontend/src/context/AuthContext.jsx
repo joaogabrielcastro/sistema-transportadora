@@ -40,6 +40,7 @@ function mapProfileToUser(profile, prev = {}) {
     hasBillingAccess: profile.hasBillingAccess,
     permissions: profile.permissions || [],
     onboardingCompletedAt: profile.onboardingCompletedAt ?? null,
+    quota: profile.quota ?? prev.quota ?? null,
   };
 }
 
@@ -94,16 +95,35 @@ export function AuthProvider({ children }) {
     return payload.user;
   }, []);
 
-  const register = useCallback(async ({ empresaNome, email, password, nome }) => {
+  const register = useCallback(async ({ empresaNome, email, password, nome, acceptedLegal }) => {
     const res = await apiFetch({
       method: "POST",
       url: "/auth/register",
-      data: { empresaNome, email, password, nome },
+      data: { empresaNome, email, password, nome, acceptedLegal },
     });
 
     const payload = res.data;
     if (!payload?.token) {
       throw new Error("Resposta de cadastro inválida");
+    }
+
+    resetSessionCaches();
+    setStoredAuth({ token: payload.token, user: payload.user });
+    setToken(payload.token);
+    setUser(payload.user);
+    return payload.user;
+  }, []);
+
+  const acceptInvite = useCallback(async ({ token: inviteToken, password, nome, acceptedLegal }) => {
+    const res = await apiFetch({
+      method: "POST",
+      url: "/auth/accept-invite",
+      data: { token: inviteToken, password, nome, acceptedLegal },
+    });
+
+    const payload = res.data;
+    if (!payload?.token) {
+      throw new Error("Resposta de convite inválida");
     }
 
     resetSessionCaches();
@@ -127,10 +147,11 @@ export function AuthProvider({ children }) {
       isAuthenticated: Boolean(token),
       login,
       register,
+      acceptInvite,
       logout,
       refreshProfile,
     }),
-    [token, user, login, register, logout, refreshProfile],
+    [token, user, login, register, acceptInvite, logout, refreshProfile],
   );
 
   return (

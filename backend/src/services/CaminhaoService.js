@@ -5,6 +5,7 @@ import { ComposicaoService } from "./ComposicaoService.js";
 import { logger } from "../utils/logger.js";
 import { normalizePlaca, samePlaca } from "../utils/placa.js";
 import { setKmManual } from "./KmCaminhaoService.js";
+import { assertCanAddVehicle } from "../utils/planQuotas.js";
 
 /** Valida motorista_id do tenant e sincroniza o campo texto `motorista`. */
 async function applyMotoristaLink(tenantId, data) {
@@ -95,6 +96,17 @@ const normalizeCaminhaoPayload = (data) => {
 
 export class CaminhaoService {
   static async criarCaminhao(tenantId, data) {
+    const tenant = await prisma.tenants.findUnique({
+      where: { id: Number(tenantId) },
+      select: { id: true, plan: true, billing_exempt: true },
+    });
+    if (!tenant) {
+      const err = new Error("Empresa não encontrada");
+      err.statusCode = 404;
+      throw err;
+    }
+    await assertCanAddVehicle(prisma, tenant);
+
     let normalized = normalizeCaminhaoPayload(data);
     normalized = await applyMotoristaLink(tenantId, normalized);
     logger.info("Iniciando criação de caminhão", {
@@ -188,7 +200,7 @@ export class CaminhaoService {
       const { km_atual, ...rest } = normalized;
 
       if (km_atual !== undefined) {
-        await setKmManual(caminhao.id, km_atual);
+        await setKmManual(caminhao.id, km_atual, { tenantId });
       }
 
       const caminhaoAtualizado =
@@ -220,7 +232,7 @@ export class CaminhaoService {
     const { km_atual, ...rest } = normalized;
 
     if (km_atual !== undefined) {
-      await setKmManual(caminhao.id, km_atual);
+      await setKmManual(caminhao.id, km_atual, { tenantId });
     }
 
     const caminhaoAtualizado =

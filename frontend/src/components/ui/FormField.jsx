@@ -6,6 +6,10 @@ import {
   formatNumberInputDisplay,
   parseNumberInputValue,
 } from "../../utils/numberInput.js";
+import {
+  applyInputMask,
+  maxLengthForMask,
+} from "../../utils/inputMasks.js";
 
 const FormField = ({
   label,
@@ -32,6 +36,8 @@ const FormField = ({
   onBlur,
   inputMode,
   useGrouping,
+  mask,
+  maxLength,
   ...props
 }) => {
   const generatedId = useId();
@@ -41,6 +47,32 @@ const FormField = ({
     if (typeof decimals === "number") return decimals;
     return decimalsFromStep(step);
   }, [decimals, step]);
+
+  const effectiveMaxLength =
+    maxLength ?? (mask ? maxLengthForMask(mask) : undefined);
+
+  const emitChange = (event, nextValue) => {
+    if (!onChange) return;
+    onChange({
+      ...event,
+      target: {
+        ...event.target,
+        name: name || event.target.name,
+        value: nextValue,
+      },
+    });
+  };
+
+  const handleMaskedTextChange = (event) => {
+    let next = event.target.value;
+    if (mask) {
+      next = applyInputMask(mask, next);
+    }
+    if (effectiveMaxLength != null && next.length > effectiveMaxLength) {
+      next = next.slice(0, effectiveMaxLength);
+    }
+    emitChange(event, next);
+  };
 
   const baseInputClasses = `
     block w-full rounded-lg border 
@@ -141,10 +173,11 @@ const FormField = ({
           id={fieldId}
           name={name}
           value={value}
-          onChange={onChange}
+          onChange={mask || effectiveMaxLength ? handleMaskedTextChange : onChange}
           placeholder={placeholder}
           disabled={disabled}
           rows={rows}
+          maxLength={effectiveMaxLength}
           className={`${baseInputClasses} ${icon ? "pl-10" : ""}`}
           {...props}
         />
@@ -226,7 +259,7 @@ const FormField = ({
           id={fieldId}
           name={name}
           value={value}
-          onChange={onChange}
+          onChange={mask ? handleMaskedTextChange : onChange}
           placeholder={placeholder}
           disabled={disabled}
           className={`${baseInputClasses} ${icon ? "pl-10" : ""}`}
@@ -234,7 +267,8 @@ const FormField = ({
           max={max}
           step={step}
           onBlur={onBlur}
-          inputMode={inputMode}
+          inputMode={inputMode || (mask === "chaveNfe" ? "numeric" : undefined)}
+          maxLength={effectiveMaxLength}
           {...props}
         />
         {icon && (
@@ -317,6 +351,8 @@ FormField.propTypes = {
   inputMode: PropTypes.string,
   /** `false` desliga o separador de milhar na exibição do `type="number"`. */
   useGrouping: PropTypes.bool,
+  mask: PropTypes.string,
+  maxLength: PropTypes.number,
 };
 
 export default FormField;

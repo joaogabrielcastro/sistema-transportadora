@@ -11,6 +11,7 @@ import {
   createSecondaryTenantAdmin,
   loginWithCredentials,
   createCaminhaoViaApi,
+  testPlaca,
   cleanupCaminhao,
   cleanupTenant,
 } from "../helpers/dbTestFixtures.js";
@@ -21,11 +22,7 @@ test.after(() => {
   }
 });
 
-const uniq = (prefix) =>
-  `${prefix}${Date.now().toString(36).slice(-5)}${Math.floor(Math.random() * 90 + 10)}`.slice(
-    0,
-    7,
-  ).toUpperCase();
+const uniq = (prefix) => testPlaca(prefix);
 
 test(
   "login abbroto expõe features com ordem_coleta e sem notas",

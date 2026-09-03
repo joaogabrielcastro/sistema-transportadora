@@ -41,6 +41,7 @@ curl.exe -s https://api-abbroto.jwsoftware.com.br/health
 | **Dockerfile** | `Dockerfile` |
 | **Build Arguments** | `VITE_API_URL=https://api-abbroto.jwsoftware.com.br` |
 | | `VITE_AUTH_REQUIRED=true` |
+| | `VITE_SENTRY_DSN=` (DSN do projeto **frontend** no Sentry) |
 
 A URL da API **não** deve terminar com `/api`.
 
@@ -103,7 +104,9 @@ Alternativa: Base Directory `.` e Dockerfile na raiz (copia `backend/`).
 | `DB_SSL_MODE` | `require` ou `no-verify` (evite `disable` em produção) |
 | `PRISMA_CLIENT_ENGINE_TYPE` | `library` |
 | `REDIS_URL` | URL interna do Redis Coolify (fila ordem de coleta / BullMQ) |
-| SMTP | se usar envio de e-mail |
+| SMTP | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` (obrigatório para senha/convite) |
+| `SENTRY_DSN` | DSN do projeto **backend** no Sentry (opcional, recomendado) |
+| `BACKUP_ENABLED` | `true` para dump diário na API (`BACKUP_DIR=/app/backups`) |
 
 **Remova** `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium` se existir — o Dockerfile instala Chrome em `/app/.cache/puppeteer`.
 
@@ -190,18 +193,31 @@ Se alguém continuar na tela velha:
 
 | O quê | Como |
 |-------|------|
-| **PostgreSQL** | Snapshot automático no provedor **ou** `npm run db:backup` (script `scripts/backup-db.mjs` — precisa de `pg_dump` + `DATABASE_URL`) |
+| **PostgreSQL** | `BACKUP_ENABLED=true` na API (dump gzip diário às `BACKUP_HOUR_UTC`, padrão 06:00 UTC) **ou** snapshot do provedor |
 | **PDFs em `/app/uploads`** | Backup do volume Coolify (caminhão documentos somem sem ele) |
 
-### Agendar backup no Coolify
+### Backup automático na API (preferido)
 
-Crie um **Scheduled Job** (ou cron no host) diário, por exemplo às 03:00:
+No serviço da API:
+
+```
+BACKUP_ENABLED=true
+BACKUP_DIR=/app/backups
+BACKUP_RETENTION_DAYS=7
+BACKUP_HOUR_UTC=6
+```
+
+Monte um volume em `/app/backups`. A imagem já inclui `pg_dump`. Dumps com mais de 7 dias são apagados. Se S3/R2 estiver configurado, o arquivo também sobe para `BACKUP_S3_PREFIX` (padrão `backups/`).
+
+Não combine isso com um cron do mesmo comando no mesmo container — geraria dump duplicado.
+
+### Agendar backup no Coolify (alternativa)
+
+Só use se `BACKUP_ENABLED` estiver desligado. Cron diário, por exemplo às 03:00:
 
 ```bash
 cd /app && npm run db:backup -- --out=/app/backups
 ```
-
-Monte um volume em `/app/backups` (ou use snapshot do Postgres gerenciado). Guarde pelo menos 7 dias.
 
 ---
 
@@ -228,15 +244,16 @@ npm run job:weekly-digest
 
 Requer SMTP (e WhatsApp se habilitado no tenant).
 
-### Sentry (frontend)
+### Sentry
 
-Opcional: carregue o SDK do Sentry no HTML/CDN com `window.Sentry`. O `ErrorBoundary` envia erros via `frontend/src/lib/monitoring.js` quando `Sentry` estiver disponível. Build arg exemplo:
+Crie um projeto Node e um projeto React no Sentry (https://sentry.io). Sem DSN, o sistema segue normal — só não chega alerta de 500.
 
-```
-VITE_SENTRY_DSN=https://...@o....ingest.sentry.io/...
-```
+| Onde | Variável |
+|------|----------|
+| API (runtime) | `SENTRY_DSN` |
+| Frontend (**Build Argument**) | `VITE_SENTRY_DSN` |
 
-(hoje o hook usa `window.Sentry` se presente — sem forçar pacote npm).
+O `/health` mostra `sentry.configured` e `mail.configured` (informativo — falta de SMTP/Sentry **não** deixa a API `degraded`).
 
 ---
 

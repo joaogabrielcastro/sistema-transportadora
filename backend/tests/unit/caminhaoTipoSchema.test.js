@@ -21,6 +21,23 @@ describe("caminhaoSchema tipos", () => {
     }
   });
 
+  it("aceita placa no formato antigo (ABC1234)", () => {
+    const parsed = caminhaoSchema.parse({
+      placa: "ABC1234",
+      qtd_pneus: 6,
+    });
+    assert.equal(parsed.placa, "ABC1234");
+  });
+
+  it("rejeita placa com formato inválido", () => {
+    assert.throws(() =>
+      caminhaoSchema.parse({
+        placa: "MA67076",
+        qtd_pneus: 6,
+      }),
+    );
+  });
+
   it("default tipo_veiculo = truck", () => {
     const parsed = caminhaoSchema.parse({
       placa: "ABC1D23",

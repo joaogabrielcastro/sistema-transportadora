@@ -11,6 +11,7 @@ import {
   createSecondaryTenantAdmin,
   loginWithCredentials,
   createCaminhaoViaApi,
+  testPlaca,
   cleanupCaminhao,
   cleanupTenant,
 } from "../helpers/dbTestFixtures.js";
@@ -96,7 +97,7 @@ test(
     let caminhaoB;
     try {
       caminhaoB = await createCaminhaoViaApi(app, tenantB.authHeader, {
-        placa: `B${Date.now().toString().slice(-6)}`,
+        placa: testPlaca("BXX"),
       });
 
       const listA = await request(app)
@@ -134,7 +135,7 @@ test(
       secondary.password,
     );
 
-    const placa = `P${Date.now().toString().slice(-6)}`;
+    const placa = testPlaca("PLT");
     let caminhaoA;
     let caminhaoB;
 
@@ -254,10 +255,10 @@ test(
 
     try {
       caminhaoA = await createCaminhaoViaApi(app, tenantA.authHeader, {
-        placa: `MA${Date.now().toString().slice(-5)}`,
+        placa: testPlaca("MAA"),
       });
       caminhaoB = await createCaminhaoViaApi(app, tenantB.authHeader, {
-        placa: `MB${Date.now().toString().slice(-5)}`,
+        placa: testPlaca("MBB"),
       });
 
       const createB = await request(app)

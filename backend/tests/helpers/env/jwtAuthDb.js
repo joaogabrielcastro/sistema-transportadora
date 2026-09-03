@@ -12,6 +12,7 @@ process.env.CORS_ORIGINS = "http://localhost:5173";
 process.env.SMTP_HOST = "127.0.0.1";
 process.env.SMTP_PORT = "1025";
 process.env.MAIL_FROM = "test@abbroto.local";
+process.env.AUTH_RATE_LIMIT_MAX = process.env.AUTH_RATE_LIMIT_MAX || "200";
 process.env.UPLOADS_DIR = mkdtempSync(join(tmpdir(), "abbroto-uploads-"));
 
 export const shouldRunDbTests =

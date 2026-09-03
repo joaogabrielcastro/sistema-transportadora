@@ -4,7 +4,7 @@ test.describe("Auth JWT", () => {
   test("rota protegida redireciona para /login quando não autenticado", async ({
     page,
   }) => {
-    await page.goto("/");
+    await page.goto("/relatorios");
     await expect(page).toHaveURL(/\/login/);
     await expect(page.getByRole("heading", { name: "Entrar" })).toBeVisible();
   });

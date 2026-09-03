@@ -206,6 +206,7 @@ export class ReportsService {
           km_registro: true,
         },
         orderBy: [{ caminhao_id: "asc" }, { data_gasto: "asc" }],
+        take: 8000,
       }),
       prisma.checklist.findMany({
         where: {
@@ -220,6 +221,7 @@ export class ReportsService {
           km_registro: true,
         },
         orderBy: [{ caminhao_id: "asc" }, { data_manutencao: "asc" }],
+        take: 8000,
       }),
     ]);
 

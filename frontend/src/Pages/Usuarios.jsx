@@ -1,10 +1,14 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import { PERMISSIONS, userHasPermission } from "../utils/permissions.js";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import { Alert, Button, FormField, PageHeader } from "../components/ui";
+import { CardSkeleton } from "../components/Skeleton.jsx";
 import { apiFetch, parseApiError } from "../lib/apiClient.js";
 import { extractApiArray } from "../utils/extractApiArray.js";
+import { isUserQuotaReached } from "../utils/billing.js";
+import PlanQuotaBanner from "../components/PlanQuotaBanner.jsx";
 
 const ROLE_LABEL = {
   admin: "Administrador",
@@ -13,7 +17,9 @@ const ROLE_LABEL = {
 };
 
 export default function Usuarios() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, refreshProfile } = useAuth();
+  const canManage = userHasPermission(user, PERMISSIONS.USERS_MANAGE);
+  const userQuotaReached = isUserQuotaReached(user);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -26,52 +32,74 @@ export default function Usuarios() {
     password: "",
     role: "operator",
   });
+  const [withTempPassword, setWithTempPassword] = useState(false);
 
-  const loadUsers = useCallback(async () => {
+  const loadUsers = useCallback(async (signal) => {
     setLoading(true);
     setError("");
     try {
-      const res = await apiFetch({ method: "GET", url: "/users" });
+      const res = await apiFetch({ method: "GET", url: "/users", signal });
       setUsers(extractApiArray(res));
     } catch (err) {
+      if (signal?.aborted || err?.name === "CanceledError" || err?.code === "ERR_CANCELED") {
+        return;
+      }
       const parsed = await parseApiError(err);
       setError(parsed.message || "Falha ao carregar usuários");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (user?.role === "admin") {
-      loadUsers();
-    }
-  }, [user?.role, loadUsers]);
+    if (!canManage) return undefined;
+    const controller = new AbortController();
+    loadUsers(controller.signal);
+    return () => controller.abort();
+  }, [canManage, loadUsers]);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  if (user?.role !== "admin") {
+  if (!canManage) {
     return <Navigate to="/" replace />;
   }
 
   const handleCreate = async (e) => {
     e.preventDefault();
+    if (userQuotaReached) return;
     setSaving(true);
     setError("");
     setSuccess("");
     try {
-      await apiFetch({
-        method: "POST",
-        url: "/users",
-        data: form,
-      });
+      if (withTempPassword) {
+        await apiFetch({
+          method: "POST",
+          url: "/users",
+          data: form,
+        });
+        setSuccess("Usuário criado com senha temporária. Peça para alterar em Minha conta.");
+      } else {
+        await apiFetch({
+          method: "POST",
+          url: "/users/invite",
+          data: {
+            nome: form.nome,
+            email: form.email,
+            role: form.role,
+          },
+        });
+        setSuccess(
+          `Convite enviado para ${form.email}. A pessoa define a senha pelo link (válido por 7 dias).`,
+        );
+      }
       setForm({ nome: "", email: "", password: "", role: "operator" });
-      setSuccess("Usuário criado com sucesso");
       await loadUsers();
+      await refreshProfile?.();
     } catch (err) {
       const parsed = await parseApiError(err);
-      setError(parsed.message || "Falha ao criar usuário");
+      setError(parsed.message || "Falha ao adicionar usuário");
     } finally {
       setSaving(false);
     }
@@ -88,6 +116,7 @@ export default function Usuarios() {
       });
       setSuccess("Usuário atualizado");
       await loadUsers();
+      await refreshProfile?.();
     } catch (err) {
       const parsed = await parseApiError(err);
       setError(parsed.message || "Falha ao atualizar usuário");
@@ -104,12 +133,18 @@ export default function Usuarios() {
       <div className="mt-6">
       {error && <Alert type="error" message={error} className="mb-4" />}
       {success && <Alert type="success" message={success} className="mb-4" />}
+      <div className="mb-4">
+        <PlanQuotaBanner user={user} resource="users" />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
         <section className="bg-white border border-border rounded-2xl shadow-card p-5 sm:p-6 h-fit">
-          <h2 className="text-lg font-semibold text-text-primary mb-4">
-            Novo usuário
+          <h2 className="text-lg font-semibold text-text-primary mb-1">
+            Convidar usuário
           </h2>
+          <p className="text-sm text-text-secondary mb-4">
+            Envia um e-mail para a pessoa definir a própria senha.
+          </p>
           <form onSubmit={handleCreate} className="space-y-4">
             <FormField
               label="Nome"
@@ -128,17 +163,19 @@ export default function Usuarios() {
               }
               required
             />
-            <FormField
-              label="Senha temporária"
-              name="password"
-              type="password"
-              value={form.password}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, password: e.target.value }))
-              }
-              placeholder="Mínimo 8 caracteres"
-              required
-            />
+            {withTempPassword && (
+              <FormField
+                label="Senha temporária"
+                name="password"
+                type="password"
+                value={form.password}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, password: e.target.value }))
+                }
+                placeholder="Mínimo 8 caracteres"
+                required
+              />
+            )}
             <FormField
               label="Perfil"
               name="role"
@@ -151,8 +188,25 @@ export default function Usuarios() {
                 { value: "admin", label: "Administrador" },
               ]}
             />
-            <Button type="submit" loading={saving} className="w-full">
-              Adicionar usuário
+            <label className="flex items-start gap-2 text-sm text-text-secondary cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-0.5 rounded border-border"
+                checked={withTempPassword}
+                onChange={(e) => setWithTempPassword(e.target.checked)}
+              />
+              <span>
+                Criar já com senha temporária (sem enviar e-mail — útil em
+                desenvolvimento)
+              </span>
+            </label>
+            <Button
+              type="submit"
+              loading={saving}
+              className="w-full"
+              disabled={userQuotaReached}
+            >
+              {withTempPassword ? "Criar usuário" : "Enviar convite"}
             </Button>
           </form>
           <p className="mt-4 text-xs text-text-secondary leading-relaxed">
@@ -161,6 +215,9 @@ export default function Usuarios() {
             <br />
             <strong>Operador:</strong> usa o dia a dia (frota, gastos, pneus,
             ordens).
+            <br />
+            <strong>Somente leitura:</strong> consulta frota, relatórios e
+            documentos, sem alterar dados.
           </p>
         </section>
 
@@ -172,7 +229,9 @@ export default function Usuarios() {
           </div>
 
           {loading ? (
-            <p className="p-6 text-sm text-text-secondary">Carregando…</p>
+            <div className="p-6">
+              <CardSkeleton lines={4} />
+            </div>
           ) : users.length === 0 ? (
             <p className="p-6 text-sm text-text-secondary">
               Nenhum usuário encontrado.
@@ -203,7 +262,9 @@ export default function Usuarios() {
                           className={`inline-flex text-xs px-2 py-0.5 rounded-full border ${
                             u.role === "admin"
                               ? "bg-blue-50 text-blue-800 border-blue-200"
-                              : "bg-slate-50 text-slate-700 border-slate-200"
+                              : u.role === "viewer"
+                                ? "bg-amber-50 text-amber-800 border-amber-200"
+                                : "bg-slate-50 text-slate-700 border-slate-200"
                           }`}
                         >
                           {ROLE_LABEL[u.role] || u.role}
@@ -237,7 +298,9 @@ export default function Usuarios() {
                       <Button
                         type="button"
                         variant="secondary"
-                        disabled={isSelf}
+                        disabled={
+                          isSelf || (!u.ativo && userQuotaReached)
+                        }
                         onClick={() =>
                           patchUser(u.id, { ativo: !u.ativo })
                         }

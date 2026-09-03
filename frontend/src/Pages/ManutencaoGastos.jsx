@@ -6,6 +6,7 @@ import RegistroDetailModal from "../components/RegistroDetailModal.jsx";
 import RegistroEditModal from "../components/RegistroEditModal.jsx";
 import Pagination from "../components/Pagination.jsx";
 import { formatCaminhaoOptions } from "../utils/caminhaoOptions.js";
+import { FIELD_LIMITS } from "../utils/fieldLimits.js";
 import {
   Card,
   Button,
@@ -25,12 +26,14 @@ import PageLayout from "../components/layout/PageLayout.jsx";
 import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import { TableSkeleton } from "../components/Skeleton.jsx";
-import { isCombustivelTipo } from "../utils/tipoGastoUtils.js";
+import { isCombustivelTipo, tiposGastosFinanceiros } from "../utils/tipoGastoUtils.js";
 import { formatDate } from "../utils/formatters.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { apiFetch } from "../lib/apiClient.js";
 import { extractApiArray } from "../utils/extractApiArray.js";
 import { featureEnabled } from "../utils/billing.js";
+import { PERMISSIONS, userHasPermission } from "../utils/permissions.js";
+import { useDebouncedValue } from "../hooks/useDebouncedValue.js";
 
 /** Intervalo sugerido para óleo / lubrificação (km e meses). */
 const OLEO_INTERVALO_KM = 10000;
@@ -92,6 +95,7 @@ const RegistroForm = ({
   form,
   caminhoes,
   tiposGastos,
+  itensChecklist = [],
   produtosEstoque = [],
   showEstoque = false,
   onChange,
@@ -117,10 +121,17 @@ const RegistroForm = ({
     includeKm: true,
   });
 
-  const tipoGastoOptions = (Array.isArray(tiposGastos) ? tiposGastos : []).map(
-    (t) => ({
-      value: t.id,
-      label: t.nome_tipo,
+  const tipoGastoOptions = tiposGastosFinanceiros(
+    Array.isArray(tiposGastos) ? tiposGastos : [],
+  ).map((t) => ({
+    value: t.id,
+    label: t.nome_tipo,
+  }));
+
+  const itemManutencaoOptions = (Array.isArray(itensChecklist) ? itensChecklist : []).map(
+    (item) => ({
+      value: item.nome_item,
+      label: item.nome_item,
     }),
   );
 
@@ -204,10 +215,15 @@ const RegistroForm = ({
       onChange={onTipoChange}
       required
       options={[
-        { value: "gasto", label: "Gasto Financeiro" },
-        { value: "manutencao", label: "Manutenção (Checklist)" },
+        { value: "gasto", label: "Gasto financeiro" },
+        { value: "manutencao", label: "Manutenção / serviço" },
       ]}
-      className="mb-0"
+      helperText={
+        isManutencao
+          ? "Use para troca de óleo, revisão, oficina — com lembrete de próxima troca."
+          : "Combustível, pedágio, multa, peças avulsas e demais despesas."
+      }
+      className="mb-0 sm:col-span-2 lg:col-span-3"
     />
   );
 
@@ -275,10 +291,10 @@ const RegistroForm = ({
   return (
     <Card title="Adicionar Novo Registro" className="mb-8">
       <form onSubmit={onSubmit} className="space-y-4">
+        {campoTipo}
         {isManutencao ? (
           <>
             <FormSection step={1} title="Caminhão, KM e data">
-              {campoTipo}
               {campoCaminhao}
               {campoKm}
               {campoData}
@@ -287,13 +303,17 @@ const RegistroForm = ({
             <FormSection step={2} title="Serviço e oficina">
               <FormField
                 label="Serviço realizado"
-                type="text"
+                type="typeahead"
                 name="nome_item"
                 value={form.nome_item}
                 onChange={onChange}
                 required
+                options={itemManutencaoOptions}
+                allowEmpty
                 placeholder="Ex.: Troca de óleo, filtros, pastilhas..."
+                helperText="Escolha um item já usado ou digite um novo serviço."
                 className="mb-0 sm:col-span-2"
+                maxLength={FIELD_LIMITS.NOME_ITEM}
               />
               <FormField
                 label="Oficina"
@@ -302,6 +322,7 @@ const RegistroForm = ({
                 onChange={onChange}
                 placeholder="Nome da oficina"
                 className="mb-0"
+                maxLength={FIELD_LIMITS.OFICINA}
               />
             </FormSection>
 
@@ -365,6 +386,7 @@ const RegistroForm = ({
                   onChange={onChange}
                   rows={3}
                   placeholder="Detalhes adicionais sobre o registro..."
+                  maxLength={FIELD_LIMITS.OBSERVACAO}
                   className="mb-0 sm:col-span-2"
                 />
               </div>
@@ -373,7 +395,6 @@ const RegistroForm = ({
         ) : (
           <>
             <FormSection step={1} title="Caminhão, KM e data">
-              {campoTipo}
               {campoCaminhao}
               {campoKm}
               {campoData}
@@ -388,6 +409,7 @@ const RegistroForm = ({
                 onChange={onChange}
                 required
                 options={tipoGastoOptions}
+                helperText='Serviços de oficina (óleo, freios) use "Manutenção / serviço" acima.'
                 className="mb-0"
               />
               {campoValor}
@@ -422,6 +444,7 @@ const RegistroForm = ({
                 rows={3}
                 placeholder="Detalhes adicionais sobre o registro..."
                 className="mb-0 sm:col-span-2 lg:col-span-3"
+                maxLength={FIELD_LIMITS.OBSERVACAO}
               />
             </FormSection>
           </>
@@ -439,11 +462,19 @@ const RegistroForm = ({
 
 const HistoricoRegistros = ({
   registros,
+  summary,
   onDelete,
   onVerDetalhes,
   onEditar,
+  canWrite = true,
   filtroPlaca,
   onFiltroChange,
+  filtroDataInicio,
+  onFiltroDataInicioChange,
+  filtroDataFim,
+  onFiltroDataFimChange,
+  filtroTipo,
+  onFiltroTipoChange,
   pagination,
   onPageChange,
 }) => {
@@ -465,26 +496,11 @@ const HistoricoRegistros = ({
     }));
   }, [registros]);
 
-  const estatisticas = useMemo(() => {
-    const base = registrosFormatados;
-    const gastos = base.filter(
-      (r) => r.tipo_registro === "Gasto" && r.valor !== "N/A",
-    );
-    const totalGastos = gastos.reduce((sum, g) => sum + parseFloat(g.valor), 0);
-    const manutencoes = base.filter(
-      (r) => r.tipo_registro === "Manutenção" && r.valor !== "N/A",
-    );
-
-    const totalValorManutencoes = manutencoes.reduce(
-      (sum, m) => sum + parseFloat(m.valor),
-      0,
-    );
-    return {
-      totalGastos,
-      totalValorManutencoes,
-      totalRegistros: base.length,
-    };
-  }, [registrosFormatados]);
+  const estatisticas = summary ?? {
+    totalRegistros: registros.length,
+    totalGastos: 0,
+    totalManutencoes: 0,
+  };
 
   return (
     <Card className="overflow-hidden" noPadding>
@@ -495,26 +511,32 @@ const HistoricoRegistros = ({
           </h2>
           <div className="flex flex-wrap gap-2 mt-2">
             <span className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium border border-blue-100">
-              {estatisticas.totalRegistros} registros
+              {Number(estatisticas.totalRegistros || 0).toLocaleString("pt-BR")}{" "}
+              registros
             </span>
             <span className="bg-green-50 text-green-700 px-2.5 py-0.5 rounded-md text-xs font-medium border border-green-100">
-              {estatisticas.totalValorManutencoes.toLocaleString("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-              })}{" "}
+              {Number(estatisticas.totalManutencoes || 0).toLocaleString(
+                "pt-BR",
+                { style: "currency", currency: "BRL" },
+              )}{" "}
               manutenções
             </span>
             <span className="bg-purple-50 text-purple-700 px-2.5 py-0.5 rounded-md text-xs font-medium border border-purple-100">
-              {estatisticas.totalGastos.toLocaleString("pt-BR", {
+              {Number(estatisticas.totalGastos || 0).toLocaleString("pt-BR", {
                 style: "currency",
                 currency: "BRL",
               })}{" "}
               gastos
             </span>
           </div>
+          {pagination?.totalPages > 1 && (
+            <p className="text-xs text-text-secondary mt-1">
+              Totais consideram todos os registros do filtro, não só esta página.
+            </p>
+          )}
         </div>
 
-        <div className="w-full xl:w-72 shrink-0">
+        <div className="w-full xl:w-auto shrink-0 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
           <FormField
             label="Filtrar por placa"
             name="filtro_placa"
@@ -522,21 +544,35 @@ const HistoricoRegistros = ({
             value={filtroPlaca}
             onChange={onFiltroChange}
             className="mb-0"
-            icon={
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            }
+          />
+          <FormField
+            label="De"
+            type="date"
+            name="filtro_data_inicio"
+            value={filtroDataInicio}
+            onChange={onFiltroDataInicioChange}
+            className="mb-0"
+          />
+          <FormField
+            label="Até"
+            type="date"
+            name="filtro_data_fim"
+            value={filtroDataFim}
+            onChange={onFiltroDataFimChange}
+            className="mb-0"
+          />
+          <FormField
+            label="Tipo"
+            type="select"
+            name="filtro_tipo"
+            value={filtroTipo}
+            onChange={onFiltroTipoChange}
+            options={[
+              { value: "todos", label: "Todos" },
+              { value: "gasto", label: "Só gastos" },
+              { value: "manutencao", label: "Só manutenções" },
+            ]}
+            className="mb-0"
           />
         </div>
       </div>
@@ -588,10 +624,12 @@ const HistoricoRegistros = ({
                   </div>
                 </div>
                 <TableRowActions
-                  onEdit={() => onEditar(registro)}
+                  onEdit={canWrite ? () => onEditar(registro) : undefined}
                   onView={() => onVerDetalhes(registro)}
-                  onDelete={() =>
-                    onDelete(registro.tipo_registro, registro.id)
+                  onDelete={
+                    canWrite
+                      ? () => onDelete(registro.tipo_registro, registro.id)
+                      : undefined
                   }
                 />
               </div>
@@ -659,10 +697,13 @@ const HistoricoRegistros = ({
                     </DataTableTd>
                     <DataTableTd align="right">
                       <TableRowActions
-                        onEdit={() => onEditar(registro)}
+                        onEdit={canWrite ? () => onEditar(registro) : undefined}
                         onView={() => onVerDetalhes(registro)}
-                        onDelete={() =>
-                          onDelete(registro.tipo_registro, registro.id)
+                        onDelete={
+                          canWrite
+                            ? () =>
+                                onDelete(registro.tipo_registro, registro.id)
+                            : undefined
                         }
                       />
                     </DataTableTd>
@@ -689,31 +730,36 @@ const HistoricoRegistros = ({
 const ManutencaoGastos = () => {
   const { post, delete: del } = useApiMutation();
   const toast = useToast();
+  const { user } = useAuth();
+  const canWrite = userHasPermission(user, PERMISSIONS.GASTOS_WRITE);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [filtroPlaca, setFiltroPlaca] = useState("");
-  const [debouncedPlaca, setDebouncedPlaca] = useState("");
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedPlaca(filtroPlaca), 350);
-    return () => clearTimeout(timer);
-  }, [filtroPlaca]);
+  const debouncedPlaca = useDebouncedValue(filtroPlaca, 350);
+  const [filtroDataInicio, setFiltroDataInicio] = useState("");
+  const [filtroDataFim, setFiltroDataFim] = useState("");
+  const [filtroTipo, setFiltroTipo] = useState("todos");
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedPlaca]);
+  }, [debouncedPlaca, filtroDataInicio, filtroDataFim, filtroTipo]);
 
   const {
     caminhoes,
     tiposGastos,
+    itensChecklist,
     registros,
     pagination,
+    summary,
     isLoading: loading,
     refetch,
   } = useManutencaoGastosQueries({
     page: currentPage,
     limit: 20,
     placa: debouncedPlaca,
+    dataInicio: filtroDataInicio,
+    dataFim: filtroDataFim,
+    tipo: filtroTipo,
   });
 
   const [registroSelecionado, setRegistroSelecionado] = useState(null);
@@ -738,7 +784,6 @@ const ManutencaoGastos = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [produtosEstoque, setProdutosEstoque] = useState([]);
-  const { user } = useAuth();
   const showEstoque = featureEnabled(user, "notas_estoque");
 
   useEffect(() => {
@@ -880,6 +925,12 @@ const ManutencaoGastos = () => {
         const tipoGastoId = parseInt(form.tipo_id, 10);
         if (!Number.isFinite(tipoGastoId) || tipoGastoId <= 0) {
           throw new Error("Selecione o tipo de gasto.");
+        }
+        if (
+          isCombustivelTipo(tipoGastoId, tiposGastos) &&
+          !String(form.quantidade_combustivel || "").trim()
+        ) {
+          throw new Error("Informe a quantidade de combustível em litros.");
         }
         const payload = {
           caminhao_id: caminhaoId,
@@ -1025,10 +1076,12 @@ const ManutencaoGastos = () => {
         </p>
       )}
 
+      {canWrite && (
       <RegistroForm
           form={form}
           caminhoes={caminhoes}
           tiposGastos={tiposGastos}
+          itensChecklist={itensChecklist}
           produtosEstoque={produtosEstoque}
           showEstoque={showEstoque}
           onChange={handleChange}
@@ -1038,16 +1091,25 @@ const ManutencaoGastos = () => {
           onSubmit={handleSubmit}
           loading={submitting}
         />
+      )}
 
       <HistoricoRegistros
         registros={registros}
+        summary={summary}
         onDelete={handleDeleteClick}
         onEditar={handleEditar}
         onVerDetalhes={(registro) => setRegistroSelecionado(registro)}
         filtroPlaca={filtroPlaca}
         onFiltroChange={(e) => setFiltroPlaca(e.target.value)}
+        filtroDataInicio={filtroDataInicio}
+        onFiltroDataInicioChange={(e) => setFiltroDataInicio(e.target.value)}
+        filtroDataFim={filtroDataFim}
+        onFiltroDataFimChange={(e) => setFiltroDataFim(e.target.value)}
+        filtroTipo={filtroTipo}
+        onFiltroTipoChange={(e) => setFiltroTipo(e.target.value)}
         pagination={pagination}
         onPageChange={setCurrentPage}
+        canWrite={canWrite}
       />
 
       {registroEmEdicao && (
@@ -1078,6 +1140,7 @@ const ManutencaoGastos = () => {
         confirmText={deleting ? "Excluindo..." : "Excluir"}
         cancelText="Cancelar"
         warning
+        loading={deleting}
       />
     </PageLayout>
   );

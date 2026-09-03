@@ -1,16 +1,21 @@
 /**
- * SW suicida: ao ativar, limpa caches, desregistra e manda as abas recarregarem.
- * Quebra o ciclo de clientes presos na versão antiga do PWA.
+ * Legado: mesmo comportamento de /sw.js para clientes com SW antigo neste path.
  */
-/* eslint-disable no-restricted-globals */
-self.addEventListener("install", (event) => {
+self.addEventListener("install", () => {
   self.skipWaiting();
-  event.waitUntil(Promise.resolve());
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
+      if (self.registration.navigationPreload) {
+        try {
+          await self.registration.navigationPreload.disable();
+        } catch {
+          /* ignore */
+        }
+      }
+
       try {
         const keys = await caches.keys();
         await Promise.all(keys.map((k) => caches.delete(k)));
@@ -28,20 +33,13 @@ self.addEventListener("activate", (event) => {
         type: "window",
         includeUncontrolled: true,
       });
-
-      await Promise.all(
-        clients.map(async (client) => {
-          try {
-            await client.navigate(client.url);
-          } catch {
-            try {
-              client.postMessage({ type: "ATRACK_FORCE_RELOAD" });
-            } catch {
-              /* ignore */
-            }
-          }
-        }),
-      );
+      for (const client of clients) {
+        try {
+          client.postMessage({ type: "ATRACK_FORCE_RELOAD" });
+        } catch {
+          /* ignore */
+        }
+      }
     })(),
   );
 });

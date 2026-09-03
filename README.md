@@ -19,7 +19,7 @@ Plataforma **multi-empresa** (SaaS) para gestão de frota, manutenção, pneus, 
 ## Billing (Stripe)
 
 - **Clientes atuais** (pré-migração): `billing_exempt=true` — usam o sistema sem Stripe e sem tela de cobrança.
-- **Novos tenants** (register ou `tenant:create` sem `--exempt=true`): trial de 14 dias no plano **ops**, depois precisam assinar em `/assinatura`.
+- **Novos tenants** (register ou `tenant:create` sem `--exempt=true`): trial de 14 dias no plano **starter** (frota básica), depois precisam assinar em `/assinatura`. Ordem de coleta e NF-e/estoque vêm nos planos **ops**, **fiscal** ou **complete**.
 - Planos: `starter` | `ops` (ordem de coleta) | `fiscal` (NF-e/estoque) | `complete` (ambos).
 - Ativar cobrança depois em um isento: `npm run tenant:billing -- --slug=empresa --exempt=false --plan=ops`
 - Webhook: `POST /api/billing/webhook` (raw body). Local: `stripe listen --forward-to localhost:3020/api/billing/webhook`
@@ -101,7 +101,7 @@ O log `FROM ghcr.io/railwayapp/nixpacks` indica que o Coolify está usando **Nix
 6. **Volume obrigatório** para PDFs dos caminhões: montar **`/app/uploads`** no container (Storage → Volume → mount path `/app/uploads`). Sem isso, a lista aparece no banco mas **Abrir** falha após redeploy — remova e envie os PDFs de novo após configurar o volume.
 7. **Redeploy** com “Clear build cache” / rebuild sem cache. Se o build ainda falhar no export, aumente RAM/swap do servidor (≥ 4 GB recomendado no build).
 
-Variáveis mínimas: `DATABASE_URL`, `PORT` (ex.: 3020), `REDIS_URL` (fila ordem de coleta), SMTP se for enviar e-mail.
+Variáveis mínimas: `DATABASE_URL`, `PORT` (ex.: 3020), `REDIS_URL` (fila ordem de coleta), SMTP (`SMTP_HOST` / `MAIL_FROM`) para senha e convite.
 
 **Segurança em produção (obrigatório):**
 
@@ -202,4 +202,4 @@ Em cada push/PR para `main` ou `master`, o workflow `.github/workflows/ci.yml` e
 - Evite `DB_SSL_MODE=no-verify` fora de cenário temporário.
 - Ative `AUTH_ENABLED=true`, defina `JWT_SECRET` e faça login em `/login` em produção.
 - O endpoint `/health` retorna **503** com `status: "degraded"` se banco, PDF ou uploads falharem — use no monitoramento do Coolify.
-- Faça backup periódico do Postgres e do volume `/app/uploads` (ver `docs/COOLIFY-CHECKLIST.md`).
+- Faça backup periódico do Postgres (`BACKUP_ENABLED=true` ou `npm run db:backup`) e do volume `/app/uploads` (ver `docs/COOLIFY-CHECKLIST.md`).

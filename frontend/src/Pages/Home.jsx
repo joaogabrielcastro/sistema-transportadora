@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -6,6 +6,7 @@ import {
   useApiMutation,
   useCaminhoesListQuery,
   useReportsOverviewQuery,
+  useDebouncedValue,
 } from "../hooks";
 import { Button, LoadingSpinner, Alert, PageHeader, StatCard, StatusBadge } from "../components/ui";
 import { useToast } from "../components/ui/useToast.js";
@@ -18,6 +19,10 @@ import ConfirmModal from "../components/ConfirmModal";
 import Pagination from "../components/Pagination.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import OnboardingBanner from "../components/OnboardingBanner.jsx";
+import PlanQuotaBanner from "../components/PlanQuotaBanner.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
+import { PERMISSIONS, userHasPermission } from "../utils/permissions.js";
+import { isVehicleQuotaReached } from "../utils/billing.js";
 
 const TIPO_FILTROS = [
   { id: "", label: "Todos" },
@@ -37,6 +42,9 @@ const Home = () => {
   const [tipoFiltro, setTipoFiltro] = useState("");
   const toast = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const canWriteFrota = userHasPermission(user, PERMISSIONS.FROTA_WRITE);
+  const vehicleQuotaReached = isVehicleQuotaReached(user);
 
   const listParams = useMemo(
     () => ({
@@ -76,7 +84,7 @@ const Home = () => {
   );
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(searchTerm, 350);
   const [errorMessage, setErrorMessage] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [caminhaoParaExcluir, setCaminhaoParaExcluir] = useState(null);
@@ -84,11 +92,6 @@ const Home = () => {
   const [excluindo, setExcluindo] = useState(false);
 
   const isSearching = debouncedSearch.trim().length >= 2;
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 350);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
 
   const searchQuery = useQuery({
     queryKey: queryKeys.caminhoes.search(debouncedSearch, tipoFiltro),
@@ -200,7 +203,8 @@ const Home = () => {
           title="Dashboard"
           subtitle="Visão geral da frota, custos e próximos passos."
           actions={
-            <Link to="/cadastro-caminhao">
+            canWriteFrota ? (
+            <Link to={vehicleQuotaReached ? "/assinatura" : "/cadastro-caminhao"}>
               <Button
                 variant="primary"
                 icon={
@@ -219,11 +223,14 @@ const Home = () => {
                   </svg>
                 }
               >
-                Novo Caminhão
+                {vehicleQuotaReached ? "Fazer upgrade" : "Novo Caminhão"}
               </Button>
             </Link>
+            ) : null
           }
         />
+
+        <PlanQuotaBanner user={user} resource="vehicles" />
 
         {errorMessage && (
           <div className="space-y-3">
@@ -451,9 +458,19 @@ const Home = () => {
                       : "Comece cadastrando seu primeiro veículo."
                 }
                 action={
-                  !isSearching && !tipoFiltro ? (
-                    <Link to="/cadastro-caminhao">
-                      <Button variant="primary">Cadastrar Caminhão</Button>
+                  !isSearching && !tipoFiltro && canWriteFrota ? (
+                    <Link
+                      to={
+                        vehicleQuotaReached
+                          ? "/assinatura"
+                          : "/cadastro-caminhao"
+                      }
+                    >
+                      <Button variant="primary">
+                        {vehicleQuotaReached
+                          ? "Fazer upgrade"
+                          : "Cadastrar Caminhão"}
+                      </Button>
                     </Link>
                   ) : null
                 }
@@ -465,6 +482,7 @@ const Home = () => {
                     <TruckCard
                       key={caminhao.id}
                       caminhao={caminhao}
+                      canWrite={canWriteFrota}
                       onDelete={() => handleOpenDeleteModal(caminhao)}
                     />
                   ))}
@@ -494,12 +512,13 @@ const Home = () => {
           confirmText={excluindo ? "Excluindo..." : "Excluir"}
           cancelText="Cancelar"
           warning={true}
+          loading={excluindo}
         />
     </PageLayout>
   );
 };
 
-const TruckCard = ({ caminhao, onDelete }) => {
+const TruckCard = ({ caminhao, onDelete, canWrite = true }) => {
   const tipo =
     TIPO_LABEL[caminhao.tipo_veiculo] ||
     (caminhao.tipo_veiculo ? String(caminhao.tipo_veiculo) : "Truck");
@@ -587,6 +606,8 @@ const TruckCard = ({ caminhao, onDelete }) => {
         Ver detalhes
       </Link>
       <div className="flex gap-2">
+        {canWrite && (
+          <>
         <Link to={`/caminhao/editar/${caminhao.placa}`}>
           <button
             type="button"
@@ -628,6 +649,8 @@ const TruckCard = ({ caminhao, onDelete }) => {
             />
           </svg>
         </button>
+          </>
+        )}
       </div>
     </div>
   </div>

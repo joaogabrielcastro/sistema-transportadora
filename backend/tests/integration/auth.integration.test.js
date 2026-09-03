@@ -32,3 +32,17 @@ test("GET /health permanece público sem token", async () => {
   assert.ok([200, 503].includes(res.status));
   assert.ok(res.body.status);
 });
+
+test("POST /api/auth/forgot-password é público", async () => {
+  const res = await request(app)
+    .post("/api/auth/forgot-password")
+    .send({ email: "naoexiste@example.com" });
+  assert.notEqual(res.status, 401);
+  assert.notEqual(res.status, 404);
+  assert.ok([200, 400, 503].includes(res.status));
+});
+
+test("GET /api/auth/invite sem token não exige login", async () => {
+  const res = await request(app).get("/api/auth/invite");
+  assert.equal(res.status, 400);
+});

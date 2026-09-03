@@ -482,6 +482,7 @@ const PneusEstoque = () => {
         confirmText={deletingId ? "Excluindo..." : "Excluir"}
         cancelText="Cancelar"
         warning
+        loading={Boolean(deletingId)}
       />
     </PageLayout>
   );

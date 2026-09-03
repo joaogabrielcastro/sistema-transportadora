@@ -1,6 +1,10 @@
 import prisma from "../lib/prisma.js";
 import { serializePrisma } from "../utils/prismaSerialization.js";
 import { MAX_LIST_LIMIT } from "../utils/listLimits.js";
+import {
+  deleteOneInTenant,
+  updateOneInTenant,
+} from "../utils/tenantWrite.js";
 
 const checklistInclude = {
   caminhoes: {
@@ -96,20 +100,29 @@ export const checklistModel = {
   },
 
   update: async (tenantId, id, checklistData) => {
-    const data = await prisma.checklist.update({
-      where: { id: parseId(id) },
-      data: checklistData,
-      include: checklistInclude,
-    });
-
-    return serializePrisma(data);
+    await updateOneInTenant(
+      prisma.checklist,
+      tenantId,
+      parseId(id),
+      checklistData,
+      "Item de checklist não encontrado",
+    );
+    return checklistModel.getById(tenantId, id);
   },
 
   delete: async (tenantId, id) => {
-    const data = await prisma.checklist.delete({
-      where: { id: parseId(id) },
-    });
-
-    return serializePrisma(data);
+    const existing = await checklistModel.getById(tenantId, id);
+    if (!existing) {
+      const err = new Error("Item de checklist não encontrado");
+      err.statusCode = 404;
+      throw err;
+    }
+    await deleteOneInTenant(
+      prisma.checklist,
+      tenantId,
+      parseId(id),
+      "Item de checklist não encontrado",
+    );
+    return existing;
   },
 };

@@ -334,6 +334,7 @@ const CaminhaoDocumentos = ({ placa }) => {
         confirmText={removing ? "Removendo..." : "Remover"}
         cancelText="Cancelar"
         warning
+        loading={removing}
       />
     </div>
   );

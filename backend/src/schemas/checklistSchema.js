@@ -1,13 +1,19 @@
 import { z } from "zod";
+import { FIELD_LIMITS } from "../utils/fieldLimits.js";
 import { dataStringSchema } from "./shared.js";
+import {
+  kmOptionalSchema,
+  moneyOptionalSchema,
+  observacaoOptionalSchema,
+  oficinaOptionalSchema,
+  requiredString,
+} from "./fieldSchemas.js";
 
-const nomeItemSchema = z
-  .string()
-  .trim()
-  .min(1, "Informe o item de manutenção")
-  .max(255)
-  .optional()
-  .nullable();
+const nomeItemSchema = z.preprocess((val) => {
+  if (val === undefined) return undefined;
+  if (val === null || String(val).trim() === "") return null;
+  return String(val).trim();
+}, requiredString(FIELD_LIMITS.NOME_ITEM).nullable().optional());
 
 function parseDataParts(value) {
   const v = String(value || "").trim();
@@ -33,22 +39,19 @@ function isNotFutureDate(value) {
 export const checklistSchema = z.object({
   caminhao_id: z.coerce.number().int().positive().optional().nullable(),
   item_id: z.coerce.number().int().positive().optional().nullable(),
-  /** Texto livre: backend faz find-or-create em itens_checklist */
   nome_item: nomeItemSchema,
   data_manutencao: dataStringSchema.refine(isNotFutureDate, {
     message: "A data da manutenção não pode ser futura.",
   }),
-  km_manutencao: z.coerce.number().int().positive().optional().nullable(),
-  km_registro: z.coerce.number().int().positive().optional().nullable(),
-  valor: z.coerce.number().nonnegative().optional().nullable(),
-  observacao: z.string().optional().nullable(),
-  oficina: z.string().optional().nullable(),
-  /** KM da próxima troca / manutenção (lembrete). */
+  km_manutencao: kmOptionalSchema,
+  km_registro: kmOptionalSchema,
+  valor: moneyOptionalSchema,
+  observacao: observacaoOptionalSchema,
+  oficina: oficinaOptionalSchema,
   proxima_km: z.preprocess(
     (v) => (v === "" || v === undefined ? null : v),
-    z.coerce.number().int().positive().optional().nullable(),
+    z.coerce.number().int().positive().max(FIELD_LIMITS.KM_MAX).optional().nullable(),
   ),
-  /** Data da próxima troca / manutenção (lembrete; pode ser futura). */
   proxima_data: z.preprocess(
     (v) => (v === "" || v === undefined ? null : v),
     dataStringSchema.optional().nullable(),

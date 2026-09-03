@@ -3,7 +3,7 @@ import Modal from "./ui/Modal.jsx";
 import { Button, FormField } from "./ui";
 import { useApiMutation } from "../hooks";
 import { apiFetch } from "../lib/apiClient.js";
-import { isCombustivelTipo } from "../utils/tipoGastoUtils.js";
+import { isCombustivelTipo, tiposGastosFinanceiros } from "../utils/tipoGastoUtils.js";
 
 /** Converte DATE da API para yyyy-MM-dd sem deslocar fuso. */
 function toInputDate(value) {
@@ -164,9 +164,16 @@ export default function RegistroEditModal({
           { skipSuccessToast: true },
         );
       } else {
-        const tipo = tiposGastos.find(
-          (t) => t.id === Number(form.tipo_gasto_id),
+        if (!form.tipo_gasto_id) {
+          throw new Error("Selecione o tipo de gasto.");
+        }
+        const isCombustivel = isCombustivelTipo(
+          form.tipo_gasto_id,
+          tiposGastos,
         );
+        if (isCombustivel && !String(form.quantidade_combustivel || "").trim()) {
+          throw new Error("Informe a quantidade de combustível em litros.");
+        }
         await put(
           `/gastos/${registro.id}`,
           {
@@ -178,7 +185,7 @@ export default function RegistroEditModal({
             km_registro: form.km_registro
               ? parseInt(form.km_registro, 10)
               : null,
-            quantidade_combustivel: isCombustivelTipo(tipo)
+            quantidade_combustivel: isCombustivel
               ? parseFloat(String(form.quantidade_combustivel).replace(",", "."))
               : null,
           },
@@ -286,7 +293,7 @@ export default function RegistroEditModal({
                 value={form.tipo_gasto_id}
                 onChange={handleChange}
                 required
-                options={(tiposGastos || []).map((t) => ({
+                options={tiposGastosFinanceiros(tiposGastos).map((t) => ({
                   value: String(t.id),
                   label: t.nome_tipo,
                 }))}
@@ -313,14 +320,13 @@ export default function RegistroEditModal({
                 value={form.km_registro}
                 onChange={handleChange}
               />
-              {isCombustivelTipo(
-                tiposGastos.find((t) => String(t.id) === String(form.tipo_gasto_id)),
-              ) && (
+              {isCombustivelTipo(form.tipo_gasto_id, tiposGastos) && (
                 <FormField
                   label="Quantidade combustível (L)"
                   name="quantidade_combustivel"
                   value={form.quantidade_combustivel}
                   onChange={handleChange}
+                  required
                 />
               )}
               <FormField

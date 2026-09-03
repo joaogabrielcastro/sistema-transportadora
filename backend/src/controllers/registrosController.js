@@ -13,6 +13,7 @@ export const registrosController = {
       success: true,
       data: result.data,
       pagination: result.pagination,
+      summary: result.summary,
     });
   }),
 };

@@ -71,3 +71,24 @@ test("getProductionConfigWarnings alerta worker desligado na API", () => {
     warnings.some((w) => w.includes("DESLIGADO") || w.includes("Processando")),
   );
 });
+
+test("getProductionConfigWarnings alerta SMTP, Sentry e backup", () => {
+  const savedSentry = process.env.SENTRY_DSN;
+  const savedBackup = process.env.BACKUP_ENABLED;
+  delete process.env.SENTRY_DSN;
+  delete process.env.BACKUP_ENABLED;
+  try {
+    const warnings = getProductionConfigWarnings({
+      ...validProductionConfig,
+      mail: { smtpHost: "", smtpPort: 0, mailFrom: "" },
+    });
+    assert.ok(warnings.some((w) => w.includes("SMTP")));
+    assert.ok(warnings.some((w) => w.includes("SENTRY_DSN")));
+    assert.ok(warnings.some((w) => w.includes("BACKUP_ENABLED")));
+  } finally {
+    if (savedSentry !== undefined) process.env.SENTRY_DSN = savedSentry;
+    else delete process.env.SENTRY_DSN;
+    if (savedBackup !== undefined) process.env.BACKUP_ENABLED = savedBackup;
+    else delete process.env.BACKUP_ENABLED;
+  }
+});

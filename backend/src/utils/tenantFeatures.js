@@ -12,15 +12,33 @@ export const PLANS = Object.freeze({
 // `npm run tenant:billing` ou override direto em tenants.features.
 export const PLAN_FEATURES = Object.freeze({
   starter: Object.freeze({ ordem_coleta: false, notas_estoque: false, transporte_fiscal: false }),
-  ops: Object.freeze({ ordem_coleta: true, notas_estoque: false, transporte_fiscal: false }),
+  /** Legado — não vendido; ordem de coleta não é liberada via plano. */
+  ops: Object.freeze({ ordem_coleta: false, notas_estoque: false, transporte_fiscal: false }),
   fiscal: Object.freeze({ ordem_coleta: false, notas_estoque: true, transporte_fiscal: false }),
-  complete: Object.freeze({ ordem_coleta: true, notas_estoque: true, transporte_fiscal: false }),
+  /** Pacote top — mesmos módulos públicos (sem ordem de coleta). */
+  complete: Object.freeze({ ordem_coleta: false, notas_estoque: true, transporte_fiscal: false }),
 });
 
-export const DEFAULT_TENANT_FEATURES = Object.freeze({
+/** Planos disponíveis para novos clientes (checkout). */
+export const PUBLIC_BILLING_PLANS = Object.freeze([
+  PLANS.starter,
+  PLANS.fiscal,
+  PLANS.complete,
+]);
+
+export const ABROTTO_SLUG = "abbroto";
+
+/** Ordem de coleta: exclusiva do tenant ABroto. */
+export const ABROTTO_FEATURES = Object.freeze({
   ordem_coleta: true,
   notas_estoque: false,
   transporte_fiscal: false,
+});
+
+/** Isentos genéricos (sem módulos premium). */
+export const DEFAULT_TENANT_FEATURES = Object.freeze({
+  ordem_coleta: false,
+  notas_estoque: false,
 });
 
 export const TRANS_MOTIN_FEATURES = Object.freeze({
@@ -31,7 +49,8 @@ export const TRANS_MOTIN_FEATURES = Object.freeze({
 
 export const TRANS_MOTIN_SLUG = "trans-motin";
 
-export const DEFAULT_TRIAL_PLAN = PLANS.ops;
+/** Trial de novos cadastros: frota básica (sem ordem de coleta / NF-e). */
+export const DEFAULT_TRIAL_PLAN = PLANS.starter;
 
 /**
  * @param {unknown} plan
@@ -42,6 +61,26 @@ export function isValidPlan(plan) {
 }
 
 /**
+ * Plano pode ser contratado por novos clientes?
+ * @param {string | null | undefined} plan
+ */
+export function isPublicBillingPlan(plan) {
+  return typeof plan === "string" && PUBLIC_BILLING_PLANS.includes(plan);
+}
+
+/**
+ * Ordem de coleta só existe no tenant ABroto (slug).
+ * @param {string | null | undefined} slug
+ * @param {Record<string, boolean>} features
+ */
+function applyOrdemColetaPolicy(slug, features) {
+  if (slug === ABROTTO_SLUG) {
+    return features;
+  }
+  return { ...features, ordem_coleta: false };
+}
+
+/**
  * Features base de um plano pago.
  * @param {string | null | undefined} plan
  */
@@ -49,7 +88,7 @@ export function featuresForPlan(plan) {
   if (isValidPlan(plan)) {
     return { ...PLAN_FEATURES[plan] };
   }
-  return { ...PLAN_FEATURES.ops };
+  return { ...PLAN_FEATURES.starter };
 }
 
 /**
@@ -57,9 +96,9 @@ export function featuresForPlan(plan) {
  * @param {string | null | undefined} slug
  */
 export function defaultFeaturesForSlug(slug) {
-  return slug === TRANS_MOTIN_SLUG
-    ? { ...TRANS_MOTIN_FEATURES }
-    : { ...DEFAULT_TENANT_FEATURES };
+  if (slug === TRANS_MOTIN_SLUG) return { ...TRANS_MOTIN_FEATURES };
+  if (slug === ABROTTO_SLUG) return { ...ABROTTO_FEATURES };
+  return { ...DEFAULT_TENANT_FEATURES };
 }
 
 /**
@@ -109,7 +148,10 @@ export function resolveTenantFeatures(opts = {}) {
   ) {
     const raw = arguments[0];
     const slug = arguments[1];
-    return mergeFeatureOverrides(defaultFeaturesForSlug(slug), raw);
+    return applyOrdemColetaPolicy(
+      slug,
+      mergeFeatureOverrides(defaultFeaturesForSlug(slug), raw),
+    );
   }
 
   const {
@@ -120,10 +162,16 @@ export function resolveTenantFeatures(opts = {}) {
   } = opts;
 
   if (billingExempt) {
-    return mergeFeatureOverrides(defaultFeaturesForSlug(slug), raw);
+    return applyOrdemColetaPolicy(
+      slug,
+      mergeFeatureOverrides(defaultFeaturesForSlug(slug), raw),
+    );
   }
 
-  return mergeFeatureOverrides(featuresForPlan(plan), raw);
+  return applyOrdemColetaPolicy(
+    slug,
+    mergeFeatureOverrides(featuresForPlan(plan), raw),
+  );
 }
 
 /**

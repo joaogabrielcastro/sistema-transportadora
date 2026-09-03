@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { hasBillingAccess } from "../utils/billing.js";
 
 /**
- * Bloqueia o app (exceto /assinatura) quando a assinatura/trial expirou.
+ * Bloqueia o app (exceto conta, empresa e assinatura) quando o trial/assinatura expirou.
  */
 export function BillingGate({ children }) {
   const { user, isAuthenticated } = useAuth();
@@ -14,7 +14,11 @@ export function BillingGate({ children }) {
     return children;
   }
 
-  if (location.pathname.startsWith("/assinatura")) {
+  if (
+    location.pathname.startsWith("/assinatura") ||
+    location.pathname.startsWith("/conta") ||
+    location.pathname.startsWith("/empresa")
+  ) {
     return children;
   }
 

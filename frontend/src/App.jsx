@@ -11,13 +11,22 @@ import Navbar from "./components/Navbar.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 import { FeatureRoute } from "./components/FeatureRoute.jsx";
+import { PermissionRoute } from "./components/PermissionRoute.jsx";
 import { BillingGate } from "./components/BillingGate.jsx";
 import { LoadingSpinner } from "./components/ui";
 import AppUpdateBanner from "./components/AppUpdateBanner.jsx";
+import { PERMISSIONS } from "./utils/permissions.js";
+import { useAuth } from "./context/AuthContext.jsx";
 
 const Home = lazy(() => import("./Pages/Home.jsx"));
 const Login = lazy(() => import("./Pages/Login.jsx"));
 const Register = lazy(() => import("./Pages/Register.jsx"));
+const ForgotPassword = lazy(() => import("./Pages/ForgotPassword.jsx"));
+const ResetPassword = lazy(() => import("./Pages/ResetPassword.jsx"));
+const AcceptInvite = lazy(() => import("./Pages/AcceptInvite.jsx"));
+const Termos = lazy(() => import("./Pages/Termos.jsx"));
+const Privacidade = lazy(() => import("./Pages/Privacidade.jsx"));
+const Conta = lazy(() => import("./Pages/Conta.jsx"));
 const CadastroCaminhao = lazy(() => import("./Pages/CadastroCaminhao.jsx"));
 const CaminhaoDetail = lazy(() => import("./Pages/CaminhaoDetail.jsx"));
 const Pneus = lazy(() => import("./Pages/Pneus.jsx"));
@@ -35,10 +44,12 @@ const FiscalCte = lazy(() => import("./Pages/FiscalCte.jsx"));
 const FiscalMdfe = lazy(() => import("./Pages/FiscalMdfe.jsx"));
 const Usuarios = lazy(() => import("./Pages/Usuarios.jsx"));
 const Assinatura = lazy(() => import("./Pages/Assinatura.jsx"));
+const Empresa = lazy(() => import("./Pages/Empresa.jsx"));
 const Motoristas = lazy(() => import("./Pages/Motoristas.jsx"));
 const Documentos = lazy(() => import("./Pages/Documentos.jsx"));
 const Alertas = lazy(() => import("./Pages/Alertas.jsx"));
 const Auditoria = lazy(() => import("./Pages/Auditoria.jsx"));
+const Landing = lazy(() => import("./Pages/Landing.jsx"));
 const NotFound = lazy(() => import("./Pages/NotFound.jsx"));
 
 function RedirectCadastroLote() {
@@ -46,11 +57,53 @@ function RedirectCadastroLote() {
   return <Navigate to="/pneus/atribuir" replace state={location.state} />;
 }
 
+function GuardedRoute({
+  permission,
+  feature,
+  billing = true,
+  children,
+}) {
+  let node = children;
+  if (permission) {
+    node = <PermissionRoute permission={permission}>{node}</PermissionRoute>;
+  }
+  if (feature) {
+    node = <FeatureRoute feature={feature}>{node}</FeatureRoute>;
+  }
+  if (billing) {
+    node = <BillingGate>{node}</BillingGate>;
+  }
+  return <ProtectedRoute>{node}</ProtectedRoute>;
+}
+
+function HomeOrLanding() {
+  const { isAuthenticated } = useAuth();
+  const authRequired = import.meta.env.VITE_AUTH_REQUIRED !== "false";
+  if (!authRequired || isAuthenticated) {
+    return (
+      <GuardedRoute>
+        <Home />
+      </GuardedRoute>
+    );
+  }
+  return <Landing />;
+}
+
 function AppRoutes() {
   const location = useLocation();
-  const isLoginPage = location.pathname === "/login";
-  const isRegisterPage = location.pathname === "/register";
-  const hideChrome = isLoginPage || isRegisterPage;
+  const { isAuthenticated } = useAuth();
+  const authRequired = import.meta.env.VITE_AUTH_REQUIRED !== "false";
+  const isPublicHome =
+    location.pathname === "/" && authRequired && !isAuthenticated;
+  const hideChrome = isPublicHome || [
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/reset-senha",
+    "/convite",
+    "/termos",
+    "/privacidade",
+  ].includes(location.pathname);
 
   const routes = (
     <Suspense
@@ -63,206 +116,188 @@ function AppRoutes() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-senha" element={<ResetPassword />} />
+        <Route path="/convite" element={<AcceptInvite />} />
+        <Route path="/termos" element={<Termos />} />
+        <Route path="/privacidade" element={<Privacidade />} />
+        <Route path="/precos" element={<Navigate to="/#precos" replace />} />
+        <Route path="/" element={<HomeOrLanding />} />
+        <Route
+          path="/conta"
+          element={
+            <GuardedRoute billing={false}>
+              <Conta />
+            </GuardedRoute>
+          }
+        />
         <Route
           path="/assinatura"
           element={
-            <ProtectedRoute>
+            <GuardedRoute billing={false}>
               <Assinatura />
-            </ProtectedRoute>
+            </GuardedRoute>
+          }
+        />
+        <Route
+          path="/empresa"
+          element={
+            <GuardedRoute
+              billing={false}
+              permission={PERMISSIONS.SETTINGS_WRITE}
+            >
+              <Empresa />
+            </GuardedRoute>
           }
         />
         <Route
           path="/motoristas"
           element={
-            <ProtectedRoute>
-              <BillingGate>
-                <Motoristas />
-              </BillingGate>
-            </ProtectedRoute>
+            <GuardedRoute>
+              <Motoristas />
+            </GuardedRoute>
           }
         />
         <Route
           path="/documentos"
           element={
-            <ProtectedRoute>
-              <BillingGate>
-                <Documentos />
-              </BillingGate>
-            </ProtectedRoute>
+            <GuardedRoute>
+              <Documentos />
+            </GuardedRoute>
           }
         />
         <Route
           path="/alertas"
           element={
-            <ProtectedRoute>
-              <BillingGate>
-                <Alertas />
-              </BillingGate>
-            </ProtectedRoute>
+            <GuardedRoute>
+              <Alertas />
+            </GuardedRoute>
           }
         />
         <Route
           path="/auditoria"
           element={
-            <ProtectedRoute>
-              <BillingGate>
-                <Auditoria />
-              </BillingGate>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <BillingGate>
-                <Home />
-              </BillingGate>
-            </ProtectedRoute>
+            <GuardedRoute permission={PERMISSIONS.AUDIT_READ}>
+              <Auditoria />
+            </GuardedRoute>
           }
         />
         <Route
           path="/cadastro-caminhao"
           element={
-            <ProtectedRoute>
-              <BillingGate>
-                <CadastroCaminhao />
-              </BillingGate>
-            </ProtectedRoute>
+            <GuardedRoute permission={PERMISSIONS.FROTA_WRITE}>
+              <CadastroCaminhao />
+            </GuardedRoute>
           }
         />
         <Route
           path="/pneus"
           element={
-            <ProtectedRoute>
-              <BillingGate>
-                <Pneus />
-              </BillingGate>
-            </ProtectedRoute>
+            <GuardedRoute>
+              <Pneus />
+            </GuardedRoute>
           }
         />
         <Route
           path="/pneus/estoque"
           element={
-            <ProtectedRoute>
-              <BillingGate>
-                <PneusEstoque />
-              </BillingGate>
-            </ProtectedRoute>
+            <GuardedRoute>
+              <PneusEstoque />
+            </GuardedRoute>
           }
         />
         <Route
           path="/pneus/atribuir"
           element={
-            <ProtectedRoute>
-              <BillingGate>
-                <PneuAtribuir />
-              </BillingGate>
-            </ProtectedRoute>
+            <GuardedRoute permission={PERMISSIONS.PNEUS_WRITE}>
+              <PneuAtribuir />
+            </GuardedRoute>
           }
         />
         <Route
           path="/caminhao/:placa"
           element={
-            <ProtectedRoute>
-              <BillingGate>
-                <CaminhaoDetail />
-              </BillingGate>
-            </ProtectedRoute>
+            <GuardedRoute>
+              <CaminhaoDetail />
+            </GuardedRoute>
           }
         />
         <Route
           path="/caminhao/editar/:placa"
           element={
-            <ProtectedRoute>
-              <BillingGate>
-                <EditCaminhao />
-              </BillingGate>
-            </ProtectedRoute>
+            <GuardedRoute permission={PERMISSIONS.FROTA_WRITE}>
+              <EditCaminhao />
+            </GuardedRoute>
           }
         />
         <Route
           path="/pneu/editar/:id"
           element={
-            <ProtectedRoute>
-              <BillingGate>
-                <EditPneu />
-              </BillingGate>
-            </ProtectedRoute>
+            <GuardedRoute permission={PERMISSIONS.PNEUS_WRITE}>
+              <EditPneu />
+            </GuardedRoute>
           }
         />
         <Route
           path="/manutencao-gastos"
           element={
-            <ProtectedRoute>
-              <BillingGate>
-                <ManutencaoGastos />
-              </BillingGate>
-            </ProtectedRoute>
+            <GuardedRoute>
+              <ManutencaoGastos />
+            </GuardedRoute>
           }
         />
         <Route
           path="/gasto/editar/:id"
           element={
-            <ProtectedRoute>
-              <BillingGate>
-                <EditGasto />
-              </BillingGate>
-            </ProtectedRoute>
+            <GuardedRoute permission={PERMISSIONS.GASTOS_WRITE}>
+              <EditGasto />
+            </GuardedRoute>
           }
         />
         <Route
           path="/checklist/editar/:id"
           element={
-            <ProtectedRoute>
-              <BillingGate>
-                <EditChecklist />
-              </BillingGate>
-            </ProtectedRoute>
+            <GuardedRoute permission={PERMISSIONS.GASTOS_WRITE}>
+              <EditChecklist />
+            </GuardedRoute>
           }
         />
         <Route
           path="/pneus/cadastro-em-lote"
           element={
-            <ProtectedRoute>
-              <BillingGate>
-                <RedirectCadastroLote />
-              </BillingGate>
-            </ProtectedRoute>
+            <GuardedRoute permission={PERMISSIONS.PNEUS_WRITE}>
+              <RedirectCadastroLote />
+            </GuardedRoute>
           }
         />
         <Route
           path="/relatorios"
           element={
-            <ProtectedRoute>
-              <BillingGate>
-                <Relatorios />
-              </BillingGate>
-            </ProtectedRoute>
+            <GuardedRoute permission={PERMISSIONS.REPORTS_READ}>
+              <Relatorios />
+            </GuardedRoute>
           }
         />
         <Route
           path="/ordem-coleta"
           element={
-            <ProtectedRoute>
-              <BillingGate>
-                <FeatureRoute feature="ordem_coleta">
-                  <OrdensColeta />
-                </FeatureRoute>
-              </BillingGate>
-            </ProtectedRoute>
+            <GuardedRoute
+              feature="ordem_coleta"
+              permission={PERMISSIONS.ORDEM_SEND}
+            >
+              <OrdensColeta />
+            </GuardedRoute>
           }
         />
         <Route
           path="/notas-estoque"
           element={
-            <ProtectedRoute>
-              <BillingGate>
-                <FeatureRoute feature="notas_estoque">
-                  <NotasEstoque />
-                </FeatureRoute>
-              </BillingGate>
-            </ProtectedRoute>
+            <GuardedRoute
+              feature="notas_estoque"
+              permission={PERMISSIONS.NOTAS_READ}
+            >
+              <NotasEstoque />
+            </GuardedRoute>
           }
         />
         <Route
@@ -290,11 +325,9 @@ function AppRoutes() {
         <Route
           path="/usuarios"
           element={
-            <ProtectedRoute>
-              <BillingGate>
-                <Usuarios />
-              </BillingGate>
-            </ProtectedRoute>
+            <GuardedRoute permission={PERMISSIONS.USERS_MANAGE}>
+              <Usuarios />
+            </GuardedRoute>
           }
         />
         <Route

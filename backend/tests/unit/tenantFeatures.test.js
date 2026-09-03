@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   resolveTenantFeatures,
   defaultFeaturesForSlug,
+  ABROTTO_FEATURES,
   DEFAULT_TENANT_FEATURES,
   TRANS_MOTIN_FEATURES,
   featuresForPlan,
@@ -10,6 +11,7 @@ import {
   buildBillingPublic,
   newTenantBillingDefaults,
   PLAN_FEATURES,
+  isPublicBillingPlan,
 } from "../../src/utils/tenantFeatures.js";
 import {
   mapStripeSubscriptionStatus,
@@ -19,15 +21,20 @@ import {
 
 describe("tenantFeatures", () => {
   it("default abbroto: OC on, notas off", () => {
-    assert.deepEqual(defaultFeaturesForSlug("abbroto"), DEFAULT_TENANT_FEATURES);
-    assert.equal(DEFAULT_TENANT_FEATURES.ordem_coleta, true);
-    assert.equal(DEFAULT_TENANT_FEATURES.notas_estoque, false);
+    assert.deepEqual(defaultFeaturesForSlug("abbroto"), ABROTTO_FEATURES);
+    assert.equal(ABROTTO_FEATURES.ordem_coleta, true);
+    assert.equal(ABROTTO_FEATURES.notas_estoque, false);
   });
 
   it("default trans-motin: OC off, notas on", () => {
     assert.deepEqual(defaultFeaturesForSlug("trans-motin"), TRANS_MOTIN_FEATURES);
     assert.equal(TRANS_MOTIN_FEATURES.ordem_coleta, false);
     assert.equal(TRANS_MOTIN_FEATURES.notas_estoque, true);
+  });
+
+  it("default genérico: sem módulos premium", () => {
+    assert.deepEqual(defaultFeaturesForSlug("outro"), DEFAULT_TENANT_FEATURES);
+    assert.equal(DEFAULT_TENANT_FEATURES.ordem_coleta, false);
   });
 
   it("resolve legado (raw, slug) preenche defaults", () => {
@@ -40,7 +47,7 @@ describe("tenantFeatures", () => {
     assert.equal(abb.ordem_coleta, true);
   });
 
-  it("resolve legado respeita overrides explícitos", () => {
+  it("resolve legado respeita overrides explícitos no abbroto", () => {
     const custom = resolveTenantFeatures(
       { ordem_coleta: false, notas_estoque: true },
       "abbroto",
@@ -49,35 +56,32 @@ describe("tenantFeatures", () => {
     assert.equal(custom.notas_estoque, true);
   });
 
-  it("billing ativo: features vêm do plano", () => {
-    const ops = resolveTenantFeatures({
+  it("ordem de coleta bloqueada fora do slug abbroto", () => {
+    const forcedOff = resolveTenantFeatures({
       billingExempt: false,
-      plan: "ops",
+      slug: "teste",
+      plan: "starter",
+      raw: { ordem_coleta: true, notas_estoque: true },
     });
-    assert.deepEqual(ops, PLAN_FEATURES.ops);
+    assert.equal(forcedOff.ordem_coleta, false);
+    assert.equal(forcedOff.notas_estoque, true);
+  });
 
+  it("billing ativo: features vêm do plano", () => {
     const fiscal = resolveTenantFeatures({
       billingExempt: false,
+      slug: "nova",
       plan: "fiscal",
     });
     assert.deepEqual(fiscal, PLAN_FEATURES.fiscal);
 
     const complete = resolveTenantFeatures({
       billingExempt: false,
+      slug: "nova",
       plan: "complete",
       raw: {},
     });
     assert.deepEqual(complete, PLAN_FEATURES.complete);
-  });
-
-  it("billing ativo: JSON pode sobrescrever plano", () => {
-    const custom = resolveTenantFeatures({
-      billingExempt: false,
-      plan: "starter",
-      raw: { ordem_coleta: true, notas_estoque: true },
-    });
-    assert.equal(custom.ordem_coleta, true);
-    assert.equal(custom.notas_estoque, true);
   });
 
   it("billing_exempt usa defaults por slug, não o plan", () => {
@@ -91,12 +95,19 @@ describe("tenantFeatures", () => {
     assert.equal(f.notas_estoque, true);
   });
 
-  it("featuresForPlan cobre os 4 planos", () => {
+  it("featuresForPlan: ordem de coleta nunca via plano", () => {
     assert.equal(featuresForPlan("starter").ordem_coleta, false);
-    assert.equal(featuresForPlan("ops").ordem_coleta, true);
+    assert.equal(featuresForPlan("ops").ordem_coleta, false);
     assert.equal(featuresForPlan("fiscal").notas_estoque, true);
-    assert.equal(featuresForPlan("complete").ordem_coleta, true);
+    assert.equal(featuresForPlan("complete").ordem_coleta, false);
     assert.equal(featuresForPlan("complete").notas_estoque, true);
+  });
+
+  it("isPublicBillingPlan: starter, fiscal e complete", () => {
+    assert.equal(isPublicBillingPlan("starter"), true);
+    assert.equal(isPublicBillingPlan("fiscal"), true);
+    assert.equal(isPublicBillingPlan("complete"), true);
+    assert.equal(isPublicBillingPlan("ops"), false);
   });
 
   it("hasActiveSubscriptionAccess: exempt sempre ok", () => {
@@ -151,29 +162,32 @@ describe("tenantFeatures", () => {
     );
   });
 
-  it("newTenantBillingDefaults cria trial ops", () => {
+  it("newTenantBillingDefaults cria trial starter (sem ordem de coleta)", () => {
     const start = new Date("2026-06-01T12:00:00.000Z");
     const d = newTenantBillingDefaults(14, start);
     assert.equal(d.billing_exempt, false);
-    assert.equal(d.plan, "ops");
+    assert.equal(d.plan, "starter");
+    assert.equal(d.features.ordem_coleta, false);
+    assert.equal(d.features.notas_estoque, false);
     assert.equal(d.subscription_status, "trialing");
     const days =
       (d.trial_ends_at.getTime() - start.getTime()) / (24 * 60 * 60 * 1000);
     assert.ok(days >= 13.9 && days <= 14.1);
   });
 
-  it("buildBillingPublic monta payload", () => {
+  it("buildBillingPublic monta payload fiscal sem ordem de coleta", () => {
     const pub = buildBillingPublic({
       billing_exempt: false,
-      plan: "ops",
+      plan: "fiscal",
       subscription_status: "trialing",
       trial_ends_at: new Date("2099-01-01"),
       features: {},
       slug: "nova",
     });
     assert.equal(pub.billingExempt, false);
-    assert.equal(pub.plan, "ops");
-    assert.equal(pub.features.ordem_coleta, true);
+    assert.equal(pub.plan, "fiscal");
+    assert.equal(pub.features.ordem_coleta, false);
+    assert.equal(pub.features.notas_estoque, true);
     assert.equal(pub.hasAccess, true);
   });
 });
@@ -188,15 +202,15 @@ describe("BillingService helpers", () => {
   });
 
   it("priceIdForPlan / planForPriceId com env", () => {
-    const prev = process.env.STRIPE_PRICE_OPS;
-    process.env.STRIPE_PRICE_OPS = "price_ops_test";
+    const prev = process.env.STRIPE_PRICE_FISCAL;
+    process.env.STRIPE_PRICE_FISCAL = "price_fiscal_test";
     try {
-      assert.equal(priceIdForPlan("ops"), "price_ops_test");
-      assert.equal(planForPriceId("price_ops_test"), "ops");
+      assert.equal(priceIdForPlan("fiscal"), "price_fiscal_test");
+      assert.equal(planForPriceId("price_fiscal_test"), "fiscal");
       assert.equal(planForPriceId("price_unknown"), null);
     } finally {
-      if (prev === undefined) delete process.env.STRIPE_PRICE_OPS;
-      else process.env.STRIPE_PRICE_OPS = prev;
+      if (prev === undefined) delete process.env.STRIPE_PRICE_FISCAL;
+      else process.env.STRIPE_PRICE_FISCAL = prev;
     }
   });
 });

@@ -10,6 +10,9 @@ import {
   PRODUCT_TAGLINE,
   PUBLIC_REGISTER_ENABLED,
 } from "../brand.js";
+import { FIELD_LIMITS } from "../utils/fieldLimits.js";
+import LegalAcceptCheckbox from "../components/LegalAcceptCheckbox.jsx";
+import LegalLinks from "../components/LegalLinks.jsx";
 
 export default function Register() {
   const { register, isAuthenticated } = useAuth();
@@ -20,6 +23,7 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [acceptedLegal, setAcceptedLegal] = useState(false);
 
   if (!PUBLIC_REGISTER_ENABLED) {
     return <Navigate to="/login" replace />;
@@ -31,11 +35,15 @@ export default function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!acceptedLegal) {
+      setError("É necessário aceitar os termos de uso e a política de privacidade");
+      return;
+    }
     setLoading(true);
     setError("");
 
     try {
-      await register({ empresaNome, email, password, nome });
+      await register({ empresaNome, email, password, nome, acceptedLegal });
     } catch (err) {
       const parsed = await parseApiError(err);
       setError(parsed.message || "Falha ao criar conta");
@@ -116,6 +124,7 @@ export default function Register() {
                 onChange={(e) => setEmpresaNome(e.target.value)}
                 placeholder="Ex.: Transportes Silva"
                 required
+                maxLength={FIELD_LIMITS.EMPRESA_NOME}
                 autoComplete="organization"
               />
 
@@ -126,6 +135,7 @@ export default function Register() {
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 placeholder="Administrador"
+                maxLength={FIELD_LIMITS.NOME}
                 autoComplete="name"
               />
 
@@ -149,6 +159,8 @@ export default function Register() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Mínimo 8 caracteres"
                   required
+                  minLength={FIELD_LIMITS.PASSWORD_MIN}
+                  maxLength={FIELD_LIMITS.PASSWORD_MAX}
                   autoComplete="new-password"
                   className="mb-0"
                 />
@@ -162,6 +174,11 @@ export default function Register() {
                   </button>
                 </div>
               </div>
+
+              <LegalAcceptCheckbox
+                checked={acceptedLegal}
+                onChange={setAcceptedLegal}
+              />
 
               <Button
                 type="submit"
@@ -182,6 +199,12 @@ export default function Register() {
               </Link>
             </p>
           </div>
+          <LegalLinks />
+          <p className="mt-3 text-center text-xs text-text-light">
+            <Link to="/" className="font-medium text-secondary hover:text-secondary-dark">
+              Conhecer o ATrack
+            </Link>
+          </p>
         </div>
       </main>
     </div>

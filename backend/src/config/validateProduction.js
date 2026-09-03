@@ -74,6 +74,29 @@ export function getProductionConfigWarnings(cfg = config) {
     );
   }
 
+  const mail = cfg.mail || {};
+  const mailFrom = String(mail.mailFrom || mail.smtpUser || "").trim();
+  if (!String(mail.smtpHost || "").trim() || !Number(mail.smtpPort) || !mailFrom) {
+    warnings.push(
+      "SMTP não configurado — recuperação de senha, convite e e-mail de ordem de coleta não funcionam. Defina SMTP_HOST, SMTP_PORT, MAIL_FROM e credenciais.",
+    );
+  }
+
+  if (!(process.env.SENTRY_DSN || "").trim()) {
+    warnings.push(
+      "SENTRY_DSN não definido — erros 500 da API não vão para o Sentry.",
+    );
+  }
+
+  const backupOn = ["1", "true", "yes", "on"].includes(
+    String(process.env.BACKUP_ENABLED || "").toLowerCase(),
+  );
+  if (!backupOn) {
+    warnings.push(
+      "BACKUP_ENABLED não está true — ative o dump diário na API ou agende npm run db:backup no Coolify.",
+    );
+  }
+
   return warnings;
 }
 

@@ -4,6 +4,8 @@ import { OrdemColetaService } from "../services/OrdemColetaService.js";
 import { getUploadsHealth } from "./uploadsHealth.js";
 import { pingRedis, isRedisConfigured } from "../lib/redis.js";
 import { getOrdemColetaQueueMode } from "../queues/ordemColetaJobQueue.js";
+import { isMailConfigured } from "./mailer.js";
+import { isSentryConfigured } from "../lib/sentry.js";
 
 /**
  * Monta status agregado a partir das probes (testável sem I/O).
@@ -18,6 +20,8 @@ export function buildHealthPayload({
   queueMode,
   uptime,
   isProd,
+  mailConfigured,
+  sentryConfigured,
 }) {
   const issues = [];
 
@@ -49,6 +53,8 @@ export function buildHealthPayload({
           puppeteerCacheDir: process.env.PUPPETEER_CACHE_DIR || null,
         },
     uploads: isProd ? { writable: uploadsWritable } : uploadsDetail,
+    mail: { configured: Boolean(mailConfigured) },
+    sentry: { configured: Boolean(sentryConfigured) },
   };
 }
 
@@ -84,6 +90,8 @@ export async function runHealthCheck() {
     queueMode: getOrdemColetaQueueMode(),
     uptime: process.uptime(),
     isProd,
+    mailConfigured: isMailConfigured(),
+    sentryConfigured: isSentryConfigured(),
   });
 
   const httpStatus = payload.status === "healthy" ? 200 : 503;

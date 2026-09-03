@@ -29,9 +29,12 @@ const logger = {
   error: (...args) => {
     if (isDevelopment) {
       console.error(...args);
-    } else {
-      // Em produção, enviar para serviço de monitoramento
-      // Exemplo: Sentry.captureException(args[0]);
+    } else if (args[0] instanceof Error) {
+      void import("../lib/monitoring.js")
+        .then(({ captureException }) => {
+          captureException(args[0]);
+        })
+        .catch(() => {});
     }
   },
 

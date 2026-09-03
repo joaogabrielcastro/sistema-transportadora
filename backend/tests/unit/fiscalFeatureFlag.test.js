@@ -28,7 +28,8 @@ describe("feature flag transporte_fiscal", () => {
   });
 
   it("não quebra as chaves existentes (ordem_coleta / notas_estoque)", () => {
-    assert.equal(PLAN_FEATURES.ops.ordem_coleta, true);
+    // ordem_coleta não entra em plano — só o tenant ABroto (slug).
+    assert.equal(PLAN_FEATURES.ops.ordem_coleta, false);
     assert.equal(PLAN_FEATURES.fiscal.notas_estoque, true);
     assert.deepEqual(featuresForPlan("ops"), PLAN_FEATURES.ops);
   });
@@ -40,7 +41,8 @@ describe("feature flag transporte_fiscal", () => {
       raw: { transporte_fiscal: true },
     });
     assert.equal(f.transporte_fiscal, true);
-    assert.equal(f.ordem_coleta, true);
+    assert.equal(f.notas_estoque, true);
+    assert.equal(f.ordem_coleta, false);
   });
 
   it("sem override, transporte_fiscal continua false", () => {

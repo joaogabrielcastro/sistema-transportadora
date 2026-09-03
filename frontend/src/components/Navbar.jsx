@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import {
@@ -46,22 +46,209 @@ const isActivePath = (pathname, path, exact = false) => {
   return pathname === path || pathname.startsWith(`${path}/`);
 };
 
-const navItemClass = (active) =>
-  `inline-flex h-9 items-center px-3 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+const sideLinkClass = (active) =>
+  `flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
     active
-      ? "bg-white/10 text-white border border-white/10"
-      : "text-gray-300 hover:bg-white/5 hover:text-white border border-transparent"
+      ? "bg-white/10 text-white"
+      : "text-gray-300 hover:bg-white/5 hover:text-white"
   }`;
 
+const Chevron = ({ open }) => (
+  <svg
+    className={`h-3.5 w-3.5 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    aria-hidden
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M19 9l-7 7-7-7"
+    />
+  </svg>
+);
+
+function SidebarNav({
+  mainLinks,
+  pathname,
+  pneusOpen,
+  setPneusOpen,
+  fiscalOpen,
+  setFiscalOpen,
+  showFiscalMenu,
+  canWriteFrota,
+  vehicleQuotaReached,
+  showBillingLink,
+  canManageUsers,
+  canWriteSettings,
+  canReadAudit,
+  isAuthenticated,
+  user,
+  onLogout,
+}) {
+  const isPneusSection = pathname.startsWith("/pneus");
+  const isFiscalSection = pathname.startsWith("/fiscal");
+
+  return (
+    <nav className="flex min-h-0 flex-1 flex-col" aria-label="Menu principal">
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+        {canWriteFrota && !vehicleQuotaReached && (
+          <Link
+            to="/cadastro-caminhao"
+            className="mb-3 flex h-10 items-center justify-center rounded-lg bg-secondary text-sm font-semibold text-white hover:bg-secondary-dark"
+          >
+            + Caminhão
+          </Link>
+        )}
+
+        <div className="flex flex-col gap-0.5">
+          {mainLinks.map((link) => (
+            <Link
+              key={link.path}
+              to={link.path}
+              className={sideLinkClass(
+                isActivePath(pathname, link.path, link.exact),
+              )}
+            >
+              {link.label}
+            </Link>
+          ))}
+
+          <div>
+            <button
+              type="button"
+              className={`${sideLinkClass(isPneusSection)} justify-between gap-2`}
+              aria-expanded={pneusOpen}
+              onClick={() => setPneusOpen((open) => !open)}
+            >
+              Pneus
+              <Chevron open={pneusOpen} />
+            </button>
+            {pneusOpen && (
+              <div className="mt-0.5 flex flex-col gap-0.5 pl-2">
+                {pneusSubLinks.map((sub) => (
+                  <Link
+                    key={sub.path}
+                    to={sub.path}
+                    className={`${sideLinkClass(
+                      isActivePath(
+                        pathname,
+                        sub.path,
+                        sub.exact || sub.path === "/pneus",
+                      ),
+                    )} py-1.5 text-[13px]`}
+                  >
+                    {sub.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {showFiscalMenu && (
+            <div>
+              <button
+                type="button"
+                className={`${sideLinkClass(isFiscalSection)} justify-between gap-2`}
+                aria-expanded={fiscalOpen}
+                onClick={() => setFiscalOpen((open) => !open)}
+              >
+                CT-e / MDF-e
+                <Chevron open={fiscalOpen} />
+              </button>
+              {fiscalOpen && (
+                <div className="mt-0.5 flex flex-col gap-0.5 pl-2">
+                  {fiscalSubLinks.map((sub) => (
+                    <Link
+                      key={sub.path}
+                      to={sub.path}
+                      className={`${sideLinkClass(isActivePath(pathname, sub.path))} py-1.5 text-[13px]`}
+                    >
+                      {sub.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 border-t border-white/10 pt-3">
+          <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+            Conta
+          </p>
+          <div className="flex flex-col gap-0.5">
+            {showBillingLink && (
+              <Link
+                to="/assinatura"
+                className={sideLinkClass(isActivePath(pathname, "/assinatura"))}
+              >
+                Assinatura
+              </Link>
+            )}
+            {isAuthenticated && canManageUsers && (
+              <Link
+                to="/usuarios"
+                className={sideLinkClass(isActivePath(pathname, "/usuarios"))}
+              >
+                Usuários
+              </Link>
+            )}
+            {isAuthenticated && canWriteSettings && (
+              <Link
+                to="/empresa"
+                className={sideLinkClass(isActivePath(pathname, "/empresa"))}
+              >
+                Empresa
+              </Link>
+            )}
+            {isAuthenticated && canReadAudit && (
+              <Link
+                to="/auditoria"
+                className={sideLinkClass(isActivePath(pathname, "/auditoria"))}
+              >
+                Auditoria
+              </Link>
+            )}
+            {isAuthenticated && (
+              <Link
+                to="/conta"
+                className={sideLinkClass(isActivePath(pathname, "/conta"))}
+              >
+                Minha conta
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {isAuthenticated && (
+        <div className="shrink-0 border-t border-white/10 p-3">
+          <p className="truncate px-3 text-xs text-gray-400" title={user?.email}>
+            {user?.email}
+          </p>
+          <button
+            type="button"
+            onClick={onLogout}
+            className={`${sideLinkClass(false)} mt-1`}
+          >
+            Sair
+          </button>
+        </div>
+      )}
+    </nav>
+  );
+}
+
 /**
- * Barra superior (estilo produção): menus à esquerda, ações à direita.
+ * Shell autenticado: sidebar à esquerda no desktop, drawer no mobile.
  */
 const Navbar = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pneusOpen, setPneusOpen] = useState(false);
   const [fiscalOpen, setFiscalOpen] = useState(false);
-  const pneusMenuRef = useRef(null);
-  const fiscalMenuRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
@@ -81,15 +268,15 @@ const Navbar = ({ children }) => {
   const showPastDueBanner =
     showBillingLink && user?.subscriptionStatus === "past_due";
   const showBanner = showTrialBanner || showPastDueBanner;
-  const isPneusSection = location.pathname.startsWith("/pneus");
-  const isFiscalSection = location.pathname.startsWith("/fiscal");
-  // TODO: reativar gate por feature flag depois da demo
-  const showFiscalMenu = true; // user?.features?.transporte_fiscal === true;
+  const showFiscalMenu = user?.features?.transporte_fiscal === true;
 
   useEffect(() => {
     setMobileOpen(false);
-    setPneusOpen(false);
-    setFiscalOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (location.pathname.startsWith("/pneus")) setPneusOpen(true);
+    if (location.pathname.startsWith("/fiscal")) setFiscalOpen(true);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -101,280 +288,92 @@ const Navbar = ({ children }) => {
     };
   }, [mobileOpen]);
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        pneusMenuRef.current &&
-        !pneusMenuRef.current.contains(event.target)
-      ) {
-        setPneusOpen(false);
-      }
-    };
-    if (pneusOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [pneusOpen]);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        fiscalMenuRef.current &&
-        !fiscalMenuRef.current.contains(event.target)
-      ) {
-        setFiscalOpen(false);
-      }
-    };
-    if (fiscalOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [fiscalOpen]);
-
   const handleLogout = () => {
     logout();
     navigate("/login");
     setMobileOpen(false);
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      <nav className="sticky top-0 z-50 bg-primary shadow-md">
-        {showBanner && (
-          <div
-            className={`text-center text-xs sm:text-sm px-3 py-1.5 leading-snug ${
-              showPastDueBanner
-                ? "bg-amber-500 text-amber-950"
-                : "bg-secondary text-white"
-            }`}
-          >
-            {showPastDueBanner ? (
-              <>
-                Pagamento pendente.{" "}
-                <Link to="/assinatura" className="font-semibold underline">
-                  Regularizar assinatura
-                </Link>
-              </>
-            ) : (
-              <>
-                {trialDays === 0
-                  ? "Último dia do período de teste."
-                  : `Período de teste: restam ${trialDays} dia${trialDays === 1 ? "" : "s"}.`}{" "}
-                <Link to="/assinatura" className="font-semibold underline">
-                  Ver planos
-                </Link>
-              </>
-            )}
-          </div>
-        )}
+  const navProps = {
+    mainLinks,
+    pathname: location.pathname,
+    pneusOpen,
+    setPneusOpen,
+    fiscalOpen,
+    setFiscalOpen,
+    showFiscalMenu,
+    canWriteFrota,
+    vehicleQuotaReached,
+    showBillingLink,
+    canManageUsers,
+    canWriteSettings,
+    canReadAudit,
+    isAuthenticated,
+    user,
+    onLogout: handleLogout,
+  };
 
-        <div className="w-full px-4 md:px-6 h-14 md:h-16 flex items-center gap-2">
-          <Link
-            to="/"
-            className="flex items-center group min-w-0 shrink-0 mr-1"
-          >
-            <img
-              src={PRODUCT_LOGO_SRC}
-              alt={PRODUCT_LOGO_ALT}
-              className="h-9 w-9 object-contain rounded-lg bg-white p-1 mr-2.5 flex-shrink-0 group-hover:opacity-90 transition-opacity"
-            />
-            <div className="flex flex-col min-w-0 leading-tight">
-              <span className="text-base md:text-lg font-bold text-white tracking-tight truncate">
-                {PRODUCT_NAME}
-              </span>
-              <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider truncate">
-                {user?.tenantNome || PRODUCT_TAGLINE}
-              </span>
-            </div>
+  const brand = (
+    <Link to="/" className="flex min-w-0 items-center gap-2.5">
+      <img
+        src={PRODUCT_LOGO_SRC}
+        alt={PRODUCT_LOGO_ALT}
+        className="h-9 w-9 shrink-0 rounded-lg bg-white object-contain p-1"
+      />
+      <div className="min-w-0 leading-tight">
+        <span className="block truncate text-base font-bold tracking-tight text-white">
+          {PRODUCT_NAME}
+        </span>
+        <span className="block truncate text-[10px] font-medium uppercase tracking-wider text-gray-400">
+          {user?.tenantNome || PRODUCT_TAGLINE}
+        </span>
+      </div>
+    </Link>
+  );
+
+  const banner = showBanner ? (
+    <div
+      className={`text-center text-xs leading-snug sm:text-sm px-3 py-1.5 ${
+        showPastDueBanner
+          ? "bg-amber-500 text-amber-950"
+          : "bg-secondary text-white"
+      }`}
+    >
+      {showPastDueBanner ? (
+        <>
+          Pagamento pendente.{" "}
+          <Link to="/assinatura" className="font-semibold underline">
+            Regularizar assinatura
           </Link>
+        </>
+      ) : (
+        <>
+          {trialDays === 0
+            ? "Último dia do período de teste."
+            : `Período de teste: restam ${trialDays} dia${trialDays === 1 ? "" : "s"}.`}{" "}
+          <Link to="/assinatura" className="font-semibold underline">
+            Ver planos
+          </Link>
+        </>
+      )}
+    </div>
+  ) : null;
 
-          <div className="hidden lg:flex items-center gap-0.5 min-w-0 flex-1">
-            {mainLinks.map((link) => (
-              <Link
-                key={link.path}
-                to={link.path}
-                className={navItemClass(
-                  isActivePath(location.pathname, link.path, link.exact),
-                )}
-              >
-                {link.label}
-              </Link>
-            ))}
+  return (
+    <div className="flex min-h-screen bg-background">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-primary shadow-md lg:flex">
+        <div className="shrink-0 border-b border-white/10 px-4 py-4">{brand}</div>
+        <SidebarNav {...navProps} />
+      </aside>
 
-            <div className="relative shrink-0" ref={pneusMenuRef}>
-              <button
-                type="button"
-                className={`${navItemClass(isPneusSection)} gap-1`}
-                aria-expanded={pneusOpen}
-                aria-haspopup="true"
-                onClick={() => setPneusOpen((open) => !open)}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") setPneusOpen(false);
-                }}
-              >
-                Pneus
-                <svg
-                  className={`w-3.5 h-3.5 transition-transform ${pneusOpen ? "rotate-180" : ""}`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  aria-hidden
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </button>
-              {pneusOpen && (
-                <div className="absolute top-full left-0 mt-1 w-52 py-2 bg-slate-900 border border-white/10 rounded-xl shadow-xl z-[70]">
-                  {pneusSubLinks.map((sub) => (
-                    <Link
-                      key={sub.path}
-                      to={sub.path}
-                      className={`block px-4 py-2.5 text-sm transition-colors ${
-                        isActivePath(
-                          location.pathname,
-                          sub.path,
-                          sub.exact || sub.path === "/pneus",
-                        )
-                          ? "text-white bg-white/10"
-                          : "text-gray-300 hover:text-white hover:bg-white/5"
-                      }`}
-                    >
-                      {sub.label}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {showFiscalMenu && (
-              <div className="relative shrink-0" ref={fiscalMenuRef}>
-                <button
-                  type="button"
-                  className={`${navItemClass(isFiscalSection)} gap-1`}
-                  aria-expanded={fiscalOpen}
-                  aria-haspopup="true"
-                  onClick={() => setFiscalOpen((open) => !open)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Escape") setFiscalOpen(false);
-                  }}
-                >
-                  CT-e / MDF-e
-                  <svg
-                    className={`w-3.5 h-3.5 transition-transform ${fiscalOpen ? "rotate-180" : ""}`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    aria-hidden
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-                {fiscalOpen && (
-                  <div className="absolute top-full left-0 mt-1 w-52 py-2 bg-slate-900 border border-white/10 rounded-xl shadow-xl z-[70]">
-                    {fiscalSubLinks.map((sub) => (
-                      <Link
-                        key={sub.path}
-                        to={sub.path}
-                        className={`block px-4 py-2.5 text-sm transition-colors ${
-                          isActivePath(location.pathname, sub.path)
-                            ? "text-white bg-white/10"
-                            : "text-gray-300 hover:text-white hover:bg-white/5"
-                        }`}
-                      >
-                        {sub.label}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="hidden lg:flex items-center gap-1.5 shrink-0 ml-auto">
-            {canWriteFrota && !vehicleQuotaReached && (
-              <Link
-                to="/cadastro-caminhao"
-                className="inline-flex h-9 items-center px-3.5 rounded-lg text-sm font-semibold bg-secondary text-white hover:bg-secondary-dark transition-colors whitespace-nowrap"
-              >
-                + Caminhão
-              </Link>
-            )}
-            {showBillingLink && (
-              <Link
-                to="/assinatura"
-                className={navItemClass(
-                  isActivePath(location.pathname, "/assinatura"),
-                )}
-              >
-                Assinatura
-              </Link>
-            )}
-            {isAuthenticated && canManageUsers && (
-              <Link
-                to="/usuarios"
-                className={navItemClass(
-                  isActivePath(location.pathname, "/usuarios"),
-                )}
-              >
-                Usuários
-              </Link>
-            )}
-            {isAuthenticated && canWriteSettings && (
-              <Link
-                to="/empresa"
-                className={navItemClass(
-                  isActivePath(location.pathname, "/empresa"),
-                )}
-              >
-                Empresa
-              </Link>
-            )}
-            {isAuthenticated && canReadAudit && (
-              <Link
-                to="/auditoria"
-                className={navItemClass(
-                  isActivePath(location.pathname, "/auditoria"),
-                )}
-              >
-                Auditoria
-              </Link>
-            )}
-            {isAuthenticated && (
-              <Link
-                to="/conta"
-                className={navItemClass(
-                  isActivePath(location.pathname, "/conta"),
-                )}
-              >
-                Minha conta
-              </Link>
-            )}
-            {isAuthenticated && (
-              <button
-                type="button"
-                onClick={handleLogout}
-                className={navItemClass(false)}
-                title={user?.email || "Sair"}
-              >
-                Sair
-              </button>
-            )}
-          </div>
-
+      <div className="flex min-w-0 flex-1 flex-col">
+        {banner}
+        <header className="sticky top-0 z-50 flex h-14 items-center gap-3 bg-primary px-4 shadow-md lg:hidden">
+          {brand}
           <button
             type="button"
-            className="lg:hidden ml-auto text-gray-300 hover:text-white focus:outline-none p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-white/10 transition-colors shrink-0"
-            onClick={() => setMobileOpen(!mobileOpen)}
+            className="ml-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-md p-2.5 text-gray-300 hover:bg-white/10 hover:text-white"
+            onClick={() => setMobileOpen((open) => !open)}
             aria-expanded={mobileOpen}
             aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
           >
@@ -398,163 +397,42 @@ const Navbar = ({ children }) => {
               </svg>
             )}
           </button>
-        </div>
+        </header>
 
-        <div
-          className={`lg:hidden absolute left-0 right-0 z-[60] bg-primary border-t border-white/10 shadow-xl transition-all duration-300 ease-in-out overflow-hidden ${
-            mobileOpen
-              ? "max-h-[min(85vh,calc(100dvh-4rem))] opacity-100 overflow-y-auto"
-              : "max-h-0 opacity-0 pointer-events-none"
-          }`}
-        >
-          <div className="container mx-auto py-4 px-4 flex flex-col gap-1">
-            {mainLinks.map((link) => (
-              <Link
-                key={link.path}
-                to={link.path}
-                className={`px-4 py-3 rounded-lg transition-colors ${
-                  isActivePath(location.pathname, link.path, link.exact)
-                    ? "bg-secondary text-white"
-                    : "text-gray-300 hover:bg-white/5 hover:text-white"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
+        {mobileOpen && (
+          <>
+            <button
+              type="button"
+              className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+              aria-label="Fechar menu"
+              onClick={() => setMobileOpen(false)}
+            />
+            <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-primary shadow-xl lg:hidden">
+              <div className="flex items-center justify-between border-b border-white/10 px-4 py-4">
+                {brand}
+                <button
+                  type="button"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-gray-300 hover:bg-white/10 hover:text-white"
+                  onClick={() => setMobileOpen(false)}
+                  aria-label="Fechar menu"
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <SidebarNav {...navProps} />
+            </aside>
+          </>
+        )}
 
-            <div className="pt-2 pb-1 px-4 text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Pneus
-            </div>
-            {pneusSubLinks.map((sub) => (
-              <Link
-                key={sub.path}
-                to={sub.path}
-                className={`px-4 py-3 rounded-lg pl-8 transition-colors ${
-                  isActivePath(
-                    location.pathname,
-                    sub.path,
-                    sub.exact || sub.path === "/pneus",
-                  )
-                    ? "bg-secondary text-white"
-                    : "text-gray-300 hover:bg-white/5 hover:text-white"
-                }`}
-              >
-                {sub.label}
-              </Link>
-            ))}
-
-            {showFiscalMenu && (
-              <>
-                <div className="pt-2 pb-1 px-4 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  CT-e / MDF-e
-                </div>
-                {fiscalSubLinks.map((sub) => (
-                  <Link
-                    key={sub.path}
-                    to={sub.path}
-                    className={`px-4 py-3 rounded-lg pl-8 transition-colors ${
-                      isActivePath(location.pathname, sub.path)
-                        ? "bg-secondary text-white"
-                        : "text-gray-300 hover:bg-white/5 hover:text-white"
-                    }`}
-                  >
-                    {sub.label}
-                  </Link>
-                ))}
-              </>
-            )}
-
-            {canWriteFrota && !vehicleQuotaReached && (
-              <Link
-                to="/cadastro-caminhao"
-                className="mt-3 mx-4 py-3 rounded-lg text-center font-semibold bg-secondary text-white hover:bg-secondary-dark transition-colors"
-              >
-                Cadastrar caminhão
-              </Link>
-            )}
-            {showBillingLink && (
-              <Link
-                to="/assinatura"
-                className={`mx-4 mt-2 px-4 py-3 rounded-lg transition-colors ${
-                  isActivePath(location.pathname, "/assinatura")
-                    ? "bg-secondary text-white"
-                    : "text-gray-300 hover:bg-white/5 hover:text-white"
-                }`}
-              >
-                Assinatura
-              </Link>
-            )}
-            {isAuthenticated && canManageUsers && (
-              <Link
-                to="/usuarios"
-                className={`mx-4 mt-2 px-4 py-3 rounded-lg transition-colors ${
-                  isActivePath(location.pathname, "/usuarios")
-                    ? "bg-secondary text-white"
-                    : "text-gray-300 hover:bg-white/5 hover:text-white"
-                }`}
-              >
-                Usuários
-              </Link>
-            )}
-            {isAuthenticated && canWriteSettings && (
-              <Link
-                to="/empresa"
-                className={`mx-4 mt-2 px-4 py-3 rounded-lg transition-colors ${
-                  isActivePath(location.pathname, "/empresa")
-                    ? "bg-secondary text-white"
-                    : "text-gray-300 hover:bg-white/5 hover:text-white"
-                }`}
-              >
-                Empresa
-              </Link>
-            )}
-            {isAuthenticated && canReadAudit && (
-              <Link
-                to="/auditoria"
-                className={`mx-4 mt-2 px-4 py-3 rounded-lg transition-colors ${
-                  isActivePath(location.pathname, "/auditoria")
-                    ? "bg-secondary text-white"
-                    : "text-gray-300 hover:bg-white/5 hover:text-white"
-                }`}
-              >
-                Auditoria
-              </Link>
-            )}
-            {isAuthenticated && (
-              <Link
-                to="/conta"
-                className={`mx-4 mt-2 px-4 py-3 rounded-lg transition-colors ${
-                  isActivePath(location.pathname, "/conta")
-                    ? "bg-secondary text-white"
-                    : "text-gray-300 hover:bg-white/5 hover:text-white"
-                }`}
-              >
-                Minha conta
-              </Link>
-            )}
-            {isAuthenticated && (
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="mt-2 mx-4 py-3 rounded-lg text-center text-gray-300 hover:text-white hover:bg-white/10"
-              >
-                Sair{user?.email ? ` (${user.email})` : ""}
-              </button>
-            )}
-          </div>
-        </div>
-      </nav>
-
-      {mobileOpen && (
-        <button
-          type="button"
-          className="lg:hidden fixed inset-0 z-40 bg-black/40"
-          aria-label="Fechar menu"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-
-      <div className="min-w-0">{children}</div>
+        <div className="min-w-0 flex-1">{children}</div>
+      </div>
     </div>
   );
 };

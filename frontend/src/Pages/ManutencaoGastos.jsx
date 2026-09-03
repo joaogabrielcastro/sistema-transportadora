@@ -70,6 +70,15 @@ function formatBRL(value) {
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+function parseKm(value) {
+  if (value == null || value === "") return null;
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? Math.trunc(value) : null;
+  }
+  const n = parseInt(String(value).replace(/\D/g, ""), 10);
+  return Number.isFinite(n) ? n : null;
+}
+
 function valorFromProduto(produto, qtdRaw) {
   const unit = Number(produto?.preco_custo);
   const qty = Number(String(qtdRaw ?? "1").replace(",", ".")) || 1;
@@ -314,6 +323,7 @@ const RegistroForm = ({
                 helperText="Escolha um item já usado ou digite um novo serviço."
                 className="mb-0 sm:col-span-2"
                 maxLength={FIELD_LIMITS.NOME_ITEM}
+                allowCustom
               />
               <FormField
                 label="Oficina"
@@ -817,9 +827,7 @@ const ManutencaoGastos = () => {
         !prev.proxima_km &&
         !prev.proxima_data
       ) {
-        const kmAtual = prev.km_registro
-          ? parseInt(prev.km_registro, 10)
-          : null;
+        const kmAtual = parseKm(prev.km_registro);
         if (Number.isFinite(kmAtual) && kmAtual > 0) {
           next.proxima_km = String(kmAtual + OLEO_INTERVALO_KM);
         }
@@ -883,9 +891,7 @@ const ManutencaoGastos = () => {
   };
 
   const handleSugerirProxima = () => {
-    const kmAtual = form.km_registro
-      ? parseInt(form.km_registro, 10)
-      : null;
+    const kmAtual = parseKm(form.km_registro);
     setForm((prev) => ({
       ...prev,
       proxima_km:
@@ -903,7 +909,7 @@ const ManutencaoGastos = () => {
 
     try {
       const caminhaoId = parseInt(form.caminhao_id, 10);
-      const newKm = form.km_registro ? parseInt(form.km_registro, 10) : null;
+      const newKm = parseKm(form.km_registro);
 
       if (!Number.isFinite(caminhaoId) || caminhaoId <= 0) {
         throw new Error("Selecione um caminhão.");
@@ -959,9 +965,7 @@ const ManutencaoGastos = () => {
           valor: parseFloat(String(form.valor).replace(",", ".")),
           oficina: form.oficina,
           km_manutencao: newKm,
-          proxima_km: form.proxima_km
-            ? parseInt(form.proxima_km, 10)
-            : null,
+          proxima_km: parseKm(form.proxima_km),
           proxima_data: form.proxima_data || null,
         };
         if (form.produto_id) {

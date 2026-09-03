@@ -47,16 +47,25 @@ export function regimeSimplesNacional(crt) {
   return n === 1 || n === 2 || n === 4;
 }
 
+/** Mesma data do CteService: IBS/CBS obrigatório para CRT 3 a partir daqui. */
+export const IBSCBS_OBRIGATORIO_DESDE = new Date("2026-01-05T00:00:00Z");
+
 /**
  * O grupo imp.IBSCBS do CT-e só é exibido/exigido quando a empresa emitente tem
- * CRT cadastrado e NÃO é Simples Nacional (ou seja, CRT 3 — Regime Normal).
- * Quando o CRT não está cadastrado, a emissão é bloqueada em outra checagem
- * (`empresaFiscalSemCrt`) e este grupo não aparece.
+ * CRT cadastrado, NÃO é Simples Nacional (CRT 3 — Regime Normal) e a data de
+ * emissão é >= 05/01/2026. Quando o CRT não está cadastrado, a emissão é
+ * bloqueada em outra checagem (`empresaFiscalSemCrt`) e este grupo não aparece.
  * @param {number|string|null|undefined} crt
+ * @param {Date|string|number} [dtEmissao]
  */
-export function exigeGrupoIbsCbs(crt) {
+export function exigeGrupoIbsCbs(crt, dtEmissao = new Date()) {
   if (crt == null || crt === "") return false;
-  return !regimeSimplesNacional(crt);
+  if (regimeSimplesNacional(crt)) return false;
+  const emissao = dtEmissao instanceof Date ? dtEmissao : new Date(dtEmissao);
+  if (Number.isNaN(emissao.getTime()) || emissao < IBSCBS_OBRIGATORIO_DESDE) {
+    return false;
+  }
+  return true;
 }
 
 /**

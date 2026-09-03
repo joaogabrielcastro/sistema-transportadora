@@ -16,6 +16,7 @@ const SearchableSelect = ({
   helperText,
   allowEmpty = false,
   emptyLabel = "Nenhum / limpar seleção",
+  allowCustom = false,
 }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -142,7 +143,11 @@ const SearchableSelect = ({
           aria-autocomplete="list"
           aria-required={required || undefined}
           disabled={disabled}
-          value={open ? query : selectedOption?.label || ""}
+          value={
+            open
+              ? query
+              : selectedOption?.label || (allowCustom ? String(value || "") : "")
+          }
           placeholder={
             open
               ? placeholder
@@ -150,11 +155,17 @@ const SearchableSelect = ({
           }
           onFocus={() => {
             setOpen(true);
-            setQuery("");
+            setQuery(
+              allowCustom && !selectedOption ? String(value || "") : "",
+            );
           }}
           onChange={(event) => {
-            setQuery(event.target.value);
+            const next = event.target.value;
+            setQuery(next);
             setOpen(true);
+            if (allowCustom) {
+              onChange(next);
+            }
           }}
           onKeyDown={handleKeyDown}
           className={inputClasses}
@@ -252,6 +263,8 @@ SearchableSelect.propTypes = {
   helperText: PropTypes.string,
   allowEmpty: PropTypes.bool,
   emptyLabel: PropTypes.string,
+  /** Permite valor digitado que não está na lista (ex.: serviço novo). */
+  allowCustom: PropTypes.bool,
 };
 
 export default SearchableSelect;

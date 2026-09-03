@@ -29,12 +29,13 @@ test.describe("Smoke", () => {
   });
 
   test("home carrega com branding ATrack", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
     await page.goto("/");
-    await expect(page.getByText("ATrack", { exact: false })).toBeVisible();
-    await expect(page.getByText(/gestão/i)).toBeVisible();
     await expect(
-      page.getByRole("link", { name: /cadastrar caminhão/i }),
+      page.getByRole("navigation", { name: "Menu principal" }),
     ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "+ Caminhão" })).toBeVisible();
   });
 
   test("navega para ordem de coleta", async ({ page }) => {

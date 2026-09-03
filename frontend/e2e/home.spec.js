@@ -31,7 +31,6 @@ test.describe("Home — busca de caminhões", () => {
             totalCaminhoes: 2,
             totalGastos: 1500,
             totalManutencoes: 3,
-            mediaGastos: 500,
           },
         }),
       });
@@ -89,6 +88,22 @@ test.describe("Home — busca de caminhões", () => {
     await expect(page.getByRole("heading", { name: "Frota recente" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 3, name: "ABC1D23" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 3, name: "XYZ9Z99" })).toBeVisible();
+  });
+
+  test("navbar mostra itens principais e esconde CT-e sem feature fiscal", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto("/");
+
+    const nav = page.getByRole("navigation", { name: "Menu principal" });
+    await expect(nav.getByRole("link", { name: "Início" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Alertas" })).toBeVisible();
+    await expect(nav.getByRole("button", { name: "Pneus" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Usuários" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Empresa" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Auditoria" })).toBeVisible();
+    await expect(nav.getByRole("button", { name: /CT-e/ })).toHaveCount(0);
   });
 
   test("busca por placa filtra resultados", async ({ page }) => {

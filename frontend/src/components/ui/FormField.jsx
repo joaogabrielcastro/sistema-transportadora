@@ -31,6 +31,7 @@ const FormField = ({
   max,
   onBlur,
   inputMode,
+  useGrouping,
   ...props
 }) => {
   const generatedId = useId();
@@ -151,7 +152,10 @@ const FormField = ({
     }
 
     if (type === "number") {
-      const displayValue = formatNumberInputDisplay(value, { maxDecimals });
+      const displayValue = formatNumberInputDisplay(value, {
+        maxDecimals,
+        useGrouping,
+      });
 
       const handleNumberChange = (event) => {
         if (!onChange) return;
@@ -311,6 +315,8 @@ FormField.propTypes = {
   max: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   onBlur: PropTypes.func,
   inputMode: PropTypes.string,
+  /** `false` desliga o separador de milhar na exibição do `type="number"`. */
+  useGrouping: PropTypes.bool,
 };
 
 export default FormField;

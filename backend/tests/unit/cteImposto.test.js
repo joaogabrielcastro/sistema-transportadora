@@ -63,20 +63,20 @@ test("montarImpCte sem campos novos devolve exatamente dto.imposto", () => {
   assert.equal(montarImpCte({}), undefined);
 });
 
-test("montarImpCte ICMS00: monta bloco ICMS com base/aliq/valor", () => {
+test("montarImpCte ICMS00: monta bloco ICMS com base/aliq/valor (nomes do provedor)", () => {
   const imp = montarImpCte({
     icms: { cst: "00", base: 1000, aliquota: 12, valor: 120 },
   });
   assert.equal(imp.ICMS.CST, "00");
-  assert.equal(imp.ICMS.vBC, 1000);
-  assert.equal(imp.ICMS.pICMS, 12);
-  assert.equal(imp.ICMS.vICMS, 120);
+  assert.equal(imp.ICMS.BaseCalculo, 1000);
+  assert.equal(imp.ICMS.Aliquota, 12);
+  assert.equal(imp.ICMS.Valor, 120);
 });
 
 test("montarImpCte isento (CST 40) sem valor: bloco ICMS só com CST", () => {
   const imp = montarImpCte({ icms: { cst: "40" } });
   assert.equal(imp.ICMS.CST, "40");
-  assert.equal(imp.ICMS.vICMS, undefined);
+  assert.equal(imp.ICMS.Valor, undefined);
 });
 
 test("montarImpCte mescla IBSCBS sobre imposto livre sem descartar o que veio", () => {
@@ -86,8 +86,67 @@ test("montarImpCte mescla IBSCBS sobre imposto livre sem descartar o que veio", 
   });
   assert.equal(imp.vTotTrib, 5);
   assert.equal(imp.ICMS.CST, "90");
-  assert.equal(imp.IBSCBS.CST, "000");
-  assert.equal(imp.IBSCBS.vCBS, 90);
+  // O provedor não pede CST nem valor calculado no grupo IBSCBS — só a base de
+  // cálculo (e cClassTrib, ausente aqui). Os valores seguem só nas colunas.
+  assert.equal(imp.IBSCBS.BaseCalculo, 1000);
+  assert.equal(imp.IBSCBS.CST, undefined);
+  assert.equal(imp.IBSCBS.vCBS, undefined);
+});
+
+test("montarImpCte IBSCBS: alíquotas e reduções entram no payload quando preenchidas (PARTE 1/2)", () => {
+  const imp = montarImpCte({
+    ibscbs: {
+      c_class_trib: "000001",
+      base: 1000,
+      ibs_uf_aliquota: 8.5,
+      ibs_mun_aliquota: 2.1,
+      cbs_aliquota: 0.9,
+      percentual_reducao_ibs: 30,
+      percentual_reducao_cbs: 20,
+      percentual_diferimento: 10,
+    },
+  });
+  assert.equal(imp.IBSCBS.CodClassificacaoTributaria, "000001");
+  assert.equal(imp.IBSCBS.BaseCalculo, 1000);
+  assert.equal(imp.IBSCBS.AliquotaIBSUF, 8.5);
+  assert.equal(imp.IBSCBS.AliquotaIBSMun, 2.1);
+  assert.equal(imp.IBSCBS.AliquotaCBS, 0.9);
+  assert.equal(imp.IBSCBS.PercentualReducaoIBS, 30);
+  assert.equal(imp.IBSCBS.PercentualReducaoCBS, 20);
+  assert.equal(imp.IBSCBS.PercentualDiferimento, 10);
+});
+
+test("montarImpCte IBSCBS: sem alíquotas, as chaves ficam undefined (some do JSON, mesmo padrão de CST)", () => {
+  const imp = montarImpCte({ ibscbs: { c_class_trib: "000001", base: 1000 } });
+  assert.equal(imp.IBSCBS.AliquotaIBSUF, undefined);
+  assert.equal(imp.IBSCBS.AliquotaCBS, undefined);
+  assert.equal(imp.IBSCBS.PercentualReducaoIBS, undefined);
+  // o que é serializado no payload real: só cClassTrib + base
+  assert.deepEqual(JSON.parse(JSON.stringify(imp.IBSCBS)), {
+    CodClassificacaoTributaria: "000001",
+    BaseCalculo: 1000,
+  });
+});
+
+test("montarImpCte ICMS: AliquotaOutraUF/ValorICMSOutraUF só entram no payload quando informados (PARTE 2)", () => {
+  const semOutraUf = montarImpCte({ icms: { cst: "00", base: 100 } });
+  assert.equal(semOutraUf.ICMS.AliquotaOutraUF, undefined);
+
+  const comOutraUf = montarImpCte({
+    icms: { cst: "00", base: 100, aliquota_outra_uf: 7, valor_outra_uf: 7 },
+  });
+  assert.equal(comOutraUf.ICMS.AliquotaOutraUF, 7);
+  assert.equal(comOutraUf.ICMS.ValorICMSOutraUF, 7);
+});
+
+test("montarImpCte Difal: PercentualPartilhaICMS só entra no payload quando informado (PARTE 2)", () => {
+  const sem = montarImpCte({ difal: { vbc_uf_fim: 100, p_icms_uf_fim: 18 } });
+  assert.equal(sem.Difal.PercentualPartilhaICMS, undefined);
+
+  const com = montarImpCte({
+    difal: { vbc_uf_fim: 100, p_icms_uf_fim: 18, p_partilha_icms: 60 },
+  });
+  assert.equal(com.Difal.PercentualPartilhaICMS, 60);
 });
 
 test("assertEmpresaCrt: empresa sem CRT lança erro claro (não crash)", () => {

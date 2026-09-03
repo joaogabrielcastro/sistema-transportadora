@@ -46,6 +46,109 @@ const isoDateish = z
 
 const looseObject = z.record(z.string(), z.any());
 
+// ---------------------------------------------------------------------
+// Travas de validação de campos (rodada CT-e/MDF-e)
+// ---------------------------------------------------------------------
+// Valem para EMISSÃO NOVA. Documento já emitido com dado "sujo" (CPF com mais
+// de 14 dígitos, monetário sem teto, etc.) não é reprocessado — a trava só barra
+// a próxima emissão, igual à obrigatoriedade condicional que já aplicávamos.
+// Nenhum campo muda de tipo no banco; aqui é só a validação em código.
+
+// Teto das colunas DECIMAL(14,2) dos monetários fiscais: 12 dígitos inteiros.
+const MONEY_MAX = 999999999999.99;
+// Peso: colunas DECIMAL(14,3) (ex.: fiscal_mdfes.tot_peso_bruto) → 11 inteiros.
+const PESO_MAX = 99999999999.999;
+// Quantidade do grupo infQ do CT-e: coluna
+// fiscal_cte_carga_quantidades.quantidade DECIMAL(15,4) → 11 dígitos inteiros,
+// 4 decimais. Teto folgado para kg / litro / m³ / unidades, mas ainda barra
+// valor que estouraria a coluna.
+const QTY_MAX = 99999999999.9999;
+
+const dinheiro = z
+  .number()
+  .nonnegative()
+  .max(MONEY_MAX, "Valor acima do máximo permitido (até 12 dígitos inteiros)");
+
+const percentual = z
+  .number()
+  .min(0, "Percentual não pode ser negativo")
+  .max(100, "Percentual deve estar entre 0 e 100");
+
+// CPF (11) ou CNPJ (14) — MESMA regra em todo lugar (participantes, tomador,
+// novo cliente, autXML), eliminando a inconsistência do tomador (antes .max(18)).
+// Normaliza para só dígitos antes de conferir.
+const cpfCnpj = z
+  .string()
+  .trim()
+  .transform((v) => v.replace(/\D/g, ""))
+  .pipe(
+    z
+      .string()
+      .regex(/^\d{11}$|^\d{14}$/, "CNPJ/CPF deve ter 11 (CPF) ou 14 (CNPJ) dígitos"),
+  );
+
+const optionalCpfCnpj = z.preprocess(
+  (v) =>
+    v === undefined || v === null || String(v).trim() === "" ? undefined : v,
+  cpfCnpj.optional().nullable(),
+);
+
+// CNPJ de seguradora / instituição de pagamento — sempre 14 dígitos.
+const optionalCnpj14 = z.preprocess(
+  (v) =>
+    v === undefined || v === null || String(v).trim() === "" ? undefined : v,
+  z
+    .string()
+    .trim()
+    .transform((v) => v.replace(/\D/g, ""))
+    .pipe(z.string().regex(/^\d{14}$/, "CNPJ deve ter 14 dígitos"))
+    .optional()
+    .nullable(),
+);
+
+// Sigla de UF: exatamente 2 letras. `toUpperCase` antes de conferir para
+// aceitar payload em minúsculas de clientes de API (o front já manda maiúsculo).
+const ufSigla = z
+  .string()
+  .trim()
+  .transform((v) => v.toUpperCase())
+  .pipe(z.string().length(2).regex(/^[A-Z]{2}$/, "UF inválida (use a sigla de 2 letras)"));
+
+const optionalUfSigla = z.preprocess(
+  (v) =>
+    v === undefined || v === null || String(v).trim() === "" ? undefined : v,
+  ufSigla.optional().nullable(),
+);
+
+// String opcional que precisa casar um padrão quando informada.
+const optionalPattern = (re, msg) =>
+  z.preprocess(
+    (v) =>
+      v === undefined || v === null || String(v).trim() === "" ? undefined : v,
+    z.string().trim().pipe(z.string().regex(re, msg)).optional().nullable(),
+  );
+
+// Só dígitos opcional que precisa casar um padrão quando informado.
+const optionalDigitsPattern = (re, msg) =>
+  z.preprocess(
+    (v) =>
+      v === undefined || v === null || String(v).trim() === "" ? undefined : v,
+    z
+      .string()
+      .trim()
+      .transform((v) => v.replace(/\D/g, ""))
+      .pipe(z.string().regex(re, msg))
+      .optional()
+      .nullable(),
+  );
+
+// Data ISO opcional — mesma validação de `isoDateish`, mas vazio/nulo = ausente.
+const isoDateishOptional = z.preprocess(
+  (v) =>
+    v === undefined || v === null || String(v).trim() === "" ? undefined : v,
+  isoDateish.optional().nullable(),
+);
+
 // Chave de acesso (44 dígitos) de documento fiscal eletrônico, opcional.
 // Normaliza para só dígitos e confere o dígito verificador (módulo 11).
 const optionalChaveAcesso = z
@@ -95,8 +198,9 @@ export const fiscalEmpresaUpdateSchema = fiscalEmpresaSchema.partial();
 // ---------------------------------------------------------------------
 export const fiscalClienteSchema = z.object({
   razao_social: z.string().trim().min(2).max(255),
-  // Normalizado (só dígitos) já aqui — bug conhecido no jwsoft, corrigido na origem.
-  cnpj_cpf: digits(14),
+  // Normalizado (só dígitos) já aqui — bug conhecido no jwsoft, corrigido na
+  // origem. Regra única compartilhada: exatamente 11 (CPF) ou 14 (CNPJ) dígitos.
+  cnpj_cpf: cpfCnpj,
 });
 
 export const fiscalClienteUpdateSchema = fiscalClienteSchema.partial();
@@ -146,6 +250,16 @@ export const cancelarDocumentoSchema = z.object({
     .max(1000, "A justificativa deve ter entre 15 e 1000 caracteres"),
 });
 
+// Download em lote (zip) de CT-e/MDF-e. Só valida o formato da lista; o teto de
+// documentos e o descarte de ids que não são do tenant ficam no
+// FiscalDownloadService (ids fora do tenant são ignorados, não geram erro).
+export const downloadLoteSchema = z.object({
+  ids: z
+    .array(z.number().int().positive())
+    .min(1, "Selecione ao menos um documento.")
+    .max(1000, "Muitos documentos selecionados de uma vez."),
+});
+
 // ---------------------------------------------------------------------
 // CT-e
 // ---------------------------------------------------------------------
@@ -158,12 +272,12 @@ export const TIPOS_CTE = ["0", "1", "3"];
 // opcionais; `.catchall(z.any())` preserva chaves extras já enviadas hoje.
 const participanteCteSchema = z
   .object({
-    cnpj_cpf: optionalDigits(14),
+    cnpj_cpf: optionalCpfCnpj,
     ie: z.string().trim().max(20).optional().nullable(),
     razao_social: z.string().trim().max(255).optional().nullable(),
     nome_fantasia: z.string().trim().max(255).optional().nullable(),
     fone: z.string().trim().max(20).optional().nullable(),
-    email: z.string().trim().max(120).optional().nullable(),
+    email: z.string().trim().max(120).email("E-mail inválido").optional().nullable(),
     endereco: z
       .object({
         logradouro: z.string().trim().max(255).optional().nullable(),
@@ -172,7 +286,7 @@ const participanteCteSchema = z
         bairro: z.string().trim().max(120).optional().nullable(),
         codigo_municipio: z.string().trim().max(7).optional().nullable(),
         nome_municipio: z.string().trim().max(120).optional().nullable(),
-        uf: z.string().trim().max(2).optional().nullable(),
+        uf: optionalUfSigla,
         cep: optionalDigits(8),
         codigo_pais: z.string().trim().max(4).optional().nullable(),
         nome_pais: z.string().trim().max(60).optional().nullable(),
@@ -202,18 +316,31 @@ export const emitirCteSchema = z
     cte_referenciado_id: optionalId,
     // indAlteraToma do grupo infCteSub (1.5) — só faz sentido no Substituto (3).
     ind_alt_toma: z.boolean().optional().nullable(),
-    cfop: z.string().trim().min(1),
-    natureza_operacao: z.string().trim().min(1),
+    cfop: z
+      .string()
+      .trim()
+      .regex(/^\d{4}$/, "CFOP deve ter exatamente 4 dígitos numéricos"),
+    natureza_operacao: z.string().trim().min(1).max(60),
     dt_emissao: isoDateish,
-    modal: looseObject.optional(),
+    // Grupo modal do CT-e — objeto livre repassado ao provedor, mas o `rntrc`
+    // do modal rodoviário (quando informado) tem de ter exatamente 8 dígitos.
+    modal: z
+      .object({
+        rntrc: optionalDigitsPattern(
+          /^\d{8}$/,
+          "RNTRC do modal rodoviário deve ter exatamente 8 dígitos",
+        ),
+      })
+      .catchall(z.any())
+      .optional(),
     // Grupo carga do CT-e. `peso` (kg) e, quando informados, os campos do
     // infCarga (valor_carga / produto_predominante / outras_caracteristicas) e o
     // grupo infQ (`quantidades`) são persistidos e montados no payload; o resto
     // do grupo passa livre para o provedor.
     carga: z
       .object({
-        peso: z.number().nonnegative().optional(),
-        valor_carga: z.number().nonnegative().optional().nullable(),
+        peso: z.number().nonnegative().max(PESO_MAX).optional(),
+        valor_carga: dinheiro.optional().nullable(),
         produto_predominante: z.string().trim().max(60).optional().nullable(),
         outras_caracteristicas: z.string().trim().max(30).optional().nullable(),
         quantidades: z
@@ -222,7 +349,12 @@ export const emitirCteSchema = z
               .object({
                 codigo_unidade: z.string().trim().max(2).optional().nullable(),
                 tipo_medida: z.string().trim().max(20).optional().nullable(),
-                quantidade: z.number().nonnegative().optional().nullable(),
+                quantidade: z
+                  .number()
+                  .nonnegative()
+                  .max(QTY_MAX, "Quantidade acima do máximo permitido (coluna DECIMAL(15,4))")
+                  .optional()
+                  .nullable(),
               })
               .catchall(z.any()),
           )
@@ -246,8 +378,9 @@ export const emitirCteSchema = z
             chave: optionalChaveAcesso,
             numero: z.string().trim().max(20).optional().nullable(),
             serie: z.string().trim().max(10).optional().nullable(),
-            data_emissao: z.string().trim().optional().nullable(),
-            valor: z.number().nonnegative().optional().nullable(),
+            // Mesma validação de data da raiz (`dt_emissao`): ISO 8601 válida.
+            data_emissao: isoDateishOptional,
+            valor: dinheiro.optional().nullable(),
           })
           .catchall(z.any())
           .superRefine((doc, ctx) => {
@@ -267,11 +400,15 @@ export const emitirCteSchema = z
     // objeto `imposto` livre continua sendo repassado ao provedor sem alteração.
     icms: z
       .object({
-        cst: z.string().trim().max(3).optional().nullable(),
-        base: z.number().nonnegative().optional().nullable(),
-        aliquota: z.number().nonnegative().optional().nullable(),
-        valor: z.number().nonnegative().optional().nullable(),
-        reducao_base: z.number().nonnegative().optional().nullable(),
+        cst: optionalPattern(/^\d{2,3}$/, "CST do ICMS deve ter 2 ou 3 dígitos"),
+        base: dinheiro.optional().nullable(),
+        aliquota: percentual.optional().nullable(),
+        valor: dinheiro.optional().nullable(),
+        reducao_base: percentual.optional().nullable(),
+        // ICMS devido a outra UF (Imposto.ICMS.AliquotaOutraUF / ValorICMSOutraUF
+        // do provedor). Passthrough puro, opcional.
+        aliquota_outra_uf: percentual.optional().nullable(),
+        valor_outra_uf: dinheiro.optional().nullable(),
       })
       .catchall(z.any())
       .optional()
@@ -281,13 +418,23 @@ export const emitirCteSchema = z
     // (cobrado no CteService, não aqui).
     ibscbs: z
       .object({
-        cst: z.string().trim().max(3).optional().nullable(),
+        cst: optionalPattern(/^\d{2,3}$/, "CST do IBS/CBS deve ter 2 ou 3 dígitos"),
         c_class_trib: z.string().trim().max(6).optional().nullable(),
-        base: z.number().nonnegative().optional().nullable(),
-        ibs_uf_valor: z.number().nonnegative().optional().nullable(),
-        ibs_mun_valor: z.number().nonnegative().optional().nullable(),
-        cbs_valor: z.number().nonnegative().optional().nullable(),
-        valor_total: z.number().nonnegative().optional().nullable(),
+        base: dinheiro.optional().nullable(),
+        ibs_uf_valor: dinheiro.optional().nullable(),
+        ibs_mun_valor: dinheiro.optional().nullable(),
+        cbs_valor: dinheiro.optional().nullable(),
+        valor_total: dinheiro.optional().nullable(),
+        // Alíquotas do grupo (Imposto.IBSCBS.AliquotaIBSUF / AliquotaIBSMun /
+        // AliquotaCBS do provedor) — passthrough puro, sem cálculo.
+        ibs_uf_aliquota: percentual.optional().nullable(),
+        ibs_mun_aliquota: percentual.optional().nullable(),
+        cbs_aliquota: percentual.optional().nullable(),
+        // Reduções / diferimento (Imposto.IBSCBS.PercentualReducaoIBS /
+        // PercentualReducaoCBS / PercentualDiferimento do provedor).
+        percentual_reducao_ibs: percentual.optional().nullable(),
+        percentual_reducao_cbs: percentual.optional().nullable(),
+        percentual_diferimento: percentual.optional().nullable(),
       })
       .catchall(z.any())
       .optional()
@@ -303,7 +450,7 @@ export const emitirCteSchema = z
     seg: z
       .object({
         responsavel: z.number().int().optional().nullable(),
-        cnpj_seguradora: optionalDigits(14),
+        cnpj_seguradora: optionalCnpj14,
         numero_apolice: z.string().trim().max(40).optional().nullable(),
         numero_averbacao: z.string().trim().max(40).optional().nullable(),
         nome_seguradora: z.string().trim().max(60).optional().nullable(),
@@ -314,21 +461,52 @@ export const emitirCteSchema = z
       .nullable(),
     servico: z
       .object({
-        valor_prestacao: z.number().nonnegative().optional(),
+        valor_prestacao: dinheiro.optional(),
         componentes: z
           .array(
             z
               .object({
                 nome: z.string().trim().min(1).max(60),
-                valor: z.number().nonnegative().optional().nullable(),
+                valor: dinheiro.optional().nullable(),
               })
               .catchall(z.any()),
           )
           .optional(),
       })
       .catchall(z.any()),
+    // Tomador do serviço (item 0.7). O provedor espera uma entidade PRÓPRIA e
+    // COMPLETA (endereço + contato, igual aos demais participantes), sempre
+    // enviada por inteiro — não um indicador apontando para rem/dest/exped/receb.
+    // `cpf_cnpj` continua obrigatório (o CteService confere contra o cliente
+    // vinculado); os demais campos são opcionais. `.catchall` preserva o payload
+    // atual de quem só manda { cpf_cnpj }.
     tomador: z
-      .object({ cpf_cnpj: digits(18) })
+      .object({
+        // Regra única compartilhada de CNPJ/CPF (antes era .max(18), inconsistente
+        // com os demais participantes que usavam 14).
+        cpf_cnpj: cpfCnpj,
+        ie: z.string().trim().max(20).optional().nullable(),
+        razao_social: z.string().trim().max(255).optional().nullable(),
+        nome_fantasia: z.string().trim().max(255).optional().nullable(),
+        fone: z.string().trim().max(20).optional().nullable(),
+        email: z.string().trim().max(120).email("E-mail inválido").optional().nullable(),
+        endereco: z
+          .object({
+            logradouro: z.string().trim().max(255).optional().nullable(),
+            numero: z.string().trim().max(60).optional().nullable(),
+            complemento: z.string().trim().max(255).optional().nullable(),
+            bairro: z.string().trim().max(120).optional().nullable(),
+            codigo_municipio: z.string().trim().max(7).optional().nullable(),
+            nome_municipio: z.string().trim().max(120).optional().nullable(),
+            uf: optionalUfSigla,
+            cep: optionalDigits(8),
+            codigo_pais: z.string().trim().max(4).optional().nullable(),
+            nome_pais: z.string().trim().max(60).optional().nullable(),
+          })
+          .catchall(z.any())
+          .optional()
+          .nullable(),
+      })
       .catchall(z.any()),
     // Grupos rem / dest / exped / receb do CT-e (1.2). Antes eram objeto livre;
     // agora tipam os campos que persistimos em fiscal_cte_participantes, mas o
@@ -344,21 +522,24 @@ export const emitirCteSchema = z
     // Grupo ICMSUFFim / DIFAL (item 1.3). uf_ini/uf_fim definem se a operação é
     // interestadual; tomador_ind_ie: 1 = contribuinte, 2 = isento, 9 = não
     // contribuinte. A obrigatoriedade condicional é cobrada no CteService.
-    uf_ini: z.string().trim().max(2).optional().nullable(),
-    uf_fim: z.string().trim().max(2).optional().nullable(),
+    uf_ini: optionalUfSigla,
+    uf_fim: optionalUfSigla,
     tomador_ind_ie: z
       .union([z.literal(1), z.literal(2), z.literal(9)])
       .optional()
       .nullable(),
     difal: z
       .object({
-        vbc_uf_fim: z.number().nonnegative().optional().nullable(),
-        p_fcp_uf_fim: z.number().nonnegative().optional().nullable(),
-        p_icms_uf_fim: z.number().nonnegative().optional().nullable(),
-        p_icms_inter: z.number().nonnegative().optional().nullable(),
-        v_fcp_uf_fim: z.number().nonnegative().optional().nullable(),
-        v_icms_uf_fim: z.number().nonnegative().optional().nullable(),
-        v_icms_uf_ini: z.number().nonnegative().optional().nullable(),
+        vbc_uf_fim: dinheiro.optional().nullable(),
+        p_fcp_uf_fim: percentual.optional().nullable(),
+        p_icms_uf_fim: percentual.optional().nullable(),
+        p_icms_inter: percentual.optional().nullable(),
+        v_fcp_uf_fim: dinheiro.optional().nullable(),
+        v_icms_uf_fim: dinheiro.optional().nullable(),
+        v_icms_uf_ini: dinheiro.optional().nullable(),
+        // Partilha do ICMS para a UF de fim (Imposto.Difal.PercentualPartilhaICMS
+        // do provedor). Opcional — só entra no payload quando preenchido.
+        p_partilha_icms: percentual.optional().nullable(),
       })
       .catchall(z.any())
       .optional()
@@ -369,8 +550,8 @@ export const emitirCteSchema = z
     aut_xml: z
       .array(
         z.union([
-          digits(14),
-          z.object({ cnpj_cpf: optionalDigits(14) }).catchall(z.any()),
+          cpfCnpj,
+          z.object({ cnpj_cpf: optionalCpfCnpj }).catchall(z.any()),
         ]),
       )
       .optional()
@@ -390,12 +571,17 @@ export const emitirCteSchema = z
     // Preparação split payment / pagamento antecipado (item 1.3, NT2026.001/002).
     // Objeto livre — passthrough puro, sem validação; ainda opcional em 2026.
     pagamento_antecipado: looseObject.optional().nullable(),
-    // Grupo infTribFed (item 1.4): SÓ os totalizadores vPIS / vCOFINS do CT-e.
-    // Sem CST/base/alíquota (isso é da NF-e). Opcional, sem validação.
+    // Grupo infTribFed / TributosFederal (item 1.4 / 0.8): totalizadores de
+    // tributos federais. vPIS / vCOFINS e, do provedor, vIR / vINSS / vCSLL.
+    // Sem CST/base/alíquota (isso é da NF-e); nenhum cálculo, nenhuma alíquota
+    // hardcoded — passthrough puro. Opcional, sem validação.
     trib_fed: z
       .object({
-        pis_valor: z.number().nonnegative().optional().nullable(),
-        cofins_valor: z.number().nonnegative().optional().nullable(),
+        pis_valor: dinheiro.optional().nullable(),
+        cofins_valor: dinheiro.optional().nullable(),
+        ir_valor: dinheiro.optional().nullable(),
+        inss_valor: dinheiro.optional().nullable(),
+        csll_valor: dinheiro.optional().nullable(),
       })
       .catchall(z.any())
       .optional()
@@ -474,15 +660,15 @@ export const emitirMdfeSchema = z.object({
   // Seguro da carga (grupo seg do MDF-e). resp_seg: 1 = emitente do MDF-e,
   // 2 = contratante do serviço de transporte. Os demais são opcionais.
   resp_seg: z.union([z.literal(1), z.literal(2)]).optional(),
-  cnpj_seguradora: optionalDigits(14),
+  cnpj_seguradora: optionalCnpj14,
   numero_apolice: z.string().trim().max(40).optional().nullable(),
   numero_averbacao: z.string().trim().max(40).optional().nullable(),
   nome_seguradora: z.string().trim().max(60).optional().nullable(),
-  uf_carregamento: z.string().trim().length(2),
-  uf_descarregamento: z.string().trim().length(2),
+  uf_carregamento: ufSigla,
+  uf_descarregamento: ufSigla,
   modalidade: z.number().int().optional(),
-  valor: z.number().nonnegative().optional(),
-  peso: z.number().nonnegative().optional(),
+  valor: dinheiro.optional(),
+  peso: z.number().nonnegative().max(PESO_MAX).optional(),
   rodoviario: z
     .object({
       placa: z.string().trim().optional().nullable(),
@@ -490,7 +676,7 @@ export const emitirMdfeSchema = z.object({
         .array(
           z
             .object({
-              nome: z.string().trim().min(1),
+              nome: z.string().trim().min(1).max(60),
               cpf: digits(11),
             })
             .catchall(z.any()),
@@ -510,13 +696,7 @@ export const emitirMdfeSchema = z.object({
               cap_kg: z.number().int().nonnegative(),
               cap_m3: z.number().nonnegative().optional().nullable(),
               tipo_carroceria: z.string().trim().min(1).max(20),
-              uf: z
-                .string()
-                .trim()
-                .length(2)
-                .transform((v) => v.toUpperCase())
-                .optional()
-                .nullable(),
+              uf: optionalUfSigla,
             })
             .catchall(z.any()),
         )
@@ -524,29 +704,98 @@ export const emitirMdfeSchema = z.object({
         .optional(),
     })
     .catchall(z.any()),
-  seguros: z.array(looseObject).optional(),
+  // Seguro da carga como LISTA (0.2). Schema tipado dos campos que gravamos em
+  // fiscal_mdfe_seguros, mas com `.catchall` e `responsavel` opcional: um
+  // teste de regressão (mdfeAnttBancarioSeguros) trava o contrato de passar
+  // seguros já no formato do provedor (`indicadorResponsavel`, `cnpjSegurador`,
+  // `numerosAverbacao`), que continua válido via catchall. Quando o chamador usa
+  // NOSSOS nomes de campo, aí sim `responsavel` é validado como 1 ou 2, o CNPJ
+  // como 14 dígitos e cada averbação com no máx. 20 caracteres.
+  seguros: z
+    .array(
+      z
+        .object({
+          responsavel: z.union([z.literal(1), z.literal(2)]).optional().nullable(),
+          cnpj_seguradora: optionalCnpj14,
+          numero_apolice: z.string().trim().max(40).optional().nullable(),
+          nome_seguradora: z.string().trim().max(60).optional().nullable(),
+          numeros_averbacao: z
+            .array(z.string().trim().min(1).max(20))
+            .optional()
+            .nullable(),
+        })
+        .catchall(z.any()),
+    )
+    .optional(),
   carregamentos: z.array(looseObject).optional(),
   descarregamentos: z.array(looseObject).optional(),
-  percurso_ufs: z.array(z.string().trim().length(2)).optional(),
+  // Siglas de UF do percurso: item inválido é REJEITADO com erro claro (antes o
+  // front descartava em silêncio, escondendo uma lista incompleta).
+  percurso_ufs: z.array(ufSigla).optional(),
   produto_predominante: looseObject.optional(),
   // Grupo infANTT do MDF-e (2.2). Obrigatoriedade (quando não é frota própria)
   // cobrada no MdfeService, não aqui.
   inf_antt: z
     .object({
       rntrc: optionalDigits(9),
-      ciot: z.string().trim().max(20).optional().nullable(),
-      vale_pedagio: looseObject.optional().nullable(),
+      // CIOT: só dígitos, no máx. 12 (era .max(20), teto errado).
+      ciot: optionalDigitsPattern(
+        /^\d{1,12}$/,
+        "CIOT deve ter no máximo 12 dígitos numéricos",
+      ),
+      // Vale-Pedágio: `valor` monetário, sem negativo e com teto da coluna.
+      vale_pedagio: z
+        .object({ valor: dinheiro.optional().nullable() })
+        .catchall(z.any())
+        .optional()
+        .nullable(),
+      // Dados bancários / PIX da instituição de pagamento do frete (0.1) —
+      // CONFIRMADO no payload real do provedor. Vão para `infoBancaria` dentro
+      // de `pagamentos[]` no montarPayloadMdfe, só quando algum tiver valor.
+      cod_banco: z.string().trim().max(5).optional().nullable(),
+      cod_agencia: z.string().trim().max(10).optional().nullable(),
+      cnpj_instituicao_pagamento: optionalCnpj14,
+      pix: z.string().trim().max(120).optional().nullable(),
     })
     .catchall(z.any())
     .optional()
     .nullable(),
-  // Grupo prodPred do MDF-e (2.4), forma tipada. `produto_predominante` livre
-  // continua aceito.
+  // Grupo prodPred do MDF-e (2.4 / 0.3), forma tipada. `produto_predominante`
+  // livre continua aceito.
   prod_pred: z
     .object({
       descricao: z.string().trim().max(120).optional().nullable(),
       ncm: z.string().trim().max(8).optional().nullable(),
+      // tp_carga: enum do provedor (01..07+). Passthrough — não restringido aqui
+      // para não travar emissão se o provedor aceitar um código novo.
       tp_carga: z.string().trim().max(2).optional().nullable(),
+      // c_ean (0.3): GTIN do produto predominante ou o literal "SEM GTIN".
+      c_ean: z.string().trim().max(14).optional().nullable(),
+      // infLotacao (0.3): CEP + geolocalização do local de carrega e descarrega.
+      inf_lotacao: z
+        .object({
+          carrega: z
+            .object({
+              cep: optionalDigits(8),
+              latitude: z.number().min(-90).max(90).optional().nullable(),
+              longitude: z.number().min(-180).max(180).optional().nullable(),
+            })
+            .catchall(z.any())
+            .optional()
+            .nullable(),
+          descarrega: z
+            .object({
+              cep: optionalDigits(8),
+              latitude: z.number().min(-90).max(90).optional().nullable(),
+              longitude: z.number().min(-180).max(180).optional().nullable(),
+            })
+            .catchall(z.any())
+            .optional()
+            .nullable(),
+        })
+        .catchall(z.any())
+        .optional()
+        .nullable(),
     })
     .catchall(z.any())
     .optional()
@@ -582,8 +831,8 @@ export const emitirMdfeSchema = z.object({
   // Campos básicos do grupo ide do MDF-e (2.5).
   ide: z
     .object({
-      uf_ini: z.string().trim().length(2).optional().nullable(),
-      uf_fim: z.string().trim().length(2).optional().nullable(),
+      uf_ini: optionalUfSigla,
+      uf_fim: optionalUfSigla,
       dh_ini_viagem: z.string().trim().optional().nullable(),
       tp_transp: z.number().int().optional().nullable(),
       modal: z.number().int().optional().nullable(),

@@ -9,8 +9,11 @@ import {
 } from "../../schemas/fiscalSchema.js";
 import { CteMdfeProviderClient } from "./CteMdfeProviderClient.js";
 import {
+  EVENTO_PRIMEIRO_SEQUENCIAL,
+  extrairNumeroProtocolo,
   findOwnedOr404,
   montarGrupoSeguro,
+  montarPayloadCancelamento,
   resolveEmpresaCteMdfe,
   salvarPdfBase64,
   salvarXmlBase64,
@@ -357,12 +360,31 @@ function colunasMdfeExtras(dto, tot) {
     seg_nome_seguradora: dto.nome_seguradora ?? null,
     antt_rntrc: dto.inf_antt?.rntrc ?? null,
     antt_ciot: dto.inf_antt?.ciot ?? null,
+    // infANTT bancário / PIX (0.1)
+    antt_cod_banco: dto.inf_antt?.cod_banco ?? null,
+    antt_cod_agencia: dto.inf_antt?.cod_agencia ?? null,
+    antt_cnpj_inst_pagamento: dto.inf_antt?.cnpj_instituicao_pagamento ?? null,
+    antt_pix: dto.inf_antt?.pix ?? null,
     tot_qcte: tot?.qCTe ?? null,
     tot_valor_carga: tot?.vCarga ?? null,
     tot_peso_bruto: tot?.qCarga ?? dto.peso ?? null,
     prod_pred_descricao: dto.prod_pred?.descricao ?? null,
     prod_pred_ncm: dto.prod_pred?.ncm ?? null,
     prod_pred_tp_carga: dto.prod_pred?.tp_carga ?? null,
+    // prodPred: c_ean + infLotacao (0.3)
+    prod_pred_c_ean: dto.prod_pred?.c_ean ?? null,
+    prod_pred_lotacao_carrega_cep:
+      dto.prod_pred?.inf_lotacao?.carrega?.cep ?? null,
+    prod_pred_lotacao_carrega_lat:
+      dto.prod_pred?.inf_lotacao?.carrega?.latitude ?? null,
+    prod_pred_lotacao_carrega_long:
+      dto.prod_pred?.inf_lotacao?.carrega?.longitude ?? null,
+    prod_pred_lotacao_descarrega_cep:
+      dto.prod_pred?.inf_lotacao?.descarrega?.cep ?? null,
+    prod_pred_lotacao_descarrega_lat:
+      dto.prod_pred?.inf_lotacao?.descarrega?.latitude ?? null,
+    prod_pred_lotacao_descarrega_long:
+      dto.prod_pred?.inf_lotacao?.descarrega?.longitude ?? null,
     ide_uf_ini: dto.ide?.uf_ini ?? dto.uf_carregamento ?? null,
     ide_uf_fim: dto.ide?.uf_fim ?? dto.uf_descarregamento ?? null,
     ide_dh_ini_viagem: dto.ide?.dh_ini_viagem
@@ -391,6 +413,95 @@ export function colunasCancelamentoMdfe(justificativa, resposta) {
   };
 }
 
+/**
+ * Corpo do encerramento de MDF-e (0.5). CONFIRMADO com o payload real do
+ * provedor: SÓ `tipoAmbiente`, `chave`, `protocolo`, `numeroSequencial` — nada
+ * de UF / município / data manual. Função pura.
+ */
+export function montarPayloadEncerrarMdfe(mdfe) {
+  return {
+    tipoAmbiente: config.fiscal.ambiente,
+    chave: mdfe?.chave_acesso ?? undefined,
+    protocolo: mdfe?.numero_protocolo ?? undefined,
+    numeroSequencial: EVENTO_PRIMEIRO_SEQUENCIAL,
+  };
+}
+
+/**
+ * Normaliza `dto.seguros[]` (0.2) para linhas de `fiscal_mdfe_seguros`. Aceita
+ * tanto o shape do provedor (indicadorResponsavel / cnpjSegurador / numeroApolice
+ * / numerosAverbacao / nomeSegurador) quanto o snake_case da nossa API. Cada
+ * seguro carrega 0..N números de averbação. Devolve `[]` quando não há
+ * `dto.seguros` — nesse caso as colunas singulares fiscal_mdfes.seg_* seguem
+ * como fallback de 1 seguro (comportamento atual). Função pura.
+ */
+export function normalizarSegurosMdfe(dto) {
+  const lista = Array.isArray(dto?.seguros) ? dto.seguros : [];
+  return lista
+    .filter((s) => s != null && typeof s === "object")
+    .map((s) => {
+      const averbacoes = Array.isArray(s.numeros_averbacao)
+        ? s.numeros_averbacao
+        : Array.isArray(s.numerosAverbacao)
+          ? s.numerosAverbacao
+          : s.numero_averbacao
+            ? [s.numero_averbacao]
+            : [];
+      return {
+        responsavel: s.responsavel ?? s.indicadorResponsavel ?? null,
+        cnpj_seguradora: s.cnpj_seguradora ?? s.cnpjSegurador ?? null,
+        numero_apolice: s.numero_apolice ?? s.numeroApolice ?? null,
+        nome_seguradora: s.nome_seguradora ?? s.nomeSegurador ?? null,
+        numeros_averbacao: averbacoes
+          .map((n) => (n == null ? null : String(n)))
+          .filter((n) => n != null && n !== ""),
+      };
+    });
+}
+
+/**
+ * Grupo `pagamentos[]` do MDF-e (0.1). Monta uma entrada com `infoBancaria` a
+ * partir de inf_antt.{cod_banco,cod_agencia,cnpj_instituicao_pagamento,pix}.
+ * Devolve `undefined` quando nenhum dos campos bancários tem valor — nesse caso
+ * o payload NÃO ganha a chave `pagamentos` (comportamento atual preservado).
+ * Função pura.
+ */
+export function montarPagamentosMdfe(dto) {
+  const a = dto?.inf_antt ?? {};
+  const infoBancaria = {
+    codBanco: a.cod_banco ?? undefined,
+    codAgencia: a.cod_agencia ?? undefined,
+    cnpjInstituicaoPagamento: a.cnpj_instituicao_pagamento ?? undefined,
+    pix: a.pix ?? undefined,
+  };
+  const temAlgum = Object.values(infoBancaria).some((v) => v != null);
+  return temAlgum ? [{ infoBancaria }] : undefined;
+}
+
+/**
+ * Grupo `infLotacao` do prodPred do MDF-e (0.3): CEP + latitude/longitude do
+ * local de carregamento e de descarregamento. Devolve `undefined` quando nada
+ * foi informado. Função pura.
+ */
+export function montarInfLotacaoMdfe(infLotacao) {
+  if (infLotacao == null || typeof infLotacao !== "object") return undefined;
+  const local = (l) => {
+    if (l == null || typeof l !== "object") return undefined;
+    const grp = {};
+    if (l.cep != null) grp.cep = l.cep;
+    if (l.latitude != null) grp.latitude = l.latitude;
+    if (l.longitude != null) grp.longitude = l.longitude;
+    return Object.keys(grp).length > 0 ? grp : undefined;
+  };
+  const localCarrega = local(infLotacao.carrega);
+  const localDescarrega = local(infLotacao.descarrega);
+  if (!localCarrega && !localDescarrega) return undefined;
+  return {
+    ...(localCarrega ? { localCarrega } : {}),
+    ...(localDescarrega ? { localDescarrega } : {}),
+  };
+}
+
 export function montarPayloadMdfe(
   dto,
   placa,
@@ -415,11 +526,20 @@ export function montarPayloadMdfe(
         }
       : undefined;
 
+  // Grupo pagamentos[] (0.1) — CONFIRMADO no payload real do provedor. Os dados
+  // bancários / PIX da instituição de pagamento vão como `infoBancaria` DENTRO
+  // de `pagamentos[]`, não no infANTT. Só entra quando algum campo tem valor.
+  // Campos do provedor: codBanco / codAgencia / cnpjInstituicaoPagamento / pix.
+  const pagamentos = montarPagamentosMdfe(dto);
+
   const prodPred = dto.prod_pred
     ? {
         xProd: dto.prod_pred.descricao ?? undefined,
         NCM: dto.prod_pred.ncm ?? undefined,
         tpCarga: dto.prod_pred.tp_carga ?? undefined,
+        // c_ean / infLotacao (0.3) — CONFIRMADO no payload real do provedor.
+        cEan: dto.prod_pred.c_ean ?? undefined,
+        infLotacao: montarInfLotacaoMdfe(dto.prod_pred.inf_lotacao),
       }
     : (dto.produto_predominante ?? undefined);
 
@@ -487,6 +607,7 @@ export function montarPayloadMdfe(
       ...(reboques.length > 0 ? { veicReboque: reboques } : {}),
     },
     infANTT,
+    ...(pagamentos ? { pagamentos } : {}),
     ide,
     ...(infMunCarrega && infMunCarrega.length > 0 ? { infMunCarrega } : {}),
     ...(infMunDescarga && infMunDescarga.length > 0 ? { infMunDescarga } : {}),
@@ -642,6 +763,11 @@ export class MdfeService {
         numero: resposta.numero != null ? String(resposta.numero) : null,
         serie: dto.serie ?? null,
         status: "processado",
+        // PARTE 3: grava o protocolo de autorização já na emissão (mesmo fix do
+        // CT-e). Antes só o encerramento gravava, via NuProtocolo; o
+        // cancelamento de MDF-e recém-emitido ia sem NumeroProtocolo e o
+        // provedor tinha de resolver pela chave. MDF-e antigos seguem com NULL.
+        numero_protocolo: extrairNumeroProtocolo(resposta),
         data_emissao: new Date(),
         ...colunasMdfeExtras(dto, tot),
       },
@@ -737,6 +863,32 @@ export class MdfeService {
       }
     }
 
+    // Seguros como lista (0.2). Best-effort — MDF-e já emitido. Só grava quando
+    // o DTO trouxe `seguros[]`; sem ele, as colunas singulares seg_* já
+    // preenchidas por colunasMdfeExtras seguem como o único registro do seguro.
+    const segurosLista = normalizarSegurosMdfe(dto);
+    if (segurosLista.length > 0) {
+      try {
+        await prisma.fiscal_mdfe_seguros.createMany({
+          data: segurosLista.map((s) => ({
+            tenant_id: Number(tenantId),
+            mdfe_id: mdfe.id,
+            responsavel: s.responsavel,
+            cnpj_seguradora: s.cnpj_seguradora,
+            numero_apolice: s.numero_apolice,
+            nome_seguradora: s.nome_seguradora,
+            numeros_averbacao: s.numeros_averbacao,
+          })),
+        });
+      } catch (err) {
+        logger.error("Falha ao gravar seguros (lista) do MDF-e", {
+          tenantId,
+          mdfeId: mdfe.id,
+          message: err.message,
+        });
+      }
+    }
+
     // Vincula os CT-e informados a este MDF-e. Já emitido com sucesso — uma
     // falha aqui não invalida o manifesto, só registra para reconciliação.
     if (ctesVinculados.ids.length > 0) {
@@ -802,6 +954,9 @@ export class MdfeService {
   }
 
   static async encerrar(tenantId, id, body) {
+    // O schema ainda aceita uf / município / data (compatibilidade), mas o
+    // payload real do provedor (0.5) NÃO os usa. O que vier é só persistido nas
+    // colunas encerrado_* para consulta.
     const dados = encerrarMdfeSchema.parse(body) ?? {};
     const mdfe = await findOwnedOr404("fiscal_mdfes", id, tenantId, "MDF-e");
     const { token } = await resolveEmpresaCteMdfe(
@@ -809,20 +964,8 @@ export class MdfeService {
       mdfe.fiscal_empresa_id ?? undefined,
     );
 
-    const dataEvento = dados.data_encerramento
-      ? new Date(dados.data_encerramento).toISOString()
-      : new Date().toISOString();
-
     const resposta = await CteMdfeProviderClient.encerrarManifestoTransporte(
-      {
-        ChaveNF: mdfe.chave_acesso,
-        NumeroProtocolo: mdfe.numero_protocolo ?? undefined,
-        DataEvento: dataEvento,
-        // Dados estruturados do encerramento (2.2) — só quando informados.
-        UF: dados.uf ?? undefined,
-        CodigoMunicipio: dados.codigo_municipio ?? undefined,
-        NomeMunicipio: dados.nome_municipio ?? undefined,
-      },
+      montarPayloadEncerrarMdfe(mdfe),
       token,
     );
 
@@ -854,17 +997,18 @@ export class MdfeService {
 
   static async cancelar(tenantId, id, justificativa) {
     const mdfe = await findOwnedOr404("fiscal_mdfes", id, tenantId, "MDF-e");
-    const { token } = await resolveEmpresaCteMdfe(
+    const { empresa, token } = await resolveEmpresaCteMdfe(
       tenantId,
       mdfe.fiscal_empresa_id ?? undefined,
     );
 
     const resposta = await CteMdfeProviderClient.cancelarNotaFiscal(
-      {
-        ChaveNF: mdfe.chave_acesso,
-        Justificativa: justificativa,
-        DataEvento: new Date().toISOString(),
-      },
+      montarPayloadCancelamento({
+        chave: mdfe.chave_acesso,
+        justificativa,
+        protocolo: mdfe.numero_protocolo,
+        cnpjRemetente: empresa.cnpj,
+      }),
       token,
     );
 

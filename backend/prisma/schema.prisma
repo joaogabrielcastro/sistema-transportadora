@@ -521,6 +521,10 @@ model fiscal_ctes {
   status              String    @default("pendente") @db.VarChar(20)
   numero              String?   @db.VarChar(20)
   serie               String?   @db.VarChar(10)
+  /// Número do protocolo de autorização devolvido pelo provedor na emissão.
+  /// Usado no cancelamento (NumeroProtocolo). Nullable — CT-e emitidos antes
+  /// desta coluna seguem sem ele e o provedor resolve pela chave de acesso.
+  numero_protocolo    String?   @db.VarChar(30)
   data_emissao        DateTime? @db.Timestamptz(6)
   valor_frete         Decimal?  @db.Decimal(14, 2)
   xml_path            String?   @db.VarChar(500)
@@ -533,6 +537,10 @@ model fiscal_ctes {
   icms_aliquota       Decimal?  @db.Decimal(7, 4)
   icms_valor          Decimal?  @db.Decimal(14, 2)
   icms_reducao_base   Decimal?  @db.Decimal(7, 4)
+  /// ICMS devido a outra UF (Imposto.ICMS.AliquotaOutraUF / ValorICMSOutraUF do
+  /// provedor). Passthrough puro, opcional — só entra no payload quando preenchido.
+  icms_aliquota_outra_uf Decimal? @db.Decimal(7, 4)
+  icms_valor_outra_uf    Decimal? @db.Decimal(14, 2)
   /// Grupo imp.IBSCBS do CT-e 4.0 (Reforma Tributária). Obrigatório para emitente
   /// fora do Simples Nacional a partir de 05/01/2026 (validado no CteService).
   ibscbs_cst          String?   @db.VarChar(3)
@@ -542,6 +550,17 @@ model fiscal_ctes {
   ibs_mun_valor       Decimal?  @db.Decimal(14, 2)
   cbs_valor           Decimal?  @db.Decimal(14, 2)
   ibscbs_valor_total  Decimal?  @db.Decimal(14, 2)
+  /// Alíquotas do grupo imp.IBSCBS (Imposto.IBSCBS.AliquotaIBSUF / AliquotaIBSMun
+  /// / AliquotaCBS do provedor). Passthrough puro, sem cálculo; só entram no
+  /// payload quando preenchidas.
+  ibs_uf_aliquota    Decimal?  @db.Decimal(7, 4)
+  ibs_mun_aliquota   Decimal?  @db.Decimal(7, 4)
+  cbs_aliquota       Decimal?  @db.Decimal(7, 4)
+  /// Reduções / diferimento do grupo imp.IBSCBS (Imposto.IBSCBS.PercentualReducaoIBS
+  /// / PercentualReducaoCBS / PercentualDiferimento do provedor). Opcionais.
+  ibscbs_percentual_reducao_ibs Decimal? @db.Decimal(7, 4)
+  ibscbs_percentual_reducao_cbs Decimal? @db.Decimal(7, 4)
+  ibscbs_percentual_diferimento Decimal? @db.Decimal(7, 4)
   /// Grupo infCarga do CT-e (valores planos; o grupo infQ vai em fiscal_cte_carga_quantidades)
   valor_carga            Decimal? @db.Decimal(14, 2)
   produto_predominante   String?  @db.VarChar(60)
@@ -572,6 +591,9 @@ model fiscal_ctes {
   difal_v_fcp_uf_fim     Decimal? @db.Decimal(14, 2)
   difal_v_icms_uf_fim    Decimal? @db.Decimal(14, 2)
   difal_v_icms_uf_ini    Decimal? @db.Decimal(14, 2)
+  /// Percentual de partilha do ICMS para a UF de fim (Imposto.Difal.PercentualPartilhaICMS
+  /// do provedor). Opcional — só entra no payload quando preenchido.
+  icms_uf_fim_percentual_partilha Decimal? @db.Decimal(7, 4)
   /// Contingência do CT-e (item 1.2): dhCont / xJust. infSolicNFF (solicitação
   /// NFF — contingência raríssima) fica como JSON genérico: a estrutura NÃO foi
   /// modelada campo a campo por depender do XSD oficial. Nenhuma validação de
@@ -585,11 +607,15 @@ model fiscal_ctes {
   /// genérico para não exigir nova migração em 2027. É PREPARAÇÃO — a estrutura
   /// definitiva da NT não está implementada; passthrough puro, sem validação.
   pagamento_antecipado       Json?     @db.JsonB
-  /// Grupo infTribFed do CT-e (item 1.4): totalizadores simples de tributos
-  /// federais. APENAS vPIS / vCOFINS — o CT-e não tem CST/base/alíquota
-  /// detalhados de PIS/COFINS (isso é da NF-e). Opcionais, sem validação.
+  /// Grupo infTribFed / TributosFederal do CT-e (item 1.4 / 0.8): totalizadores
+  /// simples de tributos federais. vPIS / vCOFINS e, do provedor, vIR / vINSS /
+  /// vCSLL. Sem CST/base/alíquota detalhados (isso é da NF-e). Nenhum cálculo,
+  /// nenhuma alíquota hardcoded — passthrough puro. Opcionais, sem validação.
   pis_valor                  Decimal?  @db.Decimal(14, 2)
   cofins_valor               Decimal?  @db.Decimal(14, 2)
+  ir_valor                   Decimal?  @db.Decimal(14, 2)
+  inss_valor                 Decimal?  @db.Decimal(14, 2)
+  csll_valor                 Decimal?  @db.Decimal(14, 2)
   criado_em           DateTime  @default(now()) @db.Timestamptz(6)
 
   @@index([tenant_id])
@@ -734,6 +760,12 @@ model fiscal_mdfes {
   antt_rntrc           String?   @db.VarChar(9)
   antt_ciot            String?   @db.VarChar(20)
   antt_vale_pedagio    Json?     @db.JsonB
+  /// infANTT bancário / PIX da instituição de pagamento do frete (item 0.1). No
+  /// payload vão como `infoBancaria` dentro de `pagamentos[]`; aqui só persiste.
+  antt_cod_banco            String?  @db.VarChar(5)
+  antt_cod_agencia          String?  @db.VarChar(10)
+  antt_cnpj_inst_pagamento  String?  @db.VarChar(14)
+  antt_pix                  String?  @db.VarChar(120)
   /// Grupo tot do MDF-e (2.3): calculado dos CT-e/NF-e vinculados na emissão.
   tot_qcte             Int?
   tot_valor_carga      Decimal?  @db.Decimal(14, 2)
@@ -742,6 +774,15 @@ model fiscal_mdfes {
   prod_pred_descricao  String?   @db.VarChar(120)
   prod_pred_ncm        String?   @db.VarChar(8)
   prod_pred_tp_carga   String?   @db.VarChar(2)
+  /// prodPred mais rico (item 0.3): c_ean (GTIN ou "SEM GTIN") + infLotacao
+  /// (CEP/latitude/longitude do local de carregamento e de descarregamento).
+  prod_pred_c_ean                   String?  @db.VarChar(14)
+  prod_pred_lotacao_carrega_cep     String?  @db.VarChar(8)
+  prod_pred_lotacao_carrega_lat     Decimal? @db.Decimal(10, 7)
+  prod_pred_lotacao_carrega_long    Decimal? @db.Decimal(10, 7)
+  prod_pred_lotacao_descarrega_cep  String?  @db.VarChar(8)
+  prod_pred_lotacao_descarrega_lat  Decimal? @db.Decimal(10, 7)
+  prod_pred_lotacao_descarrega_long Decimal? @db.Decimal(10, 7)
   /// Campos básicos do grupo ide do MDF-e (2.5).
   ide_uf_ini           String?   @db.VarChar(2)
   ide_uf_fim           String?   @db.VarChar(2)
@@ -762,6 +803,29 @@ model fiscal_mdfes {
 
   @@index([tenant_id])
   @@index([tenant_id, fiscal_empresa_id])
+}
+
+/// Seguro da carga do MDF-e como LISTA (item 0.2): `seguros: [...]` do provedor,
+/// cada seguro com 0..N números de averbação (numeros_averbacao é JSONB de
+/// strings). As colunas singulares fiscal_mdfes.seg_* seguem como fallback de 1
+/// seguro para MDF-e antigos. FK escalar mdfe_id, sem @relation — mesma
+/// convenção do módulo.
+model fiscal_mdfe_seguros {
+  id               Int      @id @default(autoincrement())
+  tenant_id        Int
+  /// FK -> fiscal_mdfes.id (ON DELETE CASCADE na migration SQL)
+  mdfe_id          Int
+  /// indicadorResponsavel: 1 = emitente do MDF-e, 2 = contratante do serviço
+  responsavel      Int?     @db.SmallInt
+  cnpj_seguradora  String?  @db.VarChar(14)
+  numero_apolice   String?  @db.VarChar(40)
+  nome_seguradora  String?  @db.VarChar(60)
+  /// numerosAverbacao do provedor: array de strings (múltiplas averbações)
+  numeros_averbacao Json?   @db.JsonB
+  criado_em        DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([mdfe_id])
+  @@index([tenant_id])
 }
 
 /// Grupo infMunDescarga do MDF-e (2.1): documentos vinculados agrupados por

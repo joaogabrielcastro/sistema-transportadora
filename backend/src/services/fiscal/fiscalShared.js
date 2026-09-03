@@ -33,6 +33,55 @@ function notFound(message) {
  * o nome da seguradora é só persistido em coluna. Confirmar em sandbox se o
  * provedor exige.
  */
+// Número sequencial do evento (nSeqEvento). O primeiro evento de
+// encerramento/cancelamento é sempre 1; retificação / múltiplos eventos
+// (nSeqEvento > 1) ainda não são modelados — fica como follow-up.
+export const EVENTO_PRIMEIRO_SEQUENCIAL = 1;
+
+/**
+ * Corpo do cancelamento genérico do provedor — CT-e e MDF-e usam o MESMO
+ * endpoint (item 0.6). Campos confirmados no payload real: ChaveNF,
+ * Justificativa, NumeroProtocolo, NumeroSequencial, DataEvento e
+ * CpfCnpjRemetenteDCe (o CNPJ do emitente/tenant). `protocolo` e
+ * `cnpjRemetente` podem faltar (ex.: CT-e sem protocolo persistido) — nesse
+ * caso a chave sai como undefined e o provedor resolve pela ChaveNF.
+ */
+/**
+ * Extrai o número do protocolo de autorização da resposta de emissão do provedor
+ * (CT-e e MDF-e usam o mesmo contrato de resposta). O nome exato do campo não
+ * está confirmado em sandbox — tenta as grafias plausíveis (o
+ * cancelamento/encerramento do MDF-e devolve `NuProtocolo`; o CIOT usa
+ * `Protocolo`). Devolve `null` quando nenhuma aparece, e nesse caso o
+ * cancelamento resolve o documento só pela chave de acesso.
+ */
+export function extrairNumeroProtocolo(resposta) {
+  const bruto =
+    resposta?.protocolo ??
+    resposta?.Protocolo ??
+    resposta?.numeroProtocolo ??
+    resposta?.NumeroProtocolo ??
+    resposta?.NuProtocolo ??
+    resposta?.nProt ??
+    null;
+  return bruto != null ? String(bruto) : null;
+}
+
+export function montarPayloadCancelamento({
+  chave,
+  justificativa,
+  protocolo,
+  cnpjRemetente,
+}) {
+  return {
+    ChaveNF: chave ?? undefined,
+    Justificativa: justificativa,
+    NumeroProtocolo: protocolo ?? undefined,
+    NumeroSequencial: EVENTO_PRIMEIRO_SEQUENCIAL,
+    DataEvento: new Date().toISOString(),
+    CpfCnpjRemetenteDCe: cnpjRemetente ?? undefined,
+  };
+}
+
 export function montarGrupoSeguro(dto) {
   if (Array.isArray(dto.seguros) && dto.seguros.length > 0) return dto.seguros;
   if (

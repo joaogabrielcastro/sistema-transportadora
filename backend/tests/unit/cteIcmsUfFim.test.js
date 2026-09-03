@@ -91,13 +91,13 @@ test("três condições juntas com difal preenchido: passa", () => {
   );
 });
 
-test("montarImpCte inclui ICMSUFFim quando difal veio, e não mexe no imposto livre senão", () => {
+test("montarImpCte inclui o grupo Difal quando difal veio, e não mexe no imposto livre senão", () => {
   const semDifal = montarImpCte({ imposto: { ICMS: { CST: "00" } } });
   assert.deepEqual(semDifal, { ICMS: { CST: "00" } });
 
   const comDifal = montarImpCte({ difal: difalCompleto });
-  assert.equal(comDifal.ICMSUFFim.vBCUFFim, 100);
-  assert.equal(comDifal.ICMSUFFim.pICMSUFFim, 18);
+  assert.equal(comDifal.Difal.BaseCalculoUfDestino, 100);
+  assert.equal(comDifal.Difal.AliquotaICMSUfDestino, 18);
 });
 
 test("schema aceita uf_ini/uf_fim/tomador_ind_ie/difal e payload leva UFIni/UFFim", () => {
@@ -111,7 +111,7 @@ test("schema aceita uf_ini/uf_fim/tomador_ind_ie/difal e payload leva UFIni/UFFi
   const payload = montarPayloadCte(dto, undefined, undefined);
   assert.equal(payload.UFIni, "SP");
   assert.equal(payload.UFFim, "MG");
-  assert.equal(payload.Imposto.ICMSUFFim.vICMSUFFim, 18);
+  assert.equal(payload.Imposto.Difal.ValorICMSUfDestino, 18);
 });
 
 test("schema rejeita tomador_ind_ie fora de {1,2,9}", () => {

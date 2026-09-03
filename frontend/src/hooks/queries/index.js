@@ -19,6 +19,7 @@ export {
   useCteListQuery,
   useMdfeListQuery,
   useFiscalClientesQuery,
+  useFiscalEmpresasQuery,
   useFiscalVeiculoDadosQuery,
   useSaveFiscalVeiculoDadosMutation,
   useReboquesPreviewQuery,

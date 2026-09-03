@@ -45,6 +45,25 @@ export function useFiscalClientesQuery({ q = "", enabled = true } = {}) {
 }
 
 /**
+ * Empresas fiscais (CNPJ emissor) do tenant. SOMENTE LEITURA — o cadastro/edição
+ * de empresa fiscal é outra área do sistema. O CteForm usa esta lista só para
+ * ler o `crt` / `inscricao_estadual` da empresa emissora ativa: decidir se o
+ * grupo IBS/CBS aparece (item 1.1) e bloquear a emissão, com mensagem clara,
+ * quando não há CRT cadastrado. Os segredos (token/senha) nunca vêm nesta
+ * resposta — o backend devolve só flags `*_set`.
+ */
+export function useFiscalEmpresasQuery({ enabled = true } = {}) {
+  return useQuery({
+    queryKey: queryKeys.fiscal.empresas(),
+    enabled,
+    queryFn: async () =>
+      extractApiArray(
+        await apiFetch({ method: "GET", url: "/fiscal/empresas" }),
+      ),
+  });
+}
+
+/**
  * Extensão fiscal de um caminhão (dados do grupo veicReboque do MDF-e), 1 por
  * caminhão. A API devolve 404 quando ainda não há registro — aqui isso vira
  * `null` (formulário em branco), não erro.

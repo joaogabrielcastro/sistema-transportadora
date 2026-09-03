@@ -8,11 +8,16 @@ import {
   useApiMutation,
   useCteListQuery,
   useFiscalClientesQuery,
+  useFiscalDocDownload,
+  useFiscalEmpresasQuery,
 } from "../hooks";
+import { resolverEmpresaFiscalAtiva } from "../utils/fiscalForms.js";
+import { idsDe } from "../utils/fiscalDownload.js";
 import CteForm from "../components/fiscal/CteForm.jsx";
 import CteList from "../components/fiscal/CteList.jsx";
 import CteReferenciaModal from "../components/fiscal/CteReferenciaModal.jsx";
 import FiscalDocDetailModal from "../components/fiscal/FiscalDocDetailModal.jsx";
+import FiscalDownloadBar from "../components/fiscal/FiscalDownloadBar.jsx";
 import CancelarDocModal from "../components/fiscal/CancelarDocModal.jsx";
 
 /** Extrai o texto cru devolvido pelo provedor/back para não escondê-lo do usuário. */
@@ -40,11 +45,17 @@ export default function FiscalCte() {
 
   const clientesQuery = useFiscalClientesQuery();
   const ctesQuery = useCteListQuery();
+  const empresasQuery = useFiscalEmpresasQuery();
   const clientes = useMemo(
     () => clientesQuery.data || [],
     [clientesQuery.data],
   );
   const ctes = useMemo(() => ctesQuery.data || [], [ctesQuery.data]);
+  // Empresa fiscal emissora ativa — só leitura, para o CteForm ler o CRT.
+  const empresaFiscal = useMemo(
+    () => resolverEmpresaFiscalAtiva(empresasQuery.data),
+    [empresasQuery.data],
+  );
 
   const [detalhe, setDetalhe] = useState({
     open: false,
@@ -60,6 +71,37 @@ export default function FiscalCte() {
     cte: null,
   });
   const [refSubmitting, setRefSubmitting] = useState(false);
+
+  // Seleção para download em lote (zip). Como a lista não é paginada no servidor,
+  // "selecionar todos" abrange todos os CT-e retornados pela consulta — ou seja,
+  // todos os resultados do filtro atual, não só uma página.
+  const [selecionados, setSelecionados] = useState(() => new Set());
+  const { baixarIndividual, baixarLote, baixando } = useFiscalDocDownload("cte");
+
+  useEffect(() => {
+    setSelecionados((prev) => {
+      if (prev.size === 0) return prev;
+      const atuais = new Set(idsDe(ctes));
+      const next = new Set([...prev].filter((id) => atuais.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [ctes]);
+
+  const toggleSelecionado = (id) =>
+    setSelecionados((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const toggleTodos = () =>
+    setSelecionados((prev) => {
+      const todos = idsDe(ctes);
+      const marcadosTodos =
+        todos.length > 0 && todos.every((id) => prev.has(id));
+      return marcadosTodos ? new Set() : new Set(todos);
+    });
 
   useEffect(() => {
     let ativo = true;
@@ -202,6 +244,8 @@ export default function FiscalCte() {
           caminhoes={caminhoes}
           submitting={emitindo}
           onSubmit={handleEmitir}
+          empresaFiscal={empresaFiscal}
+          empresaFiscalCarregada={empresasQuery.isSuccess}
         />
       )}
 
@@ -219,8 +263,22 @@ export default function FiscalCte() {
             onSubstituir={(row) =>
               setRefModal({ open: true, modo: "substituto", cte: row })
             }
+            selectedIds={selecionados}
+            onToggleRow={toggleSelecionado}
+            onToggleAll={toggleTodos}
+            onDownload={baixarIndividual}
           />
+          {selecionados.size > 0 && <div className="h-16" aria-hidden />}
         </Card>
+      )}
+
+      {tab === "emitidos" && (
+        <FiscalDownloadBar
+          quantidade={selecionados.size}
+          baixando={baixando}
+          onBaixar={() => baixarLote([...selecionados])}
+          onLimpar={() => setSelecionados(new Set())}
+        />
       )}
 
       <CteReferenciaModal

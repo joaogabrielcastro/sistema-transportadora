@@ -99,6 +99,23 @@ router.use("/veiculo-dados", veiculoDados);
 // --------------------------------- CT-e ---------------------------------
 const cte = Router();
 cte.get("/", requirePermission(PERMISSIONS.CTE_READ), cteController.list);
+// Download em lote (zip). Declarado antes de "/:id" para o segmento fixo
+// "download-lote" não ser capturado como id.
+cte.post(
+  "/download-lote",
+  requirePermission(PERMISSIONS.CTE_READ),
+  cteController.baixarLote,
+);
+cte.get(
+  "/:id/pdf",
+  requirePermission(PERMISSIONS.CTE_READ),
+  cteController.baixarPdf,
+);
+cte.get(
+  "/:id/xml",
+  requirePermission(PERMISSIONS.CTE_READ),
+  cteController.baixarXml,
+);
 cte.get("/:id", requirePermission(PERMISSIONS.CTE_READ), cteController.get);
 cte.post(
   "/emitir",
@@ -124,6 +141,22 @@ mdfe.get(
   "/reboques-preview",
   requirePermission(PERMISSIONS.MDFE_READ),
   mdfeController.previewReboques,
+);
+// Download em lote (zip). Antes de "/:id" para o segmento fixo não virar id.
+mdfe.post(
+  "/download-lote",
+  requirePermission(PERMISSIONS.MDFE_READ),
+  mdfeController.baixarLote,
+);
+mdfe.get(
+  "/:id/pdf",
+  requirePermission(PERMISSIONS.MDFE_READ),
+  mdfeController.baixarPdf,
+);
+mdfe.get(
+  "/:id/xml",
+  requirePermission(PERMISSIONS.MDFE_READ),
+  mdfeController.baixarXml,
 );
 mdfe.get("/:id", requirePermission(PERMISSIONS.MDFE_READ), mdfeController.get);
 mdfe.post(

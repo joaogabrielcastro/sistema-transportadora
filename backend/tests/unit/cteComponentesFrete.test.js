@@ -62,7 +62,7 @@ test("montarServico sem componentes devolve o servico intacto", () => {
   assert.equal(montarServico({}), undefined);
 });
 
-test("montarServico traduz componentes para Comp[] (xNome/vComp) sem perder o resto", () => {
+test("montarServico traduz componentes para Servico.Componentes (nome completo do provedor) sem perder o resto", () => {
   const out = montarServico({
     servico: {
       valor_prestacao: 100,
@@ -76,9 +76,13 @@ test("montarServico traduz componentes para Comp[] (xNome/vComp) sem perder o re
   assert.equal(out.valor_prestacao, 100);
   assert.equal(out.tpServ, 0);
   assert.equal(out.componentes, undefined);
-  assert.deepEqual(out.Comp, [
-    { xNome: "FRETE PESO", vComp: 70 },
-    { xNome: "OUTROS", vComp: undefined },
+  // PARTE 4: o grupo é `Componentes`, não a abreviação `Comp` do XSD da SEFAZ, e
+  // as chaves de cada item são as descritivas do provedor (`Nome` / `Valor`),
+  // não `xNome` / `vComp` do XSD.
+  assert.equal(out.Comp, undefined);
+  assert.deepEqual(out.Componentes, [
+    { Nome: "FRETE PESO", Valor: 70 },
+    { Nome: "OUTROS", Valor: undefined },
   ]);
 });
 
@@ -91,5 +95,5 @@ test("montarPayloadCte usa montarServico no bloco Servico", () => {
     },
   });
   const payload = montarPayloadCte(dto, undefined, undefined);
-  assert.deepEqual(payload.Servico.Comp, [{ xNome: "GRIS", vComp: 20 }]);
+  assert.deepEqual(payload.Servico.Componentes, [{ Nome: "GRIS", Valor: 20 }]);
 });

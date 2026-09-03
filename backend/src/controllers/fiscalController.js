@@ -1,7 +1,10 @@
+import archiver from "archiver";
 import { catchAsync } from "../utils/catchAsync.js";
 import { requireTenantId } from "../utils/tenant.js";
+import { logger } from "../utils/logger.js";
 import {
   cancelarDocumentoSchema,
+  downloadLoteSchema,
   vincularManifestoSchema,
 } from "../schemas/fiscalSchema.js";
 import { FiscalEmpresaService } from "../services/fiscal/FiscalEmpresaService.js";
@@ -10,6 +13,79 @@ import { FiscalVeiculoDadosService } from "../services/fiscal/FiscalVeiculoDados
 import { CteService } from "../services/fiscal/CteService.js";
 import { MdfeService } from "../services/fiscal/MdfeService.js";
 import { CiotService } from "../services/fiscal/CiotService.js";
+import { FiscalDownloadService } from "../services/fiscal/FiscalDownloadService.js";
+
+// ---------------------- Download de CT-e/MDF-e (XML/PDF) ----------------------
+// Fábricas de handler reaproveitadas por cteController e mdfeController. Mesmo
+// princípio do caminhaoDocumentosController.download: resolve o caminho absoluto
+// só a partir do que está gravado no banco e serve o arquivo autenticado.
+
+/** GET /fiscal/{cte|mdfe}/:id/{pdf|xml} — download individual. */
+function baixarArquivoFiscal(tipo, formato) {
+  return catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    const { absoluto, contentType, downloadName } =
+      await FiscalDownloadService.obterArquivo(
+        tipo,
+        tenantId,
+        req.params.id,
+        formato,
+      );
+    res.setHeader("Content-Type", contentType);
+    res.setHeader(
+      "Content-Disposition",
+      `${formato === "pdf" ? "inline" : "attachment"}; filename="${downloadName}"`,
+    );
+    res.sendFile(absoluto);
+  });
+}
+
+/** POST /fiscal/{cte|mdfe}/download-lote — zip com PDF+XML de vários documentos. */
+function baixarLoteFiscal(tipo) {
+  return catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    const { ids } = downloadLoteSchema.parse(req.body);
+    const resultado = await FiscalDownloadService.coletarArquivosLote(
+      tipo,
+      tenantId,
+      ids,
+    );
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${tipo}-lote-${stamp}.zip"`,
+    );
+
+    const archive = archiver("zip", { zlib: { level: 9 } });
+    archive.on("warning", (err) => {
+      logger.warn("archiver warning no download em lote fiscal", {
+        tipo,
+        message: err.message,
+      });
+    });
+    archive.on("error", (err) => {
+      logger.error("Falha ao gerar o zip do download em lote fiscal", {
+        tipo,
+        tenantId,
+        message: err.message,
+      });
+      res.destroy(err);
+    });
+    archive.pipe(res);
+
+    for (const entrada of resultado.entradas) {
+      archive.file(entrada.absoluto, { name: entrada.nome });
+    }
+    if (resultado.pulados.length > 0 || resultado.ignorados.length > 0) {
+      archive.append(FiscalDownloadService.montarManifest(resultado), {
+        name: "manifest.txt",
+      });
+    }
+    await archive.finalize();
+  });
+}
 
 // ------------------------- Empresas fiscais -------------------------
 export const fiscalEmpresasController = {
@@ -180,6 +256,9 @@ export const cteController = {
       ),
     });
   }),
+  baixarPdf: baixarArquivoFiscal("cte", "pdf"),
+  baixarXml: baixarArquivoFiscal("cte", "xml"),
+  baixarLote: baixarLoteFiscal("cte"),
 };
 
 // ----------------------------- MDF-e -----------------------------
@@ -233,6 +312,9 @@ export const mdfeController = {
       message: "Cancelamento de MDF-e processado",
     });
   }),
+  baixarPdf: baixarArquivoFiscal("mdfe", "pdf"),
+  baixarXml: baixarArquivoFiscal("mdfe", "xml"),
+  baixarLote: baixarLoteFiscal("mdfe"),
 };
 
 // ----------------------------- CIOT -----------------------------

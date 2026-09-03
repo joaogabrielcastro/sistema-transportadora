@@ -2,6 +2,7 @@
 export { useApi, api, getApiBaseUrl } from "./useApi.js";
 export { useApiMutation } from "./useApiMutation.js";
 export { useDebouncedValue } from "./useDebouncedValue.js";
+export { useFiscalDocDownload } from "./useFiscalDocDownload.js";
 export {
   useCaminhoesListQuery,
   useCaminhaoByPlacaQuery,
@@ -22,6 +23,7 @@ export {
   useCteListQuery,
   useMdfeListQuery,
   useFiscalClientesQuery,
+  useFiscalEmpresasQuery,
   useFiscalVeiculoDadosQuery,
   useSaveFiscalVeiculoDadosMutation,
   useReboquesPreviewQuery,

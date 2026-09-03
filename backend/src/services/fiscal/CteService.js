@@ -8,8 +8,10 @@ import { decryptSecret } from "../../utils/fiscalCrypto.js";
 import { CteMdfeProviderClient } from "./CteMdfeProviderClient.js";
 import {
   assertTenantFk,
+  extrairNumeroProtocolo,
   findOwnedOr404,
   montarGrupoSeguro,
+  montarPayloadCancelamento,
   resolveEmpresaCteMdfe,
   salvarPdfBase64,
   salvarXmlBase64,
@@ -28,6 +30,11 @@ function badRequest(message, extra) {
   if (extra) err.details = extra;
   return err;
 }
+
+// `extrairNumeroProtocolo` foi movida para fiscalShared.js (PARTE 3) para o
+// MdfeService reaproveitar a mesma lógica na emissão. Reexportada aqui para não
+// quebrar quem já a importava de CteService.
+export { extrairNumeroProtocolo };
 
 /**
  * CRT do emitente: 1 = Simples Nacional, 2 = SN excesso de sublimite,
@@ -237,6 +244,9 @@ export function colunasContingenciaTribFed(dto) {
     justificativa_contingencia: cont.justificativa ?? null,
     pis_valor: tribFed.pis_valor ?? null,
     cofins_valor: tribFed.cofins_valor ?? null,
+    ir_valor: tribFed.ir_valor ?? null,
+    inss_valor: tribFed.inss_valor ?? null,
+    csll_valor: tribFed.csll_valor ?? null,
   };
   if (cont.inf_solic_nff != null) cols.inf_solic_nff = cont.inf_solic_nff;
   if (dto.pagamento_antecipado != null) {
@@ -289,47 +299,73 @@ export function montarImpCte(dto) {
 
   const imp = { ...(dto.imposto ?? {}) };
   if (temDifal) {
-    imp.ICMSUFFim = {
-      ...(imp.ICMSUFFim ?? {}),
-      vBCUFFim: difal.vbc_uf_fim ?? undefined,
-      pFCPUFFim: difal.p_fcp_uf_fim ?? undefined,
-      pICMSUFFim: difal.p_icms_uf_fim ?? undefined,
-      pICMSInter: difal.p_icms_inter ?? undefined,
-      vFCPUFFim: difal.v_fcp_uf_fim ?? undefined,
-      vICMSUFFim: difal.v_icms_uf_fim ?? undefined,
-      vICMSUFIni: difal.v_icms_uf_ini ?? undefined,
+    // Grupo Difal do provedor (o que a SEFAZ chama ICMSUFFim / partilha do ICMS
+    // para a UF de destino). Nomes CONFIRMADOS no payload real do provedor.
+    // `PercentualPartilhaICMS` só entra quando o DTO trouxe `difal.p_partilha_icms`.
+    imp.Difal = {
+      ...(imp.Difal ?? {}),
+      BaseCalculoUfDestino: difal.vbc_uf_fim ?? undefined,
+      PercentualFCPUfDestino: difal.p_fcp_uf_fim ?? undefined,
+      AliquotaICMSUfDestino: difal.p_icms_uf_fim ?? undefined,
+      AliquotaInterestadual: difal.p_icms_inter ?? undefined,
+      PercentualPartilhaICMS: difal.p_partilha_icms ?? undefined,
+      ValorFCPUfDestino: difal.v_fcp_uf_fim ?? undefined,
+      ValorICMSUfDestino: difal.v_icms_uf_fim ?? undefined,
+      ValorICMSUfInicio: difal.v_icms_uf_ini ?? undefined,
     };
   }
   if (temIcms) {
+    // Grupo Imposto.ICMS — nomes CONFIRMADOS no payload real do provedor.
+    // `AliquotaOutraUF` / `ValorICMSOutraUF` só entram quando o DTO os traz.
     imp.ICMS = {
       ...(imp.ICMS ?? {}),
       CST: icms.cst ?? undefined,
-      vBC: icms.base ?? undefined,
-      pICMS: icms.aliquota ?? undefined,
-      vICMS: icms.valor ?? undefined,
-      pRedBC: icms.reducao_base ?? undefined,
+      BaseCalculo: icms.base ?? undefined,
+      Aliquota: icms.aliquota ?? undefined,
+      Valor: icms.valor ?? undefined,
+      PercentualReducaoBaseCalculo: icms.reducao_base ?? undefined,
+      AliquotaOutraUF: icms.aliquota_outra_uf ?? undefined,
+      ValorICMSOutraUF: icms.valor_outra_uf ?? undefined,
     };
   }
   if (temIbscbs) {
+    // Grupo Imposto.IBSCBS — o provedor NÃO pede valor calculado (nada de
+    // ibs_uf_valor / cbs_valor / valor_total) nem CST separado nesse grupo: só
+    // o código de classificação tributária, a base de cálculo, as alíquotas de
+    // IBS (UF e município) e CBS e os percentuais de redução / diferimento. Os
+    // valores calculados de IBS/CBS continuam persistidos nas colunas de
+    // fiscal_ctes para consulta interna, mas não vão no payload. Cada chave só
+    // entra quando tem valor. Nomes CONFIRMADOS no payload real do provedor.
     imp.IBSCBS = {
       ...(imp.IBSCBS ?? {}),
-      CST: ibs.cst ?? undefined,
-      cClassTrib: ibs.c_class_trib ?? undefined,
-      vBC: ibs.base ?? undefined,
-      vIBSUF: ibs.ibs_uf_valor ?? undefined,
-      vIBSMun: ibs.ibs_mun_valor ?? undefined,
-      vCBS: ibs.cbs_valor ?? undefined,
-      vTotal: ibs.valor_total ?? undefined,
+      CodClassificacaoTributaria: ibs.c_class_trib ?? undefined,
+      BaseCalculo: ibs.base ?? undefined,
+      AliquotaIBSUF: ibs.ibs_uf_aliquota ?? undefined,
+      AliquotaIBSMun: ibs.ibs_mun_aliquota ?? undefined,
+      AliquotaCBS: ibs.cbs_aliquota ?? undefined,
+      PercentualReducaoIBS: ibs.percentual_reducao_ibs ?? undefined,
+      PercentualReducaoCBS: ibs.percentual_reducao_cbs ?? undefined,
+      PercentualDiferimento: ibs.percentual_diferimento ?? undefined,
     };
   }
   if (temTribFed) {
-    // Grupo infTribFed do CT-e (1.4): SÓ os totalizadores vPIS/vCOFINS. O CT-e
-    // não tem CST/base/alíquota de PIS/COFINS (isso é da NF-e) — não modelar.
-    imp.infTribFed = {
-      ...(imp.infTribFed ?? {}),
-      vPIS: tribFed.pis_valor ?? undefined,
-      vCOFINS: tribFed.cofins_valor ?? undefined,
-    };
+    // Grupo Imposto.TributosFederal do CT-e (1.4 / 0.8): totalizadores de
+    // tributos federais. O CT-e não tem CST/base/alíquota de PIS/COFINS (isso é
+    // da NF-e) — não modelar. Nenhum cálculo: passthrough puro. Cada chave só
+    // entra quando tem valor, para o payload de quem só informa PIS/COFINS não
+    // mudar. Nomes CONFIRMADOS no payload real do provedor.
+    const tributosFederal = { ...(imp.TributosFederal ?? {}) };
+    const totFed = [
+      ["ValorPis", tribFed.pis_valor],
+      ["ValorCofins", tribFed.cofins_valor],
+      ["ValorIr", tribFed.ir_valor],
+      ["ValorInss", tribFed.inss_valor],
+      ["ValorCsll", tribFed.csll_valor],
+    ];
+    for (const [chave, valor] of totFed) {
+      if (valor != null) tributosFederal[chave] = valor;
+    }
+    imp.TributosFederal = tributosFederal;
   }
   return imp;
 }
@@ -358,11 +394,14 @@ function colunasImpostoCarga(dto) {
     difal_v_fcp_uf_fim: difal.v_fcp_uf_fim ?? null,
     difal_v_icms_uf_fim: difal.v_icms_uf_fim ?? null,
     difal_v_icms_uf_ini: difal.v_icms_uf_ini ?? null,
+    icms_uf_fim_percentual_partilha: difal.p_partilha_icms ?? null,
     icms_cst: icms.cst ?? null,
     icms_base: icms.base ?? null,
     icms_aliquota: icms.aliquota ?? null,
     icms_valor: icms.valor ?? null,
     icms_reducao_base: icms.reducao_base ?? null,
+    icms_aliquota_outra_uf: icms.aliquota_outra_uf ?? null,
+    icms_valor_outra_uf: icms.valor_outra_uf ?? null,
     ibscbs_cst: ibs.cst ?? null,
     ibscbs_c_class_trib: ibs.c_class_trib ?? null,
     ibscbs_base: ibs.base ?? null,
@@ -370,6 +409,12 @@ function colunasImpostoCarga(dto) {
     ibs_mun_valor: ibs.ibs_mun_valor ?? null,
     cbs_valor: ibs.cbs_valor ?? null,
     ibscbs_valor_total: ibs.valor_total ?? null,
+    ibs_uf_aliquota: ibs.ibs_uf_aliquota ?? null,
+    ibs_mun_aliquota: ibs.ibs_mun_aliquota ?? null,
+    cbs_aliquota: ibs.cbs_aliquota ?? null,
+    ibscbs_percentual_reducao_ibs: ibs.percentual_reducao_ibs ?? null,
+    ibscbs_percentual_reducao_cbs: ibs.percentual_reducao_cbs ?? null,
+    ibscbs_percentual_diferimento: ibs.percentual_diferimento ?? null,
     valor_carga: carga.valor_carga ?? null,
     produto_predominante: carga.produto_predominante ?? null,
     outras_caracteristicas: carga.outras_caracteristicas ?? null,
@@ -415,9 +460,15 @@ export function montarCarga(dto) {
 
 /**
  * Monta o bloco `Servico` (grupo vPrest). Repassa `dto.servico` como está e, se
- * vieram `componentes` (grupo Comp / vPrest.Comp), os traduz para `Comp[]` sem
- * descartar nada que o chamador já enviou. Sem componentes, devolve
- * exatamente `dto.servico ?? undefined` (preserva o payload atual).
+ * vieram `componentes` (grupo vPrest.Comp da SEFAZ), os traduz para
+ * `Componentes[]` sem descartar nada que o chamador já enviou. Sem componentes,
+ * devolve exatamente `dto.servico ?? undefined` (preserva o payload atual).
+ *
+ * PARTE 4: o nome do grupo no payload do provedor é `Servico.Componentes`
+ * (descritivo), não a abreviação `Comp` do XSD da SEFAZ. As chaves internas de
+ * cada item também são as descritivas do provedor — `{ Nome, Valor }` (palavra
+ * inteira, sem o prefixo `x`/`v` do XSD) — formato CONFIRMADO no payload real do
+ * provedor.
  */
 export function montarServico(dto) {
   const servico = dto.servico ?? undefined;
@@ -428,9 +479,9 @@ export function montarServico(dto) {
   const { componentes: _c, ...rest } = servico;
   return {
     ...rest,
-    Comp: componentes.map((c) => ({
-      xNome: c.nome,
-      vComp: c.valor ?? undefined,
+    Componentes: componentes.map((c) => ({
+      Nome: c.nome,
+      Valor: c.valor ?? undefined,
     })),
   };
 }
@@ -494,9 +545,12 @@ export function montarPayloadCte(dto, chaveReferenciada, empresa) {
 }
 
 /**
- * Extrai os participantes tipados do DTO (rem / dest / exped / receb) para
- * gravar em fiscal_cte_participantes. Ignora papéis ausentes. O campo `endereco`
- * aninhado é achatado nas colunas da tabela. Item 1.2.
+ * Extrai os participantes tipados do DTO (rem / dest / exped / receb / toma)
+ * para gravar em fiscal_cte_participantes. Ignora papéis ausentes. O campo
+ * `endereco` aninhado é achatado nas colunas da tabela. Itens 1.2 e 0.7 — o
+ * Tomador é gravado como participante completo e independente (não um
+ * indicador); seu documento chega no campo `cpf_cnpj` (os demais usam
+ * `cnpj_cpf`).
  */
 export function normalizarParticipantesCte(dto) {
   const PAPEIS = [
@@ -504,6 +558,7 @@ export function normalizarParticipantesCte(dto) {
     ["destinatario", "dest"],
     ["expedidor", "exped"],
     ["recebedor", "receb"],
+    ["tomador", "toma"],
   ];
   const linhas = [];
   for (const [campo, papel] of PAPEIS) {
@@ -512,7 +567,7 @@ export function normalizarParticipantesCte(dto) {
     const e = p.endereco ?? {};
     linhas.push({
       papel,
-      cnpj_cpf: p.cnpj_cpf ?? null,
+      cnpj_cpf: p.cnpj_cpf ?? p.cpf_cnpj ?? null,
       ie: p.ie ?? null,
       razao_social: p.razao_social ?? null,
       nome_fantasia: p.nome_fantasia ?? null,
@@ -696,6 +751,7 @@ export class CteService {
         status: "processado",
         numero: resposta.numero != null ? String(resposta.numero) : null,
         serie: resposta.serie != null ? String(resposta.serie) : null,
+        numero_protocolo: extrairNumeroProtocolo(resposta),
         data_emissao: new Date(),
         valor_frete: dto.servico?.valor_prestacao ?? null,
         ...colunasImpostoCarga(dto),
@@ -813,17 +869,21 @@ export class CteService {
 
     // Usa a empresa fiscal registrada na emissão do CT-e; se a linha for antiga
     // e não tiver fiscal_empresa_id, cai na resolução da única empresa ativa.
-    const { token } = await resolveEmpresaCteMdfe(
+    const { empresa, token } = await resolveEmpresaCteMdfe(
       tenantId,
       cte.fiscal_empresa_id ?? undefined,
     );
 
+    // Cancelamento genérico (0.6): mesmo corpo do MDF-e. Usa o protocolo de
+    // autorização gravado na emissão (PARTE 3); CT-e antigos sem protocolo
+    // persistido vão com `undefined` e o provedor resolve pela chave.
     const resposta = await CteMdfeProviderClient.cancelarNotaFiscal(
-      {
-        ChaveNF: cte.chave_acesso,
-        Justificativa: justificativa,
-        DataEvento: new Date().toISOString(),
-      },
+      montarPayloadCancelamento({
+        chave: cte.chave_acesso,
+        justificativa,
+        protocolo: cte.numero_protocolo ?? undefined,
+        cnpjRemetente: empresa.cnpj,
+      }),
       token,
     );
 

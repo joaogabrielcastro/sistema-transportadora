@@ -2,6 +2,11 @@ import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import { Button, LoadingSpinner, StatusBadge } from "../ui";
 import EmptyState from "../EmptyState.jsx";
+import {
+  arquivoDisponivel,
+  estadoSelecaoTotal,
+  idsDe,
+} from "../../utils/fiscalDownload.js";
 
 function fmtMoney(value) {
   if (value == null || value === "") return "—";
@@ -19,6 +24,40 @@ function fmtDate(value) {
     : d.toLocaleDateString("pt-BR");
 }
 
+/** Botão de download individual (PDF/XML); desabilitado quando o path é null. */
+function DownloadCell({ row, formato, onDownload }) {
+  const disponivel = arquivoDisponivel(row, formato);
+  const rotulo = formato.toUpperCase();
+  const btn = (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      disabled={!disponivel}
+      onClick={() => onDownload?.(row, formato)}
+      title={
+        disponivel
+          ? `Baixar ${rotulo}`
+          : `${rotulo} ainda não disponível`
+      }
+    >
+      {rotulo}
+    </Button>
+  );
+  // <span> title garante o tooltip mesmo com o botão desabilitado.
+  return disponivel ? (
+    btn
+  ) : (
+    <span title={`${rotulo} ainda não disponível`}>{btn}</span>
+  );
+}
+
+DownloadCell.propTypes = {
+  row: PropTypes.object.isRequired,
+  formato: PropTypes.oneOf(["pdf", "xml"]).isRequired,
+  onDownload: PropTypes.func,
+};
+
 /** Tabela dos CT-e emitidos. */
 export default function CteList({
   items = [],
@@ -28,12 +67,28 @@ export default function CteList({
   onCancel,
   onComplemento,
   onSubstituir,
+  selectedIds,
+  onToggleRow,
+  onToggleAll,
+  onDownload,
 }) {
   const clienteById = useMemo(() => {
     const map = new Map();
     for (const c of clientes) map.set(String(c.id), c);
     return map;
   }, [clientes]);
+
+  const selecionaveis = useMemo(() => idsDe(items), [items]);
+  const selecionados = useMemo(
+    () => (selectedIds instanceof Set ? selectedIds : new Set()),
+    [selectedIds],
+  );
+  const selecionavel = typeof onToggleRow === "function";
+  const qtdSelecionada = useMemo(
+    () => selecionaveis.filter((id) => selecionados.has(id)).length,
+    [selecionaveis, selecionados],
+  );
+  const estado = estadoSelecaoTotal(selecionaveis.length, qtdSelecionada);
 
   if (loading) return <LoadingSpinner />;
 
@@ -52,11 +107,26 @@ export default function CteList({
       <table className="min-w-full text-sm">
         <thead className="bg-gray-50">
           <tr className="text-left text-text-secondary">
+            {selecionavel && (
+              <th className="px-3 py-2.5">
+                <input
+                  type="checkbox"
+                  aria-label="Selecionar todos os CT-e do filtro atual"
+                  className="h-4 w-4 rounded border-border"
+                  checked={estado === "all"}
+                  ref={(el) => {
+                    if (el) el.indeterminate = estado === "some";
+                  }}
+                  onChange={() => onToggleAll?.()}
+                />
+              </th>
+            )}
             <th className="px-3 py-2.5 font-medium">Número</th>
             <th className="px-3 py-2.5 font-medium">Status</th>
             <th className="px-3 py-2.5 font-medium">Cliente / tomador</th>
             <th className="px-3 py-2.5 font-medium">Valor</th>
             <th className="px-3 py-2.5 font-medium">Emissão</th>
+            <th className="px-3 py-2.5 font-medium">Arquivos</th>
             <th className="px-3 py-2.5 font-medium text-right">Ações</th>
           </tr>
         </thead>
@@ -64,8 +134,20 @@ export default function CteList({
           {items.map((row) => {
             const cliente = clienteById.get(String(row.cliente_id));
             const podeCancelar = row.status === "processado";
+            const marcado = selecionados.has(Number(row.id));
             return (
               <tr key={row.id} className="border-t border-border">
+                {selecionavel && (
+                  <td className="px-3 py-2.5">
+                    <input
+                      type="checkbox"
+                      aria-label={`Selecionar CT-e ${row.numero || row.id}`}
+                      className="h-4 w-4 rounded border-border"
+                      checked={marcado}
+                      onChange={() => onToggleRow?.(Number(row.id))}
+                    />
+                  </td>
+                )}
                 <td className="px-3 py-2.5 font-medium">
                   {[row.numero, row.serie].filter(Boolean).join("/") || "—"}
                 </td>
@@ -78,6 +160,20 @@ export default function CteList({
                 <td className="px-3 py-2.5">{fmtMoney(row.valor_frete)}</td>
                 <td className="px-3 py-2.5">
                   {fmtDate(row.data_emissao || row.criado_em)}
+                </td>
+                <td className="px-3 py-2.5">
+                  <div className="flex gap-2">
+                    <DownloadCell
+                      row={row}
+                      formato="pdf"
+                      onDownload={onDownload}
+                    />
+                    <DownloadCell
+                      row={row}
+                      formato="xml"
+                      onDownload={onDownload}
+                    />
+                  </div>
                 </td>
                 <td className="px-3 py-2.5 text-right">
                   <div className="flex flex-wrap justify-end gap-2">
@@ -138,4 +234,8 @@ CteList.propTypes = {
   onCancel: PropTypes.func,
   onComplemento: PropTypes.func,
   onSubstituir: PropTypes.func,
+  selectedIds: PropTypes.instanceOf(Set),
+  onToggleRow: PropTypes.func,
+  onToggleAll: PropTypes.func,
+  onDownload: PropTypes.func,
 };

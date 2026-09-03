@@ -4,10 +4,17 @@ import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
 import { Alert, Card, PageHeader, Tabs } from "../components/ui";
 import { apiFetch, parseApiError } from "../lib/apiClient.js";
 import { extractApiArray, extractApiData } from "../utils/extractApiArray.js";
-import { useApiMutation, useCteListQuery, useMdfeListQuery } from "../hooks";
+import {
+  useApiMutation,
+  useCteListQuery,
+  useFiscalDocDownload,
+  useMdfeListQuery,
+} from "../hooks";
+import { idsDe } from "../utils/fiscalDownload.js";
 import MdfeForm from "../components/fiscal/MdfeForm.jsx";
 import MdfeList from "../components/fiscal/MdfeList.jsx";
 import FiscalDocDetailModal from "../components/fiscal/FiscalDocDetailModal.jsx";
+import FiscalDownloadBar from "../components/fiscal/FiscalDownloadBar.jsx";
 import CancelarDocModal from "../components/fiscal/CancelarDocModal.jsx";
 
 /** Junta o texto cru do provedor/back para exibir sem resumir. */
@@ -56,6 +63,36 @@ export default function FiscalMdfe() {
   const [cancelar, setCancelar] = useState({ open: false, row: null });
   const [cancelando, setCancelando] = useState(false);
   const [encerrando, setEncerrando] = useState(false);
+
+  // Seleção para download em lote (zip). A lista não é paginada no servidor,
+  // então "selecionar todos" cobre todos os MDF-e do filtro atual.
+  const [selecionados, setSelecionados] = useState(() => new Set());
+  const { baixarIndividual, baixarLote, baixando } = useFiscalDocDownload("mdfe");
+
+  useEffect(() => {
+    setSelecionados((prev) => {
+      if (prev.size === 0) return prev;
+      const atuais = new Set(idsDe(mdfes));
+      const next = new Set([...prev].filter((id) => atuais.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [mdfes]);
+
+  const toggleSelecionado = (id) =>
+    setSelecionados((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const toggleTodos = () =>
+    setSelecionados((prev) => {
+      const todos = idsDe(mdfes);
+      const marcadosTodos =
+        todos.length > 0 && todos.every((id) => prev.has(id));
+      return marcadosTodos ? new Set() : new Set(todos);
+    });
 
   useEffect(() => {
     let ativo = true;
@@ -206,8 +243,22 @@ export default function FiscalMdfe() {
             onView={handleVerDetalhe}
             onCancel={(row) => setCancelar({ open: true, row })}
             onEncerrar={handleEncerrar}
+            selectedIds={selecionados}
+            onToggleRow={toggleSelecionado}
+            onToggleAll={toggleTodos}
+            onDownload={baixarIndividual}
           />
+          {selecionados.size > 0 && <div className="h-16" aria-hidden />}
         </Card>
+      )}
+
+      {tab === "emitidos" && (
+        <FiscalDownloadBar
+          quantidade={selecionados.size}
+          baixando={baixando}
+          onBaixar={() => baixarLote([...selecionados])}
+          onLimpar={() => setSelecionados(new Set())}
+        />
       )}
 
       <FiscalDocDetailModal

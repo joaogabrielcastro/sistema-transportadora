@@ -88,7 +88,7 @@ async function postJson(path, body, token) {
 }
 
 export const CteMdfeProviderClient = {
-  /** @returns {Promise<{serie?:string,numero?:string|number,chave?:string,base64Xml?:string,base64DACTe?:string,erros?:string[],avisos?:string[],status?:number}>} */
+  /** @returns {Promise<{serie?:string,numero?:string|number,chave?:string,protocolo?:string|number,base64Xml?:string,base64DACTe?:string,erros?:string[],avisos?:string[],status?:number}>} */
   enviarConhecimentoTransporte(payload, token) {
     return postJson("/EnviarConhecimentoTransporte", payload, token);
   },
@@ -98,12 +98,21 @@ export const CteMdfeProviderClient = {
     return postJson("/EnviarManifestoTransporte", payload, token);
   },
 
-  /** @returns {Promise<{Status?:number,Error?:string,NuProtocolo?:string,Avisos?:string[]}>} */
+  /**
+   * Encerramento do MDF-e (0.5). Corpo confirmado no payload real do provedor:
+   * { tipoAmbiente, chave, protocolo, numeroSequencial }.
+   * @returns {Promise<{Status?:number,Error?:string,NuProtocolo?:string,Avisos?:string[]}>}
+   */
   encerrarManifestoTransporte(payload, token) {
     return postJson("/EncerrarManifestoTransporte", payload, token);
   },
 
-  /** @returns {Promise<{Status?:number,Error?:string,NuProtocolo?:string,Avisos?:string[]}>} */
+  /**
+   * Cancelamento genérico (CT-e e MDF-e) — item 0.6. Corpo:
+   * { ChaveNF, Justificativa, NumeroProtocolo, NumeroSequencial, DataEvento,
+   *   CpfCnpjRemetenteDCe }.
+   * @returns {Promise<{Status?:number,Error?:string,NuProtocolo?:string,Avisos?:string[]}>}
+   */
   cancelarNotaFiscal(payload, token) {
     return postJson("/CancelarNotaFiscal", payload, token);
   },

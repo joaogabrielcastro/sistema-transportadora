@@ -8,9 +8,9 @@ import {
 } from "../../src/services/fiscal/CteService.js";
 
 /**
- * CT-e — grupo infTribFed (item 1.4): SÓ os totalizadores vPIS / vCOFINS.
- * Sem CST/base/alíquota (isso é da NF-e, não do CT-e). Opcional: presente e
- * ausente são válidos. Funções puras — sem banco.
+ * CT-e — grupo Imposto.TributosFederal (item 1.4): SÓ os totalizadores
+ * ValorPis / ValorCofins. Sem CST/base/alíquota (isso é da NF-e, não do CT-e).
+ * Opcional: presente e ausente são válidos. Funções puras — sem banco.
  */
 
 const baseCte = {
@@ -23,7 +23,7 @@ const baseCte = {
   tomador: { cpf_cnpj: "12345678000199" },
 };
 
-test("sem trib_fed: colunas PIS/COFINS ficam null e imp não ganha infTribFed", () => {
+test("sem trib_fed: colunas PIS/COFINS ficam null e imp não ganha TributosFederal", () => {
   const ok = emitirCteSchema.parse(baseCte);
   const cols = colunasContingenciaTribFed(ok);
   assert.equal(cols.pis_valor, null);
@@ -32,7 +32,7 @@ test("sem trib_fed: colunas PIS/COFINS ficam null e imp não ganha infTribFed", 
   assert.equal(montarImpCte(ok), undefined);
 });
 
-test("com trib_fed: totalizadores vão para colunas e para imp.infTribFed", () => {
+test("com trib_fed: totalizadores vão para colunas e para imp.TributosFederal", () => {
   const ok = emitirCteSchema.parse({
     ...baseCte,
     trib_fed: { pis_valor: 1.65, cofins_valor: 7.6 },
@@ -42,9 +42,9 @@ test("com trib_fed: totalizadores vão para colunas e para imp.infTribFed", () =
   assert.equal(cols.cofins_valor, 7.6);
 
   const imp = montarImpCte(ok);
-  assert.deepEqual(imp.infTribFed, { vPIS: 1.65, vCOFINS: 7.6 });
+  assert.deepEqual(imp.TributosFederal, { ValorPis: 1.65, ValorCofins: 7.6 });
   // Não inventa CST/base/alíquota — só os dois totalizadores.
-  assert.deepEqual(Object.keys(imp.infTribFed).sort(), ["vCOFINS", "vPIS"]);
+  assert.deepEqual(Object.keys(imp.TributosFederal).sort(), ["ValorCofins", "ValorPis"]);
 });
 
 test("trib_fed convive com o objeto imposto livre sem descartá-lo", () => {
@@ -55,10 +55,10 @@ test("trib_fed convive com o objeto imposto livre sem descartá-lo", () => {
   });
   const imp = montarImpCte(ok);
   assert.deepEqual(imp.ICMS, { CST: "00" });
-  assert.equal(imp.infTribFed.vPIS, 2);
+  assert.equal(imp.TributosFederal.ValorPis, 2);
 });
 
-test("montarPayloadCte: Imposto sem infTribFed quando trib_fed ausente", () => {
+test("montarPayloadCte: Imposto sem TributosFederal quando trib_fed ausente", () => {
   const payload = montarPayloadCte(emitirCteSchema.parse(baseCte), undefined, undefined);
   assert.equal(payload.Imposto, undefined);
 });

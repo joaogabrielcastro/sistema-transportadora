@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Button, FormField, Alert } from "../components/ui";
 import { parseApiError } from "../lib/apiClient.js";
+import { resolvePostLoginRedirect } from "../utils/safeRedirect.js";
 import {
   PRODUCT_LOGO_ALT,
   PRODUCT_LOGO_SRC,
@@ -10,6 +11,7 @@ import {
   PRODUCT_TAGLINE,
   PUBLIC_REGISTER_ENABLED,
 } from "../brand.js";
+import LegalLinks from "../components/LegalLinks.jsx";
 
 const MailIcon = () => (
   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -48,7 +50,17 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const from = location.state?.from || "/";
+  const from = resolvePostLoginRedirect(location);
+  const [accountClosed] = useState(() => {
+    if (location.state?.closed === true) return true;
+    try {
+      const flagged = sessionStorage.getItem("atrack.accountClosed") === "1";
+      if (flagged) sessionStorage.removeItem("atrack.accountClosed");
+      return flagged;
+    } catch {
+      return false;
+    }
+  });
 
   if (isAuthenticated) {
     return <Navigate to={from} replace />;
@@ -151,6 +163,13 @@ export default function Login() {
               </p>
             </div>
 
+            {accountClosed && (
+              <Alert
+                type="info"
+                className="mb-5"
+                message="Empresa encerrada. O acesso desta conta foi desativado."
+              />
+            )}
             {error && <Alert type="error" message={error} className="mb-5" />}
 
             <form onSubmit={handleSubmit} className="space-y-1">
@@ -180,7 +199,13 @@ export default function Login() {
                   icon={<LockIcon />}
                   className="mb-0"
                 />
-                <div className="mt-2 flex justify-end">
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <Link
+                    to="/forgot-password"
+                    className="text-xs font-medium text-secondary hover:text-secondary-dark transition-colors"
+                  >
+                    Esqueci a senha
+                  </Link>
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
@@ -213,8 +238,11 @@ export default function Login() {
             )}
           </div>
 
-          <p className="mt-6 text-center text-xs text-text-light">
-            Acesso restrito a usuários autorizados.
+          <LegalLinks />
+          <p className="mt-3 text-center text-xs text-text-light">
+            <Link to="/" className="font-medium text-secondary hover:text-secondary-dark">
+              Conhecer o ATrack
+            </Link>
           </p>
         </div>
       </main>

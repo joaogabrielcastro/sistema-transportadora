@@ -23,6 +23,25 @@ test("registerSchema exige senha mínima e e-mail", () => {
     email: "admin@empresa.com",
     password: "SenhaSegura1",
     nome: "João",
+    acceptedLegal: true,
   });
   assert.equal(ok.empresaNome, "Empresa X");
+});
+
+test("registerSchema exige aceite dos termos", () => {
+  assert.throws(() =>
+    registerSchema.parse({
+      empresaNome: "Empresa X",
+      email: "admin@empresa.com",
+      password: "SenhaSegura1",
+    }),
+  );
+  assert.throws(() =>
+    registerSchema.parse({
+      empresaNome: "Empresa X",
+      email: "admin@empresa.com",
+      password: "SenhaSegura1",
+      acceptedLegal: false,
+    }),
+  );
 });

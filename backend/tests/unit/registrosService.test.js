@@ -22,6 +22,7 @@ test("RegistrosService.list mescla gastos e manutenções ordenados e pagina", a
   const restore = patchPrisma({
     gastos: {
       count: async () => 2,
+      aggregate: async () => ({ _sum: { valor: 1500 } }),
       findMany: async () => [
         {
           id: 1,
@@ -41,6 +42,7 @@ test("RegistrosService.list mescla gastos e manutenções ordenados e pagina", a
     },
     checklist: {
       count: async () => 1,
+      aggregate: async () => ({ _sum: { valor: 800 } }),
       findMany: async () => [
         {
           id: 10,
@@ -60,6 +62,9 @@ test("RegistrosService.list mescla gastos e manutenções ordenados e pagina", a
     assert.equal(result.data[0].tipo_registro, "Manutenção");
     assert.equal(result.data[1].tipo_registro, "Gasto");
     assert.equal(result.data[1].nome_tipo, "Combustível");
+    assert.equal(result.summary.totalRegistros, 3);
+    assert.equal(result.summary.totalGastos, 1500);
+    assert.equal(result.summary.totalManutencoes, 800);
   } finally {
     restore();
   }
@@ -69,10 +74,12 @@ test("RegistrosService.list empurra datas futuras para o fim do histórico", asy
   const restore = patchPrisma({
     gastos: {
       count: async () => 0,
+      aggregate: async () => ({ _sum: { valor: null } }),
       findMany: async () => [],
     },
     checklist: {
       count: async () => 2,
+      aggregate: async () => ({ _sum: { valor: 0 } }),
       findMany: async () => [
         {
           id: 99,
@@ -110,10 +117,12 @@ test("RegistrosService.list filtra por caminhaoId no where", async () => {
         capturedWhere = where;
         return 0;
       },
+      aggregate: async () => ({ _sum: { valor: null } }),
       findMany: async () => [],
     },
     checklist: {
       count: async () => 0,
+      aggregate: async () => ({ _sum: { valor: null } }),
       findMany: async () => [],
     },
   });
@@ -135,10 +144,12 @@ test("RegistrosService.list filtra por placa contains", async () => {
         capturedWhere = where;
         return 0;
       },
+      aggregate: async () => ({ _sum: { valor: null } }),
       findMany: async () => [],
     },
     checklist: {
       count: async () => 0,
+      aggregate: async () => ({ _sum: { valor: null } }),
       findMany: async () => [],
     },
   });

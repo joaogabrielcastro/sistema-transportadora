@@ -515,10 +515,19 @@ export class EstoqueService {
       throw err;
     }
 
-    await tx.produtos.update({
-      where: { id: produto.id },
+    const decremented = await tx.produtos.updateMany({
+      where: {
+        id: produto.id,
+        tenant_id: Number(tenantId),
+        saldo: { gte: qtd },
+      },
       data: { saldo: { decrement: qtd } },
     });
+    if (decremented.count === 0) {
+      const err = new Error(`Saldo insuficiente (disponível: ${saldo})`);
+      err.statusCode = 400;
+      throw err;
+    }
 
     await tx.estoque_movimentos.create({
       data: {
@@ -532,6 +541,42 @@ export class EstoqueService {
     });
 
     return produto;
+  }
+
+  /**
+   * Estorna baixas de estoque vinculadas a um gasto/manutenção (motivo exato).
+   */
+  static async estornarBaixaPorMotivoComTx(tx, tenantId, { motivo }) {
+    if (!motivo) return;
+
+    const baixas = await tx.estoque_movimentos.findMany({
+      where: {
+        tenant_id: Number(tenantId),
+        tipo: "baixa",
+        motivo,
+      },
+    });
+
+    for (const mov of baixas) {
+      const qtd = Number(mov.quantidade);
+      if (!Number.isFinite(qtd) || qtd <= 0) continue;
+
+      await tx.produtos.updateMany({
+        where: { id: mov.produto_id, tenant_id: Number(tenantId) },
+        data: { saldo: { increment: qtd } },
+      });
+
+      await tx.estoque_movimentos.create({
+        data: {
+          tenant_id: Number(tenantId),
+          produto_id: mov.produto_id,
+          tipo: "entrada",
+          quantidade: qtd,
+          caminhao_id: mov.caminhao_id,
+          motivo: `Estorno: ${motivo}`,
+        },
+      });
+    }
   }
 
   static async listarProdutos(

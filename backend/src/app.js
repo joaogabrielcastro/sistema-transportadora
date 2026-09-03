@@ -30,6 +30,7 @@ import usersRoutes from "./routes/usersRoutes.js";
 import notasFiscaisRoutes from "./routes/notasFiscaisRoutes.js";
 import billingRoutes from "./routes/billingRoutes.js";
 import motoristasRoutes from "./routes/motoristasRoutes.js";
+import tenantRoutes from "./routes/tenantRoutes.js";
 import opsRoutes from "./routes/opsRoutes.js";
 import { requireFeature } from "./middleware/requireFeature.js";
 import { requireActiveSubscription } from "./middleware/requireActiveSubscription.js";
@@ -88,8 +89,8 @@ app.post(
   billingController.webhook,
 );
 
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
 app.use((req, res, next) => {
   logger.info("Request received", {
@@ -127,12 +128,30 @@ const apiRouter = express.Router();
 apiRouter.use(apiRateLimiter);
 apiRouter.post("/auth/login", authRateLimiter, authController.login);
 apiRouter.post("/auth/register", authRateLimiter, authController.register);
+apiRouter.post(
+  "/auth/forgot-password",
+  authRateLimiter,
+  authController.forgotPassword,
+);
+apiRouter.post(
+  "/auth/reset-password",
+  authRateLimiter,
+  authController.resetPassword,
+);
+apiRouter.get("/auth/invite", authRateLimiter, authController.getInvite);
+apiRouter.post(
+  "/auth/accept-invite",
+  authRateLimiter,
+  authController.acceptInvite,
+);
 apiRouter.use(requireAuth);
 apiRouter.use(auditLog);
 apiRouter.get("/auth/me", authController.me);
+apiRouter.post("/auth/change-password", authController.changePassword);
 
-// Billing: acessível mesmo sem assinatura ativa (para renovar / checkout)
+// Billing e dados da empresa: acessíveis mesmo sem assinatura ativa
 apiRouter.use("/billing", billingRoutes);
+apiRouter.use("/tenant", tenantRoutes);
 
 apiRouter.use(requireActiveSubscription);
 

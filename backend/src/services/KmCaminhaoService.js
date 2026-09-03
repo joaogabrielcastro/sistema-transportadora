@@ -31,23 +31,27 @@ export function resolveKmUpdate(atual, novoKm, { allowRegression = false } = {})
   return { apply: true, km, reason: allowRegression ? "manual" : "registro" };
 }
 
-async function persistKm(caminhaoId, km, client) {
-  await client.caminhoes.update({
-    where: { id: Number(caminhaoId) },
+async function persistKm(caminhaoId, km, client, tenantId) {
+  const where = { id: Number(caminhaoId) };
+  if (tenantId != null) where.tenant_id = Number(tenantId);
+  const result = await client.caminhoes.updateMany({
+    where,
     data: { km_atual: km },
   });
-  return true;
+  return result.count > 0;
 }
 
 /**
  * Atualiza km_atual a partir de gasto / manutenção / pneu (sem regressão).
  */
-export async function syncKmFromRegistro(caminhaoId, novoKm, { tx = null } = {}) {
+export async function syncKmFromRegistro(caminhaoId, novoKm, { tx = null, tenantId = null } = {}) {
   if (!caminhaoId) return false;
 
   const client = tx || prisma;
-  const caminhao = await client.caminhoes.findUnique({
-    where: { id: Number(caminhaoId) },
+  const where = { id: Number(caminhaoId) };
+  if (tenantId != null) where.tenant_id = Number(tenantId);
+  const caminhao = await client.caminhoes.findFirst({
+    where,
     select: { km_atual: true },
   });
 
@@ -68,19 +72,21 @@ export async function syncKmFromRegistro(caminhaoId, novoKm, { tx = null } = {})
     return false;
   }
 
-  await persistKm(caminhaoId, decision.km, client);
+  await persistKm(caminhaoId, decision.km, client, tenantId);
   return true;
 }
 
 /**
  * Atualização explícita na ficha do caminhão (permite correção para baixo).
  */
-export async function setKmManual(caminhaoId, novoKm, { tx = null } = {}) {
+export async function setKmManual(caminhaoId, novoKm, { tx = null, tenantId = null } = {}) {
   if (!caminhaoId) return false;
 
   const client = tx || prisma;
-  const caminhao = await client.caminhoes.findUnique({
-    where: { id: Number(caminhaoId) },
+  const where = { id: Number(caminhaoId) };
+  if (tenantId != null) where.tenant_id = Number(tenantId);
+  const caminhao = await client.caminhoes.findFirst({
+    where,
     select: { km_atual: true },
   });
 
@@ -92,7 +98,7 @@ export async function setKmManual(caminhaoId, novoKm, { tx = null } = {}) {
 
   if (!decision.apply) return false;
 
-  await persistKm(caminhaoId, decision.km, client);
+  await persistKm(caminhaoId, decision.km, client, tenantId);
 
   if (decision.km < Number(caminhao.km_atual ?? 0)) {
     logger.info("KM do caminhão corrigido manualmente", {
@@ -115,11 +121,13 @@ const toKm = (value) => {
  * Recalcula km_atual pelo maior KM entre gastos, manutenções e pneus do veículo.
  * Se não houver registros com KM, mantém o valor atual.
  */
-export async function recalculateKmAtual(caminhaoId, { tx = null } = {}) {
+export async function recalculateKmAtual(caminhaoId, { tx = null, tenantId = null } = {}) {
   if (!caminhaoId) return false;
 
   const client = tx || prisma;
   const id = Number(caminhaoId);
+  const truckWhere = { id };
+  if (tenantId != null) truckWhere.tenant_id = Number(tenantId);
 
   const [gastosAgg, checklistAgg, pneusAgg, caminhao] = await Promise.all([
     client.gastos.aggregate({
@@ -134,8 +142,8 @@ export async function recalculateKmAtual(caminhaoId, { tx = null } = {}) {
       where: { caminhao_id: id, km_instalacao: { not: null } },
       _max: { km_instalacao: true },
     }),
-    client.caminhoes.findUnique({
-      where: { id },
+    client.caminhoes.findFirst({
+      where: truckWhere,
       select: { km_atual: true },
     }),
   ]);
@@ -157,7 +165,7 @@ export async function recalculateKmAtual(caminhaoId, { tx = null } = {}) {
 
   if (novoKm === atual) return false;
 
-  await persistKm(id, novoKm, client);
+  await persistKm(id, novoKm, client, tenantId);
   logger.info("KM do caminhão recalculado após alteração de registros", {
     caminhaoId: id,
     de: atual,

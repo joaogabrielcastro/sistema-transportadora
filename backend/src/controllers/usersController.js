@@ -1,5 +1,9 @@
 import { UserService } from "../services/UserService.js";
-import { createUserSchema, updateUserSchema } from "../schemas/userSchema.js";
+import {
+  createUserSchema,
+  updateUserSchema,
+  inviteUserSchema,
+} from "../schemas/userSchema.js";
 import { catchAsync } from "../utils/catchAsync.js";
 import { requireTenantId } from "../utils/tenant.js";
 
@@ -22,6 +26,21 @@ export const usersController = {
       success: true,
       data,
       message: "Usuário criado com sucesso",
+    });
+  }),
+
+  invite: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    const parsed = inviteUserSchema.parse(req.body);
+    const data = await UserService.invite(
+      tenantId,
+      parsed,
+      req.context.user.id,
+    );
+    res.status(201).json({
+      success: true,
+      data,
+      message: `Convite enviado para ${data.email}`,
     });
   }),
 

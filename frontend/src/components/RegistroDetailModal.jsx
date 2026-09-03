@@ -11,10 +11,18 @@ const formatCurrency = (value) =>
 const formatDate = (value) =>
   value ? new Date(value).toLocaleDateString("pt-BR") : "—";
 
+const formatKm = (value) => {
+  if (value == null || value === "" || value === "N/A") return "—";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "—";
+  return n.toLocaleString("pt-BR");
+};
+
 const RegistroDetailModal = ({ registro, onClose }) => {
   if (!registro) return null;
 
   const { tipo } = registro;
+  const placa = registro.placa || registro.caminhoes?.placa;
 
   return (
     <Modal
@@ -30,49 +38,59 @@ const RegistroDetailModal = ({ registro, onClose }) => {
       size="lg"
     >
       <div className="space-y-4">
+        {placa && <Row label="Caminhão" value={placa} />}
+
         {tipo === "gasto" && (
           <>
-            <Row label="Tipo" value={registro.tipos_gastos?.nome_tipo} />
-            <Row label="Data" value={formatDate(registro.data_gasto)} />
-            <Row label="Valor" value={formatCurrency(registro.valor)} highlight />
             <Row
-              label="KM"
-              value={
-                registro.km_registro != null
-                  ? Number(registro.km_registro).toLocaleString("pt-BR")
-                  : "—"
-              }
+              label="Tipo"
+              value={registro.nome_tipo || registro.tipos_gastos?.nome_tipo}
             />
-            {registro.quantidade_combustivel != null && (
+            <Row
+              label="Data"
+              value={formatDate(registro.data || registro.data_gasto)}
+            />
+            <Row label="Valor" value={formatCurrency(registro.valor)} highlight />
+            <Row label="KM" value={formatKm(registro.km_registro)} />
+            {registro.quantidade_combustivel != null &&
+              registro.quantidade_combustivel !== "N/A" && (
+                <Row
+                  label="Combustível"
+                  value={`${registro.quantidade_combustivel} L`}
+                />
+              )}
+            {(registro.descricao || registro.observacao) && (
               <Row
-                label="Combustível"
-                value={`${registro.quantidade_combustivel} L`}
+                label="Descrição"
+                value={registro.descricao || registro.observacao}
+                multiline
               />
-            )}
-            {registro.descricao && (
-              <Row label="Descrição" value={registro.descricao} multiline />
             )}
           </>
         )}
 
         {tipo === "manutencao" && (
           <>
-            <Row label="Item" value={registro.itens_checklist?.nome_item} />
-            <Row label="Data" value={formatDate(registro.data_manutencao)} />
+            <Row
+              label="Serviço"
+              value={registro.nome_tipo || registro.itens_checklist?.nome_item}
+            />
+            <Row
+              label="Data"
+              value={formatDate(registro.data || registro.data_manutencao)}
+            />
             <Row label="Valor" value={formatCurrency(registro.valor)} highlight />
             <Row
               label="KM"
-              value={
-                registro.km_manutencao != null
-                  ? Number(registro.km_manutencao).toLocaleString("pt-BR")
-                  : "—"
-              }
+              value={formatKm(registro.km_manutencao ?? registro.km_registro)}
             />
-            {registro.oficina && <Row label="Oficina" value={registro.oficina} />}
+            {registro.oficina && registro.oficina !== "N/A" && (
+              <Row label="Oficina" value={registro.oficina} />
+            )}
             {registro.proxima_km != null && registro.proxima_km !== "" && (
               <Row
                 label="Próxima troca (KM)"
-                value={Number(registro.proxima_km).toLocaleString("pt-BR")}
+                value={formatKm(registro.proxima_km)}
               />
             )}
             {registro.proxima_data && (
@@ -105,18 +123,11 @@ const RegistroDetailModal = ({ registro, onClose }) => {
               label="Instalação"
               value={formatDate(registro.data_instalacao)}
             />
-            <Row
-              label="KM instalação"
-              value={
-                registro.km_instalacao != null
-                  ? Number(registro.km_instalacao).toLocaleString("pt-BR")
-                  : "—"
-              }
-            />
+            <Row label="KM instalação" value={formatKm(registro.km_instalacao)} />
             {registro.vida_util_km != null && (
               <Row
                 label="Vida útil"
-                value={`${Number(registro.vida_util_km).toLocaleString("pt-BR")} km`}
+                value={`${formatKm(registro.vida_util_km)} km`}
               />
             )}
             {registro.observacao && (

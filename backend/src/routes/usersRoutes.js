@@ -6,6 +6,7 @@ const router = Router();
 
 router.use(requireRole("admin"));
 router.get("/", usersController.list);
+router.post("/invite", usersController.invite);
 router.post("/", usersController.create);
 router.patch("/:id", usersController.update);
 

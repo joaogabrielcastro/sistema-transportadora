@@ -3,6 +3,7 @@
  * (CI / banco vazio) não aplica. Idempotente.
  */
 import prisma from "../src/lib/prisma.js";
+import { ensureDefaultTiposGastos } from "../src/utils/tiposGastos.js";
 
 const POSICOES_EXTRA = [
   "Eixo 3 - Externo Esquerdo",
@@ -30,6 +31,9 @@ const POSICOES_EXTRA = [
 ];
 
 async function main() {
+  const tipos = await ensureDefaultTiposGastos();
+  console.log(`Seed CI: tipos de gasto ok (${tipos} novo(s)).`);
+
   for (const nome_posicao of POSICOES_EXTRA) {
     await prisma.posicoes_pneus.upsert({
       where: { nome_posicao },

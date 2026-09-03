@@ -95,7 +95,7 @@ export class ChecklistService {
       }
 
       if (caminhaoId && kmManutencao != null) {
-        await syncKmFromRegistro(caminhaoId, kmManutencao, { tx });
+        await syncKmFromRegistro(caminhaoId, kmManutencao, { tx, tenantId });
       }
 
       return checklistCriado;
@@ -136,17 +136,20 @@ export class ChecklistService {
       // Não altera estoque em edição (evita baixa duplicada).
       delete data.produto_id;
 
-      await tx.checklist.update({
-        where: { id: parsedId },
+      const updated = await tx.checklist.updateMany({
+        where: { id: parsedId, tenant_id: Number(tenantId) },
         data,
       });
+      if (updated.count === 0) {
+        throw new Error("Item de checklist não encontrado");
+      }
 
       if (!caminhaoId) return;
 
       if (kmAlterado && novoKm != null && novoKm !== "") {
-        await syncKmFromRegistro(caminhaoId, novoKm, { tx });
+        await syncKmFromRegistro(caminhaoId, novoKm, { tx, tenantId });
       } else if (kmAlterado) {
-        await recalculateKmAtual(caminhaoId, { tx });
+        await recalculateKmAtual(caminhaoId, { tx, tenantId });
       }
     });
 
@@ -162,9 +165,16 @@ export class ChecklistService {
     const caminhaoId = existing.caminhao_id;
 
     await prisma.$transaction(async (tx) => {
-      await tx.checklist.delete({ where: { id: Number(id) } });
+      if (existing.produto_id) {
+        await EstoqueService.estornarBaixaPorMotivoComTx(tx, tenantId, {
+          motivo: `Manutenção #${id}`,
+        });
+      }
+      await tx.checklist.deleteMany({
+        where: { id: Number(id), tenant_id: Number(tenantId) },
+      });
       if (caminhaoId) {
-        await recalculateKmAtual(caminhaoId, { tx });
+        await recalculateKmAtual(caminhaoId, { tx, tenantId });
       }
     });
   }

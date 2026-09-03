@@ -18,10 +18,15 @@ import {
   maskPersonNameInput,
 } from "../utils/inputMasks.js";
 import { apiFetch } from "../lib/apiClient.js";
+import { useAuth } from "../context/AuthContext.jsx";
+import { isVehicleQuotaReached } from "../utils/billing.js";
+import PlanQuotaBanner from "../components/PlanQuotaBanner.jsx";
 
 const CadastroCaminhao = () => {
   const navigate = useNavigate();
   const { post } = useApiMutation();
+  const { user, refreshProfile } = useAuth();
+  const vehicleQuotaReached = isVehicleQuotaReached(user);
 
   const [form, setForm] = useState({
     placa: "",
@@ -147,6 +152,7 @@ const CadastroCaminhao = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (vehicleQuotaReached) return;
     setLoading(true);
     setFieldErrors({});
 
@@ -179,6 +185,7 @@ const CadastroCaminhao = () => {
       };
 
       await post("/caminhoes", payload);
+      await refreshProfile?.();
       setTimeout(() => {
         navigate("/");
       }, 1500);
@@ -203,6 +210,8 @@ const CadastroCaminhao = () => {
         title="Cadastrar veículo"
         subtitle="Truck, cavalo ou carreta — cada placa é um cadastro próprio"
       />
+
+      <PlanQuotaBanner user={user} resource="vehicles" />
 
       <Card className="shadow-lg">
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -436,6 +445,7 @@ const CadastroCaminhao = () => {
               variant="primary"
               className="flex-1"
               loading={loading}
+              disabled={vehicleQuotaReached}
             >
               Cadastrar veículo
             </Button>

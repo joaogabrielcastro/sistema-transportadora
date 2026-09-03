@@ -13,6 +13,8 @@ import VinculosComposicao from "../components/VinculosComposicao.jsx";
 import RegistroDetailModal from "../components/RegistroDetailModal.jsx";
 import NovoPneuModal from "../components/NovoPneuModal.jsx";
 import { API_CONFIG } from "../utils/constants.js";
+import { useAuth } from "../context/AuthContext.jsx";
+import { PERMISSIONS, userHasPermission } from "../utils/permissions.js";
 
 const CaminhaoAnalysisCharts = lazy(
   () => import("../components/caminhao/CaminhaoAnalysisCharts.jsx"),
@@ -32,6 +34,8 @@ const CaminhaoDetail = () => {
   const [registroModal, setRegistroModal] = useState(null);
   const [novoPneuOpen, setNovoPneuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("resumo");
+  const { user } = useAuth();
+  const canWriteFrota = userHasPermission(user, PERMISSIONS.FROTA_WRITE);
 
   const { data, isLoading: loading, error } = useCaminhaoDetailQuery(placa);
   const {
@@ -157,11 +161,13 @@ const CaminhaoDetail = () => {
             <Button variant="outline" onClick={() => navigate("/")}>
               Voltar
             </Button>
+            {canWriteFrota && (
             <Button
               onClick={() => navigate(`/caminhao/editar/${caminhao.placa}`)}
             >
               Editar veículo
             </Button>
+            )}
           </div>
         }
       />

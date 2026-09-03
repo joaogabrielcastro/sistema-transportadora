@@ -3,6 +3,7 @@ import {
   PLAN_FEATURES,
   PUBLIC_BILLING_PLANS,
 } from "./tenantFeatures.js";
+import { PLAN_QUOTAS } from "./planQuotas.js";
 
 /**
  * Catálogo comercial dos planos (preços de referência em BRL/mês).
@@ -17,6 +18,7 @@ export const PLAN_CATALOG = Object.freeze([
       "Veículos, pneus, manutenção, gastos e relatórios — o essencial para sair da planilha.",
     priceMonthlyBrl: 199,
     highlights: [
+      "Até 15 veículos e 3 usuários",
       "Cadastro de frota e composição",
       "Gastos, checklist e manutenção",
       "Controle de pneus e documentos",
@@ -34,6 +36,7 @@ export const PLAN_CATALOG = Object.freeze([
       "Tudo do Starter + importação de NF-e, estoque de peças e baixa por caminhão.",
     priceMonthlyBrl: 499,
     highlights: [
+      "Até 40 veículos e 8 usuários",
       "Tudo do Starter",
       "Importação de XML da NF-e",
       "Cadastro manual de notas",
@@ -50,6 +53,7 @@ export const PLAN_CATALOG = Object.freeze([
       "Pacote premium: frota + NF-e/estoque, suporte prioritário e tudo que o ATrack oferece para novos clientes.",
     priceMonthlyBrl: 699,
     highlights: [
+      "Até 100 veículos e 20 usuários",
       "Tudo do Starter e do Fiscal",
       "NF-e, estoque e frota integrados",
       "Relatórios e documentos",
@@ -76,6 +80,7 @@ export function buildPlansPublic({ priceConfiguredFor }) {
       priceMonthlyBrl: plan.priceMonthlyBrl,
       priceLabel: formatPlanPrice(plan.priceMonthlyBrl),
       highlights: plan.highlights,
+      quotas: PLAN_QUOTAS[plan.id] ?? null,
       modules: plan.modules,
       features: PLAN_FEATURES[plan.id],
       popular: Boolean(plan.popular),

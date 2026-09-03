@@ -22,3 +22,13 @@ export function isCombustivelTipo(tipoId, tiposGastos = []) {
 export function combustivelTipoId(tiposGastos = []) {
   return findCombustivelTipo(tiposGastos)?.id ?? null;
 }
+
+/** Tipos reservados ao fluxo de manutenção (checklist), não ao gasto financeiro. */
+export function isManutencaoTipoGasto(nomeTipo) {
+  const n = normalizeTipoName(nomeTipo);
+  return n === "manutencao" || n === "manutenção";
+}
+
+export function tiposGastosFinanceiros(tiposGastos = []) {
+  return tiposGastos.filter((t) => !isManutencaoTipoGasto(t.nome_tipo));
+}

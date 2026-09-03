@@ -25,6 +25,7 @@ export class MotoristaService {
     return prisma.motoristas.findMany({
       where,
       orderBy: [{ ativo: "desc" }, { nome: "asc" }],
+      take: 500,
       include: {
         _count: { select: { caminhoes: true } },
       },
@@ -69,8 +70,8 @@ export class MotoristaService {
   static async update(tenantId, id, body) {
     await this.getById(tenantId, id);
     const data = motoristaUpdateSchema.parse(body);
-    return prisma.motoristas.update({
-      where: { id: Number(id) },
+    const updated = await prisma.motoristas.updateMany({
+      where: { id: Number(id), tenant_id: Number(tenantId) },
       data: {
         ...(data.nome !== undefined ? { nome: data.nome } : {}),
         ...(data.cpf !== undefined ? { cpf: data.cpf || null } : {}),
@@ -93,6 +94,12 @@ export class MotoristaService {
           : {}),
       },
     });
+    if (updated.count === 0) {
+      const err = new Error("Motorista não encontrado");
+      err.statusCode = 404;
+      throw err;
+    }
+    return this.getById(tenantId, id);
   }
 
   static async remove(tenantId, id) {
@@ -101,7 +108,9 @@ export class MotoristaService {
       where: { tenant_id: Number(tenantId), motorista_id: Number(id) },
       data: { motorista_id: null },
     });
-    await prisma.motoristas.delete({ where: { id: Number(id) } });
+    await prisma.motoristas.deleteMany({
+      where: { id: Number(id), tenant_id: Number(tenantId) },
+    });
     return { deleted: true };
   }
 }

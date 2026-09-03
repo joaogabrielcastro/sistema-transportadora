@@ -32,6 +32,8 @@ import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
 import NovoPneuModal from "../components/NovoPneuModal.jsx";
 import { usePneuAtribuirQueries } from "../hooks";
 import { calcularVidaUtilPneu } from "../utils/pneuVidaUtil.js";
+import { useAuth } from "../context/AuthContext.jsx";
+import { PERMISSIONS, userHasPermission } from "../utils/permissions.js";
 
 const PneuVidaUtilBar = ({ percentualVidaUtil }) => {
   if (percentualVidaUtil === null) {
@@ -58,7 +60,7 @@ const PneuVidaUtilBar = ({ percentualVidaUtil }) => {
   );
 };
 
-const PneuMobileCard = ({ pneu, onDelete }) => (
+const PneuMobileCard = ({ pneu, onDelete, canWrite = true }) => (
   <div className="bg-white border border-border rounded-xl p-4 shadow-sm space-y-3">
     <div className="flex justify-between items-start gap-3">
       <div>
@@ -103,6 +105,8 @@ const PneuMobileCard = ({ pneu, onDelete }) => (
       </div>
     </div>
     <div className="flex gap-3 pt-2 border-t border-border">
+      {canWrite && (
+        <>
       <Link
         to={`/pneu/editar/${pneu.id}`}
         className="flex-1 text-center py-2 text-sm font-medium text-primary hover:text-primary-dark rounded-lg hover:bg-primary/5 transition-colors"
@@ -116,6 +120,8 @@ const PneuMobileCard = ({ pneu, onDelete }) => (
       >
         Excluir
       </button>
+        </>
+      )}
     </div>
   </div>
 );
@@ -127,6 +133,7 @@ const PneusTable = ({
   loading,
   filtroPlaca,
   onFiltroChange,
+  canWrite = true,
 }) => {
   const navigate = useNavigate();
   const pneusComCalculos = useMemo(() => {
@@ -201,9 +208,11 @@ const PneusTable = ({
             title="Nenhum pneu em uso encontrado"
             description='Use "Instalar pneus" para montar pneus do estoque ou cadastrar novos no caminhão.'
             action={
+              canWrite ? (
               <Link to="/pneus/atribuir">
                 <Button variant="primary">Instalar pneus</Button>
               </Link>
+              ) : null
             }
           />
         </div>
@@ -212,7 +221,11 @@ const PneusTable = ({
           <div className="md:hidden divide-y divide-border">
             {pneusComCalculos.map((pneu) => (
               <div key={pneu.id} className="p-4">
-                <PneuMobileCard pneu={pneu} onDelete={onDelete} />
+                <PneuMobileCard
+                  pneu={pneu}
+                  onDelete={onDelete}
+                  canWrite={canWrite}
+                />
               </div>
             ))}
           </div>
@@ -266,8 +279,14 @@ const PneusTable = ({
                   </DataTableTd>
                   <DataTableTd align="right">
                     <TableRowActions
-                      onEdit={() => navigate(`/pneu/editar/${pneu.id}`)}
-                      onDelete={() => onDelete(pneu.id)}
+                      onEdit={
+                        canWrite
+                          ? () => navigate(`/pneu/editar/${pneu.id}`)
+                          : undefined
+                      }
+                      onDelete={
+                        canWrite ? () => onDelete(pneu.id) : undefined
+                      }
                     />
                   </DataTableTd>
                 </DataTableRow>
@@ -284,6 +303,8 @@ const PNEUS_PAGE_SIZE = 20;
 
 const Pneus = () => {
   const { delete: del } = useApiMutation();
+  const { user } = useAuth();
+  const canWrite = userHasPermission(user, PERMISSIONS.PNEUS_WRITE);
   const [filtroPlaca, setFiltroPlaca] = useState("");
   const placaDebounced = useDebouncedValue(filtroPlaca.trim(), 400);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -353,9 +374,11 @@ const Pneus = () => {
         subtitle="Gerencie a atribuição de pneus aos caminhões da frota"
         actions={
           <div className="flex flex-wrap gap-2">
+            {canWrite && (
             <Button variant="primary" onClick={() => setNovoPneuOpen(true)}>
               + Novo pneu
             </Button>
+            )}
             <Link to="/pneus/estoque">
               <Button variant="outline">Ir para Estoque de Pneus</Button>
             </Link>
@@ -387,6 +410,7 @@ const Pneus = () => {
               loading={loading}
               filtroPlaca={filtroPlaca}
               onFiltroChange={(e) => setFiltroPlaca(e.target.value)}
+              canWrite={canWrite}
             />
 
             {pagination && pagination.totalPages > 1 && (
@@ -412,8 +436,10 @@ const Pneus = () => {
         confirmText={deleting ? "Excluindo..." : "Excluir"}
         cancelText="Cancelar"
         warning
+        loading={deleting}
       />
 
+      {canWrite && (
       <NovoPneuModal
         isOpen={novoPneuOpen}
         onClose={() => setNovoPneuOpen(false)}
@@ -423,6 +449,7 @@ const Pneus = () => {
         stockPneus={modalData.pneus}
         onSuccess={() => setCurrentPage(1)}
       />
+      )}
     </PageLayout>
   );
 };

@@ -88,7 +88,11 @@ const retryRequest = async <T>(
   try {
     return await fn();
   } catch (error) {
-    if (retries === 0) throw error;
+    const canceled =
+      (error as { code?: string; name?: string }).code === "ERR_CANCELED" ||
+      (error as { name?: string }).name === "CanceledError" ||
+      (error as { name?: string }).name === "AbortError";
+    if (canceled || retries === 0) throw error;
 
     const axiosError = error as { response?: { status?: number } };
     if (axiosError.response?.status && axiosError.response.status >= 400) {
@@ -126,7 +130,18 @@ api.interceptors.response.use(
     const status = axiosError.response?.status;
     const code = axiosError.response?.data?.code;
     const reqUrl = String(axiosError.config?.url || "");
-    const isAuthAttempt = /\/auth\/(login|register)/i.test(reqUrl);
+
+    if (status != null && status >= 500) {
+      void import("./monitoring.js")
+        .then(({ captureException }) => {
+          captureException(error, { url: reqUrl, status });
+        })
+        .catch(() => {});
+    }
+    const isAuthAttempt =
+      /\/auth\/(login|register|forgot-password|reset-password|invite|accept-invite)/i.test(
+        reqUrl,
+      );
 
     if (
       status === 401 &&

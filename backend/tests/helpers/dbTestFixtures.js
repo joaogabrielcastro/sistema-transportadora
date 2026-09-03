@@ -113,17 +113,26 @@ export async function createSecondaryTenantAdmin({
   password = "TenantBAdmin123!",
   nome = "Tenant B",
   features = { ordem_coleta: true, notas_estoque: false },
+  billingExempt = true,
+  plan = null,
+  subscriptionStatus,
+  trialEndsAt,
 } = {}) {
   const password_hash = await hashPassword(password);
+  const billed = billingExempt === false;
   const tenant = await prisma.tenants.create({
     data: {
       nome,
       slug,
       ativo: true,
       features,
-      // Integração não passa por Stripe; isenta cobrança como clientes legados.
-      billing_exempt: true,
-      subscription_status: "active",
+      billing_exempt: billingExempt,
+      plan: plan ?? (billed ? "starter" : null),
+      subscription_status:
+        subscriptionStatus ?? (billed ? "trialing" : "active"),
+      trial_ends_at: billed
+        ? trialEndsAt ?? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+        : trialEndsAt ?? null,
     },
   });
 
@@ -270,6 +279,8 @@ export async function cleanupCaminhao(caminhaoId) {
 
 export async function cleanupTenant(tenantId) {
   if (!tenantId) return;
+  await prisma.audit_logs.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
+  await prisma.auth_tokens.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.estoque_movimentos.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.nota_itens
     .deleteMany({
@@ -285,8 +296,23 @@ export async function cleanupTenant(tenantId) {
   await prisma.ordens_coleta_envio.deleteMany({ where: { tenant_id: tenantId } });
   await prisma.caminhao_documentos.deleteMany({ where: { tenant_id: tenantId } });
   await prisma.caminhoes.deleteMany({ where: { tenant_id: tenantId } });
+  await prisma.motoristas.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.users.deleteMany({ where: { tenant_id: tenantId } });
   await prisma.tenants.delete({ where: { id: tenantId } }).catch(() => {});
+}
+
+/** Preenche N veículos direto no banco (para bater teto de plano sem 15 POSTs). */
+export async function seedCaminhoes(tenantId, count) {
+  if (count <= 0) return [];
+  const data = Array.from({ length: count }, (_, i) => ({
+    tenant_id: Number(tenantId),
+    placa: `Q${String(i).padStart(3, "0")}A${String(i % 100).padStart(2, "0")}`,
+    qtd_pneus: 6,
+    km_atual: 1000,
+    tipo_veiculo: "truck",
+  }));
+  await prisma.caminhoes.createMany({ data });
+  return data.map((row) => row.placa);
 }
 
 export async function cleanupStockPneus(ids = []) {

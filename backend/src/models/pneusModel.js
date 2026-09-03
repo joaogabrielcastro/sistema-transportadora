@@ -1,6 +1,10 @@
 import prisma from "../lib/prisma.js";
 import { serializePrisma } from "../utils/prismaSerialization.js";
 import { MAX_LIST_LIMIT } from "../utils/listLimits.js";
+import {
+  deleteOneInTenant,
+  updateOneInTenant,
+} from "../utils/tenantWrite.js";
 
 const pneuInclude = {
   caminhoes: {
@@ -144,21 +148,30 @@ export const pneusModel = {
   },
 
   update: async (tenantId, id, pneuData) => {
-    const data = await prisma.pneus.update({
-      where: { id: parseId(id) },
-      data: normalizePneuData(pneuData),
-      include: pneuInclude,
-    });
-
-    return serializePrisma(data);
+    await updateOneInTenant(
+      prisma.pneus,
+      tenantId,
+      parseId(id),
+      normalizePneuData(pneuData),
+      "Pneu não encontrado",
+    );
+    return pneusModel.getById(tenantId, id);
   },
 
   delete: async (tenantId, id) => {
-    const data = await prisma.pneus.delete({
-      where: { id: parseId(id) },
-    });
-
-    return serializePrisma(data);
+    const existing = await pneusModel.getById(tenantId, id);
+    if (!existing) {
+      const err = new Error("Pneu não encontrado");
+      err.statusCode = 404;
+      throw err;
+    }
+    await deleteOneInTenant(
+      prisma.pneus,
+      tenantId,
+      parseId(id),
+      "Pneu não encontrado",
+    );
+    return existing;
   },
 
   assignFromStock: async (tenantId, pneuId, updates) => {
@@ -202,13 +215,15 @@ export const pneusModel = {
       }
     }
 
-    const data = await prisma.pneus.update({
-      where: { id: parseId(pneuId) },
+    const assigned = await prisma.pneus.updateMany({
+      where: withTenant(tenantId, { id: parseId(pneuId) }),
       data: safeUpdates,
-      include: pneuInclude,
     });
+    if (assigned.count === 0) {
+      throw new Error("Pneu não encontrado");
+    }
 
-    return serializePrisma(data);
+    return pneusModel.getById(tenantId, pneuId);
   },
 
   findAndAssignStock: async (tenantId, criteria, updates) => {

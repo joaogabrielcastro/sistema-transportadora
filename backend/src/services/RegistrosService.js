@@ -62,6 +62,37 @@ function buildCaminhaoFilter(tenantId, { caminhaoId, placa }) {
   return base;
 }
 
+function buildDateRangeFilter(dataInicio, dataFim, field) {
+  if (!dataInicio && !dataFim) return {};
+
+  const range = {};
+  if (dataInicio) {
+    range.gte = new Date(`${dataInicio}T00:00:00.000Z`);
+  }
+  if (dataFim) {
+    range.lte = new Date(`${dataFim}T23:59:59.999Z`);
+  }
+  return { [field]: range };
+}
+
+function buildGastosWhere(tenantId, filters) {
+  return {
+    ...buildCaminhaoFilter(tenantId, filters),
+    ...buildDateRangeFilter(filters.dataInicio, filters.dataFim, "data_gasto"),
+  };
+}
+
+function buildChecklistWhere(tenantId, filters) {
+  return {
+    ...buildCaminhaoFilter(tenantId, filters),
+    ...buildDateRangeFilter(
+      filters.dataInicio,
+      filters.dataFim,
+      "data_manutencao",
+    ),
+  };
+}
+
 function toTime(value) {
   const t = new Date(value).getTime();
   return Number.isNaN(t) ? null : t;
@@ -95,34 +126,80 @@ export function compareRegistrosByDateDesc(a, b) {
   return (Number(b.id) || 0) - (Number(a.id) || 0);
 }
 
+function sumDecimal(value) {
+  return Number(value ?? 0);
+}
+
 export class RegistrosService {
-  static async list(tenantId, { page = 1, limit = 20, caminhaoId, placa } = {}) {
+  static async list(
+    tenantId,
+    {
+      page = 1,
+      limit = 20,
+      caminhaoId,
+      placa,
+      dataInicio,
+      dataFim,
+      tipo = "todos",
+    } = {},
+  ) {
     const parsedPage = Math.max(1, Number(page) || 1);
     const parsedLimit = parseListLimit(limit, 20);
     const skip = (parsedPage - 1) * parsedLimit;
     const fetchSize = skip + parsedLimit;
 
-    const caminhaoFilter = buildCaminhaoFilter(tenantId, { caminhaoId, placa });
+    const filters = { caminhaoId, placa, dataInicio, dataFim };
+    const includeGastos = tipo !== "manutencao";
+    const includeChecklist = tipo !== "gasto";
 
-    // id DESC garante que registros recém-criados entrem na janela de merge,
-    // mesmo quando existem datas futuras (import/OCR) que dominariam orderBy data.
-    const [gastosCount, checklistCount, gastos, checklists] =
-      await Promise.all([
-        prisma.gastos.count({ where: caminhaoFilter }),
-        prisma.checklist.count({ where: caminhaoFilter }),
-        prisma.gastos.findMany({
-          where: caminhaoFilter,
-          include: gastosInclude,
-          orderBy: [{ id: "desc" }],
-          take: fetchSize,
-        }),
-        prisma.checklist.findMany({
-          where: caminhaoFilter,
-          include: checklistInclude,
-          orderBy: [{ id: "desc" }],
-          take: fetchSize,
-        }),
-      ]);
+    const gastosWhere = includeGastos ? buildGastosWhere(tenantId, filters) : null;
+    const checklistWhere = includeChecklist
+      ? buildChecklistWhere(tenantId, filters)
+      : null;
+
+    const [
+      gastosCount,
+      checklistCount,
+      gastosAgg,
+      checklistAgg,
+      gastos,
+      checklists,
+    ] = await Promise.all([
+      includeGastos
+        ? prisma.gastos.count({ where: gastosWhere })
+        : Promise.resolve(0),
+      includeChecklist
+        ? prisma.checklist.count({ where: checklistWhere })
+        : Promise.resolve(0),
+      includeGastos
+        ? prisma.gastos.aggregate({
+            where: gastosWhere,
+            _sum: { valor: true },
+          })
+        : Promise.resolve({ _sum: { valor: null } }),
+      includeChecklist
+        ? prisma.checklist.aggregate({
+            where: checklistWhere,
+            _sum: { valor: true },
+          })
+        : Promise.resolve({ _sum: { valor: null } }),
+      includeGastos
+        ? prisma.gastos.findMany({
+            where: gastosWhere,
+            include: gastosInclude,
+            orderBy: [{ id: "desc" }],
+            take: fetchSize,
+          })
+        : Promise.resolve([]),
+      includeChecklist
+        ? prisma.checklist.findMany({
+            where: checklistWhere,
+            include: checklistInclude,
+            orderBy: [{ id: "desc" }],
+            take: fetchSize,
+          })
+        : Promise.resolve([]),
+    ]);
 
     const merged = [
       ...gastos.map(mapGastoRow),
@@ -140,6 +217,13 @@ export class RegistrosService {
         totalPages,
         totalItems,
         itemsPerPage: parsedLimit,
+      },
+      summary: {
+        totalRegistros: totalItems,
+        totalGastos: sumDecimal(gastosAgg._sum?.valor),
+        totalManutencoes: sumDecimal(checklistAgg._sum?.valor),
+        countGastos: gastosCount,
+        countManutencoes: checklistCount,
       },
     });
   }

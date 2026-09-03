@@ -7,6 +7,8 @@ import { Alert, Button, Card, PageHeader } from "../components/ui";
 import { apiFetch, parseApiError } from "../lib/apiClient.js";
 import { PRODUCT_NAME, PRODUCT_TAGLINE } from "../brand.js";
 import {
+  BILLING_TRIAL_DAYS,
+  formatQuotaUsage,
   hasBillingAccess,
   planDisplayName,
   resolvePlanCards,
@@ -88,7 +90,7 @@ function PlanCard({
           </div>
           {plan.trialEligible && !isActive && (
             <p className="mt-1.5 text-xs font-medium text-success-dark">
-              14 dias grátis no cadastro
+              {BILLING_TRIAL_DAYS} dias grátis no cadastro
             </p>
           )}
         </div>
@@ -197,6 +199,10 @@ export default function Assinatura() {
           <Alert type="info">
             Clientes atuais não precisam assinar. Continue usando o sistema
             normalmente.{" "}
+            <Link to="/empresa" className="underline font-medium">
+              Dados da empresa
+            </Link>
+            {" · "}
             <Link to="/" className="underline font-medium">
               Voltar ao início
             </Link>
@@ -209,6 +215,7 @@ export default function Assinatura() {
   const days = trialDaysRemaining(user);
   const accessOk = hasBillingAccess(user);
   const currentPlan = status?.plan || user?.plan;
+  const quota = status?.quota || user?.quota;
   const isTrialing = user?.subscriptionStatus === "trialing";
   const isActive = user?.subscriptionStatus === "active";
   const canManage = isActive;
@@ -293,6 +300,18 @@ export default function Assinatura() {
             </Alert>
           )}
 
+          {quota && !quota.unlimited && (
+            <Alert type="info">
+              Uso do plano {planDisplayName(quota.plan || currentPlan)}:{" "}
+              <strong>{formatQuotaUsage(quota.vehicles)}</strong> veículos e{" "}
+              <strong>{formatQuotaUsage(quota.users)}</strong> usuários
+              {quota.users?.pendingInvites > 0
+                ? ` (inclui ${quota.users.pendingInvites} convite(s) pendente(s))`
+                : ""}
+              .
+            </Alert>
+          )}
+
           {isActive && currentPlan && (
             <Alert type="success">
               Plano ativo: <strong>{planDisplayName(currentPlan)}</strong>.
@@ -325,6 +344,17 @@ export default function Assinatura() {
         </div>
 
         <PlanComparison />
+
+        {user?.role === "admin" && (
+          <p className="text-center text-sm">
+            <Link
+              to="/empresa"
+              className="font-medium text-secondary hover:text-secondary-dark"
+            >
+              Dados da empresa
+            </Link>
+          </p>
+        )}
 
         {user?.role !== "admin" && (
           <p className="text-center text-sm text-text-secondary">

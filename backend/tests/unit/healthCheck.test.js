@@ -20,6 +20,8 @@ test("buildHealthPayload retorna healthy quando todas as probes ok", () => {
   assert.equal(payload.database.ok, true);
   assert.equal(payload.redis.ok, true);
   assert.equal(payload.redis.queueMode, "redis");
+  assert.equal(payload.mail.configured, false);
+  assert.equal(payload.sentry.configured, false);
 });
 
 test("buildHealthPayload retorna degraded quando banco falha", () => {

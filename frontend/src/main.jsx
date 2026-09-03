@@ -11,6 +11,9 @@ import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import { initPwaAutoUpdate } from "./pwaRegister.js";
 import { initVersionWatch } from "./versionWatch.js";
 import { purgePwaStorage } from "./utils/serviceWorkerCleanup.js";
+import { initMonitoring } from "./lib/monitoring.js";
+
+void initMonitoring();
 
 initPwaAutoUpdate();
 initVersionWatch();

@@ -1,4 +1,5 @@
 import prisma from "../lib/prisma.js";
+import { TenantService } from "./TenantService.js";
 
 export class OnboardingService {
   static async getStatus(tenantId) {
@@ -70,30 +71,6 @@ export class OnboardingService {
   }
 
   static async updateSettings(tenantId, body = {}) {
-    const data = {};
-    if (body.alertEmail !== undefined) {
-      data.alert_email = body.alertEmail || null;
-    }
-    if (body.whatsappNotifyPhone !== undefined) {
-      data.whatsapp_notify_phone = body.whatsappNotifyPhone || null;
-    }
-    if (typeof body.weeklyDigestEnabled === "boolean") {
-      data.weekly_digest_enabled = body.weeklyDigestEnabled;
-    }
-    if (Object.keys(data).length) {
-      await prisma.tenants.update({
-        where: { id: Number(tenantId) },
-        data,
-      });
-    }
-    return prisma.tenants.findUnique({
-      where: { id: Number(tenantId) },
-      select: {
-        alert_email: true,
-        whatsapp_notify_phone: true,
-        weekly_digest_enabled: true,
-        onboarding_completed_at: true,
-      },
-    });
+    return TenantService.updateSettings(tenantId, body);
   }
 }

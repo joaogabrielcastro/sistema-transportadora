@@ -2,6 +2,10 @@ import prisma from "../lib/prisma.js";
 import { serializePrisma } from "../utils/prismaSerialization.js";
 import { MAX_LIST_LIMIT } from "../utils/listLimits.js";
 import { resolveCombustivelTipoId } from "../utils/tiposGastos.js";
+import {
+  deleteOneInTenant,
+  updateOneInTenant,
+} from "../utils/tenantWrite.js";
 
 const gastoInclude = {
   caminhoes: {
@@ -97,21 +101,30 @@ export const gastosModel = {
   },
 
   update: async (tenantId, id, gastoData) => {
-    const data = await prisma.gastos.update({
-      where: { id: parseId(id) },
-      data: gastoData,
-      include: gastoInclude,
-    });
-
-    return serializePrisma(data);
+    await updateOneInTenant(
+      prisma.gastos,
+      tenantId,
+      parseId(id),
+      gastoData,
+      "Gasto não encontrado",
+    );
+    return gastosModel.getById(tenantId, id);
   },
 
   delete: async (tenantId, id) => {
-    const data = await prisma.gastos.delete({
-      where: { id: parseId(id) },
-    });
-
-    return serializePrisma(data);
+    const existing = await gastosModel.getById(tenantId, id);
+    if (!existing) {
+      const err = new Error("Gasto não encontrado");
+      err.statusCode = 404;
+      throw err;
+    }
+    await deleteOneInTenant(
+      prisma.gastos,
+      tenantId,
+      parseId(id),
+      "Gasto não encontrado",
+    );
+    return existing;
   },
 
   getConsumoCombustivel: async (tenantId, id) => {

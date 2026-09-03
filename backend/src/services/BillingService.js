@@ -10,6 +10,7 @@ import {
   PLANS,
 } from "../utils/tenantFeatures.js";
 import { buildPlansPublic } from "../utils/planCatalog.js";
+import { getQuotaUsage } from "../utils/planQuotas.js";
 
 let stripeClient = null;
 
@@ -84,6 +85,7 @@ export class BillingService {
     const billing = buildBillingPublic(tenant);
     return {
       ...billing,
+      quota: await getQuotaUsage(prisma, tenant),
       plans: buildPlansPublic({
         priceConfiguredFor: (key) => Boolean(priceIdForPlan(key)),
       }),
@@ -208,6 +210,28 @@ export class BillingService {
     });
 
     return { url: session.url };
+  }
+
+  /** Best-effort: cancela assinatura Stripe se existir. Não lança. */
+  static async cancelSubscriptionIfAny(tenant) {
+    if (!tenant?.stripe_subscription_id) {
+      return { canceled: false, skipped: true };
+    }
+    if (!config.billing.enabled) {
+      return { canceled: false, skipped: true, reason: "stripe-off" };
+    }
+    try {
+      const stripe = getStripe();
+      await stripe.subscriptions.cancel(tenant.stripe_subscription_id);
+      return { canceled: true };
+    } catch (err) {
+      logger.warn("Falha ao cancelar assinatura Stripe ao encerrar empresa", {
+        tenantId: tenant.id,
+        subscriptionId: tenant.stripe_subscription_id,
+        error: err?.message,
+      });
+      return { canceled: false, error: err?.message };
+    }
   }
 
   /**

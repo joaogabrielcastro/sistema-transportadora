@@ -8,6 +8,9 @@ const { validateProductionConfig } = await import(
 );
 validateProductionConfig();
 
+const { initSentry } = await import("./src/lib/sentry.js");
+await initSentry();
+
 const { config } = await import("./src/config/index.js");
 const { default: app } = await import("./src/app.js");
 
@@ -34,6 +37,16 @@ const server = app.listen(PORT, async () => {
   }
 
   try {
+    const { ensureDefaultTiposGastos } = await import("./src/utils/tiposGastos.js");
+    const novos = await ensureDefaultTiposGastos();
+    if (novos > 0) {
+      console.log(`Tipos de gasto padrão: ${novos} adicionado(s).`);
+    }
+  } catch (err) {
+    console.error("Falha ao garantir tipos de gasto padrão:", err?.message);
+  }
+
+  try {
     const { OrdemColetaService } = await import(
       "./src/services/OrdemColetaService.js"
     );
@@ -43,6 +56,20 @@ const server = app.listen(PORT, async () => {
     }
   } catch (err) {
     console.error("Falha ao retomar envios pendentes:", err?.message);
+  }
+
+  try {
+    const { verifyMailOnBoot } = await import("./src/utils/mailer.js");
+    await verifyMailOnBoot();
+  } catch (err) {
+    console.error("Falha ao verificar SMTP:", err?.message);
+  }
+
+  try {
+    const { startBackupScheduler } = await import("./src/utils/backupDb.js");
+    startBackupScheduler();
+  } catch (err) {
+    console.error("Falha ao agendar backup:", err?.message);
   }
 });
 
@@ -61,6 +88,20 @@ const shutdown = async (signal) => {
     await closeOrdemColetaQueue();
   } catch (err) {
     console.error("Erro ao fechar fila ordem coleta:", err?.message);
+  }
+
+  try {
+    const { stopBackupScheduler } = await import("./src/utils/backupDb.js");
+    stopBackupScheduler();
+  } catch (err) {
+    console.error("Erro ao parar backup:", err?.message);
+  }
+
+  try {
+    const { closeSentry } = await import("./src/lib/sentry.js");
+    await closeSentry();
+  } catch (err) {
+    console.error("Erro ao fechar Sentry:", err?.message);
   }
 
   server.close(() => {

@@ -7,7 +7,7 @@ import {
   PRODUCT_NAME,
   PRODUCT_TAGLINE,
 } from "../brand.js";
-import { trialDaysRemaining } from "../utils/billing.js";
+import { trialDaysRemaining, isVehicleQuotaReached } from "../utils/billing.js";
 import { PERMISSIONS, userHasPermission } from "../utils/permissions.js";
 
 const pneusSubLinks = [
@@ -62,7 +62,9 @@ const Navbar = ({ children }) => {
   const mainLinks = buildMainLinks(user?.features);
   const showBillingLink = isAuthenticated && user?.billingExempt === false;
   const canWriteFrota = userHasPermission(user, PERMISSIONS.FROTA_WRITE);
+  const vehicleQuotaReached = isVehicleQuotaReached(user);
   const canManageUsers = userHasPermission(user, PERMISSIONS.USERS_MANAGE);
+  const canWriteSettings = userHasPermission(user, PERMISSIONS.SETTINGS_WRITE);
   const canReadAudit = userHasPermission(user, PERMISSIONS.AUDIT_READ);
   const trialDays = trialDaysRemaining(user);
   const showTrialBanner =
@@ -225,7 +227,7 @@ const Navbar = ({ children }) => {
           </div>
 
           <div className="hidden lg:flex items-center gap-1.5 shrink-0 ml-auto">
-            {canWriteFrota && (
+            {canWriteFrota && !vehicleQuotaReached && (
               <Link
                 to="/cadastro-caminhao"
                 className="inline-flex h-9 items-center px-3.5 rounded-lg text-sm font-semibold bg-secondary text-white hover:bg-secondary-dark transition-colors whitespace-nowrap"
@@ -253,6 +255,16 @@ const Navbar = ({ children }) => {
                 Usuários
               </Link>
             )}
+            {isAuthenticated && canWriteSettings && (
+              <Link
+                to="/empresa"
+                className={navItemClass(
+                  isActivePath(location.pathname, "/empresa"),
+                )}
+              >
+                Empresa
+              </Link>
+            )}
             {isAuthenticated && canReadAudit && (
               <Link
                 to="/auditoria"
@@ -261,6 +273,16 @@ const Navbar = ({ children }) => {
                 )}
               >
                 Auditoria
+              </Link>
+            )}
+            {isAuthenticated && (
+              <Link
+                to="/conta"
+                className={navItemClass(
+                  isActivePath(location.pathname, "/conta"),
+                )}
+              >
+                Minha conta
               </Link>
             )}
             {isAuthenticated && (
@@ -347,7 +369,7 @@ const Navbar = ({ children }) => {
               </Link>
             ))}
 
-            {canWriteFrota && (
+            {canWriteFrota && !vehicleQuotaReached && (
               <Link
                 to="/cadastro-caminhao"
                 className="mt-3 mx-4 py-3 rounded-lg text-center font-semibold bg-secondary text-white hover:bg-secondary-dark transition-colors"
@@ -379,6 +401,18 @@ const Navbar = ({ children }) => {
                 Usuários
               </Link>
             )}
+            {isAuthenticated && canWriteSettings && (
+              <Link
+                to="/empresa"
+                className={`mx-4 mt-2 px-4 py-3 rounded-lg transition-colors ${
+                  isActivePath(location.pathname, "/empresa")
+                    ? "bg-secondary text-white"
+                    : "text-gray-300 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                Empresa
+              </Link>
+            )}
             {isAuthenticated && canReadAudit && (
               <Link
                 to="/auditoria"
@@ -389,6 +423,18 @@ const Navbar = ({ children }) => {
                 }`}
               >
                 Auditoria
+              </Link>
+            )}
+            {isAuthenticated && (
+              <Link
+                to="/conta"
+                className={`mx-4 mt-2 px-4 py-3 rounded-lg transition-colors ${
+                  isActivePath(location.pathname, "/conta")
+                    ? "bg-secondary text-white"
+                    : "text-gray-300 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                Minha conta
               </Link>
             )}
             {isAuthenticated && (

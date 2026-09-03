@@ -40,6 +40,18 @@ test("errorHandler ZodError retorna 400 VALIDATION_ERROR", () => {
   assert.equal(res.body.code, "VALIDATION_ERROR");
 });
 
+test("errorHandler PLAN_QUOTA_EXCEEDED retorna 403 com quota", () => {
+  const res = mockRes();
+  const err = new Error("Limite do plano Starter atingido (15/15 veículos).");
+  err.statusCode = 403;
+  err.code = "PLAN_QUOTA_EXCEEDED";
+  err.quota = { resource: "vehicles", used: 15, limit: 15, plan: "starter" };
+  errorHandler(err, req, res, () => {});
+  assert.equal(res.statusCode, 403);
+  assert.equal(res.body.code, "PLAN_QUOTA_EXCEEDED");
+  assert.equal(res.body.quota.limit, 15);
+});
+
 test("errorHandler DEPENDENCIES_EXIST retorna 409", () => {
   const res = mockRes();
   const err = new Error("Há vínculos");

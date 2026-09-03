@@ -30,6 +30,9 @@ export function featureEnabled(user, featureKey) {
   return features[featureKey] === true;
 }
 
+/** Alinhar com BILLING_TRIAL_DAYS no backend (padrão 14). */
+export const BILLING_TRIAL_DAYS = 14;
+
 export function formatPlanPrice(value) {
   return Number(value).toLocaleString("pt-BR", {
     style: "currency",
@@ -49,6 +52,7 @@ export const PLAN_CARDS = [
       "Veículos, pneus, manutenção, gastos e relatórios — o essencial para sair da planilha.",
     priceMonthlyBrl: 199,
     highlights: [
+      "Até 15 veículos e 3 usuários",
       "Cadastro de frota e composição",
       "Gastos, checklist e manutenção",
       "Controle de pneus e documentos",
@@ -65,6 +69,7 @@ export const PLAN_CARDS = [
       "Tudo do Starter + importação de NF-e, estoque de peças e baixa por caminhão.",
     priceMonthlyBrl: 499,
     highlights: [
+      "Até 40 veículos e 8 usuários",
       "Tudo do Starter",
       "Importação de XML da NF-e",
       "Cadastro manual de notas",
@@ -80,6 +85,7 @@ export const PLAN_CARDS = [
       "Pacote premium: frota + NF-e/estoque e tudo que o ATrack oferece para novos clientes.",
     priceMonthlyBrl: 699,
     highlights: [
+      "Até 100 veículos e 20 usuários",
       "Tudo do Starter e do Fiscal",
       "NF-e, estoque e frota integrados",
       "Relatórios e documentos",
@@ -113,4 +119,34 @@ export const PLAN_LABELS = {
 
 export function planDisplayName(planId) {
   return PLAN_LABELS[planId] || planId || "—";
+}
+
+/** Espelha backend/src/utils/planQuotas.js */
+export const PLAN_QUOTAS = {
+  starter: { maxVehicles: 15, maxUsers: 3 },
+  ops: { maxVehicles: 40, maxUsers: 8 },
+  fiscal: { maxVehicles: 40, maxUsers: 8 },
+  complete: { maxVehicles: 100, maxUsers: 20 },
+};
+
+export function isQuotaReached(used, limit) {
+  if (limit == null) return false;
+  return Number(used) >= Number(limit);
+}
+
+export function isVehicleQuotaReached(user) {
+  const quota = user?.quota;
+  if (!quota || quota.unlimited) return false;
+  return isQuotaReached(quota.vehicles?.used, quota.vehicles?.limit);
+}
+
+export function isUserQuotaReached(user) {
+  const quota = user?.quota;
+  if (!quota || quota.unlimited) return false;
+  return isQuotaReached(quota.users?.used, quota.users?.limit);
+}
+
+export function formatQuotaUsage(part) {
+  if (!part || part.limit == null) return "Ilimitado";
+  return `${part.used}/${part.limit}`;
 }

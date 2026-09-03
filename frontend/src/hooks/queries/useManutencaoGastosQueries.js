@@ -10,14 +10,20 @@ export function useManutencaoGastosQueries({
   page = 1,
   limit = 20,
   placa = "",
+  dataInicio = "",
+  dataFim = "",
+  tipo = "todos",
 } = {}) {
   const registrosParams = useMemo(
     () => ({
       page,
       limit,
       ...(placa.trim() ? { placa: placa.trim() } : {}),
+      ...(dataInicio ? { dataInicio } : {}),
+      ...(dataFim ? { dataFim } : {}),
+      ...(tipo && tipo !== "todos" ? { tipo } : {}),
     }),
-    [page, limit, placa],
+    [page, limit, placa, dataInicio, dataFim, tipo],
   );
 
   const results = useQueries({
@@ -64,6 +70,7 @@ export function useManutencaoGastosQueries({
       return {
         data: extractApiArray(res),
         pagination: res.pagination || null,
+        summary: res.summary || null,
       };
     },
   });
@@ -76,6 +83,7 @@ export function useManutencaoGastosQueries({
     tiposGastos: tiposQ.data ?? [],
     registros: registrosQuery.data?.data ?? [],
     pagination: registrosQuery.data?.pagination ?? null,
+    summary: registrosQuery.data?.summary ?? null,
     isLoading:
       results.some((q) => q.isLoading) || registrosQuery.isLoading,
     isFetching:

@@ -6,14 +6,10 @@ const EmptyState = ({
   title,
   description,
   action,
-  dashed = false,
+  dashed: _dashed = false,
 }) => (
   <div
-    className={`text-center py-12 px-6 rounded-xl ${
-      dashed
-        ? "bg-white border border-dashed border-border"
-        : "bg-gray-50 border border-dashed border-gray-200"
-    }`}
+    className={`text-center py-12 px-6 rounded-xl bg-white border border-dashed border-border`}
   >
     {icon && (
       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-secondary/10 text-secondary">

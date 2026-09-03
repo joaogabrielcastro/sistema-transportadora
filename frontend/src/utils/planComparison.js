@@ -17,6 +17,12 @@ export const PLAN_COMPARE_SECTIONS = [
     title: "Gestão da frota",
     rows: [
       {
+        label: "Veículos na frota",
+        starter: "Até 15",
+        fiscal: "Até 40",
+        complete: "Até 100",
+      },
+      {
         label: "Cadastro de caminhões, cavalos e carretas",
         starter: true,
         fiscal: true,
@@ -144,9 +150,9 @@ export const PLAN_COMPARE_SECTIONS = [
     rows: [
       {
         label: "Usuários por empresa",
-        starter: "Ilimitado",
-        fiscal: "Ilimitado",
-        complete: "Ilimitado",
+        starter: "Até 3",
+        fiscal: "Até 8",
+        complete: "Até 20",
       },
       {
         label: "Perfis admin / operador / leitura",

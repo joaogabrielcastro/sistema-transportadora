@@ -1,5 +1,6 @@
 import prisma from "../lib/prisma.js";
 import { serializePrisma } from "../utils/prismaSerialization.js";
+import { sortTiposGastos } from "../utils/tiposGastosCatalog.js";
 
 export const tiposGastosModel = {
   getAll: async () => {
@@ -7,6 +8,6 @@ export const tiposGastosModel = {
       orderBy: { nome_tipo: "asc" },
     });
 
-    return serializePrisma(data);
+    return serializePrisma(sortTiposGastos(data));
   },
 };

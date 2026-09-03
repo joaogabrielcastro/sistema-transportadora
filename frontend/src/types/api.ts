@@ -29,6 +29,7 @@ export interface ApiFetchConfig {
   params?: Record<string, unknown>;
   headers?: Record<string, string>;
   timeout?: number;
+  signal?: AbortSignal;
   responseType?: "json" | "blob" | "arraybuffer" | "text";
   skipSuccessToast?: boolean;
   skipErrorToast?: boolean;

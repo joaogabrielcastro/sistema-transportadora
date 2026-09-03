@@ -15,11 +15,13 @@ export class PneuService {
   /**
    * Atualiza o KM do caminhão se necessário
    */
-  static async atualizarKmCaminhao(caminhaoId, kmInstalacao) {
+  static async atualizarKmCaminhao(caminhaoId, kmInstalacao, tenantId) {
     if (!caminhaoId || !kmInstalacao) return;
 
     try {
-      const updated = await syncKmFromRegistro(caminhaoId, kmInstalacao);
+      const updated = await syncKmFromRegistro(caminhaoId, kmInstalacao, {
+        tenantId,
+      });
       if (updated) {
         logger.info(
           `KM do caminhão ${caminhaoId} atualizado para ${kmInstalacao}`,
@@ -65,6 +67,7 @@ export class PneuService {
       await this.atualizarKmCaminhao(
         novoPneu.caminhao_id,
         novoPneu.km_instalacao,
+        tenantId,
       );
     }
 
@@ -89,7 +92,7 @@ export class PneuService {
     if (caminhaoId) {
       const maxKm = Math.max(...pneusData.map((p) => p.km_instalacao || 0));
       if (maxKm > 0) {
-        await this.atualizarKmCaminhao(caminhaoId, maxKm);
+        await this.atualizarKmCaminhao(caminhaoId, maxKm, tenantId);
       }
     }
 
@@ -132,9 +135,9 @@ export class PneuService {
 
     if (caminhaoId && data.km_instalacao !== undefined) {
       if (data.km_instalacao != null && data.km_instalacao !== "") {
-        await this.atualizarKmCaminhao(caminhaoId, data.km_instalacao);
+        await this.atualizarKmCaminhao(caminhaoId, data.km_instalacao, tenantId);
       } else {
-        await recalculateKmAtual(caminhaoId);
+        await recalculateKmAtual(caminhaoId, { tenantId });
       }
     }
 
@@ -151,7 +154,7 @@ export class PneuService {
     await pneusModel.delete(tenantId, id);
 
     if (caminhaoId) {
-      await recalculateKmAtual(caminhaoId);
+      await recalculateKmAtual(caminhaoId, { tenantId });
     }
   }
 

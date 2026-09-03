@@ -66,7 +66,7 @@ export class GastoService {
       }
 
       if (caminhaoId && novoKm != null) {
-        await syncKmFromRegistro(caminhaoId, novoKm, { tx });
+        await syncKmFromRegistro(caminhaoId, novoKm, { tx, tenantId });
       }
 
       return gastoCriado;
@@ -95,17 +95,20 @@ export class GastoService {
     const novoKm = kmAlterado ? rest.km_registro : undefined;
 
     await prisma.$transaction(async (tx) => {
-      await tx.gastos.update({
-        where: { id: parsedId },
+      const updated = await tx.gastos.updateMany({
+        where: { id: parsedId, tenant_id: Number(tenantId) },
         data: rest,
       });
+      if (updated.count === 0) {
+        throw new Error("Gasto não encontrado");
+      }
 
       if (!caminhaoId) return;
 
       if (kmAlterado && novoKm != null && novoKm !== "") {
-        await syncKmFromRegistro(caminhaoId, novoKm, { tx });
+        await syncKmFromRegistro(caminhaoId, novoKm, { tx, tenantId });
       } else if (kmAlterado) {
-        await recalculateKmAtual(caminhaoId, { tx });
+        await recalculateKmAtual(caminhaoId, { tx, tenantId });
       }
     });
 
@@ -121,9 +124,16 @@ export class GastoService {
     const caminhaoId = existing.caminhao_id;
 
     await prisma.$transaction(async (tx) => {
-      await tx.gastos.delete({ where: { id: Number(id) } });
+      if (existing.produto_id) {
+        await EstoqueService.estornarBaixaPorMotivoComTx(tx, tenantId, {
+          motivo: `Gasto #${id}`,
+        });
+      }
+      await tx.gastos.deleteMany({
+        where: { id: Number(id), tenant_id: Number(tenantId) },
+      });
       if (caminhaoId) {
-        await recalculateKmAtual(caminhaoId, { tx });
+        await recalculateKmAtual(caminhaoId, { tx, tenantId });
       }
     });
   }

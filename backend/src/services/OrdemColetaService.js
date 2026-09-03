@@ -1,10 +1,8 @@
 import puppeteer from "puppeteer";
-import nodemailer from "nodemailer";
 import prisma from "../lib/prisma.js";
 import { caminhoesModel } from "../models/caminhoesModel.js";
 import { mergeTemplate } from "../utils/templateMerge.js";
 import { logger } from "../utils/logger.js";
-import { config } from "../config/index.js";
 import { ORDEM_COLETA_PADRAO_HTML } from "../templates/ordemColetaPadraoHtml.js";
 import { ORDEM_COLETA_CANOINHAS_HTML } from "../templates/ordemColetaCanoinhasHtml.js";
 import { ASSINATURA_CARIMBO_PADRAO_HTML } from "../templates/assinaturaCarimboPadrao.js";
@@ -13,9 +11,14 @@ import {
   str,
   finalizeOrdemVars,
 } from "../utils/ordemColetaFormat.js";
+import { enqueueOrdemEnvio } from "../queues/ordemColetaJobQueue.js";
+import {
+  assertMailConfigured,
+  getMailTransport,
+  sendMail,
+} from "../utils/mailer.js";
 
 const MAX_ENVIO_RETRIES = 3;
-import { enqueueOrdemEnvio } from "../queues/ordemColetaJobQueue.js";
 
 const pickTemplate = (tipo) => {
   // CANOINHAS = id legado do tipo “autorização compacta” (exemplo de cliente), não regra global
@@ -189,43 +192,15 @@ export class OrdemColetaService {
   }
 
   static getMailTransport() {
-    const host = (config.mail?.smtpHost || "").trim();
-    const port = Number(config.mail?.smtpPort) || 0;
-    const from = (config.mail?.mailFrom || "").trim();
-    if (!host || !port || !from) return null;
-
-    return nodemailer.createTransport({
-      host,
-      port,
-      secure: config.mail.smtpSecure,
-      requireTLS: !config.mail.smtpSecure && port === 587,
-      connectionTimeout: 20_000,
-      greetingTimeout: 20_000,
-      socketTimeout: 25_000,
-      auth:
-        config.mail.smtpUser && config.mail.smtpPass
-          ? { user: config.mail.smtpUser, pass: config.mail.smtpPass }
-          : undefined,
-    });
+    return getMailTransport();
   }
 
   static assertMailConfigured() {
-    const t = OrdemColetaService.getMailTransport();
-    if (!t) {
-      const err = new Error(
-        "Envio por e-mail não configurado. Defina SMTP_HOST, SMTP_PORT e MAIL_FROM no servidor (e credenciais se necessário).",
-      );
-      err.statusCode = 503;
-      throw err;
-    }
-    return t;
+    return assertMailConfigured();
   }
 
   static async enviarEmailComAnexo({ to, subject, text, pdfBuffer, filename }) {
-    const transport = OrdemColetaService.assertMailConfigured();
-    const from = (config.mail.mailFrom || "").trim();
-    await transport.sendMail({
-      from,
+    await sendMail({
       to,
       subject,
       text: text || "Segue em anexo o documento gerado pelo sistema.",

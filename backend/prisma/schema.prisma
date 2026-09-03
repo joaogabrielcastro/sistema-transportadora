@@ -24,6 +24,9 @@ model tenants {
   stripe_subscription_id String?                 @unique @db.VarChar(255)
   stripe_price_id        String?                 @db.VarChar(255)
   onboarding_completed_at DateTime?              @db.Timestamptz(6)
+  /// Versão dos termos/privacidade aceita no cadastro da empresa
+  legal_version          String?                 @db.VarChar(16)
+  legal_accepted_at      DateTime?               @db.Timestamptz(6)
   alert_email            String?                 @db.VarChar(255)
   whatsapp_notify_phone  String?                 @db.VarChar(30)
   weekly_digest_enabled  Boolean                 @default(true)
@@ -41,6 +44,7 @@ model tenants {
   notas_fiscais          notas_fiscais[]
   estoque_movimentos     estoque_movimentos[]
   motoristas             motoristas[]
+  auth_tokens            auth_tokens[]
 
   @@index([slug])
   @@index([stripe_customer_id])
@@ -201,9 +205,34 @@ model users {
   permissions   Json     @default("[]") @db.JsonB
   ativo         Boolean  @default(true)
   criado_em     DateTime @default(now()) @db.Timestamptz(6)
-  tenants       tenants  @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  legal_version     String?   @db.VarChar(16)
+  legal_accepted_at DateTime? @db.Timestamptz(6)
+  tenants       tenants       @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  auth_tokens   auth_tokens[]
 
   @@index([role])
+  @@index([tenant_id])
+}
+
+/// Tokens de um uso: reset de senha e convite de equipe.
+model auth_tokens {
+  id         Int       @id @default(autoincrement())
+  purpose    String    @db.VarChar(32)
+  email      String    @db.VarChar(255)
+  tenant_id  Int?
+  user_id    Int?
+  role       String?   @db.VarChar(32)
+  nome       String?   @db.VarChar(120)
+  token_hash String    @unique @db.VarChar(64)
+  expires_at DateTime  @db.Timestamptz(6)
+  used_at    DateTime? @db.Timestamptz(6)
+  created_by Int?
+  criado_em  DateTime  @default(now()) @db.Timestamptz(6)
+  tenants    tenants?  @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users      users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([purpose, email])
+  @@index([expires_at])
   @@index([tenant_id])
 }
 

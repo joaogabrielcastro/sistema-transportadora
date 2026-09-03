@@ -13,17 +13,24 @@ export const Skeleton = ({ className = "", variant = "rectangular" }) => {
   );
 };
 
-export const CardSkeleton = () => (
-  <div className="bg-white rounded-lg shadow p-6 space-y-4">
-    <Skeleton className="h-6 w-3/4" />
-    <Skeleton className="h-4 w-full" />
-    <Skeleton className="h-4 w-5/6" />
-    <div className="flex gap-2 mt-4">
-      <Skeleton className="h-10 w-24" />
-      <Skeleton className="h-10 w-24" />
+export const CardSkeleton = ({ lines = 2 }) => {
+  const lineCount = Math.max(1, Number(lines) || 2);
+  return (
+    <div className="bg-white rounded-lg shadow p-6 space-y-4">
+      <Skeleton className="h-6 w-3/4" />
+      {Array.from({ length: lineCount }).map((_, i) => (
+        <Skeleton
+          key={i}
+          className={i === lineCount - 1 ? "h-4 w-5/6" : "h-4 w-full"}
+        />
+      ))}
+      <div className="flex gap-2 mt-4">
+        <Skeleton className="h-10 w-24" />
+        <Skeleton className="h-10 w-24" />
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export const TableSkeleton = ({ rows = 5, columns = 4 }) => (
   <div className="space-y-2">

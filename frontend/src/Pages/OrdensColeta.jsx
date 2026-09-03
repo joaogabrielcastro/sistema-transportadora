@@ -657,6 +657,7 @@ const OrdensColeta = () => {
         confirmText={clearingFalhas ? "Apagando..." : "Apagar falhas"}
         cancelText="Cancelar"
         warning
+        loading={clearingFalhas}
       />
     </PageLayout>
   );

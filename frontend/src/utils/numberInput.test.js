@@ -59,4 +59,49 @@ describe("formatNumberInputDisplay", () => {
       "10,",
     );
   });
+
+  it("useGrouping: false desliga o separador de milhar (default inalterado)", () => {
+    assert.equal(
+      formatNumberInputDisplay("1000000", { useGrouping: false }),
+      "1000000",
+    );
+    assert.equal(
+      formatNumberInputDisplay("1234567.89", {
+        maxDecimals: 2,
+        useGrouping: false,
+      }),
+      "1234567,89",
+    );
+    // sem a flag continua agrupando como antes
+    assert.equal(formatNumberInputDisplay("1000000"), "1.000.000");
+  });
+});
+
+describe("regressão: 'trava em 1,00' ao digitar valor grande (display -> reparse)", () => {
+  // Reproduz a digitação real: o input mostra o DISPLAY e o usuário acrescenta
+  // um caractere no fim a cada tecla. Com milhar aceso, o "." do display era
+  // relido como decimal e o campo travava. Com useGrouping:false, não.
+  const digitar = (keys, { maxDecimals, useGrouping }) => {
+    let state = "";
+    for (const k of keys) {
+      const display = formatNumberInputDisplay(state, { maxDecimals, useGrouping });
+      state = parseNumberInputValue(display + k, { maxDecimals });
+    }
+    return state;
+  };
+
+  it("com milhar (comportamento antigo) trava", () => {
+    assert.equal(digitar("150000000".split(""), { maxDecimals: 2 }), "1.50");
+  });
+
+  it("com useGrouping:false o valor é digitado por inteiro", () => {
+    assert.equal(
+      digitar("150000000".split(""), { maxDecimals: 2, useGrouping: false }),
+      "150000000",
+    );
+    assert.equal(
+      digitar("1234567,89".split(""), { maxDecimals: 2, useGrouping: false }),
+      "1234567.89",
+    );
+  });
 });

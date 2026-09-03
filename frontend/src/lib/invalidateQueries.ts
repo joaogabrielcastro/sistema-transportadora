@@ -43,4 +43,18 @@ export function invalidateQueriesFromMutation(
   ) {
     queryClient.invalidateQueries({ queryKey: queryKeys.pneus.all });
   }
+
+  // Módulo fiscal de transporte (CT-e / MDF-e)
+  if (/^fiscal\/cte\/(emitir|\d+\/cancelar)$/.test(path)) {
+    queryClient.invalidateQueries({ queryKey: ["fiscal", "cte", "list"] });
+  }
+  if (/^fiscal\/mdfe\/(emitir|\d+\/(cancelar|encerrar))$/.test(path)) {
+    queryClient.invalidateQueries({ queryKey: ["fiscal", "mdfe", "list"] });
+  }
+  if (/^fiscal\/clientes/.test(path)) {
+    queryClient.invalidateQueries({ queryKey: ["fiscal", "clientes"] });
+  }
+  if (/^fiscal\/veiculo-dados/.test(path)) {
+    queryClient.invalidateQueries({ queryKey: ["fiscal", "veiculo-dados"] });
+  }
 }

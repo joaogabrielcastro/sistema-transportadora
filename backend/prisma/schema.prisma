@@ -432,3 +432,511 @@ model estoque_movimentos {
   @@index([nota_id])
   @@index([caminhao_id])
 }
+
+// =====================================================================
+// Módulo fiscal de transporte (CT-e / MDF-e / CIOT).
+//
+// Todas as tabelas usam o prefixo fiscal_ e são independentes das tabelas
+// já existentes: NÃO há `@relation` para caminhoes / motoristas / tenants /
+// fiscal_mdfes. Os vínculos (tenant_id, caminhao_id, motorista_id,
+// cliente_id, manifesto_id, fiscal_empresa_id) são colunas escalares Int; as
+// FOREIGN KEYs reais são criadas nas migrations SQL
+// (20260827200000_fiscal_transporte + 20260828120000_fiscal_provider_generico)
+// e revalidadas por tenant no service com
+// findFirst({ where: { id, tenant_id } }), mesmo padrão de applyMotoristaLink.
+//
+// O provedor externo (CT-e/MDF-e e CIOT) ainda não foi decidido: nenhum nome
+// de fornecedor aparece em coluna, classe ou env var — só "cte_mdfe_provider_*"
+// / "ciot_*" genéricos.
+//
+// Sem enum Prisma: `status` é String; os valores válidos ficam no comentário
+// `///` de cada campo e são validados via Zod nos controllers.
+// =====================================================================
+
+model fiscal_empresas {
+  id                      Int       @id @default(autoincrement())
+  tenant_id               Int
+  cnpj                    String    @db.VarChar(18)
+  razao_social            String    @db.VarChar(255)
+  /// RNTRC do contratado/transportadora (só dígitos, 8-9 chars)
+  rntrc                   String?   @db.VarChar(9)
+  /// Token do provedor de CT-e/MDF-e (fornecedor ainda não decidido) — cifrado (AES-256-GCM, FISCAL_SECRETS_KEY) antes de gravar
+  cte_mdfe_provider_token String?
+  certificado_pfx_path    String?   @db.VarChar(500)
+  /// Senha do certificado A1 — cifrada (AES-256-GCM, FISCAL_SECRETS_KEY) antes de gravar
+  certificado_senha       String?
+  certificado_valido_ate  DateTime? @db.Date
+  /// emit.CRT do CT-e: 1 = Simples Nacional, 2 = SN excesso sublimite, 3 = Regime Normal, 4 = MEI.
+  /// Sem CRT cadastrado, a emissão de CT-e falha com erro claro (validado no CteService).
+  crt                     Int?      @db.SmallInt
+  /// emit.IE do CT-e — Inscrição Estadual da empresa emissora
+  inscricao_estadual      String?   @db.VarChar(20)
+  /// Grupo infRespTec do CT-e/MDF-e (1.4) — responsável técnico pelo sistema
+  /// emissor. Repassado no payload de emissão; a ausência NÃO bloqueia a
+  /// emissão (só gera aviso em log até confirmar a exigência em sandbox).
+  resp_tec_cnpj           String?   @db.VarChar(14)
+  resp_tec_contato        String?   @db.VarChar(60)
+  resp_tec_email          String?   @db.VarChar(60)
+  resp_tec_fone           String?   @db.VarChar(20)
+  /// idCSRT — identificador do CSRT (não é segredo)
+  resp_tec_id_csrt        String?   @db.VarChar(10)
+  /// CSRT — cifrado (AES-256-GCM, FISCAL_SECRETS_KEY) antes de gravar
+  resp_tec_csrt           String?
+  ativo                   Boolean   @default(true)
+  criado_em               DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@unique([tenant_id, cnpj])
+  @@index([tenant_id])
+}
+
+model fiscal_veiculo_dados {
+  id              Int      @id @default(autoincrement())
+  /// FK -> caminhoes.id (constraint na migration SQL). Único: 1 extensão fiscal por caminhão.
+  caminhao_id     Int      @unique
+  rntrc_veiculo   String?  @db.VarChar(9)
+  /// Dados do grupo veicReboque do MDF-e (SEFAZ) — usados quando este caminhão
+  /// é uma carreta acoplada a um cavalo mecânico. Todos opcionais; os
+  /// obrigatórios para emitir (tara_kg, cap_kg, tipo_carroceria) são checados
+  /// no MdfeService antes de chamar o provedor.
+  renavam         String?  @db.VarChar(20)
+  /// Tara em quilos (inteiro, igual ao XML da SEFAZ)
+  tara_kg         Int?
+  /// Capacidade de carga em quilos (inteiro)
+  cap_kg          Int?
+  /// Capacidade em metros cúbicos (opcional no MDF-e)
+  cap_m3          Decimal? @db.Decimal(10, 2)
+  /// Código do tipo de carroceria da SEFAZ (00..05) ou descrição curta
+  tipo_carroceria String?  @db.VarChar(20)
+  /// UF de licenciamento do reboque
+  uf              String?  @db.VarChar(2)
+  criado_em       DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([caminhao_id])
+}
+
+model fiscal_clientes {
+  id           Int      @id @default(autoincrement())
+  tenant_id    Int
+  razao_social String   @db.VarChar(255)
+  /// CNPJ/CPF do tomador — normalizado (só dígitos) antes de salvar
+  cnpj_cpf     String   @db.VarChar(14)
+  criado_em    DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([tenant_id, cnpj_cpf])
+  @@index([tenant_id])
+}
+
+model fiscal_ctes {
+  id                  Int       @id @default(autoincrement())
+  tenant_id           Int
+  /// FK -> fiscal_empresas.id (CNPJ emissor; resolvido na emissão). Opcional para linhas antigas.
+  fiscal_empresa_id   Int?
+  /// FK -> fiscal_clientes.id
+  cliente_id          Int
+  /// FK -> caminhoes.id (opcional)
+  caminhao_id         Int?
+  /// FK -> motoristas.id (opcional)
+  motorista_id        Int?
+  /// FK -> fiscal_mdfes.id (opcional)
+  manifesto_id        Int?
+  /// FK -> fiscal_ctes.id — CT-e original referenciado por Complemento (1) / Substituto (3)
+  cte_referenciado_id Int?
+  /// Snapshot da chave de acesso (44) do CT-e original — grupo infCteComp/infCteSub (1.5)
+  cte_referenciado_chave String? @db.VarChar(44)
+  /// indAlteraToma do infCteSub (1.5): o Substituto alterou o tomador. Só tipo 3.
+  ind_alt_toma        Boolean?
+  chave_acesso        String    @unique @db.VarChar(44)
+  /// pendente | processado | cancelado | erro
+  status              String    @default("pendente") @db.VarChar(20)
+  numero              String?   @db.VarChar(20)
+  serie               String?   @db.VarChar(10)
+  /// Número do protocolo de autorização devolvido pelo provedor na emissão.
+  /// Usado no cancelamento (NumeroProtocolo). Nullable — CT-e emitidos antes
+  /// desta coluna seguem sem ele e o provedor resolve pela chave de acesso.
+  numero_protocolo    String?   @db.VarChar(30)
+  data_emissao        DateTime? @db.Timestamptz(6)
+  valor_frete         Decimal?  @db.Decimal(14, 2)
+  xml_path            String?   @db.VarChar(500)
+  /// DACTE (PDF) decodificado do base64DACTe do provedor — mesmo padrão de xml_path
+  pdf_path            String?   @db.VarChar(500)
+  /// Grupo imp.ICMS do CT-e 4.0 — só os campos lidos na validação de emissão.
+  /// icms_cst: 00, 20, 40, 41, 51, 90, ... O objeto `imposto` livre segue repassado ao provedor.
+  icms_cst            String?   @db.VarChar(3)
+  icms_base           Decimal?  @db.Decimal(14, 2)
+  icms_aliquota       Decimal?  @db.Decimal(7, 4)
+  icms_valor          Decimal?  @db.Decimal(14, 2)
+  icms_reducao_base   Decimal?  @db.Decimal(7, 4)
+  /// ICMS devido a outra UF (Imposto.ICMS.AliquotaOutraUF / ValorICMSOutraUF do
+  /// provedor). Passthrough puro, opcional — só entra no payload quando preenchido.
+  icms_aliquota_outra_uf Decimal? @db.Decimal(7, 4)
+  icms_valor_outra_uf    Decimal? @db.Decimal(14, 2)
+  /// Grupo imp.IBSCBS do CT-e 4.0 (Reforma Tributária). Obrigatório para emitente
+  /// fora do Simples Nacional a partir de 05/01/2026 (validado no CteService).
+  ibscbs_cst          String?   @db.VarChar(3)
+  ibscbs_c_class_trib String?   @db.VarChar(6)
+  ibscbs_base         Decimal?  @db.Decimal(14, 2)
+  ibs_uf_valor        Decimal?  @db.Decimal(14, 2)
+  ibs_mun_valor       Decimal?  @db.Decimal(14, 2)
+  cbs_valor           Decimal?  @db.Decimal(14, 2)
+  ibscbs_valor_total  Decimal?  @db.Decimal(14, 2)
+  /// Alíquotas do grupo imp.IBSCBS (Imposto.IBSCBS.AliquotaIBSUF / AliquotaIBSMun
+  /// / AliquotaCBS do provedor). Passthrough puro, sem cálculo; só entram no
+  /// payload quando preenchidas.
+  ibs_uf_aliquota    Decimal?  @db.Decimal(7, 4)
+  ibs_mun_aliquota   Decimal?  @db.Decimal(7, 4)
+  cbs_aliquota       Decimal?  @db.Decimal(7, 4)
+  /// Reduções / diferimento do grupo imp.IBSCBS (Imposto.IBSCBS.PercentualReducaoIBS
+  /// / PercentualReducaoCBS / PercentualDiferimento do provedor). Opcionais.
+  ibscbs_percentual_reducao_ibs Decimal? @db.Decimal(7, 4)
+  ibscbs_percentual_reducao_cbs Decimal? @db.Decimal(7, 4)
+  ibscbs_percentual_diferimento Decimal? @db.Decimal(7, 4)
+  /// Grupo infCarga do CT-e (valores planos; o grupo infQ vai em fiscal_cte_carga_quantidades)
+  valor_carga            Decimal? @db.Decimal(14, 2)
+  produto_predominante   String?  @db.VarChar(60)
+  outras_caracteristicas String?  @db.VarChar(30)
+  /// Grupo seg do CT-e (1.6) — seguro da carga. Opcional no schema da SEFAZ
+  /// (sem bloqueio de emissão); mesmos nomes do MDF-e (fiscal_mdfes.seg_*).
+  seg_responsavel        Int?     @db.SmallInt
+  seg_cnpj_seguradora    String?  @db.VarChar(14)
+  seg_numero_apolice     String?  @db.VarChar(40)
+  seg_numero_averbacao   String?  @db.VarChar(40)
+  seg_nome_seguradora    String?  @db.VarChar(60)
+  /// ide.toma do CT-e (1.2): 0 = remetente, 1 = expedidor, 2 = recebedor,
+  /// 3 = destinatário, 4 = outros (dados no campo livre `tomador`). Os grupos
+  /// rem/dest/exped/receb com endereço completo ficam em fiscal_cte_participantes.
+  toma                   Int?     @db.SmallInt
+  /// Grupo ICMSUFFim do CT-e (partilha do ICMS / DIFAL para a UF de fim) — 1.3.
+  /// uf_ini/uf_fim: base do teste de operação interestadual.
+  /// tomador_ind_ie: 1 = contribuinte, 2 = isento, 9 = não contribuinte.
+  /// Obrigatório (validado no CteService, só na emissão nova) quando a operação
+  /// é interestadual, o tomador é não contribuinte e o tomador != remetente.
+  uf_ini                 String?  @db.VarChar(2)
+  uf_fim                 String?  @db.VarChar(2)
+  tomador_ind_ie         Int?     @db.SmallInt
+  difal_vbc_uf_fim       Decimal? @db.Decimal(14, 2)
+  difal_p_fcp_uf_fim     Decimal? @db.Decimal(7, 4)
+  difal_p_icms_uf_fim    Decimal? @db.Decimal(7, 4)
+  difal_p_icms_inter     Decimal? @db.Decimal(7, 4)
+  difal_v_fcp_uf_fim     Decimal? @db.Decimal(14, 2)
+  difal_v_icms_uf_fim    Decimal? @db.Decimal(14, 2)
+  difal_v_icms_uf_ini    Decimal? @db.Decimal(14, 2)
+  /// Percentual de partilha do ICMS para a UF de fim (Imposto.Difal.PercentualPartilhaICMS
+  /// do provedor). Opcional — só entra no payload quando preenchido.
+  icms_uf_fim_percentual_partilha Decimal? @db.Decimal(7, 4)
+  /// Contingência do CT-e (item 1.2): dhCont / xJust. infSolicNFF (solicitação
+  /// NFF — contingência raríssima) fica como JSON genérico: a estrutura NÃO foi
+  /// modelada campo a campo por depender do XSD oficial. Nenhuma validação de
+  /// obrigatoriedade — contingência é exceção, não regra; CT-e já emitidos não
+  /// passam por aqui.
+  dh_contingencia            DateTime? @db.Timestamptz(6)
+  justificativa_contingencia String?   @db.VarChar(256)
+  inf_solic_nff              Json?     @db.JsonB
+  /// Preparação para pagamento antecipado / split payment do frete
+  /// (NT2026.001/002). Em 2026 ainda é opcional; o campo entra agora como JSON
+  /// genérico para não exigir nova migração em 2027. É PREPARAÇÃO — a estrutura
+  /// definitiva da NT não está implementada; passthrough puro, sem validação.
+  pagamento_antecipado       Json?     @db.JsonB
+  /// Grupo infTribFed / TributosFederal do CT-e (item 1.4 / 0.8): totalizadores
+  /// simples de tributos federais. vPIS / vCOFINS e, do provedor, vIR / vINSS /
+  /// vCSLL. Sem CST/base/alíquota detalhados (isso é da NF-e). Nenhum cálculo,
+  /// nenhuma alíquota hardcoded — passthrough puro. Opcionais, sem validação.
+  pis_valor                  Decimal?  @db.Decimal(14, 2)
+  cofins_valor               Decimal?  @db.Decimal(14, 2)
+  ir_valor                   Decimal?  @db.Decimal(14, 2)
+  inss_valor                 Decimal?  @db.Decimal(14, 2)
+  csll_valor                 Decimal?  @db.Decimal(14, 2)
+  criado_em           DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([tenant_id])
+  @@index([tenant_id, cliente_id])
+  @@index([tenant_id, fiscal_empresa_id])
+  @@index([manifesto_id])
+  @@index([cte_referenciado_id])
+}
+
+/// autXML do CT-e (item 1.1): CNPJ/CPF de terceiros autorizados a baixar o XML
+/// do CT-e. 1:N com fiscal_ctes. FK escalar cte_id, sem @relation — mesma
+/// convenção do módulo. Puramente opcional: NENHUMA validação de
+/// obrigatoriedade, o grupo pode ter 0 linhas.
+model fiscal_cte_aut_xml {
+  id        Int      @id @default(autoincrement())
+  tenant_id Int
+  /// FK -> fiscal_ctes.id (ON DELETE CASCADE na migration SQL)
+  cte_id    Int
+  cnpj_cpf  String?  @db.VarChar(14)
+  criado_em DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([cte_id])
+  @@index([tenant_id])
+}
+
+/// infDoc do CT-e: documentos transportados (1:N). FK escalar cte_id, sem
+/// @relation — mesma convenção do módulo. Regras (>= 1 documento, não misturar
+/// nfe/nf) validadas no CteService na emissão.
+model fiscal_cte_documentos {
+  id           Int       @id @default(autoincrement())
+  tenant_id    Int
+  /// FK -> fiscal_ctes.id (ON DELETE CASCADE na migration SQL)
+  cte_id       Int
+  /// nfe (chave 44) | nf (modelo 01/1B por numero/serie) | outros
+  tipo         String    @db.VarChar(10)
+  chave_acesso String?   @db.VarChar(44)
+  numero       String?   @db.VarChar(20)
+  serie        String?   @db.VarChar(10)
+  data_emissao DateTime? @db.Date
+  valor        Decimal?  @db.Decimal(14, 2)
+  criado_em    DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([cte_id])
+  @@index([tenant_id])
+}
+
+/// Grupos rem / dest / exped / receb do CT-e (1.2): participantes com endereço
+/// completo, 1:N com fiscal_ctes (na prática até 4 linhas, uma por papel). FK
+/// escalar cte_id, sem @relation — mesma convenção do módulo. O tomador em si é
+/// apontado por fiscal_ctes.toma; quando toma = 4 ("outros") os dados ficam no
+/// campo livre `tomador` do payload, não aqui.
+model fiscal_cte_participantes {
+  id               Int      @id @default(autoincrement())
+  tenant_id        Int
+  /// FK -> fiscal_ctes.id (ON DELETE CASCADE na migration SQL)
+  cte_id           Int
+  /// rem | dest | exped | receb
+  papel            String   @db.VarChar(6)
+  cnpj_cpf         String?  @db.VarChar(14)
+  ie               String?  @db.VarChar(20)
+  razao_social     String?  @db.VarChar(255)
+  nome_fantasia    String?  @db.VarChar(255)
+  fone             String?  @db.VarChar(20)
+  email            String?  @db.VarChar(120)
+  logradouro       String?  @db.VarChar(255)
+  numero           String?  @db.VarChar(60)
+  complemento      String?  @db.VarChar(255)
+  bairro           String?  @db.VarChar(120)
+  codigo_municipio String?  @db.VarChar(7)
+  nome_municipio   String?  @db.VarChar(120)
+  uf               String?  @db.VarChar(2)
+  cep              String?  @db.VarChar(8)
+  codigo_pais      String?  @db.VarChar(4)
+  nome_pais        String?  @db.VarChar(60)
+  criado_em        DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([cte_id, papel])
+  @@index([cte_id])
+  @@index([tenant_id])
+}
+
+/// Grupo vPrest.Comp do CT-e: componentes do valor da prestação (GRIS, pedágio,
+/// ad valorem, seguro, ...). FK escalar cte_id, sem @relation — mesma convenção
+/// do módulo. A soma dos componentes NÃO é validada contra valor_frete: é
+/// passthrough para o provedor + persistência para consulta.
+model fiscal_cte_componentes_frete {
+  id        Int      @id @default(autoincrement())
+  tenant_id Int
+  /// FK -> fiscal_ctes.id (ON DELETE CASCADE na migration SQL)
+  cte_id    Int
+  /// xNome do Comp da SEFAZ (descrição livre do componente)
+  nome      String   @db.VarChar(60)
+  valor     Decimal? @db.Decimal(14, 2)
+  criado_em DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([cte_id])
+  @@index([tenant_id])
+}
+
+/// Grupo infQ do infCarga do CT-e: quantidades por unidade de medida (1:N).
+model fiscal_cte_carga_quantidades {
+  id             Int      @id @default(autoincrement())
+  tenant_id      Int
+  /// FK -> fiscal_ctes.id (ON DELETE CASCADE na migration SQL)
+  cte_id         Int
+  /// cUnid da SEFAZ: 00 = M3, 01 = KG, 02 = TON, 03 = UNIDADE, 04 = LITROS, 05 = MMBTU
+  codigo_unidade String?  @db.VarChar(2)
+  tipo_medida    String?  @db.VarChar(20)
+  quantidade     Decimal? @db.Decimal(15, 4)
+  criado_em      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([cte_id])
+}
+
+model fiscal_mdfes {
+  id                Int       @id @default(autoincrement())
+  tenant_id         Int
+  /// FK -> fiscal_empresas.id (CNPJ emissor; resolvido na emissão). Opcional para linhas antigas.
+  fiscal_empresa_id Int?
+  /// FK -> caminhoes.id (opcional)
+  caminhao_id       Int?
+  /// FK -> motoristas.id (opcional)
+  motorista_id      Int?
+  chave_acesso      String    @unique @db.VarChar(44)
+  numero            String?   @db.VarChar(20)
+  serie             String?   @db.VarChar(10)
+  numero_protocolo  String?   @db.VarChar(30)
+  /// pendente | processado | encerrado | cancelado | erro
+  status            String    @default("pendente") @db.VarChar(20)
+  data_emissao      DateTime? @db.Timestamptz(6)
+  xml_path          String?   @db.VarChar(500)
+  /// DAMDFE (PDF) decodificado do base64DAMDFe do provedor — mesmo padrão de xml_path
+  pdf_path          String?   @db.VarChar(500)
+  /// Grupo seg do MDF-e (2.1). seg_responsavel: 1 = emitente do MDF-e, 2 = contratante.
+  /// Obrigatoriedade de seg_responsavel cobrada no MdfeService, só na emissão nova.
+  seg_responsavel      Int?      @db.SmallInt
+  seg_cnpj_seguradora  String?   @db.VarChar(14)
+  seg_numero_apolice   String?   @db.VarChar(40)
+  seg_numero_averbacao String?   @db.VarChar(40)
+  seg_nome_seguradora  String?   @db.VarChar(60)
+  /// Grupo infANTT do MDF-e (2.2). Exigido em código só quando tipo_emitente vier explicitamente 1 ou 3 (prestador).
+  antt_rntrc           String?   @db.VarChar(9)
+  antt_ciot            String?   @db.VarChar(20)
+  antt_vale_pedagio    Json?     @db.JsonB
+  /// infANTT bancário / PIX da instituição de pagamento do frete (item 0.1). No
+  /// payload vão como `infoBancaria` dentro de `pagamentos[]`; aqui só persiste.
+  antt_cod_banco            String?  @db.VarChar(5)
+  antt_cod_agencia          String?  @db.VarChar(10)
+  antt_cnpj_inst_pagamento  String?  @db.VarChar(14)
+  antt_pix                  String?  @db.VarChar(120)
+  /// Grupo tot do MDF-e (2.3): calculado dos CT-e/NF-e vinculados na emissão.
+  tot_qcte             Int?
+  tot_valor_carga      Decimal?  @db.Decimal(14, 2)
+  tot_peso_bruto       Decimal?  @db.Decimal(14, 3)
+  /// Grupo prodPred do MDF-e (2.4). Mesmo critério do infANTT.
+  prod_pred_descricao  String?   @db.VarChar(120)
+  prod_pred_ncm        String?   @db.VarChar(8)
+  prod_pred_tp_carga   String?   @db.VarChar(2)
+  /// prodPred mais rico (item 0.3): c_ean (GTIN ou "SEM GTIN") + infLotacao
+  /// (CEP/latitude/longitude do local de carregamento e de descarregamento).
+  prod_pred_c_ean                   String?  @db.VarChar(14)
+  prod_pred_lotacao_carrega_cep     String?  @db.VarChar(8)
+  prod_pred_lotacao_carrega_lat     Decimal? @db.Decimal(10, 7)
+  prod_pred_lotacao_carrega_long    Decimal? @db.Decimal(10, 7)
+  prod_pred_lotacao_descarrega_cep  String?  @db.VarChar(8)
+  prod_pred_lotacao_descarrega_lat  Decimal? @db.Decimal(10, 7)
+  prod_pred_lotacao_descarrega_long Decimal? @db.Decimal(10, 7)
+  /// Campos básicos do grupo ide do MDF-e (2.5).
+  ide_uf_ini           String?   @db.VarChar(2)
+  ide_uf_fim           String?   @db.VarChar(2)
+  ide_dh_ini_viagem    DateTime? @db.Timestamptz(6)
+  ide_tp_transp        Int?      @db.SmallInt
+  ide_modal            Int?      @db.SmallInt
+  /// Evento de encerramento estruturado (2.2). Preenchido no MdfeService.encerrar.
+  encerrado_em               DateTime? @db.Timestamptz(6)
+  encerrado_uf               String?   @db.VarChar(2)
+  encerrado_codigo_municipio String?   @db.VarChar(7)
+  encerrado_nome_municipio   String?   @db.VarChar(120)
+  encerrado_protocolo        String?   @db.VarChar(30)
+  /// Evento de cancelamento estruturado (2.3). Preenchido no MdfeService.cancelar.
+  cancelado_em               DateTime? @db.Timestamptz(6)
+  cancelado_protocolo        String?   @db.VarChar(30)
+  cancelado_justificativa    String?   @db.VarChar(1000)
+  criado_em         DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([tenant_id])
+  @@index([tenant_id, fiscal_empresa_id])
+}
+
+/// Seguro da carga do MDF-e como LISTA (item 0.2): `seguros: [...]` do provedor,
+/// cada seguro com 0..N números de averbação (numeros_averbacao é JSONB de
+/// strings). As colunas singulares fiscal_mdfes.seg_* seguem como fallback de 1
+/// seguro para MDF-e antigos. FK escalar mdfe_id, sem @relation — mesma
+/// convenção do módulo.
+model fiscal_mdfe_seguros {
+  id               Int      @id @default(autoincrement())
+  tenant_id        Int
+  /// FK -> fiscal_mdfes.id (ON DELETE CASCADE na migration SQL)
+  mdfe_id          Int
+  /// indicadorResponsavel: 1 = emitente do MDF-e, 2 = contratante do serviço
+  responsavel      Int?     @db.SmallInt
+  cnpj_seguradora  String?  @db.VarChar(14)
+  numero_apolice   String?  @db.VarChar(40)
+  nome_seguradora  String?  @db.VarChar(60)
+  /// numerosAverbacao do provedor: array de strings (múltiplas averbações)
+  numeros_averbacao Json?   @db.JsonB
+  criado_em        DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([mdfe_id])
+  @@index([tenant_id])
+}
+
+/// Grupo infMunDescarga do MDF-e (2.1): documentos vinculados agrupados por
+/// município de descarregamento (1:N). FK escalar mdfe_id, sem @relation.
+model fiscal_mdfe_documentos_descarga {
+  id               Int      @id @default(autoincrement())
+  tenant_id        Int
+  /// FK -> fiscal_mdfes.id (ON DELETE CASCADE na migration SQL)
+  mdfe_id          Int
+  codigo_municipio String?  @db.VarChar(7)
+  nome_municipio   String?  @db.VarChar(120)
+  /// cte | nfe | mdfe
+  tipo             String?  @db.VarChar(5)
+  chave_acesso     String?  @db.VarChar(44)
+  criado_em        DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([mdfe_id])
+  @@index([mdfe_id, codigo_municipio])
+  @@index([tenant_id])
+}
+
+/// Grupo infMunCarrega do MDF-e (2.5): municípios de carregamento (1:N).
+model fiscal_mdfe_municipios_carrega {
+  id               Int      @id @default(autoincrement())
+  tenant_id        Int
+  /// FK -> fiscal_mdfes.id (ON DELETE CASCADE na migration SQL)
+  mdfe_id          Int
+  codigo_municipio String?  @db.VarChar(7)
+  nome_municipio   String?  @db.VarChar(120)
+  criado_em        DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([mdfe_id])
+}
+
+model fiscal_ciots {
+  id                            Int      @id @default(autoincrement())
+  tenant_id                     Int
+  /// FK -> fiscal_empresas.id
+  fiscal_empresa_id             Int
+  /// FK -> caminhoes.id (opcional)
+  caminhao_id                   Int?
+  /// FK -> motoristas.id (opcional)
+  motorista_id                  Int?
+  /// FK -> fiscal_mdfes.id (opcional). CIOT pode existir sem MDF-e vinculado (3.2).
+  mdfe_id                       Int?
+  /// NCM da carga declarada (3.4) — opcional.
+  carga_ncm                     String?  @db.VarChar(8)
+  /// Snapshot da situação do RNTRC do contratado no momento da declaração (3.1).
+  /// Só gravado a partir do corpo da declaração — sem consulta automática à ANTT
+  /// nesta rodada. situacao: ativo | suspenso | inapto | ...
+  rntrc_contratado_situacao     String?  @db.VarChar(20)
+  rntrc_contratado_situacao_em  DateTime? @db.Timestamptz(6)
+  rntrc_contratado_snapshot     Json?    @db.JsonB
+  /// Gerado por nós (12 chars hex), unicidade global garantida com retry
+  id_operacao_transporte        String   @unique @db.VarChar(12)
+  /// O código do CIOT em si — vem da resposta de sucesso da ANTT
+  codigo_identificacao_operacao String?  @db.VarChar(20)
+  codigo_verificador            String?  @db.VarChar(20)
+  protocolo                     String?  @db.VarChar(40)
+  /// pendente | declarado | cancelado | encerrado | erro
+  status                        String   @default("pendente") @db.VarChar(20)
+  /// Categoria da operação (3.2): lotacao | fracionada | tac_agregado. Derivada
+  /// de tipo_operacao (1/2/3) quando não informada. Base para regras de prazo /
+  /// cancelamento / retificação diferentes por categoria.
+  categoria_operacao            String?  @db.VarChar(20)
+  valor_frete                   Decimal  @db.Decimal(14, 2)
+  data_declaracao               DateTime @db.Timestamptz(6)
+  data_inicio_viagem            DateTime @db.Timestamptz(6)
+  data_fim_viagem               DateTime @db.Timestamptz(6)
+  veiculos                      Json     @db.JsonB
+  inf_pagamento                 Json     @db.JsonB
+  /// Retenções do comprovante de pagamento (3.3): INSS e SEST/SENAT. Alíquotas
+  /// como fração (0.022 = 2,2%). Percentual vem do corpo da declaração ou de
+  /// FISCAL_CIOT_RETENCAO_*_ALIQUOTA — nunca hardcoded. Sem alíquota, tudo NULL.
+  retencao_base                 Decimal? @db.Decimal(14, 2)
+  retencao_inss_aliquota        Decimal? @db.Decimal(7, 4)
+  retencao_inss_valor           Decimal? @db.Decimal(14, 2)
+  retencao_sest_senat_aliquota  Decimal? @db.Decimal(7, 4)
+  retencao_sest_senat_valor     Decimal? @db.Decimal(14, 2)
+  criado_em                     DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([tenant_id])
+  @@index([tenant_id, fiscal_empresa_id])
+  @@index([mdfe_id])
+}

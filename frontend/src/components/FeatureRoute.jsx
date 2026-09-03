@@ -8,6 +8,7 @@ import { Alert, Button, PageHeader } from "./ui";
 const FEATURE_LABELS = {
   ordem_coleta: "Ordem de coleta",
   notas_estoque: "Notas fiscais / estoque",
+  transporte_fiscal: "Emissão de CT-e / MDF-e",
 };
 
 /**

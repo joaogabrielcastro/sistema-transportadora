@@ -16,6 +16,11 @@ const pneusSubLinks = [
   { path: "/pneus/atribuir", label: "Instalar pneus" },
 ];
 
+const fiscalSubLinks = [
+  { path: "/fiscal/cte", label: "CT-e" },
+  { path: "/fiscal/mdfe", label: "MDF-e" },
+];
+
 function buildMainLinks(features = {}) {
   const links = [
     { path: "/", label: "Início", exact: true },
@@ -54,7 +59,9 @@ const navItemClass = (active) =>
 const Navbar = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pneusOpen, setPneusOpen] = useState(false);
+  const [fiscalOpen, setFiscalOpen] = useState(false);
   const pneusMenuRef = useRef(null);
+  const fiscalMenuRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
@@ -75,10 +82,14 @@ const Navbar = ({ children }) => {
     showBillingLink && user?.subscriptionStatus === "past_due";
   const showBanner = showTrialBanner || showPastDueBanner;
   const isPneusSection = location.pathname.startsWith("/pneus");
+  const isFiscalSection = location.pathname.startsWith("/fiscal");
+  // TODO: reativar gate por feature flag depois da demo
+  const showFiscalMenu = true; // user?.features?.transporte_fiscal === true;
 
   useEffect(() => {
     setMobileOpen(false);
     setPneusOpen(false);
+    setFiscalOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -104,6 +115,21 @@ const Navbar = ({ children }) => {
     }
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [pneusOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        fiscalMenuRef.current &&
+        !fiscalMenuRef.current.contains(event.target)
+      ) {
+        setFiscalOpen(false);
+      }
+    };
+    if (fiscalOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [fiscalOpen]);
 
   const handleLogout = () => {
     logout();
@@ -224,6 +250,54 @@ const Navbar = ({ children }) => {
                 </div>
               )}
             </div>
+
+            {showFiscalMenu && (
+              <div className="relative shrink-0" ref={fiscalMenuRef}>
+                <button
+                  type="button"
+                  className={`${navItemClass(isFiscalSection)} gap-1`}
+                  aria-expanded={fiscalOpen}
+                  aria-haspopup="true"
+                  onClick={() => setFiscalOpen((open) => !open)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") setFiscalOpen(false);
+                  }}
+                >
+                  CT-e / MDF-e
+                  <svg
+                    className={`w-3.5 h-3.5 transition-transform ${fiscalOpen ? "rotate-180" : ""}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    aria-hidden
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+                {fiscalOpen && (
+                  <div className="absolute top-full left-0 mt-1 w-52 py-2 bg-slate-900 border border-white/10 rounded-xl shadow-xl z-[70]">
+                    {fiscalSubLinks.map((sub) => (
+                      <Link
+                        key={sub.path}
+                        to={sub.path}
+                        className={`block px-4 py-2.5 text-sm transition-colors ${
+                          isActivePath(location.pathname, sub.path)
+                            ? "text-white bg-white/10"
+                            : "text-gray-300 hover:text-white hover:bg-white/5"
+                        }`}
+                      >
+                        {sub.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="hidden lg:flex items-center gap-1.5 shrink-0 ml-auto">
@@ -368,6 +442,27 @@ const Navbar = ({ children }) => {
                 {sub.label}
               </Link>
             ))}
+
+            {showFiscalMenu && (
+              <>
+                <div className="pt-2 pb-1 px-4 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  CT-e / MDF-e
+                </div>
+                {fiscalSubLinks.map((sub) => (
+                  <Link
+                    key={sub.path}
+                    to={sub.path}
+                    className={`px-4 py-3 rounded-lg pl-8 transition-colors ${
+                      isActivePath(location.pathname, sub.path)
+                        ? "bg-secondary text-white"
+                        : "text-gray-300 hover:bg-white/5 hover:text-white"
+                    }`}
+                  >
+                    {sub.label}
+                  </Link>
+                ))}
+              </>
+            )}
 
             {canWriteFrota && !vehicleQuotaReached && (
               <Link

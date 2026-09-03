@@ -161,6 +161,51 @@ export const config = {
       return (process.env.S3_SECRET_ACCESS_KEY || "").trim();
     },
   },
+  fiscal: {
+    /** Chave para cifrar token/senha do certificado (AES-256-GCM). Sem ela, gravar segredo fiscal falha com 503. */
+    get secretsKey() {
+      return (process.env.FISCAL_SECRETS_KEY || "").trim();
+    },
+    /** 1 = produção, 2 = homologação. Fixo em homologação salvo FISCAL_AMBIENTE=producao. Nunca vem do body. */
+    get ambiente() {
+      return String(process.env.FISCAL_AMBIENTE || "").trim().toLowerCase() ===
+        "producao"
+        ? 1
+        : 2;
+    },
+    /** Base URL do provedor de CT-e/MDF-e. Provedor ainda não decidido — sem default de fornecedor; obrigatória para emitir. */
+    get cteMdfeBaseUrl() {
+      return (process.env.FISCAL_CTE_MDFE_URL || "").trim().replace(/\/$/, "");
+    },
+    /** Base URL do provedor de CIOT (integração direta ANTT ou integrador). Sem default de fornecedor; obrigatória para declarar. */
+    get ciotBaseUrl() {
+      return (process.env.FISCAL_CIOT_URL || "").trim().replace(/\/$/, "");
+    },
+    get httpTimeoutMs() {
+      const n = Number(process.env.FISCAL_HTTP_TIMEOUT_MS || 30000);
+      return Number.isFinite(n) && n > 0 ? Math.floor(n) : 30000;
+    },
+    /**
+     * Alíquota de retenção de INSS do comprovante de CIOT (item 3.3), como
+     * fração (0.022 = 2,2%). SEM default numérico — null quando não configurada
+     * (não se inventa percentual; mesma filosofia do piso mínimo de frete).
+     */
+    get retencaoInssAliquota() {
+      const raw = (process.env.FISCAL_CIOT_RETENCAO_INSS_ALIQUOTA || "").trim();
+      if (!raw) return null;
+      const n = Number(raw);
+      return Number.isFinite(n) && n >= 0 ? n : null;
+    },
+    /** Alíquota de retenção de SEST/SENAT do comprovante de CIOT (fração). Null sem config. */
+    get retencaoSestSenatAliquota() {
+      const raw = (
+        process.env.FISCAL_CIOT_RETENCAO_SEST_SENAT_ALIQUOTA || ""
+      ).trim();
+      if (!raw) return null;
+      const n = Number(raw);
+      return Number.isFinite(n) && n >= 0 ? n : null;
+    },
+  },
   whatsapp: {
     get apiUrl() {
       return (process.env.WHATSAPP_API_URL || "").trim();

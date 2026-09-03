@@ -40,6 +40,8 @@
     "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
     "@sentry/node": "^10.73.0",
+    "archiver": "^7.0.1",
+    "bcryptjs": "^3.0.3",
     "bullmq": "^5.81.3",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",

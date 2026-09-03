@@ -7,13 +7,16 @@ export const PLANS = Object.freeze({
   complete: "complete",
 });
 
+// `transporte_fiscal` (CT-e / MDF-e / CIOT): default false em TODOS os planos.
+// Nenhum tenant ganha acesso automático — precisa ligar manualmente via
+// `npm run tenant:billing` ou override direto em tenants.features.
 export const PLAN_FEATURES = Object.freeze({
-  starter: Object.freeze({ ordem_coleta: false, notas_estoque: false }),
+  starter: Object.freeze({ ordem_coleta: false, notas_estoque: false, transporte_fiscal: false }),
   /** Legado — não vendido; ordem de coleta não é liberada via plano. */
-  ops: Object.freeze({ ordem_coleta: false, notas_estoque: false }),
-  fiscal: Object.freeze({ ordem_coleta: false, notas_estoque: true }),
+  ops: Object.freeze({ ordem_coleta: false, notas_estoque: false, transporte_fiscal: false }),
+  fiscal: Object.freeze({ ordem_coleta: false, notas_estoque: true, transporte_fiscal: false }),
   /** Pacote top — mesmos módulos públicos (sem ordem de coleta). */
-  complete: Object.freeze({ ordem_coleta: false, notas_estoque: true }),
+  complete: Object.freeze({ ordem_coleta: false, notas_estoque: true, transporte_fiscal: false }),
 });
 
 /** Planos disponíveis para novos clientes (checkout). */
@@ -29,6 +32,7 @@ export const ABROTTO_SLUG = "abbroto";
 export const ABROTTO_FEATURES = Object.freeze({
   ordem_coleta: true,
   notas_estoque: false,
+  transporte_fiscal: false,
 });
 
 /** Isentos genéricos (sem módulos premium). */
@@ -40,6 +44,7 @@ export const DEFAULT_TENANT_FEATURES = Object.freeze({
 export const TRANS_MOTIN_FEATURES = Object.freeze({
   ordem_coleta: false,
   notas_estoque: true,
+  transporte_fiscal: false,
 });
 
 export const TRANS_MOTIN_SLUG = "trans-motin";
@@ -113,6 +118,10 @@ function mergeFeatureOverrides(base, raw) {
       typeof raw.notas_estoque === "boolean"
         ? raw.notas_estoque
         : base.notas_estoque,
+    transporte_fiscal:
+      typeof raw.transporte_fiscal === "boolean"
+        ? raw.transporte_fiscal
+        : base.transporte_fiscal ?? false,
   };
 }
 

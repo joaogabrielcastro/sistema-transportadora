@@ -15,3 +15,12 @@ export {
   useEditChecklistQuery,
   useEditPneuQuery,
 } from "./useEditFormQueries.js";
+export {
+  useCteListQuery,
+  useMdfeListQuery,
+  useFiscalClientesQuery,
+  useFiscalEmpresasQuery,
+  useFiscalVeiculoDadosQuery,
+  useSaveFiscalVeiculoDadosMutation,
+  useReboquesPreviewQuery,
+} from "./useFiscalQueries.js";

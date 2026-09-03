@@ -96,10 +96,18 @@ export function parseNumberInputValue(input, opts = {}) {
 /**
  * Formata valor numérico (ou string crua) para exibição pt-BR.
  * @param {string|number|null|undefined} value
- * @param {{ maxDecimals?: number|null }} [opts]
+ * @param {{ maxDecimals?: number|null, useGrouping?: boolean }} [opts]
+ *   `useGrouping: false` desliga o separador de milhar ("." pt-BR) na exibição.
+ *   Só quem passa isso explicitamente muda de comportamento — o default segue
+ *   agrupando, igual a antes. Motivo: com milhar aceso, ao continuar digitando
+ *   um valor >= 1000 o "." de milhar que aparece no display é relido como
+ *   separador decimal por `parseNumberInputValue`, e o campo "trava" (ex.: vira
+ *   "1,00"). Campos que digitam valores grandes sem agrupamento (monetários /
+ *   percentuais fiscais) passam `useGrouping: false` e não sofrem isso.
  */
 export function formatNumberInputDisplay(value, opts = {}) {
   const maxDecimals = opts.maxDecimals ?? null;
+  const useGrouping = opts.useGrouping !== false;
   if (value === null || value === undefined || value === "") return "";
 
   const raw = String(value).trim();
@@ -111,12 +119,17 @@ export function formatNumberInputDisplay(value, opts = {}) {
   const trailingDec = /[.,]$/.test(body);
   const allowDecimal = maxDecimals != null;
 
+  const groupInt = (digitsStr) =>
+    useGrouping
+      ? new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }).format(
+          BigInt(digitsStr),
+        )
+      : String(BigInt(digitsStr));
+
   if (!allowDecimal) {
     const digits = body.replace(/\D/g, "");
     if (!digits) return neg ? "-" : "";
-    const formatted = new Intl.NumberFormat("pt-BR", {
-      maximumFractionDigits: 0,
-    }).format(BigInt(digits));
+    const formatted = groupInt(digits);
     return neg ? `-${formatted}` : formatted;
   }
 
@@ -128,9 +141,7 @@ export function formatNumberInputDisplay(value, opts = {}) {
 
   if (!intDigits && !hasFracPart) return neg ? "-" : "";
 
-  const intFormatted = new Intl.NumberFormat("pt-BR", {
-    maximumFractionDigits: 0,
-  }).format(BigInt(intDigits || "0"));
+  const intFormatted = groupInt(intDigits || "0");
 
   let out = neg ? `-${intFormatted}` : intFormatted;
   if (hasFracPart) {

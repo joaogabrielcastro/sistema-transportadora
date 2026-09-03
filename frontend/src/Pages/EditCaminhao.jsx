@@ -14,11 +14,16 @@ import {
 } from "../components/ui";
 import { TIPO_VEICULO_OPTIONS } from "../utils/caminhaoOptions.js";
 import { apiFetch } from "../lib/apiClient.js";
+import { useAuth } from "../context/AuthContext.jsx";
+import { featureEnabled } from "../utils/billing.js";
+import FiscalVeiculoDadosForm from "../components/fiscal/FiscalVeiculoDadosForm.jsx";
 
 const EditCaminhao = () => {
   const { placa } = useParams();
   const navigate = useNavigate();
   const { put } = useApiMutation();
+  const { user } = useAuth();
+  const fiscalEnabled = featureEnabled(user, "transporte_fiscal");
 
   const {
     data: caminhaoData,
@@ -521,6 +526,10 @@ const EditCaminhao = () => {
             </div>
           </form>
         </Card>
+
+        {isCarreta && fiscalEnabled && caminhaoData?.id && (
+          <FiscalVeiculoDadosForm caminhaoId={caminhaoData.id} />
+        )}
     </PageLayout>
   );
 };

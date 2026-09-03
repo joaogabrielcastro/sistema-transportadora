@@ -78,7 +78,6 @@ const Home = () => {
         0,
       totalGastos: overview?.totalGastos || 0,
       totalManutencoes: overview?.totalManutencoes || 0,
-      mediaGastos: overview?.mediaGastos || 0,
     }),
     [overview, pagination?.totalItems, caminhoes?.length],
   );
@@ -202,32 +201,6 @@ const Home = () => {
         <PageHeader
           title="Dashboard"
           subtitle="Visão geral da frota, custos e próximos passos."
-          actions={
-            canWriteFrota ? (
-            <Link to={vehicleQuotaReached ? "/assinatura" : "/cadastro-caminhao"}>
-              <Button
-                variant="primary"
-                icon={
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
-                }
-              >
-                {vehicleQuotaReached ? "Fazer upgrade" : "Novo Caminhão"}
-              </Button>
-            </Link>
-            ) : null
-          }
         />
 
         <PlanQuotaBanner user={user} resource="vehicles" />
@@ -245,7 +218,7 @@ const Home = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-slide-up">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-slide-up">
           <StatCard
             title="Total de Caminhões"
             value={formatNumber(stats.totalCaminhoes)}
@@ -314,26 +287,6 @@ const Home = () => {
                   strokeLinejoin="round"
                   strokeWidth={2}
                   d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-              </svg>
-            }
-          />
-          <StatCard
-            title="Média por lançamento"
-            value={formatCurrency(stats.mediaGastos)}
-            color="purple"
-            icon={
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
                 />
               </svg>
             }

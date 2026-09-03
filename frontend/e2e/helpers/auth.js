@@ -12,7 +12,11 @@ const E2E_USER = {
   plan: "ops",
   subscriptionStatus: "exempt",
   permissions: [],
-  features: { ordem_coleta: true, notas_estoque: true },
+  features: {
+    ordem_coleta: true,
+    notas_estoque: true,
+    transporte_fiscal: false,
+  },
 };
 
 export async function seedAuthSession(page) {

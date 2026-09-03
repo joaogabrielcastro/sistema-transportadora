@@ -303,23 +303,23 @@ function AppRoutes() {
         <Route
           path="/fiscal/cte"
           element={
-            <ProtectedRoute>
-              <BillingGate>
-                {/* TODO: reativar gate por feature flag depois da demo */}
-                <FiscalCte />
-              </BillingGate>
-            </ProtectedRoute>
+            <GuardedRoute
+              feature="transporte_fiscal"
+              permission={PERMISSIONS.CTE_READ}
+            >
+              <FiscalCte />
+            </GuardedRoute>
           }
         />
         <Route
           path="/fiscal/mdfe"
           element={
-            <ProtectedRoute>
-              <BillingGate>
-                {/* TODO: reativar gate por feature flag depois da demo */}
-                <FiscalMdfe />
-              </BillingGate>
-            </ProtectedRoute>
+            <GuardedRoute
+              feature="transporte_fiscal"
+              permission={PERMISSIONS.MDFE_READ}
+            >
+              <FiscalMdfe />
+            </GuardedRoute>
           }
         />
         <Route

@@ -49,10 +49,11 @@ describe("regimeSimplesNacional / exigeGrupoIbsCbs", () => {
     }
   });
 
-  it("CRT 3 (Regime Normal) exige o grupo IBS/CBS", () => {
+  it("CRT 3 (Regime Normal) exige o grupo IBS/CBS a partir de 05/01/2026", () => {
     assert.equal(regimeSimplesNacional(3), false);
-    assert.equal(exigeGrupoIbsCbs(3), true);
-    assert.equal(exigeGrupoIbsCbs("3"), true);
+    assert.equal(exigeGrupoIbsCbs(3, "2026-01-05T00:00:00Z"), true);
+    assert.equal(exigeGrupoIbsCbs("3", "2026-01-05T00:00:00Z"), true);
+    assert.equal(exigeGrupoIbsCbs(3, "2026-01-04T23:59:59Z"), false);
   });
 
   it("CRT ausente não exibe o grupo (bloqueio é tratado à parte)", () => {

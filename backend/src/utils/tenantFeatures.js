@@ -39,6 +39,7 @@ export const ABROTTO_FEATURES = Object.freeze({
 export const DEFAULT_TENANT_FEATURES = Object.freeze({
   ordem_coleta: false,
   notas_estoque: false,
+  transporte_fiscal: false,
 });
 
 export const TRANS_MOTIN_FEATURES = Object.freeze({

@@ -13,7 +13,7 @@ const FEATURE_LABELS = {
 
 /**
  * Bloqueia rota se o tenant não tiver a feature (mensagem clara + CTA).
- * @param {{ feature: 'ordem_coleta' | 'notas_estoque', children: React.ReactNode }} props
+ * @param {{ feature: 'ordem_coleta' | 'notas_estoque' | 'transporte_fiscal', children: React.ReactNode }} props
  */
 export function FeatureRoute({ feature, children }) {
   const { user } = useAuth();

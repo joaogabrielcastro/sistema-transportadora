@@ -67,6 +67,12 @@ const emptyForm = {
   ibscbs_ibs_mun_valor: "",
   ibscbs_cbs_valor: "",
   ibscbs_valor_total: "",
+  ibscbs_ibs_uf_aliquota: "",
+  ibscbs_ibs_mun_aliquota: "",
+  ibscbs_cbs_aliquota: "",
+  ibscbs_percentual_reducao_ibs: "",
+  ibscbs_percentual_reducao_cbs: "",
+  ibscbs_percentual_diferimento: "",
   // Operação / ICMSUFFim — DIFAL (PARTE 4.3)
   uf_ini: "",
   uf_fim: "",
@@ -438,7 +444,10 @@ export default function CteForm({
   // --- item 1.1: bloqueio por CRT ausente / visibilidade do grupo IBS/CBS ---
   const bloqueioCrt =
     empresaFiscalCarregada && empresaFiscalSemCrt(empresaFiscal);
-  const mostrarIbsCbs = exigeGrupoIbsCbs(empresaFiscal?.crt);
+  const mostrarIbsCbs = exigeGrupoIbsCbs(
+    empresaFiscal?.crt,
+    form.dt_emissao || undefined,
+  );
   const ibsCbsTemValor = [
     form.ibscbs_base,
     form.ibscbs_ibs_uf_valor,
@@ -631,6 +640,20 @@ export default function CteForm({
         ibscbs.cbs_valor = num(form.ibscbs_cbs_valor);
       if (num(form.ibscbs_valor_total) != null)
         ibscbs.valor_total = num(form.ibscbs_valor_total);
+      if (num(form.ibscbs_ibs_uf_aliquota) != null)
+        ibscbs.ibs_uf_aliquota = num(form.ibscbs_ibs_uf_aliquota);
+      if (num(form.ibscbs_ibs_mun_aliquota) != null)
+        ibscbs.ibs_mun_aliquota = num(form.ibscbs_ibs_mun_aliquota);
+      if (num(form.ibscbs_cbs_aliquota) != null)
+        ibscbs.cbs_aliquota = num(form.ibscbs_cbs_aliquota);
+      if (num(form.ibscbs_percentual_reducao_ibs) != null)
+        ibscbs.percentual_reducao_ibs = num(form.ibscbs_percentual_reducao_ibs);
+      if (num(form.ibscbs_percentual_reducao_cbs) != null)
+        ibscbs.percentual_reducao_cbs = num(form.ibscbs_percentual_reducao_cbs);
+      if (num(form.ibscbs_percentual_diferimento) != null)
+        ibscbs.percentual_diferimento = num(
+          form.ibscbs_percentual_diferimento,
+        );
       if (Object.keys(ibscbs).length) payload.ibscbs = ibscbs;
     }
 
@@ -1259,8 +1282,10 @@ export default function CteForm({
                 Imposto — IBS / CBS (grupo imp.IBSCBS)
               </p>
               <p className="text-xs text-text-secondary">
-                Exigido para emitente fora do Simples Nacional (Reforma
-                Tributária). Informe o CST e ao menos um valor.
+                Exigido para emitente em Regime Normal (CRT 3) desde 05/01/2026.
+                Informe o CST, a classificação tributária, a base e as alíquotas
+                — o provedor usa esses campos no grupo imp.IBSCBS. Os valores
+                calculados ficam só no registro interno.
               </p>
             </div>
             <div className="grid gap-4 md:grid-cols-3">
@@ -1334,6 +1359,60 @@ export default function CteForm({
                 placeholder="0,00"
                 className="mb-0"
               />
+              <PercentField
+                label="Alíquota IBS UF (%)"
+                value={form.ibscbs_ibs_uf_aliquota}
+                onChange={(e) =>
+                  set("ibscbs_ibs_uf_aliquota", e.target.value)
+                }
+                placeholder="0,00"
+                className="mb-0"
+              />
+              <PercentField
+                label="Alíquota IBS Município (%)"
+                value={form.ibscbs_ibs_mun_aliquota}
+                onChange={(e) =>
+                  set("ibscbs_ibs_mun_aliquota", e.target.value)
+                }
+                placeholder="0,00"
+                className="mb-0"
+              />
+              <PercentField
+                label="Alíquota CBS (%)"
+                value={form.ibscbs_cbs_aliquota}
+                onChange={(e) =>
+                  set("ibscbs_cbs_aliquota", e.target.value)
+                }
+                placeholder="0,00"
+                className="mb-0"
+              />
+              <PercentField
+                label="Redução IBS (%)"
+                value={form.ibscbs_percentual_reducao_ibs}
+                onChange={(e) =>
+                  set("ibscbs_percentual_reducao_ibs", e.target.value)
+                }
+                placeholder="0,00"
+                className="mb-0"
+              />
+              <PercentField
+                label="Redução CBS (%)"
+                value={form.ibscbs_percentual_reducao_cbs}
+                onChange={(e) =>
+                  set("ibscbs_percentual_reducao_cbs", e.target.value)
+                }
+                placeholder="0,00"
+                className="mb-0"
+              />
+              <PercentField
+                label="Diferimento (%)"
+                value={form.ibscbs_percentual_diferimento}
+                onChange={(e) =>
+                  set("ibscbs_percentual_diferimento", e.target.value)
+                }
+                placeholder="0,00"
+                className="mb-0"
+              />
             </div>
             {ibsCbsIncompleto && form.ibscbs_cst.trim() && (
               <p className="text-xs text-danger">
@@ -1341,9 +1420,9 @@ export default function CteForm({
               </p>
             )}
             <p className="text-xs text-text-secondary">
-              Os valores calculados de IBS/CBS ficam registrados internamente; o
-              provedor recebe apenas a classificação tributária e a base de
-              cálculo neste grupo.
+              Valores calculados (IBS UF, IBS Município, CBS e total) ficam
+              gravados para consulta. O provedor recebe classificação, base,
+              alíquotas e percentuais de redução/diferimento.
             </p>
           </div>
         )}

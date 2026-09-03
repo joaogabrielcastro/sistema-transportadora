@@ -65,7 +65,9 @@ test.describe("Empresa", () => {
     });
 
     await page.goto("/empresa");
-    await expect(page.getByRole("heading", { name: "Empresa" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Empresa", exact: true, level: 1 }),
+    ).toBeVisible();
     await expect(page.getByText("frota-sul")).toBeVisible();
     await expect(page.getByText("2/15")).toBeVisible();
     await expect(

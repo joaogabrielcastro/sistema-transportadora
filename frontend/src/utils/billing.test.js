@@ -60,6 +60,9 @@ describe("billing utils", () => {
     assert.equal(PLAN_CARDS[0].trialEligible, true);
     assert.equal(BILLING_TRIAL_DAYS, 14);
     assert.match(PLAN_CARDS[0].highlights[0], /15 veículos/);
+    assert.equal(PLAN_CARDS[1].popular, true);
+    assert.equal(PLAN_CARDS[2].bestValue, true);
+    assert.match(PLAN_CARDS[2].highlights.join(" "), /CT-e/);
   });
 
   it("PLAN_QUOTAS e tetos na sessão", () => {

@@ -47,16 +47,15 @@ function PlanCard({
   const onTrialThisPlan = isTrialing && isCurrent;
   const showAsCurrent = isCurrent && (isActive || isTrialing);
 
-  const accent =
-    plan.popular
-      ? "border-t-4 border-t-secondary"
-      : plan.bestValue
-        ? "border-t-4 border-t-primary"
-        : "border-t-4 border-t-border";
+  const accent = plan.popular
+    ? "border-secondary/40 ring-2 ring-secondary/25"
+    : plan.bestValue
+      ? "border-t-4 border-t-primary"
+      : "border-t-4 border-t-border";
 
   return (
     <Card
-      className={`flex h-full min-w-0 flex-col shadow-card transition-shadow hover:shadow-soft ${accent}`}
+      className={`relative flex h-full min-w-0 flex-col shadow-card transition-shadow hover:shadow-soft ${accent}`}
     >
       <div className="flex h-full flex-col p-5 sm:p-6">
         <div className="mb-4 min-h-[7.5rem]">
@@ -66,10 +65,10 @@ function PlanCard({
               <PlanBadge variant="current">Seu plano</PlanBadge>
             )}
             {plan.popular && !showAsCurrent && (
-              <PlanBadge variant="popular">Popular</PlanBadge>
+              <PlanBadge variant="popular">Mais escolhido</PlanBadge>
             )}
-            {plan.bestValue && !plan.popular && (
-              <PlanBadge variant="value">Completo</PlanBadge>
+            {plan.bestValue && !plan.popular && !showAsCurrent && (
+              <PlanBadge variant="value">Melhor valor</PlanBadge>
             )}
           </div>
           {plan.tagline && (
@@ -90,7 +89,7 @@ function PlanCard({
           </div>
           {plan.trialEligible && !isActive && (
             <p className="mt-1.5 text-xs font-medium text-success-dark">
-              {BILLING_TRIAL_DAYS} dias grátis no cadastro
+              {BILLING_TRIAL_DAYS} dias grátis no cadastro · sem cartão
             </p>
           )}
         </div>
@@ -266,7 +265,7 @@ export default function Assinatura() {
           </p>
           <PageHeader
             title="Escolha seu plano"
-            subtitle="Três opções para sua transportadora — cobrança mensal por empresa, sem surpresas."
+            subtitle="Starter para organizar a frota, Fiscal para NF-e/estoque e Completo com CT-e e MDF-e. Cobrança mensal por empresa."
             centered
             actions={
               canManage ? (

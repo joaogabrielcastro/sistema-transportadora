@@ -19,9 +19,9 @@ Plataforma **multi-empresa** (SaaS) para gestão de frota, manutenção, pneus, 
 ## Billing (Stripe)
 
 - **Clientes atuais** (pré-migração): `billing_exempt=true` — usam o sistema sem Stripe e sem tela de cobrança.
-- **Novos tenants** (register ou `tenant:create` sem `--exempt=true`): trial de 14 dias no plano **starter** (frota básica), depois precisam assinar em `/assinatura`. Ordem de coleta e NF-e/estoque vêm nos planos **ops**, **fiscal** ou **complete**.
-- Planos: `starter` | `ops` (ordem de coleta) | `fiscal` (NF-e/estoque) | `complete` (ambos).
-- Ativar cobrança depois em um isento: `npm run tenant:billing -- --slug=empresa --exempt=false --plan=ops`
+- **Novos tenants** (register ou `tenant:create` sem `--exempt=true`): trial de 14 dias no plano **starter** (frota básica), depois precisam assinar em `/assinatura`.
+- Planos públicos: `starter` (frota) | `fiscal` (NF-e de compra + estoque) | `complete` (tudo + CT-e/MDF-e). `ops` é legado e não é vendido. Ordem de coleta continua exclusiva do tenant ABroto.
+- Ativar cobrança depois em um isento: `npm run tenant:billing -- --slug=empresa --exempt=false --plan=fiscal`
 - Webhook: `POST /api/billing/webhook` (raw body). Local: `stripe listen --forward-to localhost:3020/api/billing/webhook`
 
 ## Operação avançada

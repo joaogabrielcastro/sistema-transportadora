@@ -74,11 +74,15 @@ const FAQS = [
   },
   {
     q: "Posso começar no Starter e subir de plano?",
-    a: "Sim. Fiscal e Completo acrescentam NF-e e estoque. A ordem de coleta não entra nos planos públicos.",
+    a: "Sim. Fiscal acrescenta NF-e de compra e estoque. Completo inclui tudo isso mais emissão de CT-e e MDF-e. A ordem de coleta não entra nos planos públicos.",
   },
   {
     q: "Há limite de veículos e usuários?",
     a: "Sim. Starter inclui até 15 veículos e 3 usuários; Fiscal, 40 e 8; Completo, 100 e 20. Convites pendentes também ocupam vaga.",
+  },
+  {
+    q: "O que muda no Completo em relação ao Fiscal?",
+    a: "Além da maior capacidade (100 veículos / 20 usuários) e suporte prioritário, o Completo libera o módulo de fiscal de transporte (CT-e e MDF-e).",
   },
   {
     q: "Já tenho login. Onde entro?",
@@ -290,40 +294,43 @@ export default function Landing() {
 
         <section
           id="precos"
-          className="scroll-mt-20 border-y border-border bg-white py-16"
+          className="scroll-mt-20 border-y border-border bg-gradient-to-b from-white via-background to-white py-16"
         >
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <div className="max-w-2xl">
-              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                Planos claros, trial no Starter
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary">
+                Preços transparentes
+              </p>
+              <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+                Planos alinhados ao que sua frota usa no dia a dia
               </h2>
               <p className="mt-2 text-sm text-text-secondary sm:text-base">
-                Preços mensais de referência. A ordem de coleta não é vendida nos
-                planos públicos.
+                Comece grátis no Starter. Suba para Fiscal (NF-e e estoque) ou
+                Completo (CT-e e MDF-e) quando a operação pedir.
               </p>
             </div>
-            <div className="mt-8 grid gap-5 lg:grid-cols-3">
+            <div className="mt-10 grid items-stretch gap-5 lg:grid-cols-3 lg:gap-6">
               {PLAN_CARDS.map((plan) => (
                 <article
                   key={plan.id}
-                  className={`flex h-full flex-col rounded-2xl border border-border bg-background p-5 shadow-card sm:p-6 ${
+                  className={`relative flex h-full flex-col rounded-2xl border bg-white p-5 shadow-card sm:p-6 ${
                     plan.popular
-                      ? "border-t-4 border-t-secondary"
+                      ? "border-secondary/40 ring-2 ring-secondary/30 shadow-soft lg:-mt-2 lg:mb-2 lg:scale-[1.02]"
                       : plan.bestValue
-                        ? "border-t-4 border-t-primary"
-                        : "border-t-4 border-t-border"
+                        ? "border-primary/25 border-t-4 border-t-primary"
+                        : "border-border border-t-4 border-t-border"
                   }`}
                 >
+                  {plan.popular ? (
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-secondary px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white shadow-soft">
+                      Mais escolhido
+                    </span>
+                  ) : null}
                   <div className="mb-2 flex flex-wrap items-center gap-2">
                     <h3 className="text-lg font-bold">{plan.name}</h3>
-                    {plan.popular ? (
-                      <span className="rounded-full bg-secondary/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-secondary">
-                        Popular
-                      </span>
-                    ) : null}
                     {plan.bestValue ? (
                       <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
-                        Completo
+                        Melhor valor
                       </span>
                     ) : null}
                   </div>
@@ -338,7 +345,7 @@ export default function Landing() {
                   </p>
                   {plan.trialEligible ? (
                     <p className="mt-1.5 text-xs font-medium text-success-dark">
-                      {BILLING_TRIAL_DAYS} dias grátis no cadastro
+                      {BILLING_TRIAL_DAYS} dias grátis no cadastro · sem cartão
                     </p>
                   ) : (
                     <p className="mt-1.5 text-xs text-text-secondary">
@@ -356,9 +363,18 @@ export default function Landing() {
                   <Link to={signupHref} className="mt-auto">
                     <Button
                       className="w-full"
-                      variant={plan.popular ? "secondary" : "primary"}
+                      variant={
+                        plan.popular || plan.trialEligible
+                          ? "secondary"
+                          : "primary"
+                      }
+                      size="lg"
                     >
-                      {plan.trialEligible ? "Começar trial" : "Criar conta"}
+                      {plan.trialEligible
+                        ? "Começar trial grátis"
+                        : plan.bestValue
+                          ? "Quero o Completo"
+                          : "Criar conta"}
                     </Button>
                   </Link>
                 </article>

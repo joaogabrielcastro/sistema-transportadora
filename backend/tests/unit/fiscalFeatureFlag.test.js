@@ -14,30 +14,32 @@ import {
 } from "../../src/utils/permissions.js";
 
 describe("feature flag transporte_fiscal", () => {
-  it("default false em todos os planos existentes", () => {
-    for (const plano of ["starter", "ops", "fiscal", "complete"]) {
+  it("default false em starter, ops e fiscal; true no Completo", () => {
+    for (const plano of ["starter", "ops", "fiscal"]) {
       assert.equal(
         PLAN_FEATURES[plano].transporte_fiscal,
         false,
         `plano ${plano}`,
       );
     }
+    assert.equal(PLAN_FEATURES.complete.transporte_fiscal, true);
     assert.equal(DEFAULT_TENANT_FEATURES.transporte_fiscal, false);
     assert.equal(TRANS_MOTIN_FEATURES.transporte_fiscal, false);
-    assert.equal(featuresForPlan("complete").transporte_fiscal, false);
+    assert.equal(featuresForPlan("complete").transporte_fiscal, true);
   });
 
   it("não quebra as chaves existentes (ordem_coleta / notas_estoque)", () => {
     // ordem_coleta não entra em plano — só o tenant ABroto (slug).
     assert.equal(PLAN_FEATURES.ops.ordem_coleta, false);
     assert.equal(PLAN_FEATURES.fiscal.notas_estoque, true);
+    assert.equal(PLAN_FEATURES.complete.notas_estoque, true);
     assert.deepEqual(featuresForPlan("ops"), PLAN_FEATURES.ops);
   });
 
   it("override explícito em tenants.features liga a feature", () => {
     const f = resolveTenantFeatures({
       billingExempt: false,
-      plan: "complete",
+      plan: "fiscal",
       raw: { transporte_fiscal: true },
     });
     assert.equal(f.transporte_fiscal, true);
@@ -45,7 +47,17 @@ describe("feature flag transporte_fiscal", () => {
     assert.equal(f.ordem_coleta, false);
   });
 
-  it("sem override, transporte_fiscal continua false", () => {
+  it("plano Completo já inclui transporte_fiscal sem override", () => {
+    const f = resolveTenantFeatures({
+      billingExempt: false,
+      plan: "complete",
+      raw: {},
+    });
+    assert.equal(f.transporte_fiscal, true);
+    assert.equal(f.notas_estoque, true);
+  });
+
+  it("sem override em isento, transporte_fiscal continua false", () => {
     const f = resolveTenantFeatures({
       billingExempt: true,
       slug: "abbroto",

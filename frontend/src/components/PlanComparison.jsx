@@ -106,7 +106,8 @@ export default function PlanComparison() {
           Compare os planos
         </h2>
         <p className="mt-1.5 text-sm text-text-secondary">
-          Detalhes do que cada plano inclui na ATrack.
+          Frota, estoque, NF-e e fiscal de transporte — o que cada plano libera
+          hoje no ATrack.
         </p>
       </div>
 

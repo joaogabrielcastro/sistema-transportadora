@@ -15,15 +15,15 @@ export const PLAN_CATALOG = Object.freeze([
     name: "Starter",
     tagline: "Organize a frota",
     description:
-      "Veículos, pneus, manutenção, gastos e relatórios — o essencial para sair da planilha.",
+      "Veículos, pneus, manutenção, gastos e custo/km — o essencial para sair da planilha e operar no pátio.",
     priceMonthlyBrl: 199,
     highlights: [
       "Até 15 veículos e 3 usuários",
-      "Cadastro de frota e composição",
+      "Frota com composição cavalo + carreta",
+      "Pneus com posição, estoque e km rodado",
       "Gastos, checklist e manutenção",
-      "Controle de pneus e documentos",
+      "Documentos, motoristas e alertas",
       "Relatórios de custo por km",
-      "Motoristas e alertas",
     ],
     modules: [],
     trialEligible: true,
@@ -31,16 +31,17 @@ export const PLAN_CATALOG = Object.freeze([
   {
     id: PLANS.fiscal,
     name: "Fiscal",
-    tagline: "NF-e e estoque",
+    tagline: "NF-e de compra e estoque",
     description:
-      "Tudo do Starter + importação de NF-e, estoque de peças e baixa por caminhão.",
+      "Tudo do Starter + importação de NF-e de compra, estoque de peças e baixa por caminhão na manutenção.",
     priceMonthlyBrl: 499,
     highlights: [
       "Até 40 veículos e 8 usuários",
       "Tudo do Starter",
       "Importação de XML da NF-e",
       "Cadastro manual de notas",
-      "Estoque ligado à frota",
+      "Estoque de peças ligado à frota",
+      "Baixa de peças na manutenção",
     ],
     modules: ["notas_estoque"],
     popular: true,
@@ -48,21 +49,26 @@ export const PLAN_CATALOG = Object.freeze([
   {
     id: PLANS.complete,
     name: "Completo",
-    tagline: "Operação full",
+    tagline: "Frota + fiscal de transporte",
     description:
-      "Pacote premium: frota + NF-e/estoque, suporte prioritário e tudo que o ATrack oferece para novos clientes.",
+      "Pacote premium: frota, NF-e/estoque e emissão de CT-e/MDF-e — o ATrack completo para operação madura.",
     priceMonthlyBrl: 699,
     highlights: [
       "Até 100 veículos e 20 usuários",
       "Tudo do Starter e do Fiscal",
+      "Emissão de CT-e e MDF-e",
       "NF-e, estoque e frota integrados",
-      "Relatórios e documentos",
-      "Melhor opção para operação madura",
+      "Maior capacidade e suporte prioritário",
     ],
-    modules: ["notas_estoque"],
+    modules: ["notas_estoque", "transporte_fiscal"],
     bestValue: true,
   },
 ]);
+
+/** @param {string} planId */
+export function getPlanCatalogEntry(planId) {
+  return PLAN_CATALOG.find((p) => p.id === planId) ?? null;
+}
 
 /** Payload para API / billing status (somente planos públicos). */
 export function buildPlansPublic({ priceConfiguredFor }) {

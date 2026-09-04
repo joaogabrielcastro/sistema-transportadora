@@ -19,18 +19,29 @@ import {
 
 const signupHref = PUBLIC_REGISTER_ENABLED ? "/register" : "/login";
 
+const HERO_IMG = "/images/landing-hero-truck.jpg";
+const PATIO_IMG = "/images/landing-frota-patio.jpg";
+const PNEUS_IMG = "/images/landing-pneus.jpg";
+const ESTRADA_IMG = "/images/landing-estrada.jpg";
+
 const PILLARS = [
   {
     title: "Frota no mesmo lugar",
     text: "Caminhões, cavalos, carretas, composição, motoristas e documentos — sem planilha paralela.",
+    image: PATIO_IMG,
+    alt: "Pátio com caminhões da frota alinhados",
   },
   {
     title: "Pneus com vida útil",
     text: "Posição, estoque, instalação e km rodado. Você vê o pneu acabar antes de estourar o custo.",
+    image: PNEUS_IMG,
+    alt: "Pneus de caminhão em detalhe",
   },
   {
     title: "Custo por km de verdade",
     text: "Gastos, manutenção e relatórios no mesmo painel, por veículo e no consolidado da operação.",
+    image: ESTRADA_IMG,
+    alt: "Caminhão em operação na estrada",
   },
 ];
 
@@ -144,24 +155,30 @@ export default function Landing() {
       </header>
 
       <main id="conteudo">
-        <section className="relative overflow-hidden bg-primary text-white">
-          <div
-            className="pointer-events-none absolute inset-0 opacity-30"
-            aria-hidden
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 20% 20%, rgba(59,130,246,0.35) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(148,163,184,0.15) 0%, transparent 45%)",
-            }}
+        <section className="relative isolate min-h-[78vh] overflow-hidden bg-primary-dark lg:min-h-[86vh]">
+          <img
+            src={HERO_IMG}
+            alt="Caminhão em operação na rodovia ao entardecer"
+            className="absolute inset-0 h-full w-full object-cover object-[70%_center]"
+            width={1920}
+            height={1080}
+            fetchPriority="high"
           />
-          <div className="relative mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:py-24">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+          <div
+            className="absolute inset-0 bg-gradient-to-r from-primary-dark via-primary-dark/85 to-primary-dark/25"
+            aria-hidden
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-primary-dark/80 via-transparent to-primary-dark/30" aria-hidden />
+
+          <div className="relative mx-auto flex min-h-[78vh] max-w-6xl flex-col justify-end px-4 py-16 sm:px-6 sm:py-20 lg:min-h-[86vh] lg:justify-center">
+            <div className="max-w-2xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-secondary-light">
                 SaaS para transportadoras
               </p>
-              <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl xl:text-5xl">
+              <h1 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-5xl xl:text-[3.35rem] xl:leading-[1.1]">
                 Gestão de frotas para quem já opera no pátio — não na planilha
               </h1>
-              <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-200 sm:text-lg">
+              <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-100 sm:text-lg">
                 {PRODUCT_NAME} concentra veículos, pneus, custos, documentos e
                 relatórios de custo/km. {BILLING_TRIAL_DAYS} dias grátis no
                 Starter para a sua empresa testar com dados reais.
@@ -176,53 +193,99 @@ export default function Landing() {
                   <Button
                     variant="outline"
                     size="lg"
-                    className="border-white/20 bg-white/5 text-white hover:bg-white/10"
+                    className="border-white/30 bg-white/10 text-white hover:bg-white/20"
                   >
                     Ver preços
                   </Button>
                 </a>
               </div>
-              <p className="mt-4 text-sm text-slate-400">
+              <p className="mt-4 text-sm text-slate-200">
                 Sem cartão no cadastro. Cancele antes do fim do trial se não
                 quiser assinar.
               </p>
             </div>
-            <ul className="grid gap-3 self-center">
+          </div>
+        </section>
+
+        <section className="bg-white py-16 sm:py-20" id="produto">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="max-w-2xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary">
+                Operação real
+              </p>
+              <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+                Feito para o pátio, a estrada e o custo da viagem
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-text-secondary sm:text-base">
+                Menos planilha, mais visão da frota: cadastro, pneus e
+                relatórios no mesmo sistema.
+              </p>
+            </div>
+            <ul className="mt-10 grid gap-6 md:grid-cols-3">
               {PILLARS.map((item) => (
                 <li
                   key={item.title}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                  className="overflow-hidden rounded-2xl border border-border bg-white shadow-card"
                 >
-                  <p className="font-semibold">{item.title}</p>
-                  <p className="mt-1 text-sm leading-relaxed text-slate-300">
-                    {item.text}
-                  </p>
+                  <div className="aspect-[16/10] overflow-hidden bg-slate-200">
+                    <img
+                      src={item.image}
+                      alt={item.alt}
+                      className="h-full w-full object-cover transition duration-500 hover:scale-[1.04]"
+                      loading="lazy"
+                      width={800}
+                      height={500}
+                    />
+                  </div>
+                  <div className="p-5">
+                    <h3 className="font-semibold">{item.title}</h3>
+                    <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">
+                      {item.text}
+                    </p>
+                  </div>
                 </li>
               ))}
             </ul>
           </div>
         </section>
 
-        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6" id="como-funciona">
-          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Do cadastro ao custo/km em três passos
-          </h2>
-          <ol className="mt-8 grid gap-4 md:grid-cols-3">
-            {STEPS.map((step) => (
-              <li
-                key={step.n}
-                className="rounded-2xl border border-border bg-white p-5 shadow-card"
-              >
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-secondary/15 text-sm font-bold text-secondary">
-                  {step.n}
-                </span>
-                <h3 className="mt-3 font-semibold">{step.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">
-                  {step.text}
-                </p>
-              </li>
-            ))}
-          </ol>
+        <section
+          className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20"
+          id="como-funciona"
+        >
+          <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+            <div className="overflow-hidden rounded-3xl border border-border shadow-card">
+              <img
+                src={PATIO_IMG}
+                alt="Frota estacionada no pátio da transportadora"
+                className="h-full min-h-[280px] w-full object-cover lg:min-h-[420px]"
+                loading="lazy"
+                width={1200}
+                height={750}
+              />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                Do cadastro ao custo/km em três passos
+              </h2>
+              <ol className="mt-8 grid gap-4">
+                {STEPS.map((step) => (
+                  <li
+                    key={step.n}
+                    className="rounded-2xl border border-border bg-white p-5 shadow-card"
+                  >
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-secondary/15 text-sm font-bold text-secondary">
+                      {step.n}
+                    </span>
+                    <h3 className="mt-3 font-semibold">{step.title}</h3>
+                    <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">
+                      {step.text}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
         </section>
 
         <section
@@ -295,9 +358,7 @@ export default function Landing() {
                       className="w-full"
                       variant={plan.popular ? "secondary" : "primary"}
                     >
-                      {plan.trialEligible
-                        ? "Começar trial"
-                        : "Criar conta"}
+                      {plan.trialEligible ? "Começar trial" : "Criar conta"}
                     </Button>
                   </Link>
                 </article>
@@ -326,12 +387,21 @@ export default function Landing() {
           </dl>
         </section>
 
-        <section className="border-t border-border bg-primary py-14 text-white">
-          <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+        <section className="relative overflow-hidden py-20 text-white">
+          <img
+            src={ESTRADA_IMG}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+            loading="lazy"
+            width={1600}
+            height={900}
+          />
+          <div className="absolute inset-0 bg-primary-dark/80" aria-hidden />
+          <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
+            <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
               Teste com a frota da sua empresa
             </h2>
-            <p className="mt-3 text-slate-300">
+            <p className="mt-3 text-slate-100">
               {BILLING_TRIAL_DAYS} dias no Starter. Se servir, assine. Se não,
               encerre antes do vencimento.
             </p>
@@ -345,7 +415,7 @@ export default function Landing() {
                 <Button
                   variant="outline"
                   size="lg"
-                  className="border-white/20 bg-white/5 text-white hover:bg-white/10"
+                  className="border-white/30 bg-white/10 text-white hover:bg-white/20"
                 >
                   Já tenho acesso
                 </Button>

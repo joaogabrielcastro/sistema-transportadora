@@ -28,3 +28,27 @@ export const caminhaoDocsDir = (caminhaoId) =>
 
 export const notaDocsDir = (tenantId, notaId) =>
   path.join(NOTAS_ROOT, String(tenantId), String(notaId));
+
+/**
+ * Resolve um caminho relativo sob `rootDir` e recusa path traversal.
+ * @param {string} rootDir
+ * @param {string} relPath
+ * @param {string} [notFoundMessage]
+ */
+export function resolverPathNaRaiz(
+  rootDir,
+  relPath,
+  notFoundMessage = "Arquivo não encontrado",
+) {
+  const limpo = String(relPath || "")
+    .replace(/\\/g, "/")
+    .replace(/^\/+/, "");
+  const root = path.resolve(rootDir);
+  const abs = path.resolve(root, limpo);
+  if (abs !== root && !abs.startsWith(root + path.sep)) {
+    const err = new Error(notFoundMessage);
+    err.statusCode = 404;
+    throw err;
+  }
+  return abs;
+}

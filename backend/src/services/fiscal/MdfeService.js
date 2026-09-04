@@ -6,9 +6,14 @@ import { normalizePlaca } from "../../utils/placa.js";
 import {
   emitirMdfeSchema,
   encerrarMdfeSchema,
+  rascunhoMdfeSchema,
 } from "../../schemas/fiscalSchema.js";
-import { CteMdfeProviderClient } from "./CteMdfeProviderClient.js";
+import { BrasilNFeClient } from "./brasilNfe/BrasilNFeClient.js";
+import { consultarDocumentoFiscal } from "./fiscalConsulta.js";
+import { resultadoSimulacaoDocumento } from "./fiscalSimulacao.js";
 import {
+  assertFksVeiculoEmpresa,
+  claimEmissao,
   EVENTO_PRIMEIRO_SEQUENCIAL,
   extrairNumeroProtocolo,
   findOwnedOr404,
@@ -18,6 +23,15 @@ import {
   salvarPdfBase64,
   salvarXmlBase64,
 } from "./fiscalShared.js";
+import {
+  colunasSefaz,
+  identificadorInternoMdfe,
+  interpretarRespostaEvento,
+  interpretarRespostaMdfe,
+  MDFE_STATUS,
+  prazoCancelamentoExpirado,
+  STATUS_RASCUNHO_EDITAVEL,
+} from "./fiscalStatus.js";
 
 const MODALIDADE_RODOVIARIO = 1;
 
@@ -509,6 +523,7 @@ export function montarPayloadMdfe(
   reboques = [],
   chavesCteVinculados = [],
   tot,
+  identificadorInterno,
 ) {
   const {
     placa: _p,
@@ -590,6 +605,7 @@ export function montarPayloadMdfe(
     serie: dto.serie ?? undefined,
     numero: dto.numero ?? undefined,
     codigo: dto.codigo ?? undefined,
+    IdentificadorInterno: identificadorInterno ?? undefined,
     tipoAmbiente: config.fiscal.ambiente,
     tipoEmitente: dto.tipo_emitente ?? undefined,
     DataEmissao: dto.data_emissao,
@@ -680,6 +696,53 @@ async function resolveCtesVinculados(tenantId, cteIds) {
   };
 }
 
+async function prepararEmissaoMdfe(tenantId, mdfeRow) {
+  const dto = emitirMdfeSchema.parse(mdfeRow.payload_json ?? {});
+  const { caminhaoId, placa, tipoVeiculo } = await resolvePlaca(tenantId, dto);
+  const { motoristaId, condutores } = await resolveCondutores(tenantId, dto);
+  const reboques = await resolveReboques(
+    tenantId,
+    { caminhaoId, tipoVeiculo },
+    dto,
+    dto.data_emissao,
+  );
+  const ctesVinculados = await resolveCtesVinculados(tenantId, dto.cte_ids);
+  const { empresa, token } = await resolveEmpresaCteMdfe(
+    tenantId,
+    dto.fiscal_empresa_id ?? mdfeRow.fiscal_empresa_id,
+  );
+  assertSeguroMdfe(dto);
+  validarInfAnttMdfe(dto, empresa);
+  validarProdPredMdfe(dto);
+  validarMunicipiosDescarga(dto, ctesVinculados.chaves);
+  const tot =
+    ctesVinculados.ids.length > 0
+      ? calcularTotMdfe(ctesVinculados.ctes)
+      : undefined;
+  const payload = montarPayloadMdfe(
+    dto,
+    placa,
+    condutores,
+    reboques,
+    ctesVinculados.chaves,
+    tot,
+    identificadorInternoMdfe(mdfeRow.id),
+  );
+  return {
+    dto,
+    caminhaoId,
+    placa,
+    motoristaId,
+    condutores,
+    reboques,
+    ctesVinculados,
+    empresa,
+    token,
+    tot,
+    payload,
+  };
+}
+
 export class MdfeService {
   static async list(tenantId, { status } = {}) {
     const where = { tenant_id: Number(tenantId) };
@@ -696,81 +759,218 @@ export class MdfeService {
     return serializePrisma(row);
   }
 
+  static async criar(tenantId, body) {
+    const dto = rascunhoMdfeSchema.parse(body);
+    const { fiscalEmpresaId, caminhaoId, motoristaId } =
+      await assertFksVeiculoEmpresa(tenantId, dto);
+    if (caminhaoId) {
+      await resolvePlaca(tenantId, { ...dto, caminhao_id: caminhaoId });
+    }
+    const row = await prisma.fiscal_mdfes.create({
+      data: {
+        tenant_id: Number(tenantId),
+        fiscal_empresa_id: fiscalEmpresaId,
+        caminhao_id: caminhaoId,
+        motorista_id: motoristaId,
+        chave_acesso: null,
+        status: MDFE_STATUS.RASCUNHO,
+        ambiente: config.fiscal.ambiente,
+        payload_json: dto,
+        serie: dto.serie ?? null,
+        ide_uf_ini: dto.uf_carregamento ?? dto.ide?.uf_ini ?? null,
+        ide_uf_fim: dto.uf_descarregamento ?? dto.ide?.uf_fim ?? null,
+      },
+    });
+    logger.info("MDF-e rascunho criado", { tenantId, mdfeId: row.id });
+    return serializePrisma(row);
+  }
+
+  static async atualizar(tenantId, id, body) {
+    const atual = await findOwnedOr404("fiscal_mdfes", id, tenantId, "MDF-e");
+    if (!STATUS_RASCUNHO_EDITAVEL.includes(atual.status)) {
+      throw badRequest(
+        `Só é possível editar MDF-e em rascunho, rejeitado ou com erro (status atual: "${atual.status}").`,
+      );
+    }
+    const dto = rascunhoMdfeSchema.parse(body);
+    const { fiscalEmpresaId, caminhaoId, motoristaId } =
+      await assertFksVeiculoEmpresa(tenantId, dto);
+    const row = await prisma.fiscal_mdfes.update({
+      where: { id: atual.id },
+      data: {
+        fiscal_empresa_id: fiscalEmpresaId ?? atual.fiscal_empresa_id,
+        caminhao_id: caminhaoId,
+        motorista_id: motoristaId,
+        status: MDFE_STATUS.RASCUNHO,
+        ambiente: config.fiscal.ambiente,
+        payload_json: dto,
+        serie: dto.serie ?? atual.serie,
+        ide_uf_ini: dto.uf_carregamento ?? dto.ide?.uf_ini ?? null,
+        ide_uf_fim: dto.uf_descarregamento ?? dto.ide?.uf_fim ?? null,
+      },
+    });
+    logger.info("MDF-e rascunho atualizado", { tenantId, mdfeId: row.id });
+    return serializePrisma(row);
+  }
+
+  static async remover(tenantId, id) {
+    const atual = await findOwnedOr404("fiscal_mdfes", id, tenantId, "MDF-e");
+    if (atual.status !== MDFE_STATUS.RASCUNHO) {
+      throw badRequest("Só é possível excluir MDF-e em rascunho.");
+    }
+    await prisma.fiscal_mdfes.delete({ where: { id: atual.id } });
+    logger.info("MDF-e rascunho excluído", { tenantId, mdfeId: atual.id });
+    return { deleted: true };
+  }
+
   static async emitir(tenantId, body) {
-    const dto = emitirMdfeSchema.parse(body);
-    const { caminhaoId, placa, tipoVeiculo } = await resolvePlaca(tenantId, dto);
-    const { motoristaId, condutores } = await resolveCondutores(tenantId, dto);
-    const reboques = await resolveReboques(
+    const id = body?.id != null && body.id !== "" ? Number(body.id) : null;
+    if (Number.isInteger(id) && id > 0) {
+      const keys = body && typeof body === "object" ? Object.keys(body) : [];
+      if (keys.some((k) => k !== "id")) {
+        await this.atualizar(tenantId, id, body);
+      }
+      return this.emitirPorId(tenantId, id);
+    }
+    const draft = await this.criar(tenantId, body);
+    return this.emitirPorId(tenantId, draft.id);
+  }
+
+  static async simular(tenantId, body) {
+    const id = body?.id != null && body.id !== "" ? Number(body.id) : null;
+    let mdfeId = Number.isInteger(id) && id > 0 ? id : null;
+    if (mdfeId) {
+      const keys = body && typeof body === "object" ? Object.keys(body) : [];
+      if (keys.some((k) => k !== "id")) {
+        await this.atualizar(tenantId, mdfeId, body);
+      }
+    } else {
+      const draft = await this.criar(tenantId, body);
+      mdfeId = draft.id;
+    }
+    const mdfeRow = await findOwnedOr404(
+      "fiscal_mdfes",
+      mdfeId,
       tenantId,
-      { caminhaoId, tipoVeiculo },
+      "MDF-e",
+    );
+    const prep = await prepararEmissaoMdfe(tenantId, mdfeRow);
+    logger.info("MDF-e simulado — não transmitido à SEFAZ", {
+      tenantId,
+      mdfeId,
+    });
+    return resultadoSimulacaoDocumento({
+      tipo: "mdfe",
+      documento: serializePrisma(mdfeRow),
+      payload: prep.payload,
+      empresa: prep.empresa,
+    });
+  }
+
+  static async emitirPorId(tenantId, id) {
+    const claimed = await claimEmissao("fiscal_mdfes", id, tenantId, "MDF-e");
+    if (claimed.alreadyAuthorized) {
+      logger.info("MDF-e emissão idempotente (já autorizado)", {
+        tenantId,
+        mdfeId: claimed.id,
+      });
+      return this.getById(tenantId, claimed.id);
+    }
+    if (claimed.consultInstead) {
+      logger.info("MDF-e já enviado à Brasil NFe — consultando em vez de reemitir", {
+        tenantId,
+        mdfeId: claimed.id,
+      });
+      return this.consultarStatus(tenantId, claimed.id);
+    }
+    const mdfeRow = await findOwnedOr404(
+      "fiscal_mdfes",
+      claimed.id,
+      tenantId,
+      "MDF-e",
+    );
+    try {
+    const {
       dto,
-      dto.data_emissao,
-    );
-    const ctesVinculados = await resolveCtesVinculados(tenantId, dto.cte_ids);
-    const { empresa, token } = await resolveEmpresaCteMdfe(
-      tenantId,
-      dto.fiscal_empresa_id,
-    );
+      caminhaoId,
+      motoristaId,
+      empresa,
+      token,
+      ctesVinculados,
+      tot,
+      payload,
+    } = await prepararEmissaoMdfe(tenantId, mdfeRow);
 
-    // Validações que precisam rodar ANTES da chamada irreversível ao provedor:
-    // seguro_responsavel (2.1); infANTT (2.2) e prodPred (2.4) quando não é
-    // frota própria. tot (2.3) é calculado dos CT-e vinculados.
-    assertSeguroMdfe(dto);
-    validarInfAnttMdfe(dto, empresa);
-    validarProdPredMdfe(dto);
-    validarMunicipiosDescarga(dto, ctesVinculados.chaves);
-    const tot =
-      ctesVinculados.ids.length > 0
-        ? calcularTotMdfe(ctesVinculados.ctes)
-        : undefined;
-
-    const resposta = await CteMdfeProviderClient.enviarManifestoTransporte(
-      montarPayloadMdfe(
-        dto,
-        placa,
-        condutores,
-        reboques,
-        ctesVinculados.chaves,
-        tot,
-      ),
+    const resposta = await BrasilNFeClient.enviarManifestoTransporte(
+      payload,
       token,
     );
 
-    // status === 3 => rejeitado (mesmo contrato do jwsoft).
-    if (resposta?.status === 3) {
-      throw badRequest("Provedor de CT-e/MDF-e rejeitou a emissão do MDF-e", {
-        erros: resposta.Error ? [resposta.Error] : [],
+    const interpretacao = interpretarRespostaMdfe(resposta);
+    const sefaz = colunasSefaz(resposta, "emissao");
+
+    if (interpretacao.outcome === "processing") {
+      const waiting = await prisma.fiscal_mdfes.update({
+        where: { id: mdfeRow.id },
+        data: {
+          status: MDFE_STATUS.PROCESSANDO,
+          chave_acesso: interpretacao.chave,
+          brasil_nfe_id: identificadorInternoMdfe(mdfeRow.id),
+          ...sefaz,
+        },
       });
+      logger.info("MDF-e aguardando SEFAZ", { tenantId, mdfeId: mdfeRow.id });
+      return serializePrisma(waiting);
     }
-    if (!resposta?.chave) {
+
+    if (interpretacao.outcome !== "authorized") {
+      await prisma.fiscal_mdfes.update({
+        where: { id: mdfeRow.id },
+        data: {
+          status:
+            interpretacao.outcome === "rejected"
+              ? MDFE_STATUS.REJEITADO
+              : MDFE_STATUS.ERRO,
+          fiscal_empresa_id: empresa.id,
+          ...sefaz,
+        },
+      });
+      logger.info("MDF-e rejeitado ou com erro na SEFAZ", {
+        tenantId,
+        mdfeId: mdfeRow.id,
+        outcome: interpretacao.outcome,
+      });
       throw badRequest(
-        "Provedor de CT-e/MDF-e não retornou a chave de acesso do MDF-e",
-        { resposta },
+        interpretacao.mensagem || "A SEFAZ rejeitou a emissão do MDF-e.",
+        {
+          codigo: sefaz.sefaz_codigo,
+          mensagem: interpretacao.mensagem,
+          detalhes: sefaz.sefaz_detalhes,
+        },
       );
     }
 
-    // A partir daqui o MDF-e já foi emitido de verdade na SEFAZ (irreversível).
-    // O registro local precisa existir ANTES de qualquer passo que possa falhar
-    // (gravação de arquivo em disco); caso contrário a emissão real ficaria sem
-    // rastro e uma nova tentativa geraria um documento duplicado.
-    const mdfe = await prisma.fiscal_mdfes.create({
+    const agora = new Date();
+    const mdfe = await prisma.fiscal_mdfes.update({
       data: {
         tenant_id: Number(tenantId),
         fiscal_empresa_id: empresa.id,
         caminhao_id: caminhaoId,
         motorista_id: motoristaId,
-        chave_acesso: resposta.chave,
+        chave_acesso: interpretacao.chave,
         numero: resposta.numero != null ? String(resposta.numero) : null,
         serie: dto.serie ?? null,
-        status: "processado",
-        // PARTE 3: grava o protocolo de autorização já na emissão (mesmo fix do
-        // CT-e). Antes só o encerramento gravava, via NuProtocolo; o
-        // cancelamento de MDF-e recém-emitido ia sem NumeroProtocolo e o
-        // provedor tinha de resolver pela chave. MDF-e antigos seguem com NULL.
+        status: MDFE_STATUS.PROCESSADO,
         numero_protocolo: extrairNumeroProtocolo(resposta),
-        data_emissao: new Date(),
+        data_emissao: agora,
+        autorizado_em: agora,
+        ambiente: config.fiscal.ambiente,
+        brasil_nfe_id: identificadorInternoMdfe(mdfeRow.id),
+        payload_json: dto,
         ...colunasMdfeExtras(dto, tot),
+        ...sefaz,
       },
+      where: { id: mdfeRow.id },
     });
 
     // MDF-e já emitido com sucesso — uma falha ao gravar/registrar o XML/PDF não
@@ -911,11 +1111,45 @@ export class MdfeService {
       }
     }
 
-    logger.info("MDF-e emitido", { tenantId, chave: mdfeComArquivos.chave_acesso });
+    logger.info("MDF-e autorizado", {
+      tenantId,
+      mdfeId: mdfeComArquivos.id,
+      chave: mdfeComArquivos.chave_acesso,
+    });
     return {
       ...serializePrisma(mdfeComArquivos),
       base64DAMDFe: resposta.base64DAMDFe ?? null,
     };
+    } catch (err) {
+      const stuck = await prisma.fiscal_mdfes.findFirst({
+        where: { id: claimed.id },
+        select: { status: true },
+      });
+      if (stuck?.status === MDFE_STATUS.PROCESSANDO) {
+        await prisma.fiscal_mdfes.update({
+          where: { id: claimed.id },
+          data: {
+            status: MDFE_STATUS.ERRO,
+            sefaz_mensagem: err.message,
+            sefaz_operacao: "emissao",
+            sefaz_em: new Date(),
+          },
+        });
+      }
+      throw err;
+    }
+  }
+
+  static async consultarStatus(tenantId, id) {
+    return consultarDocumentoFiscal({
+      table: "fiscal_mdfes",
+      tipoArquivo: "mdfe",
+      tenantId,
+      id,
+      label: "MDF-e",
+      identificadorInterno: identificadorInternoMdfe(id),
+      getById: (t, docId) => this.getById(t, docId),
+    });
   }
 
   /**
@@ -959,23 +1193,39 @@ export class MdfeService {
     // colunas encerrado_* para consulta.
     const dados = encerrarMdfeSchema.parse(body) ?? {};
     const mdfe = await findOwnedOr404("fiscal_mdfes", id, tenantId, "MDF-e");
+    if (mdfe.status !== MDFE_STATUS.PROCESSADO) {
+      throw badRequest(
+        `Só é possível encerrar MDF-e autorizado (status atual: "${mdfe.status}").`,
+      );
+    }
     const { token } = await resolveEmpresaCteMdfe(
       tenantId,
       mdfe.fiscal_empresa_id ?? undefined,
     );
 
-    const resposta = await CteMdfeProviderClient.encerrarManifestoTransporte(
+    const resposta = await BrasilNFeClient.encerrarManifestoTransporte(
       montarPayloadEncerrarMdfe(mdfe),
       token,
     );
 
-    if (resposta?.Status === 3) {
+    const interpretacao = interpretarRespostaEvento(resposta);
+    const sefaz = colunasSefaz(resposta, "encerramento");
+    if (interpretacao.outcome === "error") {
+      await prisma.fiscal_mdfes.update({
+        where: { id: mdfe.id },
+        data: sefaz,
+      });
       throw badRequest(
-        resposta.Error ??
-          "Provedor de CT-e/MDF-e rejeitou o encerramento do MDF-e",
+        interpretacao.mensagem ||
+          "A Brasil NFe rejeitou o encerramento do MDF-e",
+        sefaz,
       );
     }
-    if (resposta?.Status === 2) {
+    if (interpretacao.outcome === "processing") {
+      logger.info("MDF-e encerramento aguardando SEFAZ", {
+        tenantId,
+        mdfeId: mdfe.id,
+      });
       return serializePrisma(mdfe);
     }
 
@@ -983,26 +1233,40 @@ export class MdfeService {
     const updated = await prisma.fiscal_mdfes.update({
       where: { id: mdfe.id },
       data: {
-        status: "encerrado",
+        status: MDFE_STATUS.ENCERRADO,
         numero_protocolo: protocolo,
-        encerrado_em: new Date(),
+        encerrado_em: dados.data_encerramento
+          ? new Date(dados.data_encerramento)
+          : new Date(),
         encerrado_uf: dados.uf ?? null,
         encerrado_codigo_municipio: dados.codigo_municipio ?? null,
         encerrado_nome_municipio: dados.nome_municipio ?? null,
         encerrado_protocolo: protocolo,
+        ...sefaz,
       },
     });
+    logger.info("MDF-e encerrado", { tenantId, mdfeId: mdfe.id });
     return serializePrisma(updated);
   }
 
   static async cancelar(tenantId, id, justificativa) {
     const mdfe = await findOwnedOr404("fiscal_mdfes", id, tenantId, "MDF-e");
+    if (mdfe.status !== MDFE_STATUS.PROCESSADO) {
+      throw badRequest(
+        `Só é possível cancelar MDF-e autorizado (status atual: "${mdfe.status}").`,
+      );
+    }
+    if (prazoCancelamentoExpirado(mdfe.autorizado_em || mdfe.data_emissao)) {
+      throw badRequest(
+        "O prazo legal de 24 horas para cancelamento do MDF-e expirou. Encerre o manifesto ao final da viagem.",
+      );
+    }
     const { empresa, token } = await resolveEmpresaCteMdfe(
       tenantId,
       mdfe.fiscal_empresa_id ?? undefined,
     );
 
-    const resposta = await CteMdfeProviderClient.cancelarNotaFiscal(
+    const resposta = await BrasilNFeClient.cancelarNotaFiscal(
       montarPayloadCancelamento({
         chave: mdfe.chave_acesso,
         justificativa,
@@ -1012,20 +1276,32 @@ export class MdfeService {
       token,
     );
 
-    if (resposta?.Status === 3) {
+    const interpretacao = interpretarRespostaEvento(resposta);
+    const sefaz = colunasSefaz(resposta, "cancelamento");
+    if (interpretacao.outcome === "error") {
+      await prisma.fiscal_mdfes.update({
+        where: { id: mdfe.id },
+        data: sefaz,
+      });
       throw badRequest(
-        resposta.Error ??
-          "Provedor de CT-e/MDF-e rejeitou o cancelamento do MDF-e",
+        interpretacao.mensagem ||
+          "A Brasil NFe rejeitou o cancelamento do MDF-e",
+        sefaz,
       );
     }
-    if (resposta?.Status === 2) {
+    if (interpretacao.outcome === "processing") {
+      logger.info("MDF-e cancelamento aguardando SEFAZ", {
+        tenantId,
+        mdfeId: mdfe.id,
+      });
       return serializePrisma(mdfe);
     }
 
     const updated = await prisma.fiscal_mdfes.update({
       where: { id: mdfe.id },
-      data: colunasCancelamentoMdfe(justificativa, resposta),
+      data: { ...colunasCancelamentoMdfe(justificativa, resposta), ...sefaz },
     });
+    logger.info("MDF-e cancelado", { tenantId, mdfeId: mdfe.id });
     return serializePrisma(updated);
   }
 }

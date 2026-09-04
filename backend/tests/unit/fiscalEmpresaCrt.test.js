@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fiscalEmpresaSchema } from "../../src/schemas/fiscalSchema.js";
+import {
+  fiscalEmpresaSchema,
+  fiscalEmpresaUpdateSchema,
+} from "../../src/schemas/fiscalSchema.js";
 import { montarPayloadCte } from "../../src/services/fiscal/CteService.js";
 import { emitirCteSchema } from "../../src/schemas/fiscalSchema.js";
 
@@ -17,6 +20,24 @@ const dtoCte = emitirCteSchema.parse({
   dt_emissao: "2026-02-01T10:00:00-03:00",
   servico: { valor_prestacao: 100 },
   tomador: { cpf_cnpj: "12345678000199" },
+});
+
+test("fiscalEmpresaSchema ignora certificado_pfx_path vindo do cliente", () => {
+  const stripped = fiscalEmpresaSchema.parse({
+    cnpj: "12345678000199",
+    razao_social: "Transportadora X",
+    certificado_pfx_path: "../../../../etc/passwd",
+  });
+  assert.equal(stripped.certificado_pfx_path, undefined);
+});
+
+test("fiscalEmpresaUpdateSchema também ignora certificado_pfx_path", () => {
+  const stripped = fiscalEmpresaUpdateSchema.parse({
+    certificado_pfx_path: "../../../../etc/passwd",
+    razao_social: "Transportadora Y",
+  });
+  assert.equal(stripped.certificado_pfx_path, undefined);
+  assert.equal(stripped.razao_social, "Transportadora Y");
 });
 
 test("fiscalEmpresaSchema aceita crt (1..4) e inscricao_estadual", () => {
@@ -43,7 +64,7 @@ test("fiscalEmpresaSchema rejeita crt fora de 1..4", () => {
 test("montarPayloadCte sem empresa: Emit undefined (compat. chamada de 2 args)", () => {
   const payload = montarPayloadCte(dtoCte, undefined);
   assert.equal(payload.Emit, undefined);
-  assert.equal(payload.ModeloDocumento, "57");
+  assert.equal(payload.ModeloDocumento, 57);
 });
 
 test("montarPayloadCte com empresa: Emit.CRT e Emit.IE preenchidos", () => {

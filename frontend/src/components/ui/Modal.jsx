@@ -14,6 +14,8 @@ const Modal = ({
   className = "",
 }) => {
   const modalRef = useRef();
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   const sizes = {
     sm: "max-w-md",
@@ -27,8 +29,8 @@ const Modal = ({
     if (!isOpen) return;
 
     const handleEscape = (e) => {
-      if (closeOnEscape && e.key === "Escape" && onClose) {
-        onClose();
+      if (closeOnEscape && e.key === "Escape" && onCloseRef.current) {
+        onCloseRef.current();
       }
     };
 
@@ -65,7 +67,9 @@ const Modal = ({
       document.removeEventListener("keydown", handleTabTrap);
       document.body.style.overflow = "unset";
     };
-  }, [isOpen, closeOnEscape, onClose]);
+    // Só quando abre: `onClose` inline no pai mudava a cada tecla e o
+    // painel (tabIndex=-1) roubava o foco do input.
+  }, [isOpen, closeOnEscape]);
 
   const handleOverlayClick = (e) => {
     if (closeOnOverlayClick && e.target === e.currentTarget && onClose) {

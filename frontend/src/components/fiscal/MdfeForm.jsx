@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { Alert, Button, Card, FormField, SearchableSelect } from "../ui";
+import { FiscalFormSteps, FiscalFormStepNav } from "./FiscalFormSteps.jsx";
 import { formatCaminhaoOptions } from "../../utils/caminhaoOptions.js";
 import { useReboquesPreviewQuery } from "../../hooks";
 import { mdfeExigeGruposAntt } from "../../utils/fiscalForms.js";
@@ -12,6 +13,14 @@ import {
 
 function nowLocalInput() {
   const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
+}
+
+function isoToLocalMdfe(iso) {
+  if (!iso) return nowLocalInput();
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return nowLocalInput();
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0, 16);
 }
@@ -73,6 +82,13 @@ const MODAL_OPTIONS = [
   { value: "4", label: "4 — Ferroviário" },
 ];
 
+const MDFE_FASES = [
+  "Viagem",
+  "Documentos",
+  "Seguro e ANTT",
+  "Produto",
+];
+
 // tpCarga do prodPred (SEFAZ). Passthrough no backend — lista só para UX.
 const TP_CARGA_OPTIONS = [
   { value: "01", label: "01 — Granel sólido" },
@@ -118,7 +134,13 @@ export default function MdfeForm({
   motoristas = [],
   ctesVinculaveis = [],
   submitting = false,
+  savingDraft = false,
+  simulating = false,
   onSubmit,
+  onSaveDraft,
+  onSimular,
+  initialPayload = null,
+  empresaFiscal = null,
 }) {
   const [form, setForm] = useState(emptyForm);
   const [cteIds, setCteIds] = useState([]);
@@ -126,6 +148,7 @@ export default function MdfeForm({
   const [seguros, setSeguros] = useState([novoSeguro()]);
   // infMunDescarga (PARTE 5.1): município de descarga por CT-e selecionado.
   const [descargaPorCte, setDescargaPorCte] = useState({});
+  const [fase, setFase] = useState(0);
   const temMotoristas = motoristas.length > 0;
 
   const toggleCte = (id) =>
@@ -139,6 +162,33 @@ export default function MdfeForm({
   useEffect(() => {
     if (!temMotoristas) setModoCondutor("manual");
   }, [temMotoristas]);
+
+  useEffect(() => {
+    if (!initialPayload || typeof initialPayload !== "object") return;
+    const p = initialPayload;
+    const condutor = p.rodoviario?.condutores?.[0];
+    setForm((f) => ({
+      ...f,
+      caminhao_id: p.caminhao_id ? String(p.caminhao_id) : "",
+      motorista_id: p.motorista_id ? String(p.motorista_id) : "",
+      condutor_nome: condutor?.nome || "",
+      condutor_cpf: condutor?.cpf || "",
+      data_emissao: p.data_emissao
+        ? isoToLocalMdfe(p.data_emissao)
+        : f.data_emissao,
+      uf_carregamento: p.uf_carregamento || "",
+      uf_descarregamento: p.uf_descarregamento || "",
+      valor: p.valor != null ? String(p.valor) : "",
+      peso: p.peso != null ? String(p.peso) : "",
+      percurso_ufs: Array.isArray(p.percurso_ufs)
+        ? p.percurso_ufs.join(" ")
+        : f.percurso_ufs,
+      tipo_emitente: p.tipo_emitente != null ? String(p.tipo_emitente) : "",
+    }));
+    if (Array.isArray(p.cte_ids)) setCteIds(p.cte_ids);
+    if (p.motorista_id) setModoCondutor("cadastrado");
+    else if (condutor) setModoCondutor("manual");
+  }, [initialPayload]);
 
   const set = (campo, valor) => setForm((f) => ({ ...f, [campo]: valor }));
 
@@ -256,7 +306,25 @@ export default function MdfeForm({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (fase < MDFE_FASES.length - 1) {
+      setFase((f) => f + 1);
+      return;
+    }
+    const payload = montarPayload();
+    if (payload) onSubmit(payload);
+  };
 
+  const handleSaveDraft = () => {
+    const payload = montarPayload();
+    if (payload) onSaveDraft?.(payload);
+  };
+
+  const handleSimular = () => {
+    const payload = montarPayload();
+    if (payload) onSimular?.(payload);
+  };
+
+  const montarPayload = () => {
     // Não descartamos siglas "erradas" em silêncio: mandamos todos os itens não
     // vazios e o backend rejeita com erro claro se algum não for 2 letras.
     const percurso = form.percurso_ufs
@@ -265,12 +333,12 @@ export default function MdfeForm({
       .filter(Boolean);
 
     const payload = {
-      caminhao_id: Number(form.caminhao_id),
       data_emissao: new Date(form.data_emissao).toISOString(),
       uf_carregamento: form.uf_carregamento.trim().toUpperCase(),
       uf_descarregamento: form.uf_descarregamento.trim().toUpperCase(),
       rodoviario: {},
     };
+    if (form.caminhao_id) payload.caminhao_id = Number(form.caminhao_id);
 
     const valor = num(form.valor);
     const peso = num(form.peso);
@@ -407,7 +475,7 @@ export default function MdfeForm({
       };
     }
 
-    onSubmit(payload);
+    return payload;
   };
 
   const condutorManualInvalido =
@@ -418,6 +486,20 @@ export default function MdfeForm({
   return (
     <Card className="p-6">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {empresaFiscal && !empresaFiscal.certificado_senha_set && (
+          <Alert
+            type="warning"
+            message="Sem certificado A1 a autorização na SEFAZ fica pendente. Use Simular emissão para o demo; Emitir só completa com o .pfx cadastrado."
+          />
+        )}
+        <FiscalFormSteps
+          steps={MDFE_FASES}
+          current={fase}
+          onSelect={setFase}
+        />
+
+        {fase === 0 && (
+        <>
         <div className="grid gap-4 md:grid-cols-2">
           <SearchableSelect
             label="Caminhão"
@@ -718,7 +800,11 @@ export default function MdfeForm({
             </div>
           )}
         </div>
+        </>
+        )}
 
+        {fase === 1 && (
+        <>
         <div className="rounded-lg border border-border p-4 space-y-3">
           <div>
             <p className="text-sm font-medium text-text-primary">
@@ -817,7 +903,11 @@ export default function MdfeForm({
             </div>
           )}
         </div>
+        </>
+        )}
 
+        {fase === 2 && (
+        <>
         {/* ------------------------------------------------------------------ */}
         {/* Item 2.1 / PARTE 5.4 — Seguro da carga (lista) */}
         {/* ------------------------------------------------------------------ */}
@@ -1063,7 +1153,11 @@ export default function MdfeForm({
             </div>
           </div>
         </div>
+        </>
+        )}
 
+        {fase === 3 && (
+        <>
         {/* ------------------------------------------------------------------ */}
         {/* Item 2.4 / PARTE 5.6 — produto predominante (prodPred) */}
         {/* ------------------------------------------------------------------ */}
@@ -1218,8 +1312,38 @@ export default function MdfeForm({
             </div>
           </div>
         </div>
+        </>
+        )}
 
-        <div className="flex justify-end">
+        <FiscalFormStepNav
+          current={fase}
+          total={MDFE_FASES.length}
+          onPrev={() => setFase((f) => Math.max(0, f - 1))}
+          onNext={() => setFase((f) => Math.min(MDFE_FASES.length - 1, f + 1))}
+        >
+          {typeof onSaveDraft === "function" && (
+            <Button
+              type="button"
+              variant="outline"
+              loading={savingDraft}
+              onClick={handleSaveDraft}
+            >
+              Salvar rascunho
+            </Button>
+          )}
+          {fase === MDFE_FASES.length - 1 && (
+          <>
+          {typeof onSimular === "function" && (
+            <Button
+              type="button"
+              variant="outline"
+              loading={simulating}
+              disabled={!form.caminhao_id}
+              onClick={handleSimular}
+            >
+              Simular emissão
+            </Button>
+          )}
           <Button
             type="submit"
             loading={submitting}
@@ -1237,7 +1361,9 @@ export default function MdfeForm({
           >
             Emitir MDF-e
           </Button>
-        </div>
+          </>
+          )}
+        </FiscalFormStepNav>
       </form>
     </Card>
   );
@@ -1248,5 +1374,11 @@ MdfeForm.propTypes = {
   motoristas: PropTypes.array,
   ctesVinculaveis: PropTypes.array,
   submitting: PropTypes.bool,
+  savingDraft: PropTypes.bool,
+  simulating: PropTypes.bool,
   onSubmit: PropTypes.func.isRequired,
+  onSaveDraft: PropTypes.func,
+  onSimular: PropTypes.func,
+  initialPayload: PropTypes.object,
+  empresaFiscal: PropTypes.object,
 };

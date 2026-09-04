@@ -103,7 +103,7 @@ test.describe("Home — busca de caminhões", () => {
     await expect(nav.getByRole("link", { name: "Usuários" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Empresa" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Auditoria" })).toBeVisible();
-    await expect(nav.getByRole("button", { name: /CT-e/ })).toHaveCount(0);
+    await expect(nav.getByRole("button", { name: "Fiscal" })).toHaveCount(0);
   });
 
   test("busca por placa filtra resultados", async ({ page }) => {

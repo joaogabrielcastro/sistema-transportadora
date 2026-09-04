@@ -45,7 +45,7 @@ DownloadCell.propTypes = {
   onDownload: PropTypes.func,
 };
 
-/** Tabela dos MDF-e emitidos. */
+/** Tabela dos MDF-e (rascunho, emitidos, encerrados). */
 export default function MdfeList({
   items = [],
   caminhoes = [],
@@ -53,6 +53,10 @@ export default function MdfeList({
   onView,
   onCancel,
   onEncerrar,
+  onEmit,
+  onConsult,
+  onEditDraft,
+  onDeleteDraft,
   selectedIds,
   onToggleRow,
   onToggleAll,
@@ -81,8 +85,8 @@ export default function MdfeList({
   if (!items.length) {
     return (
       <EmptyState
-        title="Nenhum MDF-e emitido"
-        description="Emita o primeiro MDF-e na aba Emitir."
+        title="Nenhum MDF-e encontrado"
+        description="Salve um rascunho ou emita o primeiro MDF-e na aba Emitir."
         dashed
       />
     );
@@ -119,6 +123,18 @@ export default function MdfeList({
           {items.map((row) => {
             const podeCancelar = row.status === "processado";
             const podeEncerrar = row.status === "processado";
+            const podeEmitir = [
+              "rascunho",
+              "rejeitado",
+              "erro",
+              "pendente",
+            ].includes(row.status);
+            const podeConsultar =
+              Boolean(row.chave_acesso) ||
+              Boolean(row.brasil_nfe_id) ||
+              row.status === "processando";
+            const podeEditar = podeEmitir;
+            const podeExcluir = row.status === "rascunho";
             const marcado = selecionados.has(Number(row.id));
             return (
               <tr key={row.id} className="border-t border-border">
@@ -137,7 +153,14 @@ export default function MdfeList({
                   {[row.numero, row.serie].filter(Boolean).join("/") || "—"}
                 </td>
                 <td className="px-3 py-2.5">
-                  <StatusBadge status={row.status || "pendente"} />
+                  <div className="flex flex-col gap-1">
+                    <StatusBadge status={row.status || "pendente"} />
+                    {row.status === "processando" && (
+                      <span className="text-xs text-text-secondary">
+                        Aguardando SEFAZ — consulte
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-3 py-2.5">
                   {placaById.get(String(row.caminhao_id)) ||
@@ -161,7 +184,7 @@ export default function MdfeList({
                   </div>
                 </td>
                 <td className="px-3 py-2.5 text-right">
-                  <div className="flex justify-end gap-2">
+                  <div className="flex flex-wrap justify-end gap-2">
                     <Button
                       type="button"
                       variant="outline"
@@ -170,6 +193,36 @@ export default function MdfeList({
                     >
                       Ver detalhe
                     </Button>
+                    {podeEditar && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onEditDraft?.(row)}
+                      >
+                        Continuar rascunho
+                      </Button>
+                    )}
+                    {podeEmitir && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => onEmit?.(row)}
+                      >
+                        Emitir
+                      </Button>
+                    )}
+                    {podeConsultar && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onConsult?.(row)}
+                      >
+                        Consultar
+                      </Button>
+                    )}
                     {podeEncerrar && (
                       <Button
                         type="button"
@@ -190,6 +243,16 @@ export default function MdfeList({
                         Cancelar
                       </Button>
                     )}
+                    {podeExcluir && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onDeleteDraft?.(row)}
+                      >
+                        Excluir
+                      </Button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -208,6 +271,10 @@ MdfeList.propTypes = {
   onView: PropTypes.func,
   onCancel: PropTypes.func,
   onEncerrar: PropTypes.func,
+  onEmit: PropTypes.func,
+  onConsult: PropTypes.func,
+  onEditDraft: PropTypes.func,
+  onDeleteDraft: PropTypes.func,
   selectedIds: PropTypes.instanceOf(Set),
   onToggleRow: PropTypes.func,
   onToggleAll: PropTypes.func,

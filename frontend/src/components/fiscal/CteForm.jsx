@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import PropTypes from "prop-types";
+import { FiscalFormSteps, FiscalFormStepNav } from "./FiscalFormSteps.jsx";
 import {
   Alert,
   Button,
@@ -38,6 +39,25 @@ function nowLocalInput() {
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0, 16);
 }
+
+function isoToLocalInput(iso) {
+  if (!iso) return nowLocalInput();
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return nowLocalInput();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
+}
+
+function str(v) {
+  return v == null ? "" : String(v);
+}
+
+const CTE_FASES = [
+  "Operação",
+  "Participantes",
+  "Carga e documentos",
+  "Impostos",
+];
 
 const emptyForm = {
   cliente_id: "",
@@ -119,6 +139,130 @@ const novaQuantidade = () => ({
 });
 
 const novoComponente = () => ({ nome: "", valor: "" });
+
+function participanteFromPayload(p) {
+  const base = novoParticipante();
+  if (!p || typeof p !== "object") return base;
+  const end = p.endereco && typeof p.endereco === "object" ? p.endereco : p;
+  return {
+    ...base,
+    cnpj_cpf: str(p.cnpj_cpf || p.cpf_cnpj),
+    ie: str(p.ie),
+    razao_social: str(p.razao_social),
+    nome_fantasia: str(p.nome_fantasia),
+    fone: str(p.fone),
+    email: str(p.email),
+    logradouro: str(end.logradouro),
+    numero: str(end.numero),
+    complemento: str(end.complemento),
+    bairro: str(end.bairro),
+    codigo_municipio: str(end.codigo_municipio),
+    nome_municipio: str(end.nome_municipio),
+    uf: str(end.uf),
+    cep: str(end.cep),
+  };
+}
+
+function formFromPayload(payload) {
+  if (!payload || typeof payload !== "object") {
+    return {
+      form: emptyForm,
+      documentos: [novoDocumento()],
+      quantidades: [novaQuantidade()],
+      componentes: [],
+      tomadorExtra: novoParticipante(),
+      remetente: novoParticipante(),
+      destinatario: novoParticipante(),
+      expedidor: novoParticipante(),
+    };
+  }
+  const carga = payload.carga || {};
+  const icms = payload.icms || {};
+  const ibs = payload.ibscbs || {};
+  const difal = payload.difal || {};
+  const trib = payload.trib_fed || {};
+  const servico = payload.servico || {};
+  return {
+    form: {
+      ...emptyForm,
+      cliente_id: payload.cliente_id ? String(payload.cliente_id) : "",
+      caminhao_id: payload.caminhao_id ? String(payload.caminhao_id) : "",
+      cfop: str(payload.cfop),
+      natureza_operacao: str(payload.natureza_operacao),
+      dt_emissao: isoToLocalInput(payload.dt_emissao),
+      valor_prestacao: str(servico.valor_prestacao),
+      valor_carga: str(carga.valor_carga),
+      peso: str(carga.peso),
+      produto_predominante: str(carga.produto_predominante),
+      outras_caracteristicas: str(carga.outras_caracteristicas),
+      chave_nfe_referenciada: str(payload.chave_nfe_referenciada),
+      rntrc: str(payload.modal?.rntrc),
+      icms_cst: str(icms.cst),
+      icms_base: str(icms.base),
+      icms_aliquota: str(icms.aliquota),
+      icms_valor: str(icms.valor),
+      icms_reducao_base: str(icms.reducao_base),
+      ibscbs_cst: str(ibs.cst),
+      ibscbs_c_class_trib: str(ibs.c_class_trib),
+      ibscbs_base: str(ibs.base),
+      ibscbs_ibs_uf_valor: str(ibs.ibs_uf_valor),
+      ibscbs_ibs_mun_valor: str(ibs.ibs_mun_valor),
+      ibscbs_cbs_valor: str(ibs.cbs_valor),
+      ibscbs_valor_total: str(ibs.valor_total),
+      ibscbs_ibs_uf_aliquota: str(ibs.ibs_uf_aliquota),
+      ibscbs_ibs_mun_aliquota: str(ibs.ibs_mun_aliquota),
+      ibscbs_cbs_aliquota: str(ibs.cbs_aliquota),
+      ibscbs_percentual_reducao_ibs: str(ibs.percentual_reducao_ibs),
+      ibscbs_percentual_reducao_cbs: str(ibs.percentual_reducao_cbs),
+      ibscbs_percentual_diferimento: str(ibs.percentual_diferimento),
+      uf_ini: str(payload.uf_ini),
+      uf_fim: str(payload.uf_fim),
+      tomador_ind_ie: payload.tomador_ind_ie != null ? String(payload.tomador_ind_ie) : "",
+      difal_vbc_uf_fim: str(difal.vbc_uf_fim),
+      difal_p_fcp_uf_fim: str(difal.p_fcp_uf_fim),
+      difal_p_icms_uf_fim: str(difal.p_icms_uf_fim),
+      difal_p_icms_inter: str(difal.p_icms_inter),
+      difal_v_fcp_uf_fim: str(difal.v_fcp_uf_fim),
+      difal_v_icms_uf_fim: str(difal.v_icms_uf_fim),
+      difal_v_icms_uf_ini: str(difal.v_icms_uf_ini),
+      trib_pis_valor: str(trib.pis_valor),
+      trib_cofins_valor: str(trib.cofins_valor),
+      trib_ir_valor: str(trib.ir_valor),
+      trib_inss_valor: str(trib.inss_valor),
+      trib_csll_valor: str(trib.csll_valor),
+    },
+    documentos: Array.isArray(payload.documentos) && payload.documentos.length
+      ? payload.documentos.map((d) => ({
+          ...novoDocumento(),
+          tipo: d.tipo === "nf" ? "nf" : "nfe",
+          chave: str(d.chave),
+          numero: str(d.numero),
+          serie: str(d.serie),
+          data_emissao: str(d.data_emissao).slice(0, 10),
+          valor: str(d.valor),
+        }))
+      : [novoDocumento()],
+    quantidades:
+      Array.isArray(carga.quantidades) && carga.quantidades.length
+        ? carga.quantidades.map((q) => ({
+            ...novaQuantidade(),
+            codigo_unidade: str(q.codigo_unidade),
+            tipo_medida: str(q.tipo_medida),
+            quantidade: str(q.quantidade),
+          }))
+        : [novaQuantidade()],
+    componentes: Array.isArray(servico.componentes)
+      ? servico.componentes.map((c) => ({
+          nome: str(c.nome),
+          valor: str(c.valor),
+        }))
+      : [],
+    tomadorExtra: participanteFromPayload(payload.tomador),
+    remetente: participanteFromPayload(payload.remetente),
+    destinatario: participanteFromPayload(payload.destinatario),
+    expedidor: participanteFromPayload(payload.expedidor),
+  };
+}
 
 // Participante do CT-e (rem / dest / exped / toma) — contato + endereço
 // completos (item 1.2 / 0.7). A chave interna do documento é sempre `cnpj_cpf`;
@@ -368,19 +512,25 @@ export default function CteForm({
   clientes = [],
   caminhoes = [],
   submitting = false,
+  savingDraft = false,
+  simulating = false,
   onSubmit,
+  onSaveDraft,
+  onSimular,
+  initialPayload = null,
   empresaFiscal = null,
   empresaFiscalCarregada = false,
 }) {
   const { post } = useApiMutation();
-  const [form, setForm] = useState(emptyForm);
-  const [documentos, setDocumentos] = useState([novoDocumento()]);
-  const [quantidades, setQuantidades] = useState([novaQuantidade()]);
-  const [componentes, setComponentes] = useState([]);
-  const [tomadorExtra, setTomadorExtra] = useState(novoParticipante());
-  const [remetente, setRemetente] = useState(novoParticipante());
-  const [destinatario, setDestinatario] = useState(novoParticipante());
-  const [expedidor, setExpedidor] = useState(novoParticipante());
+  const inicial = formFromPayload(initialPayload);
+  const [form, setForm] = useState(inicial.form);
+  const [documentos, setDocumentos] = useState(inicial.documentos);
+  const [quantidades, setQuantidades] = useState(inicial.quantidades);
+  const [componentes, setComponentes] = useState(inicial.componentes);
+  const [tomadorExtra, setTomadorExtra] = useState(inicial.tomadorExtra);
+  const [remetente, setRemetente] = useState(inicial.remetente);
+  const [destinatario, setDestinatario] = useState(inicial.destinatario);
+  const [expedidor, setExpedidor] = useState(inicial.expedidor);
   const [novoClienteOpen, setNovoClienteOpen] = useState(false);
   const [novoCliente, setNovoCliente] = useState({
     razao_social: "",
@@ -388,6 +538,7 @@ export default function CteForm({
   });
   const [criandoCliente, setCriandoCliente] = useState(false);
   const [erroCliente, setErroCliente] = useState("");
+  const [fase, setFase] = useState(0);
 
   const set = (campo, valor) => setForm((f) => ({ ...f, [campo]: valor }));
 
@@ -547,9 +698,8 @@ export default function CteForm({
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!clienteSelecionado) return;
+  const montarPayload = () => {
+    if (!clienteSelecionado) return null;
 
     const carga = {};
     if (num(form.valor_carga) != null) carga.valor_carga = num(form.valor_carga);
@@ -713,7 +863,30 @@ export default function CteForm({
     if (form.rntrc.trim())
       payload.modal = { rntrc: form.rntrc.replace(/\D/g, "") };
 
+    return payload;
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (fase < CTE_FASES.length - 1) {
+      setFase((f) => f + 1);
+      return;
+    }
+    const payload = montarPayload();
+    if (!payload) return;
     onSubmit(payload);
+  };
+
+  const handleSaveDraft = () => {
+    const payload = montarPayload();
+    if (!payload) return;
+    onSaveDraft?.(payload);
+  };
+
+  const handleSimular = () => {
+    const payload = montarPayload();
+    if (!payload) return;
+    onSimular?.(payload);
   };
 
   const camposBaseOk =
@@ -743,7 +916,23 @@ export default function CteForm({
             }
           />
         )}
+        {empresaFiscalCarregada &&
+          empresaFiscal &&
+          !empresaFiscal.certificado_senha_set && (
+            <Alert
+              type="warning"
+              message="Sem certificado A1 a autorização na SEFAZ fica pendente. Use Simular emissão para mostrar o fluxo ao cliente; Emitir só completa com o .pfx cadastrado."
+            />
+          )}
 
+        <FiscalFormSteps
+          steps={CTE_FASES}
+          current={fase}
+          onSelect={setFase}
+        />
+
+        {fase === 0 && (
+        <>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <SearchableSelect
@@ -892,7 +1081,11 @@ export default function CteForm({
             ))
           )}
         </div>
+        </>
+        )}
 
+        {fase === 1 && (
+        <>
         {/* ------------------------------------------------------------------ */}
         {/* PARTE 4.2 — Participantes (Tomador, Remetente, Destinatário, Expedidor) */}
         {/* ------------------------------------------------------------------ */}
@@ -954,7 +1147,11 @@ export default function CteForm({
             </div>
           </details>
         </div>
+        </>
+        )}
 
+        {fase === 2 && (
+        <>
         {/* ------------------------------------------------------------------ */}
         {/* Item 1.3 — infCarga */}
         {/* ------------------------------------------------------------------ */}
@@ -1221,7 +1418,11 @@ export default function CteForm({
             );
           })}
         </div>
+        </>
+        )}
 
+        {fase === 3 && (
+        <>
         {/* ------------------------------------------------------------------ */}
         {/* Item 1.1 — imp.ICMS */}
         {/* ------------------------------------------------------------------ */}
@@ -1586,12 +1787,45 @@ export default function CteForm({
             />
           </div>
         </div>
+        </>
+        )}
 
-        <div className="flex justify-end">
-          <Button type="submit" loading={submitting} disabled={emitirDesabilitado}>
-            Emitir CT-e
-          </Button>
-        </div>
+        <FiscalFormStepNav
+          current={fase}
+          total={CTE_FASES.length}
+          onPrev={() => setFase((f) => Math.max(0, f - 1))}
+          onNext={() => setFase((f) => Math.min(CTE_FASES.length - 1, f + 1))}
+        >
+          {typeof onSaveDraft === "function" && (
+            <Button
+              type="button"
+              variant="outline"
+              loading={savingDraft}
+              disabled={!form.cliente_id}
+              onClick={handleSaveDraft}
+            >
+              Salvar rascunho
+            </Button>
+          )}
+          {fase === CTE_FASES.length - 1 && (
+            <>
+              {typeof onSimular === "function" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  loading={simulating}
+                  disabled={!camposBaseOk}
+                  onClick={handleSimular}
+                >
+                  Simular emissão
+                </Button>
+              )}
+              <Button type="submit" loading={submitting} disabled={emitirDesabilitado}>
+                Emitir CT-e
+              </Button>
+            </>
+          )}
+        </FiscalFormStepNav>
       </form>
 
       <Modal
@@ -1604,15 +1838,18 @@ export default function CteForm({
           {erroCliente && <Alert type="error" message={erroCliente} />}
           <FormField
             label="Razão social"
+            name="novo_cliente_razao_social"
             value={novoCliente.razao_social}
             onChange={(e) =>
               setNovoCliente((c) => ({ ...c, razao_social: e.target.value }))
             }
             required
+            autoComplete="off"
             className="mb-0"
           />
           <CpfCnpjField
             label="CNPJ / CPF"
+            name="novo_cliente_cnpj_cpf"
             value={novoCliente.cnpj_cpf}
             onChange={(e) =>
               setNovoCliente((c) => ({ ...c, cnpj_cpf: e.target.value }))
@@ -1647,7 +1884,12 @@ CteForm.propTypes = {
   clientes: PropTypes.array,
   caminhoes: PropTypes.array,
   submitting: PropTypes.bool,
+  savingDraft: PropTypes.bool,
   onSubmit: PropTypes.func.isRequired,
+  onSaveDraft: PropTypes.func,
+  onSimular: PropTypes.func,
+  simulating: PropTypes.bool,
+  initialPayload: PropTypes.object,
   /** Empresa fiscal emissora ativa (somente leitura) — usada só para ler o CRT. */
   empresaFiscal: PropTypes.object,
   /** true quando a consulta de empresas fiscais já retornou (sucesso). */

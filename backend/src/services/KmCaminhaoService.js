@@ -173,6 +173,3 @@ export async function recalculateKmAtual(caminhaoId, { tx = null, tenantId = nul
   });
   return true;
 }
-
-/** @deprecated use syncKmFromRegistro */
-export const atualizarKmCaminhaoSeMaior = syncKmFromRegistro;

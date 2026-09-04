@@ -42,6 +42,8 @@ const OrdensColeta = lazy(() => import("./Pages/OrdensColeta.jsx"));
 const NotasEstoque = lazy(() => import("./Pages/NotasEstoque.jsx"));
 const FiscalCte = lazy(() => import("./Pages/FiscalCte.jsx"));
 const FiscalMdfe = lazy(() => import("./Pages/FiscalMdfe.jsx"));
+const FiscalCiot = lazy(() => import("./Pages/FiscalCiot.jsx"));
+const FiscalEmpresas = lazy(() => import("./Pages/FiscalEmpresas.jsx"));
 const Usuarios = lazy(() => import("./Pages/Usuarios.jsx"));
 const Assinatura = lazy(() => import("./Pages/Assinatura.jsx"));
 const Empresa = lazy(() => import("./Pages/Empresa.jsx"));
@@ -59,12 +61,17 @@ function RedirectCadastroLote() {
 
 function GuardedRoute({
   permission,
+  anyPermission,
   feature,
   billing = true,
   children,
 }) {
   let node = children;
-  if (permission) {
+  if (anyPermission) {
+    node = (
+      <PermissionRoute anyPermission={anyPermission}>{node}</PermissionRoute>
+    );
+  } else if (permission) {
     node = <PermissionRoute permission={permission}>{node}</PermissionRoute>;
   }
   if (feature) {
@@ -153,7 +160,7 @@ function AppRoutes() {
         <Route
           path="/motoristas"
           element={
-            <GuardedRoute>
+            <GuardedRoute permission={PERMISSIONS.MOTORISTAS_READ}>
               <Motoristas />
             </GuardedRoute>
           }
@@ -161,7 +168,7 @@ function AppRoutes() {
         <Route
           path="/documentos"
           element={
-            <GuardedRoute>
+            <GuardedRoute permission={PERMISSIONS.DOCS_READ}>
               <Documentos />
             </GuardedRoute>
           }
@@ -169,7 +176,7 @@ function AppRoutes() {
         <Route
           path="/alertas"
           element={
-            <GuardedRoute>
+            <GuardedRoute permission={PERMISSIONS.ALERTS_READ}>
               <Alertas />
             </GuardedRoute>
           }
@@ -301,6 +308,21 @@ function AppRoutes() {
           }
         />
         <Route
+          path="/fiscal/empresas"
+          element={
+            <GuardedRoute
+              feature="transporte_fiscal"
+              anyPermission={[
+                PERMISSIONS.CTE_WRITE,
+                PERMISSIONS.MDFE_WRITE,
+                PERMISSIONS.CIOT_WRITE,
+              ]}
+            >
+              <FiscalEmpresas />
+            </GuardedRoute>
+          }
+        />
+        <Route
           path="/fiscal/cte"
           element={
             <GuardedRoute
@@ -319,6 +341,17 @@ function AppRoutes() {
               permission={PERMISSIONS.MDFE_READ}
             >
               <FiscalMdfe />
+            </GuardedRoute>
+          }
+        />
+        <Route
+          path="/fiscal/ciot"
+          element={
+            <GuardedRoute
+              feature="transporte_fiscal"
+              permission={PERMISSIONS.CIOT_READ}
+            >
+              <FiscalCiot />
             </GuardedRoute>
           }
         />

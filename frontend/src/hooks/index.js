@@ -22,6 +22,7 @@ export {
   useEditPneuQuery,
   useCteListQuery,
   useMdfeListQuery,
+  useCiotListQuery,
   useFiscalClientesQuery,
   useFiscalEmpresasQuery,
   useFiscalVeiculoDadosQuery,

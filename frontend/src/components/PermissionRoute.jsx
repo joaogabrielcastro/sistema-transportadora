@@ -9,10 +9,16 @@ import { Alert, Button, PageHeader } from "./ui";
  * Bloqueia a rota se o usuário autenticado não tiver a permissão.
  * A API continua sendo a fonte de verdade; isto evita UX quebrada (403).
  */
-export function PermissionRoute({ permission, children }) {
+export function PermissionRoute({ permission, anyPermission, children }) {
   const { user } = useAuth();
 
-  if (!permission || userHasPermission(user, permission)) {
+  const allowed = anyPermission
+    ? (Array.isArray(anyPermission) ? anyPermission : [anyPermission]).some(
+        (p) => userHasPermission(user, p),
+      )
+    : !permission || userHasPermission(user, permission);
+
+  if (allowed) {
     return children;
   }
 

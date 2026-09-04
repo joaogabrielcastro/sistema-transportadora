@@ -41,7 +41,7 @@ export const PLAN_COMPARE_SECTIONS = [
         complete: true,
       },
       {
-        label: "Controle de pneus e posições",
+        label: "Controle de pneus (posição, estoque e km)",
         starter: true,
         fiscal: true,
         complete: true,
@@ -86,7 +86,7 @@ export const PLAN_COMPARE_SECTIONS = [
   },
   {
     id: "fiscal",
-    title: "Fiscal e estoque",
+    title: "NF-e de compra e estoque",
     rows: [
       {
         label: "Importação de XML da NF-e",
@@ -104,6 +104,24 @@ export const PLAN_COMPARE_SECTIONS = [
         label: "Estoque de peças ligado à frota",
         starter: false,
         fiscal: true,
+        complete: true,
+      },
+    ],
+  },
+  {
+    id: "transporte",
+    title: "Fiscal de transporte",
+    rows: [
+      {
+        label: "Emissão de CT-e",
+        starter: false,
+        fiscal: false,
+        complete: true,
+      },
+      {
+        label: "Emissão de MDF-e",
+        starter: false,
+        fiscal: false,
         complete: true,
       },
       {

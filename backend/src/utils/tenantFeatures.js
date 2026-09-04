@@ -7,16 +7,16 @@ export const PLANS = Object.freeze({
   complete: "complete",
 });
 
-// `transporte_fiscal` (CT-e / MDF-e / CIOT): default false em TODOS os planos.
-// Nenhum tenant ganha acesso automático — precisa ligar manualmente via
-// `npm run tenant:billing` ou override direto em tenants.features.
+// `transporte_fiscal` (CT-e / MDF-e): liberado no plano Completo.
+// Em outros planos permanece off — override manual via `npm run tenant:billing`
+// ou tenants.features quando necessário.
 export const PLAN_FEATURES = Object.freeze({
   starter: Object.freeze({ ordem_coleta: false, notas_estoque: false, transporte_fiscal: false }),
   /** Legado — não vendido; ordem de coleta não é liberada via plano. */
   ops: Object.freeze({ ordem_coleta: false, notas_estoque: false, transporte_fiscal: false }),
   fiscal: Object.freeze({ ordem_coleta: false, notas_estoque: true, transporte_fiscal: false }),
-  /** Pacote top — mesmos módulos públicos (sem ordem de coleta). */
-  complete: Object.freeze({ ordem_coleta: false, notas_estoque: true, transporte_fiscal: false }),
+  /** Pacote top — NF-e/estoque + emissão CT-e/MDF-e (sem ordem de coleta). */
+  complete: Object.freeze({ ordem_coleta: false, notas_estoque: true, transporte_fiscal: true }),
 });
 
 /** Planos disponíveis para novos clientes (checkout). */

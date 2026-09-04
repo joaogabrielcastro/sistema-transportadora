@@ -101,6 +101,8 @@ describe("tenantFeatures", () => {
     assert.equal(featuresForPlan("fiscal").notas_estoque, true);
     assert.equal(featuresForPlan("complete").ordem_coleta, false);
     assert.equal(featuresForPlan("complete").notas_estoque, true);
+    assert.equal(featuresForPlan("complete").transporte_fiscal, true);
+    assert.equal(featuresForPlan("fiscal").transporte_fiscal, false);
   });
 
   it("isPublicBillingPlan: starter, fiscal e complete", () => {

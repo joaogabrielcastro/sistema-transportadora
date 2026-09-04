@@ -1,5 +1,5 @@
 // frontend/src/hooks/index.js
-export { useApi, api, getApiBaseUrl } from "./useApi.js";
+export { useApi } from "./useApi.js";
 export { useApiMutation } from "./useApiMutation.js";
 export { useDebouncedValue } from "./useDebouncedValue.js";
 export { useFiscalDocDownload } from "./useFiscalDocDownload.js";
@@ -17,8 +17,6 @@ export {
   usePosicoesPneusQuery,
   usePneuAtribuirQueries,
   useCaminhaoDetailQuery,
-  useEditGastoQuery,
-  useEditChecklistQuery,
   useEditPneuQuery,
   useCteListQuery,
   useMdfeListQuery,

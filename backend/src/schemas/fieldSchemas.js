@@ -69,20 +69,6 @@ export const cpfOptionalSchema = z.preprocess((val) => {
   .nullable()
   .optional());
 
-export const cnpjOptionalSchema = z.preprocess((val) => {
-  if (val === undefined) return undefined;
-  if (val === null || String(val).trim() === "") return null;
-  return String(val).trim();
-}, z
-  .string()
-  .max(FIELD_LIMITS.CNPJ_FORMATTED)
-  .refine((v) => {
-    const d = stripDigits(v);
-    return d.length === 0 || d.length === FIELD_LIMITS.CNPJ_DIGITS;
-  }, "CNPJ deve ter 14 dígitos.")
-  .nullable()
-  .optional());
-
 export const cpfCnpjOptionalSchema = z.preprocess((val) => {
   if (val === undefined) return undefined;
   if (val === null || String(val).trim() === "") return null;

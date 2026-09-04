@@ -10,11 +10,7 @@ export {
   usePneuAtribuirQueries,
 } from "./usePneusQuery.js";
 export { useCaminhaoDetailQuery } from "./useCaminhaoDetailQuery.js";
-export {
-  useEditGastoQuery,
-  useEditChecklistQuery,
-  useEditPneuQuery,
-} from "./useEditFormQueries.js";
+export { useEditPneuQuery } from "./useEditFormQueries.js";
 export {
   useCteListQuery,
   useMdfeListQuery,

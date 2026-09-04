@@ -52,7 +52,7 @@ export default function Documentos() {
       <div className="space-y-6">
         <PageHeader
           title="Documentos da frota"
-          subtitle="Cockpit de vencimentos (CRLV, ANTT, seguro e outros PDFs com validade)."
+          subtitle="Vencimentos de CRLV, ANTT, seguro e outros documentos dos caminhões."
         />
         {error && <Alert type="error">{error}</Alert>}
 

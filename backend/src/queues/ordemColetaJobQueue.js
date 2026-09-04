@@ -172,16 +172,6 @@ export async function enqueueOrdemEnvio(envioId, parsed) {
   }
 }
 
-/** Compat: versão sync usada em pontos antigos — dispara async. */
-export function enqueueOrdemEnvioFireAndForget(envioId, parsed) {
-  void enqueueOrdemEnvio(envioId, parsed).catch((err) => {
-    logger.error("Falha ao enfileirar ordem de coleta", {
-      envioId,
-      err: err?.message,
-    });
-  });
-}
-
 export async function closeOrdemColetaQueue() {
   const closing = [];
   if (worker) {

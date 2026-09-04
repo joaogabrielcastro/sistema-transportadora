@@ -11,6 +11,7 @@ import {
   StatusBadge,
 } from "../components/ui";
 import EmptyState from "../components/EmptyState.jsx";
+import ConfirmModal from "../components/ConfirmModal.jsx";
 import { apiFetch, parseApiError } from "../lib/apiClient.js";
 import { extractApiData } from "../utils/extractApiArray.js";
 import { useApiMutation, useFiscalEmpresasQuery } from "../hooks";
@@ -67,6 +68,8 @@ export default function FiscalEmpresas() {
   const [certSenha, setCertSenha] = useState("");
   const [certLoading, setCertLoading] = useState(false);
   const [certCheck, setCertCheck] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const set = (campo, valor) => setForm((f) => ({ ...f, [campo]: valor }));
 
@@ -100,6 +103,38 @@ export default function FiscalEmpresas() {
       body.brasil_nfe_user_token = form.brasil_nfe_user_token.trim();
     }
     return body;
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget?.id) return;
+    setDeleting(true);
+    setErro("");
+    setMsg("");
+    try {
+      await apiFetch({
+        method: "DELETE",
+        url: `/fiscal/empresas/${deleteTarget.id}`,
+      });
+      setMsg("Empresa fiscal excluída.");
+      if (editingId === deleteTarget.id) {
+        setEditingId(null);
+        setForm(emptyForm);
+      }
+      if (String(certEmpresaId) === String(deleteTarget.id)) {
+        setCertEmpresaId("");
+        setCertFile(null);
+        setCertSenha("");
+        setCertCheck(null);
+      }
+      setDeleteTarget(null);
+      empresasQuery.refetch();
+    } catch (err) {
+      const parsed = await parseApiError(err);
+      setErro(parsed.message || "Não foi possível excluir a empresa fiscal.");
+      setDeleteTarget(null);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleSave = async (e) => {
@@ -261,14 +296,24 @@ export default function FiscalEmpresas() {
                       />
                     </td>
                     <td className="px-3 py-2.5 text-right">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => startEdit(row)}
-                      >
-                        Editar
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => startEdit(row)}
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setDeleteTarget(row)}
+                        >
+                          Excluir
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -457,6 +502,22 @@ export default function FiscalEmpresas() {
           </Alert>
         )}
       </Card>
+
+      <ConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => !deleting && setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="Excluir empresa fiscal"
+        message={
+          deleteTarget
+            ? `Deseja excluir a empresa fiscal "${deleteTarget.razao_social}"? Esta ação não pode ser desfeita.`
+            : ""
+        }
+        confirmText={deleting ? "Excluindo..." : "Excluir"}
+        cancelText="Cancelar"
+        warning
+        loading={deleting}
+      />
     </PageLayout>
   );
 }

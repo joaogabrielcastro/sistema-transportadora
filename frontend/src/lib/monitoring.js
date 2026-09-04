@@ -3,10 +3,6 @@
 let sentryMod = null;
 let initPromise = null;
 
-export function isSentryConfigured() {
-  return Boolean(import.meta.env.VITE_SENTRY_DSN);
-}
-
 export async function initMonitoring() {
   const dsn = import.meta.env.VITE_SENTRY_DSN;
   if (!dsn || typeof window === "undefined") return false;

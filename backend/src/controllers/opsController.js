@@ -1,7 +1,5 @@
 import { AlertsService } from "../services/AlertsService.js";
 import { OnboardingService } from "../services/OnboardingService.js";
-import { TenantService } from "../services/TenantService.js";
-import { updateTenantSettingsSchema } from "../schemas/tenantSchema.js";
 import { AuditService } from "../services/AuditService.js";
 import { DigestService } from "../services/DigestService.js";
 import { WhatsAppService } from "../services/WhatsAppService.js";
@@ -30,13 +28,6 @@ export const opsController = {
   onboardingComplete: catchAsync(async (req, res) => {
     const tenantId = requireTenantId(req);
     const data = await OnboardingService.complete(tenantId);
-    res.json({ success: true, data });
-  }),
-
-  tenantSettings: catchAsync(async (req, res) => {
-    const tenantId = requireTenantId(req);
-    const body = updateTenantSettingsSchema.parse(req.body);
-    const data = await TenantService.updateSettings(tenantId, body);
     res.json({ success: true, data });
   }),
 

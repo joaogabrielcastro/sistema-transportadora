@@ -8,10 +8,6 @@ export function isSentryConfigured() {
   return Boolean(sentryDsn());
 }
 
-export function isSentryActive() {
-  return Boolean(Sentry);
-}
-
 export async function initSentry() {
   const dsn = sentryDsn();
   if (!dsn) return false;

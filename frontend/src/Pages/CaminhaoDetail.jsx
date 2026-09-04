@@ -178,7 +178,7 @@ const CaminhaoDetail = () => {
           <Alert
             type="warning"
             className="mb-6"
-            message={`Exibindo os ${API_CONFIG.LIST_MAX} registros mais recentes. Total no banco: ${
+            message={`Exibindo os ${API_CONFIG.LIST_MAX} registros mais recentes. Total: ${
               listTruncation.gastos
                 ? `${listTruncation.gastosTotal} gasto(s)`
                 : ""

@@ -75,11 +75,6 @@ router.delete(
   caminhaoDocumentosController.remover,
 );
 
-router.put(
-  "/id/:id",
-  requirePermission(PERMISSIONS.FROTA_WRITE),
-  caminhoesController.updateCaminhaoById,
-);
 router.get(
   "/id/:id/vinculos",
   requirePermission(PERMISSIONS.FROTA_READ),

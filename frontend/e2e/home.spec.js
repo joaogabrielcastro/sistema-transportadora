@@ -101,7 +101,7 @@ test.describe("Home — busca de caminhões", () => {
     await expect(nav.getByRole("link", { name: "Alertas" })).toBeVisible();
     await expect(nav.getByRole("button", { name: "Pneus" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Usuários" })).toBeVisible();
-    await expect(nav.getByRole("link", { name: "Empresa" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Configurações" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Auditoria" })).toBeVisible();
     await expect(nav.getByRole("button", { name: "Fiscal" })).toHaveCount(0);
   });

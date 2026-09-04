@@ -336,33 +336,6 @@ export const buildCompositionDiagrams = (posicoes, cavalo, carretas = []) => {
   return sections;
 };
 
-/** @deprecated use buildPositionDiagram */
-export const mapPosicoesToSlots = (posicoes) => {
-  const diagram = buildPositionDiagram(posicoes);
-  const bySlot = {};
-
-  if (diagram.front.left) bySlot["front-left"] = diagram.front.left;
-  if (diagram.front.right) bySlot["front-right"] = diagram.front.right;
-
-  diagram.axles.forEach((axle, index) => {
-    const prefix = index === 0 ? "rear1" : `rear${index + 1}`;
-    if (axle.leftOuter) bySlot[`${prefix}-left-outer`] = axle.leftOuter;
-    if (axle.leftInner) bySlot[`${prefix}-left-inner`] = axle.leftInner;
-    if (axle.rightInner) bySlot[`${prefix}-right-inner`] = axle.rightInner;
-    if (axle.rightOuter) bySlot[`${prefix}-right-outer`] = axle.rightOuter;
-  });
-
-  if (diagram.spares[0]) bySlot["spare-1"] = diagram.spares[0];
-  if (diagram.spares[1]) bySlot["spare-2"] = diagram.spares[1];
-
-  return { bySlot, unmapped: diagram.unmapped };
-};
-
-export const filterPosicoesForCaminhao = (posicoes, caminhao) => {
-  const diagram = buildPositionDiagram(posicoes, caminhao);
-  return posicoes.filter((pos) => diagram.allowedIds.has(pos.id));
-};
-
 export const isPosicaoAllowedForCaminhao = (posicaoId, posicoes, caminhao) => {
   if (!posicaoId) return true;
   const diagram = buildPositionDiagram(posicoes, caminhao);

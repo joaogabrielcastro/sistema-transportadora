@@ -139,7 +139,7 @@ export default function Empresa() {
               Dados da empresa
             </h2>
             <p className="text-sm text-text-secondary mb-4">
-              Identificador interno: <code className="text-xs">{settings?.slug}</code>
+              Identificador: <code className="text-xs">{settings?.slug}</code>
               {settings?.criadoEm
                 ? ` · desde ${new Date(settings.criadoEm).toLocaleDateString("pt-BR")}`
                 : ""}

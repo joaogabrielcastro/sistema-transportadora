@@ -35,8 +35,6 @@ const PneuAtribuir = lazy(() => import("./Pages/PneuAtribuir.jsx"));
 const EditCaminhao = lazy(() => import("./Pages/EditCaminhao.jsx"));
 const EditPneu = lazy(() => import("./Pages/EditPneu.jsx"));
 const ManutencaoGastos = lazy(() => import("./Pages/ManutencaoGastos.jsx"));
-const EditGasto = lazy(() => import("./Pages/EditGasto.jsx"));
-const EditChecklist = lazy(() => import("./Pages/EditChecklist.jsx"));
 const Relatorios = lazy(() => import("./Pages/Relatorios.jsx"));
 const OrdensColeta = lazy(() => import("./Pages/OrdensColeta.jsx"));
 const NotasEstoque = lazy(() => import("./Pages/NotasEstoque.jsx"));
@@ -53,11 +51,6 @@ const Alertas = lazy(() => import("./Pages/Alertas.jsx"));
 const Auditoria = lazy(() => import("./Pages/Auditoria.jsx"));
 const Landing = lazy(() => import("./Pages/Landing.jsx"));
 const NotFound = lazy(() => import("./Pages/NotFound.jsx"));
-
-function RedirectCadastroLote() {
-  const location = useLocation();
-  return <Navigate to="/pneus/atribuir" replace state={location.state} />;
-}
 
 function GuardedRoute({
   permission,
@@ -250,30 +243,6 @@ function AppRoutes() {
           element={
             <GuardedRoute>
               <ManutencaoGastos />
-            </GuardedRoute>
-          }
-        />
-        <Route
-          path="/gasto/editar/:id"
-          element={
-            <GuardedRoute permission={PERMISSIONS.GASTOS_WRITE}>
-              <EditGasto />
-            </GuardedRoute>
-          }
-        />
-        <Route
-          path="/checklist/editar/:id"
-          element={
-            <GuardedRoute permission={PERMISSIONS.GASTOS_WRITE}>
-              <EditChecklist />
-            </GuardedRoute>
-          }
-        />
-        <Route
-          path="/pneus/cadastro-em-lote"
-          element={
-            <GuardedRoute permission={PERMISSIONS.PNEUS_WRITE}>
-              <RedirectCadastroLote />
             </GuardedRoute>
           }
         />

@@ -31,11 +31,6 @@ export function chaveAcessoValida(chave) {
   return dvCalculado === dvInformado;
 }
 
-/** 2 primeiros dígitos = código IBGE da UF. */
-export function extrairUf(chave) {
-  return somenteDigitos(chave).substring(0, 2);
-}
-
 /** Posições 21-22 da chave: 55 = NF-e, 57 = CT-e, 58 = MDF-e. */
 export function extrairModelo(chave) {
   return somenteDigitos(chave).substring(20, 22);

@@ -122,16 +122,10 @@ test("buildCompositionDiagrams monta seções cavalo + carreta", async () => {
   assert.equal(sections[1].diagram.tipo, "carreta");
 });
 
-test("filterPosicoesForCaminhao e isPosicaoAllowedForCaminhao", async () => {
-  const { filterPosicoesForCaminhao, isPosicaoAllowedForCaminhao, mapPosicoesToSlots } =
-    await import("./pneuPosicaoMap.js");
+test("isPosicaoAllowedForCaminhao respeita quantidade de pneus", async () => {
+  const { isPosicaoAllowedForCaminhao } = await import("./pneuPosicaoMap.js");
 
-  const filtered = filterPosicoesForCaminhao(posicoes, { qtd_pneus: 6 });
-  assert.equal(filtered.length, 6);
   assert.equal(isPosicaoAllowedForCaminhao(1, posicoes, { qtd_pneus: 6 }), true);
   assert.equal(isPosicaoAllowedForCaminhao(13, posicoes, { qtd_pneus: 6 }), false);
   assert.equal(isPosicaoAllowedForCaminhao(null, posicoes, { qtd_pneus: 6 }), true);
-
-  const mapped = mapPosicoesToSlots(posicoes);
-  assert.ok(mapped.bySlot["front-left"]);
 });

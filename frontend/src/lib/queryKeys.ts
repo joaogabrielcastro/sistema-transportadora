@@ -17,18 +17,9 @@ export const queryKeys = {
   },
   gastos: {
     all: ["gastos"] as const,
-    list: (params: ListParams) => ["gastos", "list", params] as const,
-    detail: (id: number | string) => ["gastos", "detail", id] as const,
-    byCaminhao: (id: number | string, params: ListParams) =>
-      ["gastos", "by-caminhao", id, params] as const,
-    consumo: (id: number | string) => ["gastos", "consumo", id] as const,
   },
   checklist: {
     all: ["checklist"] as const,
-    list: (params: ListParams) => ["checklist", "list", params] as const,
-    detail: (id: number | string) => ["checklist", "detail", id] as const,
-    byCaminhao: (id: number | string, params: ListParams) =>
-      ["checklist", "by-caminhao", id, params] as const,
   },
   pneus: {
     all: ["pneus"] as const,

@@ -5,6 +5,12 @@ import { Alert, Card, PageHeader, StatCard } from "../components/ui";
 import EmptyState from "../components/EmptyState.jsx";
 import { apiFetch, parseApiError } from "../lib/apiClient.js";
 
+const SEVERITY_LABEL = {
+  critical: "Crítico",
+  high: "Alto",
+  medium: "Médio",
+};
+
 export default function Alertas() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
@@ -28,8 +34,8 @@ export default function Alertas() {
     <PageLayout>
       <div className="space-y-6">
         <PageHeader
-          title="Central de alertas"
-          subtitle="Documentos, CNH e pneus com vida útil baixa — atualizado sob demanda."
+          title="Alertas"
+          subtitle="Documentos, CNH, pneus e manutenções que precisam de atenção."
         />
         {error && <Alert type="error">{error}</Alert>}
 
@@ -47,7 +53,7 @@ export default function Alertas() {
         ) : !data?.alerts?.length ? (
           <EmptyState
             title="Nenhum alerta no momento"
-            description="Quando documentos, CNHs ou pneus entrarem em risco, eles aparecem aqui."
+            description="Quando documentos, CNHs, pneus ou manutenções entrarem em risco, eles aparecem aqui."
             dashed
           />
         ) : (
@@ -57,7 +63,7 @@ export default function Alertas() {
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                   <div>
                     <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
-                      {a.severity} · {a.type}
+                      {SEVERITY_LABEL[a.severity] || a.severity}
                     </p>
                     <h3 className="font-semibold text-slate-900">{a.title}</h3>
                     <p className="text-sm text-slate-600 mt-1">{a.message}</p>

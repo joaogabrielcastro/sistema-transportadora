@@ -13,7 +13,6 @@ import { PERMISSIONS, userHasPermission } from "../utils/permissions.js";
 const pneusSubLinks = [
   { path: "/pneus", label: "Pneus em uso", exact: true },
   { path: "/pneus/estoque", label: "Estoque" },
-  { path: "/pneus/atribuir", label: "Instalar pneus" },
 ];
 
 const fiscalSubLinks = [
@@ -232,7 +231,7 @@ function SidebarNav({
                 to="/empresa"
                 className={sideLinkClass(isActivePath(pathname, "/empresa"))}
               >
-                Empresa
+                Configurações
               </Link>
             )}
             {isAuthenticated && canReadAudit && (

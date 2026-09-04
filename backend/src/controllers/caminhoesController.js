@@ -158,24 +158,6 @@ export const caminhoesController = {
     res.status(204).send();
   }),
 
-  updateCaminhaoById: catchAsync(async (req, res) => {
-    const tenantId = requireTenantId(req);
-    const { id } = req.params;
-    const caminhaoValidado = caminhaoUpdateSchema.parse(req.body);
-
-    const caminhaoAtualizado = await CaminhaoService.atualizarCaminhaoPorId(
-      tenantId,
-      id,
-      caminhaoValidado,
-    );
-
-    res.status(200).json({
-      success: true,
-      data: caminhaoAtualizado,
-      message: "Caminhão atualizado com sucesso",
-    });
-  }),
-
   listarVinculos: catchAsync(async (req, res) => {
     const tenantId = requireTenantId(req);
     const id = Number(req.params.id);

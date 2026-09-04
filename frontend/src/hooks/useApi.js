@@ -1,14 +1,7 @@
 // frontend/src/hooks/useApi.js
 import { useState, useCallback, useRef } from "react";
 import { useToast } from "../components/ui/useToast.js";
-import {
-  api,
-  apiFetch,
-  getApiBaseUrl,
-  parseApiError,
-} from "../lib/apiClient.js";
-
-export { api, getApiBaseUrl };
+import { apiFetch, parseApiError } from "../lib/apiClient.js";
 
 /** Leituras ad hoc e requisições especiais (blob, preview, upload via request). */
 export const useApi = () => {

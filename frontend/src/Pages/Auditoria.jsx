@@ -3,20 +3,19 @@ import PageLayout from "../components/layout/PageLayout.jsx";
 import { Alert, Card, PageHeader } from "../components/ui";
 import EmptyState from "../components/EmptyState.jsx";
 import { apiFetch, parseApiError } from "../lib/apiClient.js";
+import { formatDateTime } from "../utils/formatters.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { PERMISSIONS, userHasPermission } from "../utils/permissions.js";
 import { Navigate } from "react-router-dom";
 
 const PAGE_SIZE = 50;
 
-function formatWhen(value) {
-  if (!value) return "—";
-  try {
-    return new Date(value).toLocaleString("pt-BR");
-  } catch {
-    return String(value);
-  }
-}
+const ACTION_LABEL = {
+  POST: "Criar",
+  PUT: "Atualizar",
+  PATCH: "Atualizar",
+  DELETE: "Excluir",
+};
 
 export default function Auditoria() {
   const { user } = useAuth();
@@ -71,7 +70,7 @@ export default function Auditoria() {
       <div className="space-y-6">
         <PageHeader
           title="Auditoria"
-          subtitle="Quem alterou o quê — apenas administradores."
+          subtitle="Histórico de alterações feitas na conta."
         />
         {error && <Alert type="error">{error}</Alert>}
 
@@ -100,19 +99,19 @@ export default function Auditoria() {
                 className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm"
               >
                 <option value="">Todas</option>
-                <option value="POST">POST</option>
-                <option value="PUT">PUT</option>
-                <option value="PATCH">PATCH</option>
-                <option value="DELETE">DELETE</option>
+                <option value="POST">Criar</option>
+                <option value="PUT">Atualizar</option>
+                <option value="PATCH">Atualizar (parcial)</option>
+                <option value="DELETE">Excluir</option>
               </select>
             </label>
             <label className="block text-sm sm:col-span-2 lg:col-span-1">
-              <span className="font-medium text-slate-700">Path</span>
+              <span className="font-medium text-slate-700">Onde</span>
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm"
-                placeholder="/caminhoes…"
+                placeholder="placa, usuário, registro…"
               />
             </label>
             <button
@@ -141,15 +140,15 @@ export default function Auditoria() {
                     <th className="px-3 py-2.5 font-semibold">Quando</th>
                     <th className="px-3 py-2.5 font-semibold">Usuário</th>
                     <th className="px-3 py-2.5 font-semibold">Ação</th>
-                    <th className="px-3 py-2.5 font-semibold">Entidade</th>
-                    <th className="px-3 py-2.5 font-semibold">Path</th>
+                    <th className="px-3 py-2.5 font-semibold">Registro</th>
+                    <th className="px-3 py-2.5 font-semibold">Detalhe</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {items.map((row) => (
                     <tr key={row.id} className="hover:bg-slate-50/80">
                       <td className="px-3 py-2.5 whitespace-nowrap text-slate-600">
-                        {formatWhen(row.criado_em)}
+                        {formatDateTime(row.criado_em) || "—"}
                       </td>
                       <td className="px-3 py-2.5">
                         <span className="font-medium text-slate-900">
@@ -158,7 +157,10 @@ export default function Auditoria() {
                       </td>
                       <td className="px-3 py-2.5">
                         <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
-                          {row.action || row.method}
+                          {ACTION_LABEL[row.action] ||
+                            ACTION_LABEL[row.method] ||
+                            row.action ||
+                            row.method}
                         </span>
                       </td>
                       <td className="px-3 py-2.5 text-slate-600">

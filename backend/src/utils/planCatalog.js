@@ -64,11 +64,6 @@ export const PLAN_CATALOG = Object.freeze([
   },
 ]);
 
-/** @param {string} planId */
-export function getPlanCatalogEntry(planId) {
-  return PLAN_CATALOG.find((p) => p.id === planId) ?? null;
-}
-
 /** Payload para API / billing status (somente planos públicos). */
 export function buildPlansPublic({ priceConfiguredFor }) {
   return PLAN_CATALOG.filter((plan) => PUBLIC_BILLING_PLANS.includes(plan.id)).map(

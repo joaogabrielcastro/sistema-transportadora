@@ -217,38 +217,6 @@ export class CaminhaoService {
     }
   }
 
-  static async atualizarCaminhaoPorId(tenantId, id, data) {
-    let normalized = normalizeCaminhaoPayload(data);
-    normalized = await applyMotoristaLink(tenantId, normalized);
-    logger.info("Atualizando caminhão por id", { id, tenantId });
-
-    const caminhao = await caminhoesModel.getById(tenantId, id);
-    if (!caminhao) {
-      throw new Error("Caminhão não encontrado");
-    }
-
-    await this.validateUniqueness(tenantId, normalized, caminhao.placa);
-
-    const { km_atual, ...rest } = normalized;
-
-    if (km_atual !== undefined) {
-      await setKmManual(caminhao.id, km_atual, { tenantId });
-    }
-
-    const caminhaoAtualizado =
-      Object.keys(rest).length > 0
-        ? await caminhoesModel.updateById(tenantId, id, rest)
-        : await caminhoesModel.getById(tenantId, id);
-
-    logger.info("Caminhão atualizado por id com sucesso", {
-      id: caminhaoAtualizado.id,
-      placa: caminhaoAtualizado.placa,
-      tenantId,
-    });
-
-    return caminhaoAtualizado;
-  }
-
   static async deletarCaminhao(tenantId, placa) {
     logger.info("Iniciando deleção de caminhão", { placa, tenantId });
 

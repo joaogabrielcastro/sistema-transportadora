@@ -22,11 +22,6 @@ router.post(
   requireRole("admin"),
   opsController.onboardingComplete,
 );
-router.patch(
-  "/settings",
-  requirePermission(PERMISSIONS.SETTINGS_WRITE),
-  opsController.tenantSettings,
-);
 router.get(
   "/audit-logs",
   requirePermission(PERMISSIONS.AUDIT_READ),

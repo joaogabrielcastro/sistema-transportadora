@@ -23,6 +23,12 @@ function badRequest(message) {
   return err;
 }
 
+function conflict(message) {
+  const err = new Error(message);
+  err.statusCode = 409;
+  return err;
+}
+
 function parseDate(value) {
   if (value === undefined || value === null || value === "") return null;
   const d = new Date(value);
@@ -158,8 +164,34 @@ export class FiscalEmpresaService {
   }
 
   static async remove(tenantId, id) {
-    await findOwnedOr404("fiscal_empresas", id, tenantId, "Empresa fiscal");
-    await prisma.fiscal_empresas.delete({ where: { id: Number(id) } });
+    const empresa = await findOwnedOr404(
+      "fiscal_empresas",
+      id,
+      tenantId,
+      "Empresa fiscal",
+    );
+    const ciotVinculados = await prisma.fiscal_ciots.count({
+      where: {
+        tenant_id: Number(tenantId),
+        fiscal_empresa_id: empresa.id,
+      },
+    });
+    if (ciotVinculados > 0) {
+      throw conflict(
+        "Não é possível excluir: há contratos de frete (CIOT) vinculados a esta empresa.",
+      );
+    }
+
+    await prisma.fiscal_empresas.delete({ where: { id: empresa.id } });
+
+    if (empresa.certificado_pfx_path) {
+      try {
+        const abs = resolverCaminhoAbsoluto(empresa.certificado_pfx_path);
+        await fs.unlink(abs);
+      } catch {
+        /* arquivo ausente não impede a exclusão */
+      }
+    }
     return { deleted: true };
   }
 

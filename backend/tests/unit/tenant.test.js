@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import prisma from "../../src/lib/prisma.js";
 import {
   DEFAULT_TENANT_SLUG,
+  ensureSeedTenant,
   requireTenantId,
   resolveDefaultTenantId,
 } from "../../src/utils/tenant.js";
@@ -38,5 +40,29 @@ test("resolveDefaultTenantId usa DEFAULT_TENANT_ID do env", async () => {
   } finally {
     if (prev === undefined) delete process.env.DEFAULT_TENANT_ID;
     else process.env.DEFAULT_TENANT_ID = prev;
+  }
+});
+
+test("ensureSeedTenant recupera tenant quando upsert colide por slug", async () => {
+  const upsertOriginal = prisma.tenants.upsert;
+  const findUniqueOriginal = prisma.tenants.findUnique;
+
+  const tenant = { id: 99, slug: DEFAULT_TENANT_SLUG };
+  prisma.tenants.upsert = async () => {
+    const error = new Error("Unique constraint failed");
+    error.code = "P2002";
+    throw error;
+  };
+  prisma.tenants.findUnique = async ({ where }) => {
+    assert.equal(where.slug, DEFAULT_TENANT_SLUG);
+    return tenant;
+  };
+
+  try {
+    const result = await ensureSeedTenant();
+    assert.deepEqual(result, tenant);
+  } finally {
+    prisma.tenants.upsert = upsertOriginal;
+    prisma.tenants.findUnique = findUniqueOriginal;
   }
 });

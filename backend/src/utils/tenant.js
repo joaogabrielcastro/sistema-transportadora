@@ -7,13 +7,10 @@ export const DEFAULT_TENANT_SLUG = "abbroto";
  * Garante o tenant seed `abbroto` e retorna seu id.
  */
 export async function ensureSeedTenant() {
-  const existing = await prisma.tenants.findUnique({
+  return prisma.tenants.upsert({
     where: { slug: DEFAULT_TENANT_SLUG },
-  });
-  if (existing) return existing;
-
-  return prisma.tenants.create({
-    data: {
+    update: {},
+    create: {
       nome: "ABroto",
       slug: DEFAULT_TENANT_SLUG,
       ativo: true,

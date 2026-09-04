@@ -107,9 +107,13 @@ export async function loginAsOperator(app) {
 /**
  * Cria um segundo tenant + admin para testes de isolamento.
  */
+function uniqueTestId() {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export async function createSecondaryTenantAdmin({
-  slug = `tenant-${Date.now().toString(36)}`,
-  email = `admin-${Date.now().toString(36)}@tenant-b.local`,
+  slug = `tenant-${uniqueTestId()}`,
+  email = `admin-${uniqueTestId()}@tenant-b.local`,
   password = "TenantBAdmin123!",
   nome = "Tenant B",
   features = { ordem_coleta: true, notas_estoque: false },

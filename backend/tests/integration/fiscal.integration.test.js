@@ -15,6 +15,23 @@ import {
 
 const skip = shouldRunDbTests ? false : "Defina RUN_DB_TESTS=1 ou rode no CI";
 
+/** NF-e de teste com DV válido — a emissão de CT-e exige infDoc. */
+const CHAVE_NFE_TESTE = "35240000000000000000000000000000000000000000";
+
+function payloadCteRascunho(clienteId, extras = {}) {
+  return {
+    cliente_id: clienteId,
+    tipo_cte: "0",
+    cfop: "6353",
+    natureza_operacao: "Transporte",
+    dt_emissao: new Date().toISOString(),
+    servico: { valor_prestacao: 150 },
+    tomador: { cpf_cnpj: "12345678000199" },
+    chave_nfe_referenciada: CHAVE_NFE_TESTE,
+    ...extras,
+  };
+}
+
 const FISCAL_FEATURES = {
   ordem_coleta: true,
   notas_estoque: false,
@@ -253,15 +270,7 @@ test(
       const draft = await request(app)
         .post("/api/fiscal/cte")
         .set(a.authHeader)
-        .send({
-          cliente_id: clienteId,
-          tipo_cte: "0",
-          cfop: "6353",
-          natureza_operacao: "Transporte",
-          dt_emissao: new Date().toISOString(),
-          servico: { valor_prestacao: 150 },
-          tomador: { cpf_cnpj: "12345678000199" },
-        });
+        .send(payloadCteRascunho(clienteId));
       assert.equal(draft.status, 201, draft.body?.error);
       assert.equal(draft.body.data.status, "rascunho");
       assert.equal(draft.body.data.chave_acesso, null);
@@ -315,15 +324,9 @@ test(
       const draftRej = await request(app)
         .post("/api/fiscal/cte")
         .set(a.authHeader)
-        .send({
-          cliente_id: clienteId,
-          tipo_cte: "0",
-          cfop: "6353",
-          natureza_operacao: "Transporte",
-          dt_emissao: new Date().toISOString(),
-          servico: { valor_prestacao: 10 },
-          tomador: { cpf_cnpj: "12345678000199" },
-        });
+        .send(
+          payloadCteRascunho(clienteId, { servico: { valor_prestacao: 10 } }),
+        );
       assert.equal(draftRej.status, 201, draftRej.body?.error);
 
       globalThis.fetch = async () => ({

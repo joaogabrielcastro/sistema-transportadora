@@ -7,7 +7,7 @@ import { resolveDefaultTenantId } from "../utils/tenant.js";
 import { resolvePermissions } from "../utils/permissions.js";
 import { AuditService } from "../services/AuditService.js";
 
-const SENSITIVE_KEY = /pass|password|token|secret|authorization|smtp/i;
+const SENSITIVE_KEY = /pass|password|token|secret|authorization|smtp|certificado|senha|pfx|usertoken/i;
 
 let cachedDefaultTenantId = null;
 

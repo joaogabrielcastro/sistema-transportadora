@@ -8,7 +8,7 @@ import {
   nomeArquivoDoc,
   resolverCaminhoAbsoluto,
 } from "../../src/services/fiscal/FiscalDownloadService.js";
-import { UPLOADS_ROOT } from "../../src/utils/uploadPaths.js";
+import { UPLOADS_ROOT, resolverPathNaRaiz } from "../../src/utils/uploadPaths.js";
 
 /**
  * Download de CT-e/MDF-e (individual + lote). Funções puras — a resolução de
@@ -29,6 +29,13 @@ test("resolverCaminhoAbsoluto: monta o caminho sob UPLOADS_ROOT", () => {
 test("resolverCaminhoAbsoluto: normaliza separadores e barra inicial", () => {
   const abs = resolverCaminhoAbsoluto("\\fiscal\\mdfe\\3\\X.xml");
   assert.equal(abs, path.resolve(UPLOADS_ROOT, "fiscal/mdfe/3/X.xml"));
+});
+
+test("resolverPathNaRaiz recusa path traversal", () => {
+  assert.throws(
+    () => resolverPathNaRaiz("/tmp", "../etc/passwd"),
+    (err) => err.statusCode === 404,
+  );
 });
 
 test("resolverCaminhoAbsoluto: rejeita path traversal com 404", () => {

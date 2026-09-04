@@ -6,6 +6,10 @@ test("getStatusConfig status conhecidos e default", () => {
   assert.match(getStatusConfig("Em Uso"), /green/);
   assert.match(getStatusConfig("novo no estoque"), /blue/);
   assert.match(getStatusConfig("desconhecido"), /gray/);
+  assert.match(getStatusConfig("rascunho"), /slate/);
+  assert.match(getStatusConfig("processado"), /green/);
+  assert.match(getStatusConfig("rejeitado"), /orange/);
+  assert.match(getStatusConfig("encerrado"), /blue/);
 });
 
 test("getStatusConfig vehicle e record", () => {

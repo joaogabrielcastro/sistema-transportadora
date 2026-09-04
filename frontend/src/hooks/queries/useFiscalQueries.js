@@ -32,6 +32,18 @@ export function useMdfeListQuery({ status, enabled = true } = {}) {
   });
 }
 
+export function useCiotListQuery({ status, enabled = true } = {}) {
+  const params = status ? { status } : {};
+  return useQuery({
+    queryKey: queryKeys.fiscal.ciotList(params),
+    enabled,
+    queryFn: async () =>
+      extractApiArray(
+        await apiFetch({ method: "GET", url: "/fiscal/ciot", params }),
+      ),
+  });
+}
+
 export function useFiscalClientesQuery({ q = "", enabled = true } = {}) {
   const params = q ? { q } : {};
   return useQuery({

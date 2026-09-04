@@ -445,9 +445,10 @@ model estoque_movimentos {
 // e revalidadas por tenant no service com
 // findFirst({ where: { id, tenant_id } }), mesmo padrão de applyMotoristaLink.
 //
-// O provedor externo (CT-e/MDF-e e CIOT) ainda não foi decidido: nenhum nome
-// de fornecedor aparece em coluna, classe ou env var — só "cte_mdfe_provider_*"
-// / "ciot_*" genéricos.
+// CT-e/MDF-e: Brasil NFe (https://www.brasilnfe.com.br). O Token da empresa
+// fica em cte_mdfe_provider_token (cifrado). UserToken opcional por empresa
+// em brasil_nfe_user_token; senão usa BRASIL_NFE_USER_TOKEN. CIOT permanece
+// em provedor próprio (ciot_*).
 //
 // Sem enum Prisma: `status` é String; os valores válidos ficam no comentário
 // `///` de cada campo e são validados via Zod nos controllers.
@@ -460,8 +461,10 @@ model fiscal_empresas {
   razao_social            String    @db.VarChar(255)
   /// RNTRC do contratado/transportadora (só dígitos, 8-9 chars)
   rntrc                   String?   @db.VarChar(9)
-  /// Token do provedor de CT-e/MDF-e (fornecedor ainda não decidido) — cifrado (AES-256-GCM, FISCAL_SECRETS_KEY) antes de gravar
+  /// Token da empresa na Brasil NFe (header Token) — cifrado (AES-256-GCM, FISCAL_SECRETS_KEY)
   cte_mdfe_provider_token String?
+  /// UserToken da conta Brasil NFe desta empresa (opcional). Cifrado. Fallback: BRASIL_NFE_USER_TOKEN.
+  brasil_nfe_user_token   String?
   certificado_pfx_path    String?   @db.VarChar(500)
   /// Senha do certificado A1 — cifrada (AES-256-GCM, FISCAL_SECRETS_KEY) antes de gravar
   certificado_senha       String?
@@ -545,9 +548,24 @@ model fiscal_ctes {
   cte_referenciado_chave String? @db.VarChar(44)
   /// indAlteraToma do infCteSub (1.5): o Substituto alterou o tomador. Só tipo 3.
   ind_alt_toma        Boolean?
-  chave_acesso        String    @unique @db.VarChar(44)
-  /// pendente | processado | cancelado | erro
-  status              String    @default("pendente") @db.VarChar(20)
+  chave_acesso        String?   @unique @db.VarChar(44)
+  /// rascunho | processando | processado | rejeitado | cancelado | erro | pendente (legado)
+  status              String    @default("rascunho") @db.VarChar(20)
+  /// Payload do rascunho (DTO da API) — usado na emissão e na reedição.
+  payload_json        Json?     @db.JsonB
+  /// 1 = produção, 2 = homologação (snapshot no momento da emissão/rascunho)
+  ambiente            Int?      @db.SmallInt
+  autorizado_em       DateTime? @db.Timestamptz(6)
+  cancelado_em        DateTime? @db.Timestamptz(6)
+  cancelado_justificativa String? @db.VarChar(1000)
+  cancelado_protocolo String?   @db.VarChar(30)
+  sefaz_codigo        Int?
+  sefaz_mensagem      String?
+  sefaz_detalhes      Json?     @db.JsonB
+  sefaz_operacao      String?   @db.VarChar(40)
+  sefaz_em            DateTime? @db.Timestamptz(6)
+  brasil_nfe_id       String?   @db.VarChar(80)
+  emissao_iniciada_em DateTime? @db.Timestamptz(6)
   numero              String?   @db.VarChar(20)
   serie               String?   @db.VarChar(10)
   /// Número do protocolo de autorização devolvido pelo provedor na emissão.
@@ -768,12 +786,22 @@ model fiscal_mdfes {
   caminhao_id       Int?
   /// FK -> motoristas.id (opcional)
   motorista_id      Int?
-  chave_acesso      String    @unique @db.VarChar(44)
+  chave_acesso      String?   @unique @db.VarChar(44)
   numero            String?   @db.VarChar(20)
   serie             String?   @db.VarChar(10)
   numero_protocolo  String?   @db.VarChar(30)
-  /// pendente | processado | encerrado | cancelado | erro
-  status            String    @default("pendente") @db.VarChar(20)
+  /// rascunho | processando | processado | rejeitado | encerrado | cancelado | erro | pendente (legado)
+  status            String    @default("rascunho") @db.VarChar(20)
+  payload_json      Json?     @db.JsonB
+  ambiente          Int?      @db.SmallInt
+  autorizado_em     DateTime? @db.Timestamptz(6)
+  sefaz_codigo      Int?
+  sefaz_mensagem    String?
+  sefaz_detalhes    Json?     @db.JsonB
+  sefaz_operacao    String?   @db.VarChar(40)
+  sefaz_em          DateTime? @db.Timestamptz(6)
+  brasil_nfe_id     String?   @db.VarChar(80)
+  emissao_iniciada_em DateTime? @db.Timestamptz(6)
   data_emissao      DateTime? @db.Timestamptz(6)
   xml_path          String?   @db.VarChar(500)
   /// DAMDFE (PDF) decodificado do base64DAMDFe do provedor — mesmo padrão de xml_path

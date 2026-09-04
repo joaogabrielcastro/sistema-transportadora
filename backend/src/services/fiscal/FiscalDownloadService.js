@@ -1,7 +1,6 @@
 import fs from "node:fs/promises";
-import path from "node:path";
 import prisma from "../../lib/prisma.js";
-import { UPLOADS_ROOT } from "../../utils/uploadPaths.js";
+import { UPLOADS_ROOT, resolverPathNaRaiz } from "../../utils/uploadPaths.js";
 import { findOwnedOr404 } from "./fiscalShared.js";
 
 /**
@@ -36,15 +35,18 @@ function httpError(statusCode, message) {
  * caminho do cliente.
  */
 export function resolverCaminhoAbsoluto(relPath) {
-  const limpo = String(relPath || "")
-    .replace(/\\/g, "/")
-    .replace(/^\/+/, "");
-  const root = path.resolve(UPLOADS_ROOT);
-  const abs = path.resolve(root, limpo);
-  if (abs !== root && !abs.startsWith(root + path.sep)) {
-    throw httpError(404, "Arquivo do documento fiscal não encontrado.");
+  try {
+    return resolverPathNaRaiz(
+      UPLOADS_ROOT,
+      relPath,
+      "Arquivo do documento fiscal não encontrado.",
+    );
+  } catch (err) {
+    if (err?.statusCode === 404) {
+      throw httpError(404, err.message);
+    }
+    throw err;
   }
-  return abs;
 }
 
 /** Ids do corpo -> inteiros positivos, únicos, na ordem recebida. */

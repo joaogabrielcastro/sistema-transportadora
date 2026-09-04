@@ -17,18 +17,48 @@ const pneusSubLinks = [
 ];
 
 const fiscalSubLinks = [
-  { path: "/fiscal/cte", label: "CT-e" },
-  { path: "/fiscal/mdfe", label: "MDF-e" },
+  {
+    path: "/fiscal/empresas",
+    label: "Empresa fiscal",
+    permission: PERMISSIONS.CTE_WRITE,
+    anyPermission: [
+      PERMISSIONS.CTE_WRITE,
+      PERMISSIONS.MDFE_WRITE,
+      PERMISSIONS.CIOT_WRITE,
+    ],
+  },
+  { path: "/fiscal/cte", label: "CT-e", permission: PERMISSIONS.CTE_READ },
+  { path: "/fiscal/mdfe", label: "MDF-e", permission: PERMISSIONS.MDFE_READ },
+  { path: "/fiscal/ciot", label: "CIOT", permission: PERMISSIONS.CIOT_READ },
 ];
+
+function canSeeFiscalLink(user, sub) {
+  if (sub.anyPermission) {
+    return sub.anyPermission.some((p) => userHasPermission(user, p));
+  }
+  return userHasPermission(user, sub.permission);
+}
 
 function buildMainLinks(features = {}) {
   const links = [
     { path: "/", label: "Início", exact: true },
     { path: "/manutencao-gastos", label: "Manutenção" },
-    { path: "/relatorios", label: "Relatórios" },
-    { path: "/alertas", label: "Alertas" },
-    { path: "/documentos", label: "Documentos" },
-    { path: "/motoristas", label: "Motoristas" },
+    {
+      path: "/relatorios",
+      label: "Relatórios",
+      permission: PERMISSIONS.REPORTS_READ,
+    },
+    { path: "/alertas", label: "Alertas", permission: PERMISSIONS.ALERTS_READ },
+    {
+      path: "/documentos",
+      label: "Documentos",
+      permission: PERMISSIONS.DOCS_READ,
+    },
+    {
+      path: "/motoristas",
+      label: "Motoristas",
+      permission: PERMISSIONS.MOTORISTAS_READ,
+    },
   ];
 
   if (features.ordem_coleta === true) {
@@ -72,6 +102,7 @@ const Chevron = ({ open }) => (
 
 function SidebarNav({
   mainLinks,
+  fiscalLinks,
   pathname,
   pneusOpen,
   setPneusOpen,
@@ -155,12 +186,12 @@ function SidebarNav({
                 aria-expanded={fiscalOpen}
                 onClick={() => setFiscalOpen((open) => !open)}
               >
-                CT-e / MDF-e
+                Fiscal
                 <Chevron open={fiscalOpen} />
               </button>
               {fiscalOpen && (
                 <div className="mt-0.5 flex flex-col gap-0.5 pl-2">
-                  {fiscalSubLinks.map((sub) => (
+                  {fiscalLinks.map((sub) => (
                     <Link
                       key={sub.path}
                       to={sub.path}
@@ -253,7 +284,10 @@ const Navbar = ({ children }) => {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
 
-  const mainLinks = buildMainLinks(user?.features);
+  const mainLinks = buildMainLinks(user?.features).filter(
+    (link) => !link.permission || userHasPermission(user, link.permission),
+  );
+  const fiscalLinks = fiscalSubLinks.filter((sub) => canSeeFiscalLink(user, sub));
   const showBillingLink = isAuthenticated && user?.billingExempt === false;
   const canWriteFrota = userHasPermission(user, PERMISSIONS.FROTA_WRITE);
   const vehicleQuotaReached = isVehicleQuotaReached(user);
@@ -268,7 +302,8 @@ const Navbar = ({ children }) => {
   const showPastDueBanner =
     showBillingLink && user?.subscriptionStatus === "past_due";
   const showBanner = showTrialBanner || showPastDueBanner;
-  const showFiscalMenu = user?.features?.transporte_fiscal === true;
+  const showFiscalMenu =
+    user?.features?.transporte_fiscal === true && fiscalLinks.length > 0;
 
   useEffect(() => {
     setMobileOpen(false);
@@ -296,6 +331,7 @@ const Navbar = ({ children }) => {
 
   const navProps = {
     mainLinks,
+    fiscalLinks,
     pathname: location.pathname,
     pneusOpen,
     setPneusOpen,

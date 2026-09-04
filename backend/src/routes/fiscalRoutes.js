@@ -2,6 +2,10 @@ import { Router } from "express";
 import { requirePermission } from "../middleware/requirePermission.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import {
+  uploadCertificadoFiscal,
+  handleCertificadoMulterError,
+} from "../middleware/uploadCertificadoFiscal.js";
+import {
   fiscalEmpresasController,
   fiscalClientesController,
   fiscalVeiculoDadosController,
@@ -16,7 +20,8 @@ import {
 const router = Router();
 
 // --- Cadastros de apoio (empresa emissora, cliente/tomador, dados fiscais do veículo) ---
-// Leitura: qualquer permissão de leitura fiscal serve. Escrita: CTE_WRITE (cadastro base).
+// Leitura: qualquer permissão de leitura fiscal serve. Escrita de empresa:
+// qualquer escrita fiscal (CT-e / MDF-e / CIOT), porque o certificado é compartilhado.
 const anyFiscalRead = [
   PERMISSIONS.CTE_READ,
   PERMISSIONS.MDFE_READ,
@@ -32,22 +37,47 @@ const requireAnyFiscalRead = (req, res, next) => {
   });
 };
 
+const anyFiscalWrite = [
+  PERMISSIONS.CTE_WRITE,
+  PERMISSIONS.MDFE_WRITE,
+  PERMISSIONS.CIOT_WRITE,
+];
+const requireAnyFiscalWrite = (req, res, next) => {
+  const perms = req.context?.user?.permissions || [];
+  if (anyFiscalWrite.some((p) => perms.includes(p))) return next();
+  return res.status(403).json({
+    success: false,
+    error: "Sem permissão para esta operação",
+    required: anyFiscalWrite,
+  });
+};
+
 const empresas = Router();
 empresas.get("/", requireAnyFiscalRead, fiscalEmpresasController.list);
 empresas.get("/:id", requireAnyFiscalRead, fiscalEmpresasController.get);
+empresas.post("/", requireAnyFiscalWrite, fiscalEmpresasController.create);
+empresas.put("/:id", requireAnyFiscalWrite, fiscalEmpresasController.update);
+const runUploadCertificadoFiscal = (req, res, next) => {
+  uploadCertificadoFiscal(req, res, (err) => {
+    if (err) return handleCertificadoMulterError(err, req, res, next);
+    next();
+  });
+};
+
 empresas.post(
-  "/",
-  requirePermission(PERMISSIONS.CTE_WRITE),
-  fiscalEmpresasController.create,
+  "/:id/certificado",
+  requireAnyFiscalWrite,
+  runUploadCertificadoFiscal,
+  fiscalEmpresasController.enviarCertificado,
 );
-empresas.put(
-  "/:id",
-  requirePermission(PERMISSIONS.CTE_WRITE),
-  fiscalEmpresasController.update,
+empresas.post(
+  "/:id/certificado/verificar",
+  requireAnyFiscalWrite,
+  fiscalEmpresasController.verificarCertificado,
 );
 empresas.delete(
   "/:id",
-  requirePermission(PERMISSIONS.CTE_WRITE),
+  requireAnyFiscalWrite,
   fiscalEmpresasController.remove,
 );
 router.use("/empresas", empresas);
@@ -118,9 +148,39 @@ cte.get(
 );
 cte.get("/:id", requirePermission(PERMISSIONS.CTE_READ), cteController.get);
 cte.post(
+  "/",
+  requirePermission(PERMISSIONS.CTE_WRITE),
+  cteController.criar,
+);
+cte.put(
+  "/:id",
+  requirePermission(PERMISSIONS.CTE_WRITE),
+  cteController.atualizar,
+);
+cte.delete(
+  "/:id",
+  requirePermission(PERMISSIONS.CTE_WRITE),
+  cteController.remover,
+);
+cte.post(
   "/emitir",
   requirePermission(PERMISSIONS.CTE_WRITE),
   cteController.emitir,
+);
+cte.post(
+  "/simular",
+  requirePermission(PERMISSIONS.CTE_WRITE),
+  cteController.simular,
+);
+cte.post(
+  "/:id/emitir",
+  requirePermission(PERMISSIONS.CTE_WRITE),
+  cteController.emitirPorId,
+);
+cte.get(
+  "/:id/status",
+  requirePermission(PERMISSIONS.CTE_READ),
+  cteController.consultarStatus,
 );
 cte.post(
   "/:id/cancelar",
@@ -160,9 +220,39 @@ mdfe.get(
 );
 mdfe.get("/:id", requirePermission(PERMISSIONS.MDFE_READ), mdfeController.get);
 mdfe.post(
+  "/",
+  requirePermission(PERMISSIONS.MDFE_WRITE),
+  mdfeController.criar,
+);
+mdfe.put(
+  "/:id",
+  requirePermission(PERMISSIONS.MDFE_WRITE),
+  mdfeController.atualizar,
+);
+mdfe.delete(
+  "/:id",
+  requirePermission(PERMISSIONS.MDFE_WRITE),
+  mdfeController.remover,
+);
+mdfe.post(
   "/emitir",
   requirePermission(PERMISSIONS.MDFE_WRITE),
   mdfeController.emitir,
+);
+mdfe.post(
+  "/simular",
+  requirePermission(PERMISSIONS.MDFE_WRITE),
+  mdfeController.simular,
+);
+mdfe.post(
+  "/:id/emitir",
+  requirePermission(PERMISSIONS.MDFE_WRITE),
+  mdfeController.emitirPorId,
+);
+mdfe.get(
+  "/:id/status",
+  requirePermission(PERMISSIONS.MDFE_READ),
+  mdfeController.consultarStatus,
 );
 mdfe.post(
   "/:id/encerrar",
@@ -179,6 +269,11 @@ router.use("/mdfe", mdfe);
 // --------------------------------- CIOT ---------------------------------
 const ciot = Router();
 ciot.get("/", requirePermission(PERMISSIONS.CIOT_READ), ciotController.list);
+ciot.post(
+  "/simular",
+  requirePermission(PERMISSIONS.CIOT_WRITE),
+  ciotController.simular,
+);
 ciot.post(
   "/consultar-situacao-transportador",
   requirePermission(PERMISSIONS.CIOT_READ),

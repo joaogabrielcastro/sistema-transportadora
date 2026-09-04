@@ -4,8 +4,7 @@ import { chaveAcessoValida } from "../utils/fiscalDocs.js";
 /**
  * Schemas Zod do módulo fiscal de transporte (CT-e / MDF-e / CIOT).
  * Campos da nossa API em snake_case (convenção ATrack). Cada service traduz
- * para o formato do provedor externo (provedor de CT-e/MDF-e / provedor de CIOT).
- * O provedor definitivo ainda não foi decidido — nada aqui carrega nome de fornecedor.
+ * para o JSON da Brasil NFe (CT-e / MDF-e). CIOT permanece em provedor próprio.
  *
  * Os payloads de emissão têm dezenas de campos fiscais aninhados (endereços,
  * impostos, DIFAL, IBS/CBS, seguros, ...). Só validamos a fundo o que o
@@ -168,7 +167,8 @@ export const fiscalEmpresaSchema = z.object({
   razao_social: z.string().trim().min(2).max(255),
   rntrc: optionalDigits(9),
   cte_mdfe_provider_token: z.string().trim().min(1).optional().nullable(),
-  certificado_pfx_path: z.string().trim().max(500).optional().nullable(),
+  brasil_nfe_user_token: z.string().trim().min(1).optional().nullable(),
+  // Caminho do .pfx só é gravado pelo upload autenticado — não aceitar do cliente.
   certificado_senha: z.string().min(1).optional().nullable(),
   certificado_valido_ate: z.string().trim().optional().nullable(),
   // emit.CRT do CT-e: 1 = Simples Nacional, 2 = SN excesso sublimite,
@@ -322,6 +322,8 @@ export const emitirCteSchema = z
       .regex(/^\d{4}$/, "CFOP deve ter exatamente 4 dígitos numéricos"),
     natureza_operacao: z.string().trim().min(1).max(60),
     dt_emissao: isoDateish,
+    observacao: z.string().trim().max(5000).optional().nullable(),
+    retira: z.boolean().optional().nullable(),
     // Grupo modal do CT-e — objeto livre repassado ao provedor, mas o `rntrc`
     // do modal rodoviário (quando informado) tem de ter exatamente 8 dígitos.
     modal: z
@@ -631,6 +633,15 @@ export const emitirCteSchema = z
     }
   });
 
+export const rascunhoCteSchema = z
+  .object({
+    cliente_id: z.number().int().positive(),
+    fiscal_empresa_id: optionalId,
+    caminhao_id: optionalId,
+    motorista_id: optionalId,
+  })
+  .catchall(z.any());
+
 export const vincularManifestoSchema = z.object({
   manifesto_id: z.number().int().positive().nullable(),
 });
@@ -841,6 +852,17 @@ export const emitirMdfeSchema = z.object({
     .optional()
     .nullable(),
 });
+
+export const rascunhoMdfeSchema = z
+  .object({
+    fiscal_empresa_id: optionalId,
+    caminhao_id: optionalId,
+    motorista_id: optionalId,
+    uf_carregamento: optionalUfSigla,
+    uf_descarregamento: optionalUfSigla,
+    data_emissao: isoDateish.optional(),
+  })
+  .catchall(z.any());
 
 // Encerramento do MDF-e (item 2.2). Todos os campos opcionais — corpo vazio ou
 // ausente continua encerrando (comportamento atual). Quando informados, UF /

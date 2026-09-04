@@ -13,6 +13,7 @@ import {
   findOwnedOr404,
   resolveEmpresaCertificado,
 } from "./fiscalShared.js";
+import { resultadoSimulacaoDocumento } from "./fiscalSimulacao.js";
 
 // Código de sucesso documentado pela ANTT para a declaração. Os demais
 // endpoints não têm código de sucesso confirmado — assume-se o mesmo 110 até
@@ -175,6 +176,69 @@ export function montarRetencoesPayload(retencoes) {
   };
 }
 
+/**
+ * Validação compartilhada da declaração real e da simulação.
+ * A simulação não exige certificado A1 (mTLS) — só carrega a empresa.
+ */
+async function prepararDeclaracao(tenantId, body, { exigirCertificado = true } = {}) {
+  const dto = declararCiotSchema.parse(body);
+  let empresa;
+  let certificado = null;
+  if (exigirCertificado) {
+    ({ empresa, certificado } = await resolveEmpresaCertificado(
+      tenantId,
+      dto.fiscal_empresa_id,
+    ));
+  } else {
+    empresa = await findOwnedOr404(
+      "fiscal_empresas",
+      dto.fiscal_empresa_id,
+      tenantId,
+      "Empresa fiscal",
+    );
+  }
+  const caminhaoId = await assertTenantFk(
+    "caminhoes",
+    dto.caminhao_id,
+    tenantId,
+    "Caminhão",
+    { optional: true },
+  );
+  const motoristaId = await assertTenantFk(
+    "motoristas",
+    dto.motorista_id,
+    tenantId,
+    "Motorista",
+    { optional: true },
+  );
+  const mdfeId = await assertTenantFk(
+    "fiscal_mdfes",
+    dto.mdfe_id,
+    tenantId,
+    "MDF-e",
+    { optional: true },
+  );
+  validarCnpjCertificado(
+    empresa.cnpj,
+    dto.cpf_cnpj_contratado,
+    dto.cpf_cnpj_contratante,
+  );
+  verificarPisoMinimoFrete(dto);
+  const retencoes = calcularRetencoes(dto, {
+    inssAliquota: config.fiscal.retencaoInssAliquota,
+    sestSenatAliquota: config.fiscal.retencaoSestSenatAliquota,
+  });
+  return {
+    dto,
+    empresa,
+    certificado,
+    caminhaoId,
+    motoristaId,
+    mdfeId,
+    retencoes,
+  };
+}
+
 function montarPayloadDeclaracao(dto, idOperacaoTransporte, retencoes) {
   return {
     IdOperacaoTransporte: idOperacaoTransporte,
@@ -245,50 +309,38 @@ export class CiotService {
     return serializePrisma(row);
   }
 
-  static async declarar(tenantId, body) {
-    const dto = declararCiotSchema.parse(body);
-
-    const { empresa, certificado } = await resolveEmpresaCertificado(
-      tenantId,
-      dto.fiscal_empresa_id,
-    );
-    const caminhaoId = await assertTenantFk(
-      "caminhoes",
-      dto.caminhao_id,
-      tenantId,
-      "Caminhão",
-      { optional: true },
-    );
-    const motoristaId = await assertTenantFk(
-      "motoristas",
-      dto.motorista_id,
-      tenantId,
-      "Motorista",
-      { optional: true },
-    );
-    // mdfe_id é opcional (3.2): revalida no tenant só quando informado.
-    const mdfeId = await assertTenantFk(
-      "fiscal_mdfes",
-      dto.mdfe_id,
-      tenantId,
-      "MDF-e",
-      { optional: true },
-    );
-
-    validarCnpjCertificado(
-      empresa.cnpj,
-      dto.cpf_cnpj_contratado,
-      dto.cpf_cnpj_contratante,
-    );
-    // Piso mínimo de frete (3.3): bloqueio explícito antes de declarar.
-    verificarPisoMinimoFrete(dto);
-
-    // Retenções do comprovante (3.3): alíquota do corpo ou da config; sem
-    // alíquota, tudo fica null e nada entra no comprovante.
-    const retencoes = calcularRetencoes(dto, {
-      inssAliquota: config.fiscal.retencaoInssAliquota,
-      sestSenatAliquota: config.fiscal.retencaoSestSenatAliquota,
+  static async simular(tenantId, body) {
+    const prep = await prepararDeclaracao(tenantId, body, {
+      exigirCertificado: false,
     });
+    const payload = montarPayloadDeclaracao(
+      prep.dto,
+      "CIOT-SIMULACAO",
+      prep.retencoes,
+    );
+    logger.info("CIOT simulado — não transmitido à ANTT", { tenantId });
+    return resultadoSimulacaoDocumento({
+      tipo: "ciot",
+      documento: {
+        status: "simulacao",
+        valor_frete: prep.dto.valor_frete,
+        categoria_operacao: resolverCategoriaOperacao(prep.dto),
+      },
+      payload,
+      empresa: prep.empresa,
+    });
+  }
+
+  static async declarar(tenantId, body) {
+    const {
+      dto,
+      empresa,
+      certificado,
+      caminhaoId,
+      motoristaId,
+      mdfeId,
+      retencoes,
+    } = await prepararDeclaracao(tenantId, body);
 
     const idOperacaoTransporte = await gerarIdOperacaoUnico(async (candidato) => {
       const existente = await prisma.fiscal_ciots.findUnique({

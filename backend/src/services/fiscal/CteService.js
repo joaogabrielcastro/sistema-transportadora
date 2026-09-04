@@ -2,12 +2,15 @@ import prisma from "../../lib/prisma.js";
 import { serializePrisma } from "../../utils/prismaSerialization.js";
 import { logger } from "../../utils/logger.js";
 import { config } from "../../config/index.js";
-import { emitirCteSchema } from "../../schemas/fiscalSchema.js";
+import { emitirCteSchema, rascunhoCteSchema } from "../../schemas/fiscalSchema.js";
 import { somenteDigitos } from "../../utils/fiscalDocs.js";
 import { decryptSecret } from "../../utils/fiscalCrypto.js";
-import { CteMdfeProviderClient } from "./CteMdfeProviderClient.js";
+import { resultadoSimulacaoDocumento } from "./fiscalSimulacao.js";
+import { BrasilNFeClient } from "./brasilNfe/BrasilNFeClient.js";
 import {
+  assertFksVeiculoEmpresa,
   assertTenantFk,
+  claimEmissao,
   extrairNumeroProtocolo,
   findOwnedOr404,
   montarGrupoSeguro,
@@ -16,8 +19,24 @@ import {
   salvarPdfBase64,
   salvarXmlBase64,
 } from "./fiscalShared.js";
+import { consultarDocumentoFiscal } from "./fiscalConsulta.js";
+import {
+  colunasSefaz,
+  CTE_STATUS,
+  identificadorInternoCte,
+  interpretarRespostaCte,
+  interpretarRespostaEvento,
+  prazoCancelamentoExpirado,
+  STATUS_RASCUNHO_EDITAVEL,
+} from "./fiscalStatus.js";
 
-const MODELO_DOCUMENTO_CTE = "57";
+const MODELO_DOCUMENTO_CTE = 57;
+
+function toInt(value) {
+  if (value == null || value === "") return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : undefined;
+}
 
 // Grupo imp.IBSCBS do CT-e 4.0 (Reforma Tributária) passou a ser exigido em
 // produção pela SEFAZ a partir desta data para emitentes fora do Simples
@@ -493,11 +512,12 @@ export function montarServico(dto) {
  * OBS: o nome exato do campo do CT-e referenciado no JSON do provedor NÃO foi
  * confirmado em sandbox (ver relatório) — enviado como `ChaveCteReferenciado`.
  */
-export function montarPayloadCte(dto, chaveReferenciada, empresa) {
+export function montarPayloadCte(dto, chaveReferenciada, empresa, identificadorInterno) {
   return {
     ModeloDocumento: MODELO_DOCUMENTO_CTE,
     TipoAmbiente: config.fiscal.ambiente,
-    TipoCte: dto.tipo_cte,
+    TipoCte: toInt(dto.tipo_cte),
+    IdentificadorInterno: identificadorInterno ?? undefined,
     // Chave do CT-e original. Mantido o campo genérico (nome exato do provedor
     // ainda não confirmado em sandbox) + os grupos explícitos infCteComp (tipo
     // 1) e infCteSub (tipo 3, com indAlteraToma) — item 1.5.
@@ -513,9 +533,11 @@ export function montarPayloadCte(dto, chaveReferenciada, empresa) {
             indAlteraToma: dto.ind_alt_toma === true ? 1 : undefined,
           }
         : undefined,
-    Cfop: dto.cfop,
+    Cfop: toInt(dto.cfop),
     NaturezaOperacao: dto.natureza_operacao,
     DtEmissao: dto.dt_emissao,
+    Observacao: dto.observacao ?? undefined,
+    Retira: dto.retira ?? undefined,
     UFIni: dto.uf_ini ?? undefined,
     UFFim: dto.uf_fim ?? undefined,
     Emit: montarEmit(empresa),
@@ -588,6 +610,160 @@ export function normalizarParticipantesCte(dto) {
   return linhas;
 }
 
+async function persistirFilhosCte(tenantId, cteId, dto, documentos) {
+  if (documentos.length > 0) {
+    await prisma.fiscal_cte_documentos.createMany({
+      data: documentos.map((d) => ({
+        tenant_id: Number(tenantId),
+        cte_id: cteId,
+        tipo: d.tipo,
+        chave_acesso: d.chave_acesso,
+        numero: d.numero,
+        serie: d.serie,
+        data_emissao: d.data_emissao ? new Date(d.data_emissao) : null,
+        valor: d.valor,
+      })),
+    });
+  }
+  const quantidades = Array.isArray(dto.carga?.quantidades)
+    ? dto.carga.quantidades
+    : [];
+  if (quantidades.length > 0) {
+    await prisma.fiscal_cte_carga_quantidades.createMany({
+      data: quantidades.map((q) => ({
+        tenant_id: Number(tenantId),
+        cte_id: cteId,
+        codigo_unidade: q.codigo_unidade ?? null,
+        tipo_medida: q.tipo_medida ?? null,
+        quantidade: q.quantidade ?? null,
+      })),
+    });
+  }
+  const componentes = Array.isArray(dto.servico?.componentes)
+    ? dto.servico.componentes
+    : [];
+  if (componentes.length > 0) {
+    await prisma.fiscal_cte_componentes_frete.createMany({
+      data: componentes.map((c) => ({
+        tenant_id: Number(tenantId),
+        cte_id: cteId,
+        nome: c.nome,
+        valor: c.valor ?? null,
+      })),
+    });
+  }
+  const autXml = normalizarAutXmlCte(dto);
+  if (autXml.length > 0) {
+    await prisma.fiscal_cte_aut_xml.createMany({
+      data: autXml.map((a) => ({
+        tenant_id: Number(tenantId),
+        cte_id: cteId,
+        cnpj_cpf: a.cnpj_cpf,
+      })),
+    });
+  }
+  const participantes = normalizarParticipantesCte(dto);
+  if (participantes.length > 0) {
+    await prisma.fiscal_cte_participantes.createMany({
+      data: participantes.map((p) => ({
+        tenant_id: Number(tenantId),
+        cte_id: cteId,
+        ...p,
+      })),
+    });
+  }
+}
+
+async function prepararEmissaoCte(tenantId, cte) {
+  const dto = emitirCteSchema.parse(cte.payload_json ?? {});
+
+  const cliente = await findOwnedOr404(
+    "fiscal_clientes",
+    dto.cliente_id,
+    tenantId,
+    "Cliente",
+  );
+  const caminhaoId = await assertTenantFk(
+    "caminhoes",
+    dto.caminhao_id,
+    tenantId,
+    "Caminhão",
+    { optional: true },
+  );
+  const motoristaId = await assertTenantFk(
+    "motoristas",
+    dto.motorista_id,
+    tenantId,
+    "Motorista",
+    { optional: true },
+  );
+
+  let chaveReferenciada;
+  let cteReferenciadoId = null;
+  if (dto.tipo_cte === "1" || dto.tipo_cte === "3") {
+    const original = await findOwnedOr404(
+      "fiscal_ctes",
+      dto.cte_referenciado_id,
+      tenantId,
+      "CT-e referenciado",
+    );
+    if (original.status !== CTE_STATUS.PROCESSADO) {
+      throw badRequest(
+        'O CT-e referenciado precisa estar com status "processado" para receber Complemento ou Substituto.',
+      );
+    }
+    chaveReferenciada = original.chave_acesso;
+    cteReferenciadoId = original.id;
+  }
+
+  if (dto.tomador.cpf_cnpj !== cliente.cnpj_cpf) {
+    throw badRequest(
+      "O CNPJ/CPF do tomador não corresponde ao cliente vinculado (cliente_id).",
+    );
+  }
+
+  const { empresa, token } = await resolveEmpresaCteMdfe(
+    tenantId,
+    dto.fiscal_empresa_id ?? cte.fiscal_empresa_id,
+  );
+
+  assertEmpresaCrt(empresa);
+  const documentos = normalizarDocumentosCte(dto);
+  validarImpostoCte(dto, empresa, dto.dt_emissao);
+  validarIcmsUfFimCte(dto);
+
+  if (!empresa.resp_tec_cnpj) {
+    logger.warn(
+      "CT-e emitido sem infRespTec: empresa fiscal sem responsável técnico cadastrado",
+      { tenantId, fiscalEmpresaId: empresa.id },
+    );
+  }
+  const empresaComRespTec = {
+    ...empresa,
+    resp_tec_csrt: decryptSecret(empresa.resp_tec_csrt),
+  };
+
+  const payload = montarPayloadCte(
+    dto,
+    chaveReferenciada,
+    empresaComRespTec,
+    identificadorInternoCte(cte.id),
+  );
+
+  return {
+    dto,
+    cliente,
+    caminhaoId,
+    motoristaId,
+    chaveReferenciada,
+    cteReferenciadoId,
+    empresa,
+    token,
+    documentos,
+    payload,
+  };
+}
+
 export class CteService {
   static async list(tenantId, { status } = {}) {
     const where = { tenant_id: Number(tenantId) };
@@ -639,107 +815,193 @@ export class CteService {
     };
   }
 
-  static async emitir(tenantId, body) {
-    const dto = emitirCteSchema.parse(body);
-
+  static async criar(tenantId, body) {
+    const dto = rascunhoCteSchema.parse(body);
     const cliente = await findOwnedOr404(
       "fiscal_clientes",
       dto.cliente_id,
       tenantId,
       "Cliente",
     );
-    const caminhaoId = await assertTenantFk(
-      "caminhoes",
-      dto.caminhao_id,
-      tenantId,
-      "Caminhão",
-      { optional: true },
-    );
-    const motoristaId = await assertTenantFk(
-      "motoristas",
-      dto.motorista_id,
-      tenantId,
-      "Motorista",
-      { optional: true },
-    );
+    const { fiscalEmpresaId, caminhaoId, motoristaId } =
+      await assertFksVeiculoEmpresa(tenantId, dto);
+    const row = await prisma.fiscal_ctes.create({
+      data: {
+        tenant_id: Number(tenantId),
+        fiscal_empresa_id: fiscalEmpresaId,
+        cliente_id: cliente.id,
+        caminhao_id: caminhaoId,
+        motorista_id: motoristaId,
+        chave_acesso: null,
+        status: CTE_STATUS.RASCUNHO,
+        ambiente: config.fiscal.ambiente,
+        payload_json: dto,
+        valor_frete: dto.servico?.valor_prestacao ?? null,
+        ...colunasImpostoCarga(dto),
+        ...colunasContingenciaTribFed(dto),
+      },
+    });
+    logger.info("CT-e rascunho criado", { tenantId, cteId: row.id });
+    return serializePrisma(row);
+  }
 
-    // Complemento (1) / Substituto (3): confirma o CT-e original no mesmo tenant.
-    let chaveReferenciada;
-    let cteReferenciadoId = null;
-    if (dto.tipo_cte === "1" || dto.tipo_cte === "3") {
-      const original = await findOwnedOr404(
-        "fiscal_ctes",
-        dto.cte_referenciado_id,
-        tenantId,
-        "CT-e referenciado",
-      );
-      if (original.status !== "processado") {
-        throw badRequest(
-          "O CT-e referenciado precisa estar com status \"processado\" para receber Complemento ou Substituto.",
-        );
-      }
-      chaveReferenciada = original.chave_acesso;
-      cteReferenciadoId = original.id;
-    }
-
-    if (dto.tomador.cpf_cnpj !== cliente.cnpj_cpf) {
+  static async atualizar(tenantId, id, body) {
+    const atual = await findOwnedOr404("fiscal_ctes", id, tenantId, "CT-e");
+    if (!STATUS_RASCUNHO_EDITAVEL.includes(atual.status)) {
       throw badRequest(
-        "O CNPJ/CPF do tomador não corresponde ao cliente vinculado (cliente_id).",
+        `Só é possível editar CT-e em rascunho, rejeitado ou com erro (status atual: "${atual.status}").`,
       );
     }
-
-    const { empresa, token } = await resolveEmpresaCteMdfe(
+    const dto = rascunhoCteSchema.parse(body);
+    const cliente = await findOwnedOr404(
+      "fiscal_clientes",
+      dto.cliente_id,
       tenantId,
-      dto.fiscal_empresa_id,
+      "Cliente",
     );
+    const { fiscalEmpresaId, caminhaoId, motoristaId } =
+      await assertFksVeiculoEmpresa(tenantId, dto);
+    const row = await prisma.fiscal_ctes.update({
+      where: { id: atual.id },
+      data: {
+        fiscal_empresa_id:
+          fiscalEmpresaId ?? atual.fiscal_empresa_id,
+        cliente_id: cliente.id,
+        caminhao_id: caminhaoId,
+        motorista_id: motoristaId,
+        status: CTE_STATUS.RASCUNHO,
+        ambiente: config.fiscal.ambiente,
+        payload_json: dto,
+        valor_frete: dto.servico?.valor_prestacao ?? null,
+        ...colunasImpostoCarga(dto),
+        ...colunasContingenciaTribFed(dto),
+      },
+    });
+    logger.info("CT-e rascunho atualizado", { tenantId, cteId: row.id });
+    return serializePrisma(row);
+  }
 
-    // Validações que precisam rodar ANTES da chamada irreversível ao provedor:
-    // CRT da empresa emissora (1.4), >= 1 documento infDoc (1.2) e grupo
-    // IBS/CBS quando o emitente não é Simples Nacional (1.1).
-    assertEmpresaCrt(empresa);
-    const documentos = normalizarDocumentosCte(dto);
-    validarImpostoCte(dto, empresa, dto.dt_emissao);
-    validarIcmsUfFimCte(dto);
-
-    // infRespTec (1.4): repassa os dados do responsável técnico cadastrados na
-    // empresa fiscal, com o CSRT decifrado. A falta desses dados NÃO bloqueia a
-    // emissão — só registra aviso, até a exigência ser confirmada em sandbox.
-    if (!empresa.resp_tec_cnpj) {
-      logger.warn(
-        "CT-e emitido sem infRespTec: empresa fiscal sem responsável técnico cadastrado",
-        { tenantId, fiscalEmpresaId: empresa.id },
-      );
+  static async remover(tenantId, id) {
+    const atual = await findOwnedOr404("fiscal_ctes", id, tenantId, "CT-e");
+    if (atual.status !== CTE_STATUS.RASCUNHO) {
+      throw badRequest("Só é possível excluir CT-e em rascunho.");
     }
-    const empresaComRespTec = {
-      ...empresa,
-      resp_tec_csrt: decryptSecret(empresa.resp_tec_csrt),
-    };
+    await prisma.fiscal_ctes.delete({ where: { id: atual.id } });
+    logger.info("CT-e rascunho excluído", { tenantId, cteId: atual.id });
+    return { deleted: true };
+  }
 
-    const resposta = await CteMdfeProviderClient.enviarConhecimentoTransporte(
-      montarPayloadCte(dto, chaveReferenciada, empresaComRespTec),
+  static async emitir(tenantId, body) {
+    const id = body?.id != null && body.id !== "" ? Number(body.id) : null;
+    if (Number.isInteger(id) && id > 0) {
+      const keys = body && typeof body === "object" ? Object.keys(body) : [];
+      if (keys.some((k) => k !== "id")) {
+        await this.atualizar(tenantId, id, body);
+      }
+      return this.emitirPorId(tenantId, id);
+    }
+    const draft = await this.criar(tenantId, body);
+    return this.emitirPorId(tenantId, draft.id);
+  }
+
+  static async simular(tenantId, body) {
+    const id = body?.id != null && body.id !== "" ? Number(body.id) : null;
+    let cteId = Number.isInteger(id) && id > 0 ? id : null;
+    if (cteId) {
+      const keys = body && typeof body === "object" ? Object.keys(body) : [];
+      if (keys.some((k) => k !== "id")) {
+        await this.atualizar(tenantId, cteId, body);
+      }
+    } else {
+      const draft = await this.criar(tenantId, body);
+      cteId = draft.id;
+    }
+    const cte = await findOwnedOr404("fiscal_ctes", cteId, tenantId, "CT-e");
+    const prep = await prepararEmissaoCte(tenantId, cte);
+    logger.info("CT-e simulado — não transmitido à SEFAZ", {
+      tenantId,
+      cteId,
+    });
+    return resultadoSimulacaoDocumento({
+      tipo: "cte",
+      documento: serializePrisma(cte),
+      payload: prep.payload,
+      empresa: prep.empresa,
+    });
+  }
+
+  static async emitirPorId(tenantId, id) {
+    const claimed = await claimEmissao("fiscal_ctes", id, tenantId, "CT-e");
+    if (claimed.alreadyAuthorized) {
+      logger.info("CT-e emissão idempotente (já autorizado)", {
+        tenantId,
+        cteId: claimed.id,
+      });
+      return this.getById(tenantId, claimed.id);
+    }
+    if (claimed.consultInstead) {
+      logger.info("CT-e já enviado à Brasil NFe — consultando em vez de reemitir", {
+        tenantId,
+        cteId: claimed.id,
+      });
+      return this.consultarStatus(tenantId, claimed.id);
+    }
+
+    const cte = await findOwnedOr404("fiscal_ctes", claimed.id, tenantId, "CT-e");
+    try {
+    const {
+      dto,
+      cliente,
+      caminhaoId,
+      motoristaId,
+      chaveReferenciada,
+      cteReferenciadoId,
+      empresa,
+      token,
+      documentos,
+      payload,
+    } = await prepararEmissaoCte(tenantId, cte);
+
+    const resposta = await BrasilNFeClient.enviarConhecimentoTransporte(
+      payload,
       token,
     );
 
-    // status === 2 => rejeitado pelo provedor (mesmo contrato do jwsoft).
-    if (resposta?.status === 2) {
-      throw badRequest("Provedor de CT-e/MDF-e rejeitou a emissão do CT-e", {
-        erros: resposta.erros ?? [],
+    const interpretacao = interpretarRespostaCte(resposta);
+    const sefaz = colunasSefaz(resposta, "emissao");
+
+    if (interpretacao.outcome !== "authorized") {
+      await prisma.fiscal_ctes.update({
+        where: { id: cte.id },
+        data: {
+          status:
+            interpretacao.outcome === "rejected"
+              ? CTE_STATUS.REJEITADO
+              : CTE_STATUS.ERRO,
+          fiscal_empresa_id: empresa.id,
+          ...sefaz,
+        },
       });
-    }
-    if (!resposta?.chave) {
+      logger.info("CT-e rejeitado ou com erro na SEFAZ", {
+        tenantId,
+        cteId: cte.id,
+        outcome: interpretacao.outcome,
+      });
       throw badRequest(
-        "Provedor de CT-e/MDF-e não retornou a chave de acesso do CT-e",
-        { resposta },
+        interpretacao.mensagem || "A SEFAZ rejeitou a emissão do CT-e.",
+        {
+          codigo: sefaz.sefaz_codigo,
+          mensagem: interpretacao.mensagem,
+          erros: interpretacao.erros ?? [],
+          detalhes: sefaz.sefaz_detalhes,
+        },
       );
     }
 
-    // A partir daqui o CT-e já foi emitido de verdade na SEFAZ (irreversível).
-    // O registro local precisa existir ANTES de qualquer passo que possa falhar
-    // (gravação de arquivo em disco); caso contrário a emissão real ficaria sem
-    // rastro e uma nova tentativa geraria um documento duplicado.
-    const cte = await prisma.fiscal_ctes.create({
+    const agora = new Date();
+    let atualizado = await prisma.fiscal_ctes.update({
+      where: { id: cte.id },
       data: {
-        tenant_id: Number(tenantId),
         fiscal_empresa_id: empresa.id,
         cliente_id: cliente.id,
         caminhao_id: caminhaoId,
@@ -747,29 +1009,37 @@ export class CteService {
         cte_referenciado_id: cteReferenciadoId,
         cte_referenciado_chave: chaveReferenciada ?? null,
         ind_alt_toma: dto.ind_alt_toma ?? null,
-        chave_acesso: resposta.chave,
-        status: "processado",
+        chave_acesso: interpretacao.chave,
+        status: CTE_STATUS.PROCESSADO,
         numero: resposta.numero != null ? String(resposta.numero) : null,
         serie: resposta.serie != null ? String(resposta.serie) : null,
         numero_protocolo: extrairNumeroProtocolo(resposta),
-        data_emissao: new Date(),
+        data_emissao: agora,
+        autorizado_em: agora,
+        ambiente: config.fiscal.ambiente,
         valor_frete: dto.servico?.valor_prestacao ?? null,
+        brasil_nfe_id:
+          resposta.IdentificadorInterno != null
+            ? String(resposta.IdentificadorInterno)
+            : identificadorInternoCte(cte.id),
         ...colunasImpostoCarga(dto),
         ...colunasContingenciaTribFed(dto),
+        ...sefaz,
       },
     });
 
-    // CT-e já emitido com sucesso — uma falha ao gravar/registrar o XML/PDF não
-    // invalida o documento. Loga e segue, sem transformar erro de disco em erro
-    // de emissão para o usuário; os arquivos podem ser reobtidos depois.
-    let cteComArquivos = cte;
     try {
       const [xmlPath, pdfPath] = await Promise.all([
-        salvarXmlBase64("cte", tenantId, resposta.chave, resposta.base64Xml),
-        salvarPdfBase64("cte", tenantId, resposta.chave, resposta.base64DACTe),
+        salvarXmlBase64("cte", tenantId, interpretacao.chave, resposta.base64Xml),
+        salvarPdfBase64(
+          "cte",
+          tenantId,
+          interpretacao.chave,
+          resposta.base64DACTe,
+        ),
       ]);
       if (xmlPath || pdfPath) {
-        cteComArquivos = await prisma.fiscal_ctes.update({
+        atualizado = await prisma.fiscal_ctes.update({
           where: { id: cte.id },
           data: { xml_path: xmlPath, pdf_path: pdfPath },
         });
@@ -778,106 +1048,80 @@ export class CteService {
       logger.error("Falha ao gravar XML/PDF do CT-e recém-emitido", {
         tenantId,
         cteId: cte.id,
-        chave: resposta.chave,
+        chave: interpretacao.chave,
         message: err.message,
       });
     }
 
-    // CT-e já emitido — gravar os filhos infDoc / infQ é best-effort: uma falha
-    // aqui não invalida o documento, só registra para reconciliação.
     try {
-      if (documentos.length > 0) {
-        await prisma.fiscal_cte_documentos.createMany({
-          data: documentos.map((d) => ({
-            tenant_id: Number(tenantId),
-            cte_id: cte.id,
-            tipo: d.tipo,
-            chave_acesso: d.chave_acesso,
-            numero: d.numero,
-            serie: d.serie,
-            data_emissao: d.data_emissao ? new Date(d.data_emissao) : null,
-            valor: d.valor,
-          })),
-        });
-      }
-      const quantidades = Array.isArray(dto.carga?.quantidades)
-        ? dto.carga.quantidades
-        : [];
-      if (quantidades.length > 0) {
-        await prisma.fiscal_cte_carga_quantidades.createMany({
-          data: quantidades.map((q) => ({
-            tenant_id: Number(tenantId),
-            cte_id: cte.id,
-            codigo_unidade: q.codigo_unidade ?? null,
-            tipo_medida: q.tipo_medida ?? null,
-            quantidade: q.quantidade ?? null,
-          })),
-        });
-      }
-      const componentes = Array.isArray(dto.servico?.componentes)
-        ? dto.servico.componentes
-        : [];
-      if (componentes.length > 0) {
-        await prisma.fiscal_cte_componentes_frete.createMany({
-          data: componentes.map((c) => ({
-            tenant_id: Number(tenantId),
-            cte_id: cte.id,
-            nome: c.nome,
-            valor: c.valor ?? null,
-          })),
-        });
-      }
-      // autXML (1.1): 0..N terceiros autorizados a baixar o XML. Sem itens, nada
-      // é gravado — o CT-e continua válido com 0 autorizados.
-      const autXml = normalizarAutXmlCte(dto);
-      if (autXml.length > 0) {
-        await prisma.fiscal_cte_aut_xml.createMany({
-          data: autXml.map((a) => ({
-            tenant_id: Number(tenantId),
-            cte_id: cte.id,
-            cnpj_cpf: a.cnpj_cpf,
-          })),
-        });
-      }
-      const participantes = normalizarParticipantesCte(dto);
-      if (participantes.length > 0) {
-        await prisma.fiscal_cte_participantes.createMany({
-          data: participantes.map((p) => ({
-            tenant_id: Number(tenantId),
-            cte_id: cte.id,
-            ...p,
-          })),
-        });
-      }
+      await persistirFilhosCte(tenantId, cte.id, dto, documentos);
     } catch (err) {
-      logger.error("Falha ao gravar infDoc/infQ/Comp/participantes/autXML do CT-e recém-emitido", {
-        tenantId,
-        cteId: cte.id,
-        message: err.message,
-      });
+      logger.error(
+        "Falha ao gravar infDoc/infQ/Comp/participantes/autXML do CT-e recém-emitido",
+        { tenantId, cteId: cte.id, message: err.message },
+      );
     }
 
-    logger.info("CT-e emitido", { tenantId, chave: cteComArquivos.chave_acesso });
+    logger.info("CT-e autorizado", {
+      tenantId,
+      cteId: cte.id,
+      chave: atualizado.chave_acesso,
+    });
     return {
-      ...serializePrisma(cteComArquivos),
+      ...serializePrisma(atualizado),
       base64DACTe: resposta.base64DACTe ?? null,
     };
+    } catch (err) {
+      const stuck = await prisma.fiscal_ctes.findFirst({
+        where: { id: claimed.id },
+        select: { status: true },
+      });
+      if (stuck?.status === CTE_STATUS.PROCESSANDO) {
+        await prisma.fiscal_ctes.update({
+          where: { id: claimed.id },
+          data: {
+            status: CTE_STATUS.ERRO,
+            sefaz_mensagem: err.message,
+            sefaz_operacao: "emissao",
+            sefaz_em: new Date(),
+          },
+        });
+      }
+      throw err;
+    }
+  }
+
+  static async consultarStatus(tenantId, id) {
+    return consultarDocumentoFiscal({
+      table: "fiscal_ctes",
+      tipoArquivo: "cte",
+      tenantId,
+      id,
+      label: "CT-e",
+      identificadorInterno: identificadorInternoCte(id),
+      getById: (t, docId) => this.getById(t, docId),
+    });
   }
 
   static async cancelar(tenantId, id, justificativa) {
     const cte = await findOwnedOr404("fiscal_ctes", id, tenantId, "CT-e");
+    if (cte.status !== CTE_STATUS.PROCESSADO) {
+      throw badRequest(
+        `Só é possível cancelar CT-e autorizado (status atual: "${cte.status}").`,
+      );
+    }
+    if (prazoCancelamentoExpirado(cte.autorizado_em || cte.data_emissao)) {
+      throw badRequest(
+        "O prazo legal de 24 horas para cancelamento do CT-e expirou. Use CT-e de Anulação ou Substituto.",
+      );
+    }
 
-    // Usa a empresa fiscal registrada na emissão do CT-e; se a linha for antiga
-    // e não tiver fiscal_empresa_id, cai na resolução da única empresa ativa.
     const { empresa, token } = await resolveEmpresaCteMdfe(
       tenantId,
       cte.fiscal_empresa_id ?? undefined,
     );
 
-    // Cancelamento genérico (0.6): mesmo corpo do MDF-e. Usa o protocolo de
-    // autorização gravado na emissão (PARTE 3); CT-e antigos sem protocolo
-    // persistido vão com `undefined` e o provedor resolve pela chave.
-    const resposta = await CteMdfeProviderClient.cancelarNotaFiscal(
+    const resposta = await BrasilNFeClient.cancelarNotaFiscal(
       montarPayloadCancelamento({
         chave: cte.chave_acesso,
         justificativa,
@@ -887,21 +1131,38 @@ export class CteService {
       token,
     );
 
-    if (resposta?.Status === 3) {
+    const interpretacao = interpretarRespostaEvento(resposta);
+    const sefaz = colunasSefaz(resposta, "cancelamento");
+    if (interpretacao.outcome === "error") {
+      await prisma.fiscal_ctes.update({
+        where: { id: cte.id },
+        data: sefaz,
+      });
       throw badRequest(
-        resposta.Error ??
-          "Provedor de CT-e/MDF-e rejeitou o cancelamento do CT-e",
+        interpretacao.mensagem ||
+          "A Brasil NFe rejeitou o cancelamento do CT-e",
+        sefaz,
       );
     }
-    // Status === 2 => aguardando SEFAZ; mantém status atual até nova tentativa.
-    if (resposta?.Status === 2) {
+    if (interpretacao.outcome === "processing") {
+      logger.info("CT-e cancelamento aguardando SEFAZ", {
+        tenantId,
+        cteId: cte.id,
+      });
       return serializePrisma(cte);
     }
 
     const updated = await prisma.fiscal_ctes.update({
       where: { id: cte.id },
-      data: { status: "cancelado" },
+      data: {
+        status: CTE_STATUS.CANCELADO,
+        cancelado_em: new Date(),
+        cancelado_justificativa: justificativa,
+        cancelado_protocolo: resposta?.NuProtocolo ?? null,
+        ...sefaz,
+      },
     });
+    logger.info("CT-e cancelado", { tenantId, cteId: cte.id });
     return serializePrisma(updated);
   }
 

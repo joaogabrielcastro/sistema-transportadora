@@ -58,7 +58,7 @@ DownloadCell.propTypes = {
   onDownload: PropTypes.func,
 };
 
-/** Tabela dos CT-e emitidos. */
+/** Tabela dos CT-e (rascunho, emitidos, rejeitados). */
 export default function CteList({
   items = [],
   clientes = [],
@@ -67,6 +67,10 @@ export default function CteList({
   onCancel,
   onComplemento,
   onSubstituir,
+  onEmit,
+  onConsult,
+  onEditDraft,
+  onDeleteDraft,
   selectedIds,
   onToggleRow,
   onToggleAll,
@@ -95,8 +99,8 @@ export default function CteList({
   if (!items.length) {
     return (
       <EmptyState
-        title="Nenhum CT-e emitido"
-        description="Emita o primeiro CT-e na aba Emitir."
+        title="Nenhum CT-e encontrado"
+        description="Salve um rascunho ou emita o primeiro CT-e na aba Emitir."
         dashed
       />
     );
@@ -134,6 +138,18 @@ export default function CteList({
           {items.map((row) => {
             const cliente = clienteById.get(String(row.cliente_id));
             const podeCancelar = row.status === "processado";
+            const podeEmitir = [
+              "rascunho",
+              "rejeitado",
+              "erro",
+              "pendente",
+            ].includes(row.status);
+            const podeConsultar =
+              Boolean(row.chave_acesso) ||
+              Boolean(row.brasil_nfe_id) ||
+              row.status === "processando";
+            const podeEditar = podeEmitir;
+            const podeExcluir = row.status === "rascunho";
             const marcado = selecionados.has(Number(row.id));
             return (
               <tr key={row.id} className="border-t border-border">
@@ -152,7 +168,14 @@ export default function CteList({
                   {[row.numero, row.serie].filter(Boolean).join("/") || "—"}
                 </td>
                 <td className="px-3 py-2.5">
-                  <StatusBadge status={row.status || "pendente"} />
+                  <div className="flex flex-col gap-1">
+                    <StatusBadge status={row.status || "pendente"} />
+                    {row.status === "processando" && (
+                      <span className="text-xs text-text-secondary">
+                        Aguardando SEFAZ — consulte
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-3 py-2.5">
                   {cliente?.razao_social || `#${row.cliente_id}`}
@@ -185,6 +208,36 @@ export default function CteList({
                     >
                       Ver detalhe
                     </Button>
+                    {podeEditar && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onEditDraft?.(row)}
+                      >
+                        Continuar rascunho
+                      </Button>
+                    )}
+                    {podeEmitir && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => onEmit?.(row)}
+                      >
+                        Emitir
+                      </Button>
+                    )}
+                    {podeConsultar && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onConsult?.(row)}
+                      >
+                        Consultar
+                      </Button>
+                    )}
                     {podeCancelar && (
                       <Button
                         type="button"
@@ -215,6 +268,16 @@ export default function CteList({
                         Cancelar
                       </Button>
                     )}
+                    {podeExcluir && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onDeleteDraft?.(row)}
+                      >
+                        Excluir
+                      </Button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -234,6 +297,10 @@ CteList.propTypes = {
   onCancel: PropTypes.func,
   onComplemento: PropTypes.func,
   onSubstituir: PropTypes.func,
+  onEmit: PropTypes.func,
+  onConsult: PropTypes.func,
+  onEditDraft: PropTypes.func,
+  onDeleteDraft: PropTypes.func,
   selectedIds: PropTypes.instanceOf(Set),
   onToggleRow: PropTypes.func,
   onToggleAll: PropTypes.func,

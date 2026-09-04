@@ -166,16 +166,39 @@ export const config = {
     get secretsKey() {
       return (process.env.FISCAL_SECRETS_KEY || "").trim();
     },
-    /** 1 = produção, 2 = homologação. Fixo em homologação salvo FISCAL_AMBIENTE=producao. Nunca vem do body. */
+    /**
+     * 1 = produção, 2 = homologação. Preferência: BRASIL_NFE_AMBIENTE=1|2.
+     * Fallback: FISCAL_AMBIENTE=producao liga 1; qualquer outro valor = 2.
+     * Nunca vem do body.
+     */
     get ambiente() {
+      const bnfe = String(process.env.BRASIL_NFE_AMBIENTE || "")
+        .trim()
+        .toLowerCase();
+      if (bnfe === "1" || bnfe === "producao") return 1;
+      if (bnfe === "2" || bnfe === "homologacao") return 2;
       return String(process.env.FISCAL_AMBIENTE || "").trim().toLowerCase() ===
         "producao"
         ? 1
         : 2;
     },
-    /** Base URL do provedor de CT-e/MDF-e. Provedor ainda não decidido — sem default de fornecedor; obrigatória para emitir. */
-    get cteMdfeBaseUrl() {
-      return (process.env.FISCAL_CTE_MDFE_URL || "").trim().replace(/\/$/, "");
+    /**
+     * Base da API Brasil NFe (sem barra final). Default oficial.
+     * Homologação e produção usam a MESMA URL — o ambiente vai no payload.
+     */
+    get brasilNfeBaseUrl() {
+      const raw = (
+        process.env.BRASIL_NFE_BASE_URL ||
+        process.env.FISCAL_CTE_MDFE_URL ||
+        ""
+      )
+        .trim()
+        .replace(/\/$/, "");
+      return raw || "https://api.brasilnfe.com.br/services";
+    },
+    /** UserToken da conta Brasil NFe (gestão de empresas/certificado). */
+    get brasilNfeUserToken() {
+      return (process.env.BRASIL_NFE_USER_TOKEN || "").trim();
     },
     /** Base URL do provedor de CIOT (integração direta ANTT ou integrador). Sem default de fornecedor; obrigatória para declarar. */
     get ciotBaseUrl() {

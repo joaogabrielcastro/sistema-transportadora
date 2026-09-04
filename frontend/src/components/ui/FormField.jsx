@@ -184,6 +184,22 @@ const FormField = ({
       );
     }
 
+    if (type === "file") {
+      return (
+        <div className="relative">
+          <input
+            type="file"
+            id={fieldId}
+            name={name}
+            onChange={onChange}
+            disabled={disabled}
+            className={`${baseInputClasses} ${icon ? "pl-10" : ""} file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium`}
+            {...props}
+          />
+        </div>
+      );
+    }
+
     if (type === "number") {
       const displayValue = formatNumberInputDisplay(value, {
         maxDecimals,

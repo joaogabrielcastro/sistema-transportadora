@@ -114,6 +114,28 @@ export const fiscalEmpresasController = {
       data: await FiscalEmpresaService.update(tenantId, req.params.id, req.body),
     });
   }),
+  enviarCertificado: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.json({
+      success: true,
+      data: await FiscalEmpresaService.enviarCertificado(
+        tenantId,
+        req.params.id,
+        { buffer: req.file?.buffer, senha: req.body?.senha },
+      ),
+      message: "Certificado enviado à Brasil NFe",
+    });
+  }),
+  verificarCertificado: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.json({
+      success: true,
+      data: await FiscalEmpresaService.verificarCertificado(
+        tenantId,
+        req.params.id,
+      ),
+    });
+  }),
   remove: catchAsync(async (req, res) => {
     const tenantId = requireTenantId(req);
     res.json({
@@ -227,12 +249,58 @@ export const cteController = {
       data: await CteService.getById(tenantId, req.params.id),
     });
   }),
+  criar: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.status(201).json({
+      success: true,
+      data: await CteService.criar(tenantId, req.body),
+      message: "Rascunho de CT-e salvo",
+    });
+  }),
+  atualizar: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.json({
+      success: true,
+      data: await CteService.atualizar(tenantId, req.params.id, req.body),
+      message: "Rascunho de CT-e atualizado",
+    });
+  }),
+  remover: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.json({
+      success: true,
+      data: await CteService.remover(tenantId, req.params.id),
+    });
+  }),
+  consultarStatus: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.json({
+      success: true,
+      data: await CteService.consultarStatus(tenantId, req.params.id),
+    });
+  }),
+  emitirPorId: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.status(201).json({
+      success: true,
+      data: await CteService.emitirPorId(tenantId, req.params.id),
+      message: "CT-e emitido",
+    });
+  }),
   emitir: catchAsync(async (req, res) => {
     const tenantId = requireTenantId(req);
     res.status(201).json({
       success: true,
       data: await CteService.emitir(tenantId, req.body),
       message: "CT-e emitido",
+    });
+  }),
+  simular: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.json({
+      success: true,
+      data: await CteService.simular(tenantId, req.body),
+      message: "Simulação de CT-e (não transmitido à SEFAZ)",
     });
   }),
   cancelar: catchAsync(async (req, res) => {
@@ -277,6 +345,44 @@ export const mdfeController = {
       data: await MdfeService.getById(tenantId, req.params.id),
     });
   }),
+  criar: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.status(201).json({
+      success: true,
+      data: await MdfeService.criar(tenantId, req.body),
+      message: "Rascunho de MDF-e salvo",
+    });
+  }),
+  atualizar: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.json({
+      success: true,
+      data: await MdfeService.atualizar(tenantId, req.params.id, req.body),
+      message: "Rascunho de MDF-e atualizado",
+    });
+  }),
+  remover: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.json({
+      success: true,
+      data: await MdfeService.remover(tenantId, req.params.id),
+    });
+  }),
+  consultarStatus: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.json({
+      success: true,
+      data: await MdfeService.consultarStatus(tenantId, req.params.id),
+    });
+  }),
+  emitirPorId: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.status(201).json({
+      success: true,
+      data: await MdfeService.emitirPorId(tenantId, req.params.id),
+      message: "MDF-e emitido",
+    });
+  }),
   previewReboques: catchAsync(async (req, res) => {
     const tenantId = requireTenantId(req);
     res.json({
@@ -293,6 +399,14 @@ export const mdfeController = {
       success: true,
       data: await MdfeService.emitir(tenantId, req.body),
       message: "MDF-e emitido",
+    });
+  }),
+  simular: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.json({
+      success: true,
+      data: await MdfeService.simular(tenantId, req.body),
+      message: "Simulação de MDF-e (não transmitido à SEFAZ)",
     });
   }),
   encerrar: catchAsync(async (req, res) => {
@@ -331,6 +445,14 @@ export const ciotController = {
     res.json({
       success: true,
       data: await CiotService.getById(tenantId, req.params.id),
+    });
+  }),
+  simular: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.json({
+      success: true,
+      data: await CiotService.simular(tenantId, req.body),
+      message: "Simulação de CIOT (não transmitido à ANTT)",
     });
   }),
   declarar: catchAsync(async (req, res) => {

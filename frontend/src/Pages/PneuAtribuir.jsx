@@ -70,10 +70,11 @@ const PneuAtribuir = () => {
   }, [defaultStatusId, statusId]);
 
   useEffect(() => {
-    if (!initialPneuId || rows[0]?.stock_pneu_id) return;
-    setRows([
-      createRow({ stock_pneu_id: initialPneuId, modo: "estoque" }),
-    ]);
+    if (!initialPneuId) return;
+    setRows((current) => {
+      if (current[0]?.stock_pneu_id) return current;
+      return [createRow({ stock_pneu_id: initialPneuId, modo: "estoque" })];
+    });
     setActiveRowId(null);
   }, [initialPneuId]);
 

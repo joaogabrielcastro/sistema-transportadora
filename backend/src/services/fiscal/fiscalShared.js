@@ -3,6 +3,7 @@ import path from "node:path";
 import prisma from "../../lib/prisma.js";
 import { UPLOADS_ROOT } from "../../utils/uploadPaths.js";
 import { decryptSecret } from "../../utils/fiscalCrypto.js";
+import { avaliarClaimEmissao, CTE_STATUS } from "./fiscalStatus.js";
 
 /** Raiz dos XML de documentos fiscais de transporte (mesmo padrão de arquivo das NF-e de compra). */
 const FISCAL_XML_ROOT = path.join(UPLOADS_ROOT, "fiscal");
@@ -132,6 +133,35 @@ export async function assertTenantFk(model, id, tenantId, label, opts = {}) {
   return row.id;
 }
 
+/**
+ * FKs opcionais de rascunho CT-e/MDF-e (empresa, caminhão, motorista).
+ * Impede gravar id de outro tenant no draft.
+ */
+export async function assertFksVeiculoEmpresa(tenantId, dto = {}) {
+  const fiscalEmpresaId = await assertTenantFk(
+    "fiscal_empresas",
+    dto.fiscal_empresa_id,
+    tenantId,
+    "Empresa fiscal",
+    { optional: true },
+  );
+  const caminhaoId = await assertTenantFk(
+    "caminhoes",
+    dto.caminhao_id,
+    tenantId,
+    "Caminhão",
+    { optional: true },
+  );
+  const motoristaId = await assertTenantFk(
+    "motoristas",
+    dto.motorista_id,
+    tenantId,
+    "Motorista",
+    { optional: true },
+  );
+  return { fiscalEmpresaId, caminhaoId, motoristaId };
+}
+
 /** Igual a assertTenantFk mas lança 404 (para o recurso principal buscado por id). */
 export async function findOwnedOr404(model, id, tenantId, label) {
   const numId = Number(id);
@@ -254,4 +284,52 @@ export async function resolveEmpresaCertificado(tenantId, fiscalEmpresaId) {
       senha: decryptSecret(empresa.certificado_senha),
     },
   };
+}
+
+/**
+ * Trava a linha (SELECT FOR UPDATE) e marca `processando`.
+ * Se já estiver autorizado, devolve alreadyAuthorized para a emissão ser idempotente.
+ *
+ * @param {"fiscal_ctes"|"fiscal_mdfes"} table
+ */
+export async function claimEmissao(table, id, tenantId, label) {
+  if (table !== "fiscal_ctes" && table !== "fiscal_mdfes") {
+    throw new Error("Tabela fiscal inválida para claim de emissão");
+  }
+  return prisma.$transaction(async (tx) => {
+    const rows =
+      table === "fiscal_ctes"
+        ? await tx.$queryRaw`
+            SELECT id, status, emissao_iniciada_em, chave_acesso, brasil_nfe_id
+            FROM fiscal_ctes
+            WHERE id = ${Number(id)} AND tenant_id = ${Number(tenantId)}
+            FOR UPDATE
+          `
+        : await tx.$queryRaw`
+            SELECT id, status, emissao_iniciada_em, chave_acesso, brasil_nfe_id
+            FROM fiscal_mdfes
+            WHERE id = ${Number(id)} AND tenant_id = ${Number(tenantId)}
+            FOR UPDATE
+          `;
+    const row = Array.isArray(rows) ? rows[0] : null;
+    if (!row) {
+      throw notFound(`${label} não encontrado`);
+    }
+    const decision = avaliarClaimEmissao(row);
+    if (decision.action === "already_authorized") {
+      return { alreadyAuthorized: true, id: Number(row.id) };
+    }
+    if (decision.action === "consult") {
+      return { alreadyAuthorized: false, consultInstead: true, id: Number(row.id) };
+    }
+    if (decision.action === "reject") throw decision.error;
+    await tx[table].update({
+      where: { id: Number(row.id) },
+      data: {
+        status: CTE_STATUS.PROCESSANDO,
+        emissao_iniciada_em: new Date(),
+      },
+    });
+    return { alreadyAuthorized: false, id: Number(row.id) };
+  });
 }

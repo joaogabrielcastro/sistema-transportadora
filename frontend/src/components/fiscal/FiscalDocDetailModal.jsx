@@ -44,7 +44,12 @@ export default function FiscalDocDetailModal({
   tipo = "cte",
   erro = null,
 }) {
-  const titulo = tipo === "mdfe" ? "Detalhe do MDF-e" : "Detalhe do CT-e";
+  const titulo =
+    tipo === "mdfe"
+      ? "Detalhe do MDF-e"
+      : tipo === "ciot"
+        ? "Detalhe do contrato de frete"
+        : "Detalhe do CT-e";
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={titulo} size="lg">
@@ -70,23 +75,110 @@ export default function FiscalDocDetailModal({
                   doc.status ? <StatusBadge status={doc.status} /> : "—"
                 }
               />
-              <Row label="Número / Série" value={
-                [doc.numero, doc.serie].filter(Boolean).join(" / ") || "—"
-              } />
-              <Row
-                label="Chave de acesso"
-                value={doc.chave_acesso || "— (não gerada)"}
-              />
-              <Row label="Emissão" value={fmtDate(doc.data_emissao)} />
+              {tipo !== "ciot" && (
+                <>
+                  <Row
+                    label="Número / Série"
+                    value={
+                      [doc.numero, doc.serie].filter(Boolean).join(" / ") || "—"
+                    }
+                  />
+                  <Row
+                    label="Chave de acesso"
+                    value={doc.chave_acesso || "— (não gerada)"}
+                  />
+                  <Row label="Emissão" value={fmtDate(doc.data_emissao)} />
+                </>
+              )}
               <Row label="Criado em" value={fmtDate(doc.criado_em)} />
               {tipo === "cte" && (
                 <Row label="Valor do frete" value={fmtMoney(doc.valor_frete)} />
               )}
+              {tipo !== "ciot" && (
+                <>
+                  <Row
+                    label="Ambiente"
+                    value={
+                      doc.ambiente === 1
+                        ? "Produção"
+                        : doc.ambiente === 2
+                          ? "Homologação"
+                          : "—"
+                    }
+                  />
+                  <Row label="Protocolo" value={doc.numero_protocolo || "—"} />
+                  {doc.consulta?.mensagem && (
+                    <Row
+                      label="Consulta"
+                      value={
+                        `${doc.consulta.origem === "brasil_nfe" ? "Brasil NFe" : "Local"}: ${doc.consulta.mensagem}`
+                      }
+                    />
+                  )}
+                  <Row
+                    label="Autorizado em"
+                    value={fmtDate(doc.autorizado_em)}
+                  />
+                  <Row
+                    label="SEFAZ — código"
+                    value={
+                      doc.sefaz_codigo != null ? String(doc.sefaz_codigo) : "—"
+                    }
+                  />
+                  <Row
+                    label="SEFAZ — mensagem"
+                    value={doc.sefaz_mensagem || "—"}
+                  />
+                  <Row
+                    label="SEFAZ — operação"
+                    value={doc.sefaz_operacao || "—"}
+                  />
+                  {doc.sefaz_detalhes != null && (
+                    <Row
+                      label="SEFAZ — detalhes"
+                      value={
+                        <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words text-left text-xs font-normal">
+                          {typeof doc.sefaz_detalhes === "string"
+                            ? doc.sefaz_detalhes
+                            : JSON.stringify(doc.sefaz_detalhes, null, 2)}
+                        </pre>
+                      }
+                    />
+                  )}
+                </>
+              )}
               {tipo === "mdfe" && (
-                <Row
-                  label="Protocolo de encerramento"
-                  value={doc.numero_protocolo || "—"}
-                />
+                <>
+                  <Row
+                    label="Protocolo de encerramento"
+                    value={doc.numero_protocolo || "—"}
+                  />
+                  <Row
+                    label="Encerrado em"
+                    value={fmtDate(doc.encerrado_em)}
+                  />
+                </>
+              )}
+              {tipo === "ciot" && (
+                <>
+                  <Row
+                    label="CIOT"
+                    value={doc.codigo_identificacao_operacao || "—"}
+                  />
+                  <Row
+                    label="Id da operação"
+                    value={doc.id_operacao_transporte || "—"}
+                  />
+                  <Row label="Valor do frete" value={fmtMoney(doc.valor_frete)} />
+                  <Row
+                    label="Início da viagem"
+                    value={fmtDate(doc.data_inicio_viagem)}
+                  />
+                  <Row
+                    label="Fim da viagem"
+                    value={fmtDate(doc.data_fim_viagem)}
+                  />
+                </>
               )}
             </div>
           ) : (
@@ -107,6 +199,6 @@ FiscalDocDetailModal.propTypes = {
   onClose: PropTypes.func.isRequired,
   loading: PropTypes.bool,
   doc: PropTypes.object,
-  tipo: PropTypes.oneOf(["cte", "mdfe"]),
+  tipo: PropTypes.oneOf(["cte", "mdfe", "ciot"]),
   erro: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
 };

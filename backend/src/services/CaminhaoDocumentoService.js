@@ -2,13 +2,13 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import prisma from "../lib/prisma.js";
 import { caminhoesModel } from "../models/caminhoesModel.js";
-import { CAMINHAO_DOCS_ROOT, caminhaoDocsDir } from "../utils/uploadPaths.js";
+import { CAMINHAO_DOCS_ROOT, caminhaoDocsDir, resolverPathNaRaiz } from "../utils/uploadPaths.js";
 import { ObjectStorage } from "./ObjectStorage.js";
 
 const MAX_DOCS_PER_CAMINHAO = 30;
 
 const absoluteFromRel = (relPath) =>
-  path.join(CAMINHAO_DOCS_ROOT, relPath.replace(/\\/g, "/"));
+  resolverPathNaRaiz(CAMINHAO_DOCS_ROOT, relPath);
 
 const formatDoc = (row, arquivo_disponivel = true) => ({
   id: row.id,

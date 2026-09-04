@@ -49,9 +49,10 @@ test("montarPayloadCte inclui TipoCte e ChaveCteReferenciado", () => {
     tomador: { cpf_cnpj: "12345678000199" },
   });
   const payload = montarPayloadCte(dto, "5".repeat(44));
-  assert.equal(payload.TipoCte, "3");
+  assert.equal(payload.TipoCte, 3);
   assert.equal(payload.ChaveCteReferenciado, "5".repeat(44));
-  assert.equal(payload.ModeloDocumento, "57");
+  assert.equal(payload.ModeloDocumento, 57);
+  assert.equal(payload.Cfop, 6353);
 });
 
 test("CT-e Normal não leva ChaveCteReferenciado", () => {
@@ -66,4 +67,22 @@ test("CT-e Normal não leva ChaveCteReferenciado", () => {
   });
   const payload = montarPayloadCte(dto, undefined);
   assert.equal(payload.ChaveCteReferenciado, undefined);
+  assert.equal(payload.TipoCte, 0);
+});
+
+test("Observacao e Retira entram no payload oficial quando presentes no DTO", () => {
+  const dto = emitirCteSchema.parse({
+    cliente_id: 1,
+    tipo_cte: "0",
+    cfop: "5352",
+    natureza_operacao: "Transporte",
+    dt_emissao: "2026-08-22T10:00:00-03:00",
+    observacao: "Entrega em horário comercial.",
+    retira: false,
+    servico: { valor_prestacao: 100 },
+    tomador: { cpf_cnpj: "12345678000199" },
+  });
+  const payload = montarPayloadCte(dto, undefined);
+  assert.equal(payload.Observacao, "Entrega em horário comercial.");
+  assert.equal(payload.Retira, false);
 });

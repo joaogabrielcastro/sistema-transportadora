@@ -61,7 +61,10 @@ const Relatorios = () => {
     limit: API_CONFIG.LIST_MAX,
   });
 
-  const caminhoes = caminhoesPage?.data ?? [];
+  const caminhoes = useMemo(
+    () => caminhoesPage?.data ?? [],
+    [caminhoesPage?.data],
+  );
 
   const caminhaoOptions = useMemo(
     () => formatCaminhaoOptions(caminhoes),

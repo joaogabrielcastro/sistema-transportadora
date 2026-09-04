@@ -66,6 +66,8 @@ services:
       ADMIN_PASSWORD: admin123456
       ADMIN_NOME: Administrador
       UPLOADS_DIR: /app/uploads
+      BRASIL_NFE_AMBIENTE: "2"
+      FISCAL_SECRETS_KEY: local-dev-fiscal-secrets-key-atrack
     volumes:
       - transportadora_uploads:/app/uploads
     depends_on:

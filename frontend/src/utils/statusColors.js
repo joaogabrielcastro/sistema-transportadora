@@ -34,6 +34,16 @@ export const getStatusConfig = (statusName, type = "status") => {
       cancelado: "bg-red-100 text-red-800 border-red-200",
       encerrado: "bg-blue-100 text-blue-800 border-blue-200",
       erro: "bg-red-100 text-red-800 border-red-200",
+      ativo: "bg-green-100 text-green-800 border-green-200",
+      em_andamento: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      "em andamento": "bg-yellow-100 text-yellow-800 border-yellow-200",
+      concluido: "bg-blue-100 text-blue-800 border-blue-200",
+      concluído: "bg-blue-100 text-blue-800 border-blue-200",
+      registrado: "bg-green-100 text-green-800 border-green-200",
+      registrando: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      nao_registrado: "bg-slate-100 text-slate-800 border-slate-200",
+      "não registrado": "bg-slate-100 text-slate-800 border-slate-200",
+      "erro no registro": "bg-red-100 text-red-800 border-red-200",
 
       // Averbação de seguro
       pending: "bg-slate-100 text-slate-800 border-slate-200",

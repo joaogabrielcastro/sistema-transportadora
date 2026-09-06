@@ -37,6 +37,7 @@ import {
   prazoCancelamentoExpirado,
   STATUS_RASCUNHO_EDITAVEL,
 } from "./fiscalStatus.js";
+import { resolverCiotParaDocumento } from "./ciotOperacao.js";
 
 const MODALIDADE_RODOVIARIO = 1;
 
@@ -377,6 +378,7 @@ function colunasMdfeExtras(dto, tot) {
     seg_numero_apolice: dto.numero_apolice ?? null,
     seg_numero_averbacao: dto.numero_averbacao ?? null,
     seg_nome_seguradora: dto.nome_seguradora ?? null,
+    contrato_frete_id: dto.contrato_frete_id ?? null,
     antt_rntrc: dto.inf_antt?.rntrc ?? null,
     antt_ciot: dto.inf_antt?.ciot ?? null,
     // infANTT bancário / PIX (0.1)
@@ -716,6 +718,15 @@ async function prepararEmissaoMdfe(tenantId, mdfeRow) {
     tenantId,
     dto.fiscal_empresa_id ?? mdfeRow.fiscal_empresa_id,
   );
+  const ciotRef = await resolverCiotParaDocumento(tenantId, {
+    contratoFreteId: dto.contrato_frete_id ?? mdfeRow.contrato_frete_id,
+    ciotNumeroInformado: dto.inf_antt?.ciot,
+    exigirCadastrado: Boolean(dto.contrato_frete_id ?? mdfeRow.contrato_frete_id),
+  });
+  if (ciotRef.antt_ciot) {
+    dto.inf_antt = { ...(dto.inf_antt || {}), ciot: ciotRef.antt_ciot };
+  }
+  if (ciotRef.contrato_frete_id) dto.contrato_frete_id = ciotRef.contrato_frete_id;
   assertSeguroMdfe(dto);
   validarInfAnttMdfe(dto, empresa);
   validarProdPredMdfe(dto);
@@ -774,12 +785,22 @@ export class MdfeService {
     if (caminhaoId) {
       await resolvePlaca(tenantId, { ...dto, caminhao_id: caminhaoId });
     }
+    const ciotRef = await resolverCiotParaDocumento(tenantId, {
+      contratoFreteId: dto.contrato_frete_id,
+      ciotNumeroInformado: dto.inf_antt?.ciot,
+      exigirCadastrado: Boolean(dto.contrato_frete_id),
+    });
+    if (ciotRef.antt_ciot) {
+      dto.inf_antt = { ...(dto.inf_antt || {}), ciot: ciotRef.antt_ciot };
+    }
+    if (ciotRef.contrato_frete_id) dto.contrato_frete_id = ciotRef.contrato_frete_id;
     const row = await prisma.fiscal_mdfes.create({
       data: {
         tenant_id: Number(tenantId),
         fiscal_empresa_id: fiscalEmpresaId,
         caminhao_id: caminhaoId,
         motorista_id: motoristaId,
+        contrato_frete_id: ciotRef.contrato_frete_id,
         chave_acesso: null,
         status: MDFE_STATUS.RASCUNHO,
         ambiente: config.fiscal.ambiente,
@@ -803,12 +824,22 @@ export class MdfeService {
     const dto = rascunhoMdfeSchema.parse(body);
     const { fiscalEmpresaId, caminhaoId, motoristaId } =
       await assertFksVeiculoEmpresa(tenantId, dto);
+    const ciotRef = await resolverCiotParaDocumento(tenantId, {
+      contratoFreteId: dto.contrato_frete_id,
+      ciotNumeroInformado: dto.inf_antt?.ciot,
+      exigirCadastrado: Boolean(dto.contrato_frete_id),
+    });
+    if (ciotRef.antt_ciot) {
+      dto.inf_antt = { ...(dto.inf_antt || {}), ciot: ciotRef.antt_ciot };
+    }
+    if (ciotRef.contrato_frete_id) dto.contrato_frete_id = ciotRef.contrato_frete_id;
     const row = await prisma.fiscal_mdfes.update({
       where: { id: atual.id },
       data: {
         fiscal_empresa_id: fiscalEmpresaId ?? atual.fiscal_empresa_id,
         caminhao_id: caminhaoId,
         motorista_id: motoristaId,
+        contrato_frete_id: ciotRef.contrato_frete_id,
         status: MDFE_STATUS.RASCUNHO,
         ambiente: config.fiscal.ambiente,
         payload_json: dto,

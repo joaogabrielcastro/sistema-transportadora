@@ -446,21 +446,25 @@ model estoque_movimentos {
 }
 
 // =====================================================================
-// Módulo fiscal de transporte (CT-e / MDF-e / CIOT).
+// Módulo fiscal de transporte (CT-e / MDF-e / Contrato de Frete / CIOT).
+//
+// Contrato de Frete = operação/contratação de transporte (fiscal_contratos_frete).
+// CIOT = identificador ANTT vinculado a esse contrato (fiscal_ciots) — não é o
+// contrato. CT-e/MDF-e referenciam o contrato e usam o número do CIOT já
+// registrado; não criam contrato só porque veio um CIOT no payload.
 //
 // Todas as tabelas usam o prefixo fiscal_ e são independentes das tabelas
 // já existentes: NÃO há `@relation` para caminhoes / motoristas / tenants /
 // fiscal_mdfes. Os vínculos (tenant_id, caminhao_id, motorista_id,
-// cliente_id, manifesto_id, fiscal_empresa_id) são colunas escalares Int; as
-// FOREIGN KEYs reais são criadas nas migrations SQL
-// (20260827200000_fiscal_transporte + 20260828120000_fiscal_provider_generico)
+// cliente_id, manifesto_id, fiscal_empresa_id, contrato_frete_id) são
+// colunas escalares Int; as FOREIGN KEYs reais são criadas nas migrations SQL
 // e revalidadas por tenant no service com
 // findFirst({ where: { id, tenant_id } }), mesmo padrão de applyMotoristaLink.
 //
 // CT-e/MDF-e: Brasil NFe (https://www.brasilnfe.com.br). O Token da empresa
 // fica em cte_mdfe_provider_token (cifrado). UserToken opcional por empresa
 // em brasil_nfe_user_token; senão usa BRASIL_NFE_USER_TOKEN. CIOT permanece
-// em provedor próprio (ciot_*).
+// em provedor próprio (ciot_*), desacoplado da entidade de contrato.
 //
 // Sem enum Prisma: `status` é String; os valores válidos ficam no comentário
 // `///` de cada campo e são validados via Zod nos controllers.
@@ -586,7 +590,10 @@ model fiscal_ctes {
   numero_protocolo    String?   @db.VarChar(30)
   data_emissao        DateTime? @db.Timestamptz(6)
   valor_frete         Decimal?  @db.Decimal(14, 2)
-  /// Número do contrato de frete (CIOT / ANTT) vinculado ao CT-e, quando houver.
+  /// FK -> fiscal_contratos_frete.id (operação de transporte). Opcional.
+  contrato_frete_id   Int?
+  /// Número do CIOT (ANTT) já obtido para a operação, quando houver.
+  /// Snapshot do identificador — não é o contrato de frete.
   antt_ciot           String?   @db.VarChar(20)
   xml_path            String?   @db.VarChar(500)
   /// DACTE (PDF) decodificado do base64DACTe do provedor — mesmo padrão de xml_path
@@ -684,6 +691,7 @@ model fiscal_ctes {
   @@index([tenant_id, fiscal_empresa_id])
   @@index([manifesto_id])
   @@index([cte_referenciado_id])
+  @@index([contrato_frete_id])
 }
 
 /// autXML do CT-e (item 1.1): CNPJ/CPF de terceiros autorizados a baixar o XML
@@ -827,8 +835,11 @@ model fiscal_mdfes {
   seg_numero_apolice   String?   @db.VarChar(40)
   seg_numero_averbacao String?   @db.VarChar(40)
   seg_nome_seguradora  String?   @db.VarChar(60)
+  /// FK -> fiscal_contratos_frete.id (operação de transporte). Opcional.
+  contrato_frete_id    Int?
   /// Grupo infANTT do MDF-e (2.2). Exigido em código só quando tipo_emitente vier explicitamente 1 ou 3 (prestador).
   antt_rntrc           String?   @db.VarChar(9)
+  /// Número do CIOT já obtido para a operação (não é o contrato de frete).
   antt_ciot            String?   @db.VarChar(20)
   antt_vale_pedagio    Json?     @db.JsonB
   /// infANTT bancário / PIX da instituição de pagamento do frete (item 0.1). No
@@ -874,6 +885,7 @@ model fiscal_mdfes {
 
   @@index([tenant_id])
   @@index([tenant_id, fiscal_empresa_id])
+  @@index([contrato_frete_id])
 }
 
 /// Seguro da carga do MDF-e como LISTA (item 0.2): `seguros: [...]` do provedor,
@@ -931,56 +943,88 @@ model fiscal_mdfe_municipios_carrega {
   @@index([mdfe_id])
 }
 
-model fiscal_ciots {
-  id                            Int      @id @default(autoincrement())
+/// Contrato de Frete / operação de transporte. Existe independentemente do
+/// provedor de CIOT e do CT-e/MDF-e. O CIOT (quando houver) fica em fiscal_ciots.
+model fiscal_contratos_frete {
+  id                            Int       @id @default(autoincrement())
   tenant_id                     Int
-  /// FK -> fiscal_empresas.id
+  /// FK -> fiscal_empresas.id (certificado usado no registro do CIOT)
   fiscal_empresa_id             Int
   /// FK -> caminhoes.id (opcional)
   caminhao_id                   Int?
   /// FK -> motoristas.id (opcional)
   motorista_id                  Int?
-  /// FK -> fiscal_mdfes.id (opcional). CIOT pode existir sem MDF-e vinculado (3.2).
+  /// FK -> fiscal_mdfes.id (opcional). O contrato pode existir sem MDF-e.
   mdfe_id                       Int?
-  /// NCM da carga declarada (3.4) — opcional.
-  carga_ncm                     String?  @db.VarChar(8)
-  /// Snapshot da situação do RNTRC do contratado no momento da declaração (3.1).
-  /// Só gravado a partir do corpo da declaração — sem consulta automática à ANTT
-  /// nesta rodada. situacao: ativo | suspenso | inapto | ...
-  rntrc_contratado_situacao     String?  @db.VarChar(20)
+  /// 1 = lotação, 2 = fracionada, 3 = TAC-agregado
+  tipo_operacao                 Int?      @db.SmallInt
+  /// lotacao | fracionada | tac_agregado
+  categoria_operacao            String?   @db.VarChar(20)
+  cpf_cnpj_contratado           String?   @db.VarChar(14)
+  rntrc_contratado              String?   @db.VarChar(9)
+  cpf_cnpj_contratante          String?   @db.VarChar(14)
+  rntrc_contratante             String?   @db.VarChar(9)
+  cpf_cnpj_destinatario         String?   @db.VarChar(14)
+  valor_frete                   Decimal   @db.Decimal(14, 2)
+  valor_piso_minimo_frete       Decimal?  @db.Decimal(14, 2)
+  valor_vale_pedagio            Decimal?  @db.Decimal(14, 2)
+  data_inicio_viagem            DateTime? @db.Timestamptz(6)
+  data_fim_viagem               DateTime? @db.Timestamptz(6)
+  origem_destino                Json?     @db.JsonB
+  dados_carga                   Json?     @db.JsonB
+  carga_ncm                     String?   @db.VarChar(8)
+  veiculos                      Json      @default("[]") @db.JsonB
+  inf_pagamento                 Json      @default("[]") @db.JsonB
+  inf_indicadores_operacionais  Json?     @db.JsonB
+  informacoes_adicionais        String?   @db.VarChar(2000)
+  rntrc_contratado_situacao     String?   @db.VarChar(20)
   rntrc_contratado_situacao_em  DateTime? @db.Timestamptz(6)
-  rntrc_contratado_snapshot     Json?    @db.JsonB
-  /// Gerado por nós (12 chars hex), unicidade global garantida com retry
-  id_operacao_transporte        String   @unique @db.VarChar(12)
-  /// O código do CIOT em si — vem da resposta de sucesso da ANTT
-  codigo_identificacao_operacao String?  @db.VarChar(20)
-  codigo_verificador            String?  @db.VarChar(20)
-  protocolo                     String?  @db.VarChar(40)
-  /// pendente | declarado | cancelado | encerrado | erro
-  status                        String   @default("pendente") @db.VarChar(20)
-  /// Categoria da operação (3.2): lotacao | fracionada | tac_agregado. Derivada
-  /// de tipo_operacao (1/2/3) quando não informada. Base para regras de prazo /
-  /// cancelamento / retificação diferentes por categoria.
-  categoria_operacao            String?  @db.VarChar(20)
-  valor_frete                   Decimal  @db.Decimal(14, 2)
-  data_declaracao               DateTime @db.Timestamptz(6)
-  data_inicio_viagem            DateTime @db.Timestamptz(6)
-  data_fim_viagem               DateTime @db.Timestamptz(6)
-  veiculos                      Json     @db.JsonB
-  inf_pagamento                 Json     @db.JsonB
-  /// Retenções do comprovante de pagamento (3.3): INSS e SEST/SENAT. Alíquotas
-  /// como fração (0.022 = 2,2%). Percentual vem do corpo da declaração ou de
-  /// FISCAL_CIOT_RETENCAO_*_ALIQUOTA — nunca hardcoded. Sem alíquota, tudo NULL.
-  retencao_base                 Decimal? @db.Decimal(14, 2)
-  retencao_inss_aliquota        Decimal? @db.Decimal(7, 4)
-  retencao_inss_valor           Decimal? @db.Decimal(14, 2)
-  retencao_sest_senat_aliquota  Decimal? @db.Decimal(7, 4)
-  retencao_sest_senat_valor     Decimal? @db.Decimal(14, 2)
-  criado_em                     DateTime @default(now()) @db.Timestamptz(6)
+  rntrc_contratado_snapshot     Json?     @db.JsonB
+  retencao_base                 Decimal?  @db.Decimal(14, 2)
+  retencao_inss_aliquota        Decimal?  @db.Decimal(7, 4)
+  retencao_inss_valor           Decimal?  @db.Decimal(14, 2)
+  retencao_sest_senat_aliquota  Decimal?  @db.Decimal(7, 4)
+  retencao_sest_senat_valor     Decimal?  @db.Decimal(14, 2)
+  /// rascunho | ativo | em_andamento | concluido | cancelado
+  status                        String    @default("ativo") @db.VarChar(20)
+  criado_em                     DateTime  @default(now()) @db.Timestamptz(6)
+  atualizado_em                 DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
 
   @@index([tenant_id])
   @@index([tenant_id, fiscal_empresa_id])
+  @@index([tenant_id, status])
   @@index([mdfe_id])
+}
+
+/// Registro de CIOT (Código Identificador da Operação de Transporte) junto à
+/// ANTT/provedor. 1:1 com o contrato de frete. Não substitui o contrato.
+model fiscal_ciots {
+  id                            Int       @id @default(autoincrement())
+  tenant_id                     Int
+  /// FK -> fiscal_contratos_frete.id (único: um registro de CIOT por contrato)
+  contrato_frete_id             Int       @unique
+  /// Provedor/integrador usado no registro (desacoplado do contrato).
+  provider                      String    @default("antt") @db.VarChar(32)
+  external_id                   String?   @db.VarChar(80)
+  /// Gerado por nós (12 chars hex), unicidade global garantida com retry
+  id_operacao_transporte        String    @unique @db.VarChar(12)
+  /// Número do CIOT devolvido pela ANTT/provedor
+  codigo_identificacao_operacao String?   @db.VarChar(20)
+  codigo_verificador            String?   @db.VarChar(20)
+  protocolo                     String?   @db.VarChar(40)
+  /// registrando | registrado | erro | cancelado | encerrado
+  status                        String    @default("registrando") @db.VarChar(20)
+  registered_at                 DateTime? @db.Timestamptz(6)
+  cancelled_at                  DateTime? @db.Timestamptz(6)
+  response_data                 Json?     @db.JsonB
+  error_code                    String?   @db.VarChar(20)
+  error_message                 String?
+  criado_em                     DateTime  @default(now()) @db.Timestamptz(6)
+  atualizado_em                 DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@index([tenant_id])
+  @@index([tenant_id, contrato_frete_id])
+  @@index([tenant_id, codigo_identificacao_operacao])
 }
 
 /// Configuração de averbação de seguro de transporte — 1 por tenant.

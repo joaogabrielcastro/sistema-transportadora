@@ -200,6 +200,15 @@ try {
       (await columnExists("notas_fiscais", "observacao")),
   );
 
+  await healFailedMigration(
+    "20260909120000_fiscal_contrato_frete_ciot",
+    async () =>
+      (await tableExists("fiscal_contratos_frete")) &&
+      (await columnExists("fiscal_ciots", "contrato_frete_id")) &&
+      (await columnExists("fiscal_ctes", "contrato_frete_id")) &&
+      (await columnExists("fiscal_mdfes", "contrato_frete_id")),
+  );
+
   run("npx prisma migrate deploy");
 
   console.log("\nConcluído. Verifique se caminhao_documentos existe (PDFs por caminhão).");

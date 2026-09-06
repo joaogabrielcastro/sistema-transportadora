@@ -46,7 +46,7 @@ function isoOuNulo(value) {
 }
 
 /**
- * Monta o corpo de POST /fiscal/ciot/declarar a partir do estado da tela.
+ * Monta o corpo de POST /fiscal/contratos-frete a partir do estado da tela.
  * Campos condicionais (destinatário, carga, indicadores) só entram quando
  * o tipo de operação exige — TAC-Agregado não manda destinatário.
  */
@@ -169,7 +169,6 @@ export function errosDeclaracaoCiot(payload) {
   if (payload?.valor_vale_pedagio == null || payload.valor_vale_pedagio < 0) {
     erros.push("Informe o vale-pedágio (0 se não houver no percurso).");
   }
-  if (!payload?.data_declaracao) erros.push("Informe a data da declaração.");
   if (!payload?.data_inicio_viagem) erros.push("Informe o início da viagem.");
   if (!payload?.data_fim_viagem) erros.push("Informe o fim da viagem.");
   if (!Array.isArray(payload?.veiculos) || payload.veiculos.length < 2) {

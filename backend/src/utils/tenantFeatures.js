@@ -7,7 +7,7 @@ export const PLANS = Object.freeze({
   complete: "complete",
 });
 
-// `transporte_fiscal` (CT-e / MDF-e / CIOT): default false em TODOS os planos.
+// `transporte_fiscal` (CT-e / MDF-e / Contrato de Frete / CIOT): default false em TODOS os planos.
 // Nenhum tenant ganha acesso automático — precisa ligar manualmente via
 // `npm run tenant:billing` ou override direto em tenants.features.
 export const PLAN_FEATURES = Object.freeze({

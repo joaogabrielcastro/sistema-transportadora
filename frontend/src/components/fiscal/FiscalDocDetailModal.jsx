@@ -1,14 +1,19 @@
 import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
-import { Alert, LoadingSpinner, Modal, StatusBadge } from "../ui";
+import { Alert, Button, LoadingSpinner, Modal, StatusBadge } from "../ui";
 import AverbacaoStatusCard from "./AverbacaoStatusCard.jsx";
+import {
+  ciotRegistradoNoContrato,
+  labelStatusCiot,
+  labelStatusContrato,
+  numeroCiotDoContrato,
+} from "../../utils/contratoFrete.js";
 
 function fmtDate(value) {
   if (!value) return "—";
   const d = new Date(value);
-  return Number.isNaN(d.getTime())
-    ? String(value)
-    : d.toLocaleString("pt-BR");
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleString("pt-BR");
 }
 
 function fmtMoney(value) {
@@ -32,11 +37,6 @@ function Row({ label, value }) {
 
 Row.propTypes = { label: PropTypes.string, value: PropTypes.node };
 
-/**
- * Detalhe de um CT-e / MDF-e. Quando a emissão foi rejeitada pelo provedor,
- * `erro` traz o texto cru devolvido — ele NÃO é escondido nem resumido, é o
- * que estamos usando para confirmar a integração fiscal.
- */
 export default function FiscalDocDetailModal({
   isOpen,
   onClose,
@@ -44,18 +44,24 @@ export default function FiscalDocDetailModal({
   doc = null,
   tipo = "cte",
   erro = null,
+  onRegistrarCiot,
+  registrandoCiot = false,
 }) {
   const [averbacao, setAverbacao] = useState(doc?.averbacao ?? null);
   useEffect(() => {
     setAverbacao(doc?.averbacao ?? null);
   }, [doc]);
 
+  const isContrato = tipo === "ciot" || tipo === "contrato";
   const titulo =
     tipo === "mdfe"
       ? "Detalhe do MDF-e"
-      : tipo === "ciot"
-        ? "Detalhe do contrato de frete"
+      : isContrato
+        ? "Contrato de Frete"
         : "Detalhe do CT-e";
+  const ciotOk = isContrato && ciotRegistradoNoContrato(doc);
+  const ciotStatus =
+    doc?.ciot?.status || doc?.ciot_status || "nao_registrado";
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={titulo} size="lg">
@@ -75,14 +81,49 @@ export default function FiscalDocDetailModal({
 
           {doc ? (
             <div className="rounded-lg border border-border px-4 py-2">
-              <Row
-                label="Status"
-                value={
-                  doc.status ? <StatusBadge status={doc.status} /> : "—"
-                }
-              />
-              {tipo !== "ciot" && (
+              {isContrato ? (
                 <>
+                  <Row
+                    label="Contrato"
+                    value={`#${String(doc.id).padStart(6, "0")}`}
+                  />
+                  <Row
+                    label="Status do contrato"
+                    value={
+                      doc.status ? (
+                        <StatusBadge status={labelStatusContrato(doc.status)} />
+                      ) : (
+                        "—"
+                      )
+                    }
+                  />
+                  <Row
+                    label="Contratante"
+                    value={doc.cpf_cnpj_contratante || "—"}
+                  />
+                  <Row
+                    label="Transportador"
+                    value={doc.cpf_cnpj_contratado || "—"}
+                  />
+                  <Row label="Valor" value={fmtMoney(doc.valor_frete)} />
+                  <Row
+                    label="Início da viagem"
+                    value={fmtDate(doc.data_inicio_viagem)}
+                  />
+                  <Row
+                    label="Fim da viagem"
+                    value={fmtDate(doc.data_fim_viagem)}
+                  />
+                  <Row label="Criado em" value={fmtDate(doc.criado_em)} />
+                </>
+              ) : (
+                <>
+                  <Row
+                    label="Status"
+                    value={
+                      doc.status ? <StatusBadge status={doc.status} /> : "—"
+                    }
+                  />
                   <Row
                     label="Número / Série"
                     value={
@@ -94,25 +135,22 @@ export default function FiscalDocDetailModal({
                     value={doc.chave_acesso || "— (não gerada)"}
                   />
                   <Row label="Emissão" value={fmtDate(doc.data_emissao)} />
-                </>
-              )}
-              <Row label="Criado em" value={fmtDate(doc.criado_em)} />
-              {tipo === "cte" && (
-                <Row label="Valor do frete" value={fmtMoney(doc.valor_frete)} />
-              )}
-              {(tipo === "cte" || tipo === "mdfe") && (
-                <Row
-                  label="Contrato de frete (CIOT)"
-                  value={
-                    doc.antt_ciot ||
-                    doc.payload_json?.ciot ||
-                    doc.payload_json?.inf_antt?.ciot ||
-                    "—"
-                  }
-                />
-              )}
-              {tipo !== "ciot" && (
-                <>
+                  <Row label="Criado em" value={fmtDate(doc.criado_em)} />
+                  {tipo === "cte" && (
+                    <Row
+                      label="Valor do frete"
+                      value={fmtMoney(doc.valor_frete)}
+                    />
+                  )}
+                  <Row
+                    label="CIOT (ANTT)"
+                    value={
+                      doc.antt_ciot ||
+                      doc.payload_json?.ciot ||
+                      doc.payload_json?.inf_antt?.ciot ||
+                      "—"
+                    }
+                  />
                   <Row
                     label="Ambiente"
                     value={
@@ -127,9 +165,7 @@ export default function FiscalDocDetailModal({
                   {doc.consulta?.mensagem && (
                     <Row
                       label="Consulta"
-                      value={
-                        `${doc.consulta.origem === "brasil_nfe" ? "Brasil NFe" : "Local"}: ${doc.consulta.mensagem}`
-                      }
+                      value={`${doc.consulta.origem === "brasil_nfe" ? "Brasil NFe" : "Local"}: ${doc.consulta.mensagem}`}
                     />
                   )}
                   <Row
@@ -162,39 +198,18 @@ export default function FiscalDocDetailModal({
                       }
                     />
                   )}
-                </>
-              )}
-              {tipo === "mdfe" && (
-                <>
-                  <Row
-                    label="Protocolo de encerramento"
-                    value={doc.numero_protocolo || "—"}
-                  />
-                  <Row
-                    label="Encerrado em"
-                    value={fmtDate(doc.encerrado_em)}
-                  />
-                </>
-              )}
-              {tipo === "ciot" && (
-                <>
-                  <Row
-                    label="CIOT"
-                    value={doc.codigo_identificacao_operacao || "—"}
-                  />
-                  <Row
-                    label="Id da operação"
-                    value={doc.id_operacao_transporte || "—"}
-                  />
-                  <Row label="Valor do frete" value={fmtMoney(doc.valor_frete)} />
-                  <Row
-                    label="Início da viagem"
-                    value={fmtDate(doc.data_inicio_viagem)}
-                  />
-                  <Row
-                    label="Fim da viagem"
-                    value={fmtDate(doc.data_fim_viagem)}
-                  />
+                  {tipo === "mdfe" && (
+                    <>
+                      <Row
+                        label="Protocolo de encerramento"
+                        value={doc.numero_protocolo || "—"}
+                      />
+                      <Row
+                        label="Encerrado em"
+                        value={fmtDate(doc.encerrado_em)}
+                      />
+                    </>
+                  )}
                 </>
               )}
             </div>
@@ -205,6 +220,49 @@ export default function FiscalDocDetailModal({
               </p>
             )
           )}
+
+          {doc && isContrato && (
+            <div className="rounded-lg border border-border px-4 py-3 space-y-3">
+              <p className="text-sm font-semibold text-text-primary">CIOT</p>
+              <p className="text-xs text-text-secondary">
+                Código da operação na ANTT. Não substitui o contrato de frete.
+              </p>
+              <div className="rounded-lg border border-border px-4 py-2">
+                <Row
+                  label="Status"
+                  value={<StatusBadge status={labelStatusCiot(ciotStatus)} />}
+                />
+                <Row
+                  label="Número"
+                  value={numeroCiotDoContrato(doc) || "Não registrado"}
+                />
+                <Row
+                  label="Provedor"
+                  value={doc.ciot?.provider || "—"}
+                />
+                <Row
+                  label="Data de registro"
+                  value={fmtDate(doc.ciot?.registered_at)}
+                />
+                {doc.ciot?.error_message && (
+                  <Row label="Erro" value={doc.ciot.error_message} />
+                )}
+              </div>
+              {!ciotOk &&
+                doc.status !== "cancelado" &&
+                typeof onRegistrarCiot === "function" && (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    loading={registrandoCiot}
+                    onClick={onRegistrarCiot}
+                  >
+                    Registrar CIOT
+                  </Button>
+                )}
+            </div>
+          )}
+
           {doc && (tipo === "cte" || tipo === "mdfe") && (
             <AverbacaoStatusCard
               averbacao={averbacao}
@@ -224,6 +282,8 @@ FiscalDocDetailModal.propTypes = {
   onClose: PropTypes.func.isRequired,
   loading: PropTypes.bool,
   doc: PropTypes.object,
-  tipo: PropTypes.oneOf(["cte", "mdfe", "ciot"]),
+  tipo: PropTypes.oneOf(["cte", "mdfe", "ciot", "contrato"]),
   erro: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
+  onRegistrarCiot: PropTypes.func,
+  registrandoCiot: PropTypes.bool,
 };

@@ -50,6 +50,7 @@ async function cleanupFiscal(tenantId) {
   await prisma.fiscal_ctes.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.fiscal_mdfes.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.fiscal_ciots.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
+  await prisma.fiscal_contratos_frete.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.fiscal_clientes.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.fiscal_empresas.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
 }
@@ -76,6 +77,7 @@ test(
         "/api/fiscal/cte",
         "/api/fiscal/mdfe",
         "/api/fiscal/ciot",
+        "/api/fiscal/contratos-frete",
       ]) {
         const res = await request(app).get(path).set(authHeader);
         assert.equal(res.status, 403, `${path} deveria dar 403`);

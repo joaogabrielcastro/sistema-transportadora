@@ -88,7 +88,7 @@ test("Observacao e Retira entram no payload oficial quando presentes no DTO", ()
   assert.equal(payload.Retira, false);
 });
 
-test("CIOT do contrato de frete entra em Ciot e Modal.infCiot", () => {
+test("número do CIOT entra em Ciot e Modal.infCiot (não é o id do contrato)", () => {
   const dto = emitirCteSchema.parse({
     cliente_id: 1,
     tipo_cte: "0",
@@ -104,6 +104,23 @@ test("CIOT do contrato de frete entra em Ciot e Modal.infCiot", () => {
   assert.equal(payload.Ciot, "123456789012");
   assert.equal(payload.Modal.rntrc, "12345678");
   assert.deepEqual(payload.Modal.infCiot, [{ CIOT: "123456789012" }]);
+});
+
+test("id do contrato de frete não é enviado como número de CIOT", () => {
+  const dto = emitirCteSchema.parse({
+    cliente_id: 1,
+    tipo_cte: "0",
+    cfop: "5353",
+    natureza_operacao: "Transporte",
+    dt_emissao: "2026-08-22T10:00:00-03:00",
+    contrato_frete_id: 12,
+    ciot: "123456789012",
+    servico: { valor_prestacao: 100 },
+    tomador: { cpf_cnpj: "12345678000199" },
+  });
+  const payload = montarPayloadCte(dto, undefined);
+  assert.equal(payload.Ciot, "123456789012");
+  assert.notEqual(String(payload.Ciot), String(dto.contrato_frete_id));
 });
 
 test("montarModalCte sem ciot devolve só o modal informado", () => {

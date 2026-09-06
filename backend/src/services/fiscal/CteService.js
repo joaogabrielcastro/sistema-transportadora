@@ -25,6 +25,7 @@ import {
   agendarCancelamentoAverbacao,
   anexarAverbacaoAoDocumento,
 } from "../averbacao/averbacaoHooks.js";
+import { resolverCiotParaDocumento } from "./ciotOperacao.js";
 import {
   colunasSefaz,
   CTE_STATUS,
@@ -442,6 +443,7 @@ function colunasImpostoCarga(dto) {
     valor_carga: carga.valor_carga ?? null,
     produto_predominante: carga.produto_predominante ?? null,
     outras_caracteristicas: carga.outras_caracteristicas ?? null,
+    contrato_frete_id: dto.contrato_frete_id ?? null,
     antt_ciot: dto.ciot ? String(dto.ciot).replace(/\D/g, "") : null,
   };
 }
@@ -484,8 +486,9 @@ export function montarCarga(dto) {
 }
 
 /**
- * Modal rodoviário + contrato de frete (CIOT). Preserva `dto.modal` e, se veio
- * `ciot` no DTO, acrescenta infCiot sem sobrescrever um infCiot já enviado.
+ * Modal rodoviário + número do CIOT da operação. Preserva `dto.modal` e, se
+ * veio `ciot` (identificador ANTT, não o contrato), acrescenta infCiot sem
+ * sobrescrever um infCiot já enviado.
  */
 export function montarModalCte(dto) {
   const modal =
@@ -748,6 +751,14 @@ async function prepararEmissaoCte(tenantId, cte) {
     dto.fiscal_empresa_id ?? cte.fiscal_empresa_id,
   );
 
+  const ciotRef = await resolverCiotParaDocumento(tenantId, {
+    contratoFreteId: dto.contrato_frete_id ?? cte.contrato_frete_id,
+    ciotNumeroInformado: dto.ciot,
+    exigirCadastrado: Boolean(dto.contrato_frete_id ?? cte.contrato_frete_id),
+  });
+  if (ciotRef.antt_ciot) dto.ciot = ciotRef.antt_ciot;
+  if (ciotRef.contrato_frete_id) dto.contrato_frete_id = ciotRef.contrato_frete_id;
+
   assertEmpresaCrt(empresa);
   const documentos = normalizarDocumentosCte(dto);
   validarImpostoCte(dto, empresa, dto.dt_emissao);
@@ -850,6 +861,13 @@ export class CteService {
     );
     const { fiscalEmpresaId, caminhaoId, motoristaId } =
       await assertFksVeiculoEmpresa(tenantId, dto);
+    const ciotRef = await resolverCiotParaDocumento(tenantId, {
+      contratoFreteId: dto.contrato_frete_id,
+      ciotNumeroInformado: dto.ciot,
+      exigirCadastrado: Boolean(dto.contrato_frete_id),
+    });
+    if (ciotRef.antt_ciot) dto.ciot = ciotRef.antt_ciot;
+    if (ciotRef.contrato_frete_id) dto.contrato_frete_id = ciotRef.contrato_frete_id;
     const row = await prisma.fiscal_ctes.create({
       data: {
         tenant_id: Number(tenantId),
@@ -886,6 +904,13 @@ export class CteService {
     );
     const { fiscalEmpresaId, caminhaoId, motoristaId } =
       await assertFksVeiculoEmpresa(tenantId, dto);
+    const ciotRef = await resolverCiotParaDocumento(tenantId, {
+      contratoFreteId: dto.contrato_frete_id,
+      ciotNumeroInformado: dto.ciot,
+      exigirCadastrado: Boolean(dto.contrato_frete_id),
+    });
+    if (ciotRef.antt_ciot) dto.ciot = ciotRef.antt_ciot;
+    if (ciotRef.contrato_frete_id) dto.contrato_frete_id = ciotRef.contrato_frete_id;
     const row = await prisma.fiscal_ctes.update({
       where: { id: atual.id },
       data: {

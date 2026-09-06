@@ -7,6 +7,7 @@ import { extractApiArray, extractApiData } from "../utils/extractApiArray.js";
 import {
   useApiMutation,
   useCteListQuery,
+  useCiotListQuery,
   useFiscalDocDownload,
   useFiscalEmpresasQuery,
   useMdfeListQuery,
@@ -58,6 +59,11 @@ export default function FiscalMdfe() {
 
   const mdfesQuery = useMdfeListQuery({ status: filtroStatus || undefined });
   const mdfes = useMemo(() => mdfesQuery.data || [], [mdfesQuery.data]);
+  const contratosQuery = useCiotListQuery();
+  const contratosFrete = useMemo(
+    () => contratosQuery.data || [],
+    [contratosQuery.data],
+  );
   const empresasQuery = useFiscalEmpresasQuery();
   const empresaFiscal = useMemo(
     () => resolverEmpresaFiscalAtiva(empresasQuery.data),
@@ -419,6 +425,7 @@ export default function FiscalMdfe() {
           caminhoes={caminhoes}
           motoristas={motoristas}
           ctesVinculaveis={ctesVinculaveis}
+          contratosFrete={contratosFrete}
           submitting={emitindo}
           savingDraft={savingDraft}
           simulating={simulando}

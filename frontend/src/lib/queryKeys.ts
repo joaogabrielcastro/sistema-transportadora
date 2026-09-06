@@ -54,6 +54,8 @@ export const queryKeys = {
       ["fiscal", "mdfe", "list", params] as const,
     ciotList: (params: ListParams) =>
       ["fiscal", "ciot", "list", params] as const,
+    contratosFrete: (params: ListParams) =>
+      ["fiscal", "contratos-frete", "list", params] as const,
     clientes: (term: string) => ["fiscal", "clientes", term || ""] as const,
     empresas: () => ["fiscal", "empresas"] as const,
     seguroConfig: () => ["fiscal", "seguro", "config"] as const,

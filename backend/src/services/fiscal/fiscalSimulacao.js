@@ -141,7 +141,7 @@ export function resultadoSimulacaoDocumento({
         numero_ciot: true,
       },
       aviso:
-        "Demonstração: o contrato não foi enviado à ANTT. Nada aqui vale como CIOT declarado.",
+        "Demonstração: o contrato de frete não foi enviado à ANTT. Nada aqui vale como CIOT registrado.",
     };
   }
 

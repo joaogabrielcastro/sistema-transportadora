@@ -13,6 +13,7 @@ import { FiscalVeiculoDadosService } from "../services/fiscal/FiscalVeiculoDados
 import { CteService } from "../services/fiscal/CteService.js";
 import { MdfeService } from "../services/fiscal/MdfeService.js";
 import { CiotService } from "../services/fiscal/CiotService.js";
+import { ContratoFreteService } from "../services/fiscal/ContratoFreteService.js";
 import { FiscalDownloadService } from "../services/fiscal/FiscalDownloadService.js";
 
 // ---------------------- Download de CT-e/MDF-e (XML/PDF) ----------------------
@@ -431,13 +432,109 @@ export const mdfeController = {
   baixarLote: baixarLoteFiscal("mdfe"),
 };
 
-// ----------------------------- CIOT -----------------------------
+// ---------------------- Contrato de Frete / CIOT ----------------------
+export const contratoFreteController = {
+  list: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.json({
+      success: true,
+      data: await ContratoFreteService.list(tenantId, {
+        status: req.query.status,
+        ciot_status: req.query.ciot_status,
+      }),
+    });
+  }),
+  get: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.json({
+      success: true,
+      data: await ContratoFreteService.getById(tenantId, req.params.id),
+    });
+  }),
+  create: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.status(201).json({
+      success: true,
+      data: await ContratoFreteService.create(tenantId, req.body),
+      message: "Contrato de frete criado",
+    });
+  }),
+  update: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.json({
+      success: true,
+      data: await ContratoFreteService.update(tenantId, req.params.id, req.body),
+      message: "Contrato de frete atualizado",
+    });
+  }),
+  cancelar: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.json({
+      success: true,
+      data: await ContratoFreteService.cancelar(tenantId, req.params.id),
+      message: "Contrato de frete cancelado",
+    });
+  }),
+  simular: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.json({
+      success: true,
+      data: await CiotService.simular(tenantId, {
+        ...req.body,
+        contrato_frete_id: req.params.id,
+      }),
+      message: "Simulação de CIOT (não transmitido à ANTT)",
+    });
+  }),
+  getCiot: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    const contrato = await ContratoFreteService.getById(tenantId, req.params.id);
+    res.json({ success: true, data: contrato.ciot });
+  }),
+  registrarCiot: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.status(201).json({
+      success: true,
+      data: await CiotService.registrar(tenantId, req.params.id, req.body),
+      message: "CIOT registrado",
+    });
+  }),
+  cancelarCiot: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    const { justificativa } = cancelarDocumentoSchema.parse(req.body);
+    res.json({
+      success: true,
+      data: await CiotService.cancelar(tenantId, req.params.id, justificativa),
+      message: "Cancelamento de CIOT processado",
+    });
+  }),
+  encerrarCiot: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.json({
+      success: true,
+      data: await CiotService.encerrar(tenantId, req.params.id),
+      message: "Encerramento de CIOT processado",
+    });
+  }),
+  consultarCiot: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    res.json({
+      success: true,
+      data: await CiotService.consultarCiotGerado(tenantId, req.params.id),
+    });
+  }),
+};
+
+// ----------------------------- CIOT (legado: opera sobre o contrato) -----------------------------
 export const ciotController = {
   list: catchAsync(async (req, res) => {
     const tenantId = requireTenantId(req);
     res.json({
       success: true,
-      data: await CiotService.list(tenantId, { status: req.query.status }),
+      data: await CiotService.list(tenantId, {
+        status: req.query.status,
+        ciot_status: req.query.ciot_status,
+      }),
     });
   }),
   get: catchAsync(async (req, res) => {
@@ -460,7 +557,7 @@ export const ciotController = {
     res.status(201).json({
       success: true,
       data: await CiotService.declarar(tenantId, req.body),
-      message: "CIOT declarado",
+      message: "Contrato de frete criado e CIOT registrado",
     });
   }),
   cancelar: catchAsync(async (req, res) => {

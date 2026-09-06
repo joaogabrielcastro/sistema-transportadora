@@ -2,9 +2,10 @@ import { z } from "zod";
 import { chaveAcessoValida } from "../utils/fiscalDocs.js";
 
 /**
- * Schemas Zod do módulo fiscal de transporte (CT-e / MDF-e / CIOT).
+ * Schemas Zod do módulo fiscal de transporte (CT-e / MDF-e / Contrato de Frete / CIOT).
  * Campos da nossa API em snake_case (convenção ATrack). Cada service traduz
- * para o JSON da Brasil NFe (CT-e / MDF-e). CIOT permanece em provedor próprio.
+ * para o JSON da Brasil NFe (CT-e / MDF-e). CIOT permanece em provedor próprio
+ * e é um registro vinculado ao contrato de frete — não substitui o contrato.
  *
  * Os payloads de emissão têm dezenas de campos fiscais aninhados (endereços,
  * impostos, DIFAL, IBS/CBS, seguros, ...). Só validamos a fundo o que o
@@ -307,9 +308,11 @@ export const emitirCteSchema = z
     fiscal_empresa_id: optionalId,
     caminhao_id: optionalId,
     motorista_id: optionalId,
-    // Contrato de frete eletrônico (CIOT / ANTT). Opcional — o CT-e pode ser
-    // emitido sem CIOT; quando informado, é persistido em fiscal_ctes.antt_ciot
-    // e enviado no payload (Ciot + Modal.infCiot).
+    // FK do Contrato de Frete (operação). O CIOT usado no CT-e sai desse
+    // contrato quando já estiver registrado — não criar contrato a partir do CT-e.
+    contrato_frete_id: optionalId,
+    // Número do CIOT já obtido (ANTT). Opcional. Persistido em fiscal_ctes.antt_ciot
+    // e enviado no payload (Ciot + Modal.infCiot). Não é o número do contrato.
     ciot: optionalDigitsPattern(
       /^\d{1,12}$/,
       "CIOT deve ter no máximo 12 dígitos numéricos",
@@ -753,10 +756,13 @@ export const emitirMdfeSchema = z.object({
   produto_predominante: looseObject.optional(),
   // Grupo infANTT do MDF-e (2.2). Obrigatoriedade (quando não é frota própria)
   // cobrada no MdfeService, não aqui.
+  // FK do Contrato de Frete (operação). O CIOT do infANTT sai desse contrato
+  // quando já estiver registrado.
+  contrato_frete_id: optionalId,
   inf_antt: z
     .object({
       rntrc: optionalDigits(9),
-      // CIOT: só dígitos, no máx. 12 (era .max(20), teto errado).
+      // Número do CIOT já obtido — não é o contrato de frete.
       ciot: optionalDigitsPattern(
         /^\d{1,12}$/,
         "CIOT deve ter no máximo 12 dígitos numéricos",
@@ -931,7 +937,9 @@ export const declararCiotSchema = z
     // (Lei 10.209/2001). Sempre informados; 0 quando não há pedágio no percurso.
     valor_piso_minimo_frete: z.number().nonnegative(),
     valor_vale_pedagio: z.number().nonnegative(),
-    data_declaracao: isoDateish,
+    // Data enviada ao provedor no registro do CIOT. Opcional no contrato:
+    // na hora de registrar, o service usa agora() se faltar.
+    data_declaracao: isoDateish.optional(),
     data_inicio_viagem: isoDateish,
     data_fim_viagem: isoDateish,
     veiculos: z.array(veiculoDeclaracaoSchema).min(2).max(5),
@@ -977,6 +985,7 @@ export const declararCiotSchema = z
       .catchall(z.any())
       .optional()
       .nullable(),
+    informacoes_adicionais: z.string().trim().max(2000).optional().nullable(),
   })
   .superRefine((dto, ctx) => {
     if (dto.tipo_operacao === 1 || dto.tipo_operacao === 2) {
@@ -1022,6 +1031,9 @@ export const declararCiotSchema = z
       });
     }
   });
+
+/** Contrato de Frete = a operação. O schema é o da declaração, sem exigir CIOT. */
+export const contratoFreteSchema = declararCiotSchema;
 
 export const consultarSituacaoTransportadorSchema = z.object({
   fiscal_empresa_id: z.number().int().positive(),

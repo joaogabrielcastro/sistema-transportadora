@@ -5,6 +5,10 @@ import { FiscalFormSteps, FiscalFormStepNav } from "./FiscalFormSteps.jsx";
 import { formatCaminhaoOptions } from "../../utils/caminhaoOptions.js";
 import { useReboquesPreviewQuery } from "../../hooks";
 import { mdfeExigeGruposAntt } from "../../utils/fiscalForms.js";
+import {
+  ciotRegistradoNoContrato,
+  numeroCiotDoContrato,
+} from "../../utils/contratoFrete.js";
 import { CpfCnpjField, MoneyField, UfField } from "./FiscalFields.jsx";
 import {
   WEIGHT_CEILING_14_3,
@@ -45,6 +49,7 @@ const emptyForm = {
   // infANTT (item 2.2)
   antt_rntrc: "",
   antt_ciot: "",
+  contrato_frete_id: "",
   antt_vale_pedagio_valor: "",
   // infANTT — infoBancaria / PIX (PARTE 5.5)
   antt_cod_banco: "",
@@ -133,6 +138,7 @@ export default function MdfeForm({
   caminhoes = [],
   motoristas = [],
   ctesVinculaveis = [],
+  contratosFrete = [],
   submitting = false,
   savingDraft = false,
   simulating = false,
@@ -184,6 +190,10 @@ export default function MdfeForm({
         ? p.percurso_ufs.join(" ")
         : f.percurso_ufs,
       tipo_emitente: p.tipo_emitente != null ? String(p.tipo_emitente) : "",
+      contrato_frete_id: p.contrato_frete_id
+        ? String(p.contrato_frete_id)
+        : f.contrato_frete_id,
+      antt_ciot: p.inf_antt?.ciot || f.antt_ciot,
     }));
     if (Array.isArray(p.cte_ids)) setCteIds(p.cte_ids);
     if (p.motorista_id) setModoCondutor("cadastrado");
@@ -252,6 +262,21 @@ export default function MdfeForm({
   const caminhaoOptions = useMemo(
     () => formatCaminhaoOptions(caminhoes),
     [caminhoes],
+  );
+
+  const contratosComCiot = useMemo(
+    () =>
+      (Array.isArray(contratosFrete) ? contratosFrete : [])
+        .filter((c) => ciotRegistradoNoContrato(c))
+        .map((c) => {
+          const num = numeroCiotDoContrato(c);
+          return {
+            value: String(c.id),
+            label: `Contrato #${String(c.id).padStart(6, "0")} · CIOT ${num}`,
+            ciot: num,
+          };
+        }),
+    [contratosFrete],
   );
 
   const motoristaOptions = useMemo(
@@ -384,6 +409,8 @@ export default function MdfeForm({
     const infAntt = {};
     if (anttRntrcDigits) infAntt.rntrc = anttRntrcDigits;
     if (form.antt_ciot.trim()) infAntt.ciot = form.antt_ciot.trim();
+    if (form.contrato_frete_id)
+      payload.contrato_frete_id = Number(form.contrato_frete_id);
     if (num(form.antt_vale_pedagio_valor) != null)
       infAntt.vale_pedagio = { valor: num(form.antt_vale_pedagio_valor) };
     if (form.antt_cod_banco.trim())
@@ -1077,16 +1104,35 @@ export default function MdfeForm({
               helperText="Se a empresa fiscal já tem RNTRC cadastrado, informe o mesmo aqui."
               className="mb-0"
             />
+            {contratosComCiot.length > 0 && (
+              <FormField
+                label="Contrato de frete"
+                type="select"
+                value={form.contrato_frete_id}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  set("contrato_frete_id", id);
+                  const escolhido = contratosComCiot.find((c) => c.value === id);
+                  if (escolhido?.ciot) set("antt_ciot", escolhido.ciot);
+                }}
+                options={[
+                  { value: "", label: "Nenhum (informar CIOT abaixo, se houver)" },
+                  ...contratosComCiot,
+                ]}
+                helperText="A operação de transporte. O CIOT entra no MDF-e automaticamente."
+                className="mb-0"
+              />
+            )}
             <FormField
-              label="Contrato de frete (CIOT)"
+              label="Número do CIOT"
               value={form.antt_ciot}
               onChange={(e) =>
                 set("antt_ciot", e.target.value.replace(/\D/g, "").slice(0, 12))
               }
-              placeholder="Número do CIOT"
+              placeholder="Já registrado na ANTT"
               inputMode="numeric"
               maxLength={12}
-              helperText="Opcional. Informe o CIOT já declarado na ANTT."
+              helperText="Opcional. Código da ANTT desta operação — não é o número do contrato."
               className="mb-0"
             />
             <MoneyField
@@ -1374,6 +1420,7 @@ MdfeForm.propTypes = {
   caminhoes: PropTypes.array,
   motoristas: PropTypes.array,
   ctesVinculaveis: PropTypes.array,
+  contratosFrete: PropTypes.array,
   submitting: PropTypes.bool,
   savingDraft: PropTypes.bool,
   simulating: PropTypes.bool,

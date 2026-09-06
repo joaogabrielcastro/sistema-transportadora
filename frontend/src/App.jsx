@@ -330,7 +330,7 @@ function AppRoutes() {
           }
         />
         <Route
-          path="/fiscal/ciot"
+          path="/fiscal/contratos-frete"
           element={
             <GuardedRoute
               feature="transporte_fiscal"
@@ -339,6 +339,11 @@ function AppRoutes() {
               <FiscalCiot />
             </GuardedRoute>
           }
+        />
+        {/* Legado: /fiscal/ciot era a tela da operação. O fluxo oficial é /fiscal/contratos-frete. */}
+        <Route
+          path="/fiscal/ciot"
+          element={<Navigate to="/fiscal/contratos-frete" replace />}
         />
         <Route
           path="/usuarios"

@@ -15,6 +15,7 @@ import CiotList from "../components/fiscal/CiotList.jsx";
 import FiscalDocDetailModal from "../components/fiscal/FiscalDocDetailModal.jsx";
 import CancelarDocModal from "../components/fiscal/CancelarDocModal.jsx";
 import FiscalSimulacaoModal from "../components/fiscal/FiscalSimulacaoModal.jsx";
+import { numeroCiotDoContrato } from "../utils/contratoFrete.js";
 
 function textoErroProvedor(parsed, raw) {
   const partes = [];
@@ -36,6 +37,7 @@ export default function FiscalCiot() {
   const [msg, setMsg] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [simulando, setSimulando] = useState(false);
+  const [registrando, setRegistrando] = useState(false);
   const [simulacao, setSimulacao] = useState({
     open: false,
     loading: false,
@@ -45,8 +47,11 @@ export default function FiscalCiot() {
   const [caminhoes, setCaminhoes] = useState([]);
   const [motoristas, setMotoristas] = useState([]);
 
-  const ciotsQuery = useCiotListQuery();
-  const ciots = useMemo(() => ciotsQuery.data || [], [ciotsQuery.data]);
+  const contratosQuery = useCiotListQuery();
+  const contratos = useMemo(
+    () => contratosQuery.data || [],
+    [contratosQuery.data],
+  );
   const empresasQuery = useFiscalEmpresasQuery();
   const empresas = useMemo(
     () => empresasQuery.data || [],
@@ -82,25 +87,22 @@ export default function FiscalCiot() {
     };
   }, []);
 
-  const handleDeclarar = async (payload) => {
+  const handleSalvarContrato = async (payload) => {
     setEnviando(true);
     setMsg("");
     try {
       const res = await apiFetch({
         method: "POST",
-        url: "/fiscal/ciot/declarar",
+        url: "/fiscal/contratos-frete",
         data: payload,
       });
       const doc = extractApiData(res);
       setMsg(
-        `Contrato de frete declarado. CIOT: ${
-          doc?.codigo_identificacao_operacao ||
-          doc?.id_operacao_transporte ||
-          "—"
-        }`,
+        `Contrato de frete #${String(doc?.id || "").padStart(6, "0")} salvo. ` +
+          "Registre o CIOT quando a operação exigir.",
       );
-      ciotsQuery.refetch();
-      setTab("declarados");
+      contratosQuery.refetch();
+      setTab("lista");
     } catch (err) {
       const parsed = await parseApiError(err);
       setDetalhe({
@@ -109,7 +111,7 @@ export default function FiscalCiot() {
         doc: null,
         erro:
           textoErroProvedor(parsed, err?.response?.data) ||
-          "Falha na declaração do CIOT",
+          "Falha ao salvar o contrato de frete",
       });
     } finally {
       setEnviando(false);
@@ -123,7 +125,7 @@ export default function FiscalCiot() {
     try {
       const res = await apiFetch({
         method: "POST",
-        url: "/fiscal/ciot/simular",
+        url: "/fiscal/contratos-frete/simular",
         data: payload,
       });
       const data = extractApiData(res);
@@ -142,7 +144,7 @@ export default function FiscalCiot() {
         resultado: null,
         erro:
           textoErroProvedor(parsed, err?.response?.data) ||
-          "Falha ao simular o CIOT",
+          "Falha ao simular o registro de CIOT",
       });
     } finally {
       setSimulando(false);
@@ -152,7 +154,7 @@ export default function FiscalCiot() {
   const handleVerDetalhe = async (row) => {
     setDetalhe({ open: true, loading: true, doc: null, erro: null });
     try {
-      const res = await apiFetch({ url: `/fiscal/ciot/${row.id}` });
+      const res = await apiFetch({ url: `/fiscal/contratos-frete/${row.id}` });
       setDetalhe({
         open: true,
         loading: false,
@@ -165,8 +167,31 @@ export default function FiscalCiot() {
         open: true,
         loading: false,
         doc: row,
-        erro: parsed.message || "Falha ao carregar o CIOT",
+        erro: parsed.message || "Falha ao carregar o contrato de frete",
       });
+    }
+  };
+
+  const handleRegistrarCiot = async (row) => {
+    if (
+      !window.confirm(
+        `Registrar o CIOT do contrato #${String(row.id).padStart(6, "0")} na ANTT?`,
+      )
+    )
+      return;
+    setRegistrando(true);
+    try {
+      const res = await post(`/fiscal/contratos-frete/${row.id}/ciot`, {});
+      const doc = extractApiData(res) || res;
+      setMsg(
+        `CIOT registrado: ${numeroCiotDoContrato(doc) || "número pendente na consulta"}.`,
+      );
+      contratosQuery.refetch();
+      if (detalhe.open) handleVerDetalhe(row);
+    } catch {
+      /* toast automático */
+    } finally {
+      setRegistrando(false);
     }
   };
 
@@ -174,9 +199,12 @@ export default function FiscalCiot() {
     if (!cancelar.row) return;
     setCancelando(true);
     try {
-      await post(`/fiscal/ciot/${cancelar.row.id}/cancelar`, { justificativa });
+      await post(
+        `/fiscal/contratos-frete/${cancelar.row.id}/ciot/cancelar`,
+        { justificativa },
+      );
       setCancelar({ open: false, row: null });
-      ciotsQuery.refetch();
+      contratosQuery.refetch();
     } catch {
       /* toast automático */
     } finally {
@@ -185,18 +213,18 @@ export default function FiscalCiot() {
   };
 
   const handleEncerrar = async (row) => {
+    const numeroCiot = numeroCiotDoContrato(row);
+    if (!numeroCiot) return;
     if (
       !window.confirm(
-        `Encerrar o CIOT ${
-          row.codigo_identificacao_operacao || row.id
-        }? A ação é enviada ao provedor.`,
+        `Encerrar o CIOT ${numeroCiot}? A ação é enviada ao provedor e não cancela o contrato de frete.`,
       )
     )
       return;
     setEncerrando(true);
     try {
-      await post(`/fiscal/ciot/${row.id}/encerrar`);
-      ciotsQuery.refetch();
+      await post(`/fiscal/contratos-frete/${row.id}/ciot/encerrar`);
+      contratosQuery.refetch();
     } catch {
       /* toast automático */
     } finally {
@@ -209,12 +237,12 @@ export default function FiscalCiot() {
       <Breadcrumbs
         items={[
           { label: "Início", to: "/" },
-          { label: "Contrato de frete" },
+          { label: "Contrato de Frete" },
         ]}
       />
       <PageHeader
-        title="CIOT — Contrato de frete"
-        subtitle="Declare a operação de transporte na ANTT e acompanhe cancelamento e encerramento."
+        title="Contrato de Frete"
+        subtitle="Crie a operação de transporte e, quando necessário, registre o CIOT dessa operação na ANTT."
       />
 
       {msg && (
@@ -225,20 +253,20 @@ export default function FiscalCiot() {
           onClose={() => setMsg("")}
         />
       )}
-      {ciotsQuery.isError && (
-        <Alert type="error" message="Falha ao carregar a lista de CIOT." />
+      {contratosQuery.isError && (
+        <Alert type="error" message="Falha ao carregar os contratos de frete." />
       )}
       {empresasQuery.isError && (
         <Alert
           type="error"
-          message="Falha ao carregar a empresa fiscal. Sem isso a declaração e a simulação ficam incompletas."
+          message="Falha ao carregar a empresa fiscal. Sem isso o contrato e o CIOT ficam incompletos."
         />
       )}
 
       <Tabs
         tabs={[
-          { id: "contrato", label: "Contrato de frete" },
-          { id: "declarados", label: `Declarados (${ciots.length})` },
+          { id: "contrato", label: "Novo contrato" },
+          { id: "lista", label: `Contratos (${contratos.length})` },
         ]}
         activeTab={tab}
         onChange={setTab}
@@ -252,20 +280,21 @@ export default function FiscalCiot() {
           mdfes={mdfes}
           submitting={enviando}
           simulating={simulando}
-          onSubmit={handleDeclarar}
+          onSubmit={handleSalvarContrato}
           onSimular={handleSimular}
         />
       )}
 
-      {tab === "declarados" && (
+      {tab === "lista" && (
         <Card className="p-6">
           <CiotList
-            items={ciots}
+            items={contratos}
             caminhoes={caminhoes}
-            loading={ciotsQuery.isLoading || encerrando}
+            loading={contratosQuery.isLoading || encerrando || registrando}
             onView={handleVerDetalhe}
             onCancel={(row) => setCancelar({ open: true, row })}
             onEncerrar={handleEncerrar}
+            onRegistrarCiot={handleRegistrarCiot}
           />
         </Card>
       )}
@@ -278,7 +307,11 @@ export default function FiscalCiot() {
         loading={detalhe.loading}
         doc={detalhe.doc}
         erro={detalhe.erro}
-        tipo="ciot"
+        tipo="contrato"
+        onRegistrarCiot={
+          detalhe.doc ? () => handleRegistrarCiot(detalhe.doc) : undefined
+        }
+        registrandoCiot={registrando}
       />
 
       <CancelarDocModal
@@ -286,8 +319,8 @@ export default function FiscalCiot() {
         onClose={() => setCancelar({ open: false, row: null })}
         onConfirm={handleConfirmarCancelamento}
         loading={cancelando}
-        titulo="Cancelar contrato de frete"
-        descricao="O cancelamento é enviado ao provedor (prazo de 24h após o início da viagem) e não pode ser desfeito."
+        titulo="Cancelar CIOT"
+        descricao="O cancelamento do CIOT é enviado ao provedor (prazo de 24h após o início da viagem) e não cancela o contrato de frete."
       />
 
       <FiscalSimulacaoModal

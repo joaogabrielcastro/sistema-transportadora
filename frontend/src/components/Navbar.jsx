@@ -38,7 +38,7 @@ const fiscalSubLinks = [
   },
   { path: "/fiscal/cte", label: "CT-e", permission: PERMISSIONS.CTE_READ },
   { path: "/fiscal/mdfe", label: "MDF-e", permission: PERMISSIONS.MDFE_READ },
-  { path: "/fiscal/ciot", label: "Contrato de frete", permission: PERMISSIONS.CIOT_READ },
+  { path: "/fiscal/contratos-frete", label: "Contrato de Frete", permission: PERMISSIONS.CIOT_READ },
 ];
 
 function canSeeFiscalLink(user, sub) {

@@ -12,6 +12,7 @@ import {
   cteController,
   mdfeController,
   ciotController,
+  contratoFreteController,
 } from "../controllers/fiscalController.js";
 import { averbacaoController } from "../controllers/averbacaoController.js";
 
@@ -267,7 +268,76 @@ mdfe.post(
 );
 router.use("/mdfe", mdfe);
 
-// --------------------------------- CIOT ---------------------------------
+// Fluxo oficial: Contrato de Frete (operação) + CIOT vinculado.
+// GET/POST /contratos-frete criam/listam a operação sem falar com a ANTT.
+// POST /contratos-frete/:id/ciot registra o identificador no provedor.
+const contratosFrete = Router();
+contratosFrete.get(
+  "/",
+  requirePermission(PERMISSIONS.CIOT_READ),
+  contratoFreteController.list,
+);
+contratosFrete.post(
+  "/",
+  requirePermission(PERMISSIONS.CIOT_WRITE),
+  contratoFreteController.create,
+);
+contratosFrete.post(
+  "/simular",
+  requirePermission(PERMISSIONS.CIOT_WRITE),
+  ciotController.simular,
+);
+contratosFrete.get(
+  "/:id",
+  requirePermission(PERMISSIONS.CIOT_READ),
+  contratoFreteController.get,
+);
+contratosFrete.put(
+  "/:id",
+  requirePermission(PERMISSIONS.CIOT_WRITE),
+  contratoFreteController.update,
+);
+contratosFrete.post(
+  "/:id/cancelar",
+  requirePermission(PERMISSIONS.CIOT_WRITE),
+  contratoFreteController.cancelar,
+);
+contratosFrete.post(
+  "/:id/simular",
+  requirePermission(PERMISSIONS.CIOT_WRITE),
+  contratoFreteController.simular,
+);
+contratosFrete.get(
+  "/:id/ciot",
+  requirePermission(PERMISSIONS.CIOT_READ),
+  contratoFreteController.getCiot,
+);
+contratosFrete.post(
+  "/:id/ciot",
+  requirePermission(PERMISSIONS.CIOT_WRITE),
+  contratoFreteController.registrarCiot,
+);
+contratosFrete.post(
+  "/:id/ciot/cancelar",
+  requirePermission(PERMISSIONS.CIOT_WRITE),
+  contratoFreteController.cancelarCiot,
+);
+contratosFrete.post(
+  "/:id/ciot/encerrar",
+  requirePermission(PERMISSIONS.CIOT_WRITE),
+  contratoFreteController.encerrarCiot,
+);
+contratosFrete.get(
+  "/:id/ciot/consultar",
+  requirePermission(PERMISSIONS.CIOT_READ),
+  contratoFreteController.consultarCiot,
+);
+router.use("/contratos-frete", contratosFrete);
+
+// LEGADO / compatibilidade: /fiscal/ciot lista e opera sobre o CONTRATO de
+// frete (não é mais a entidade da operação). Preferir /fiscal/contratos-frete.
+// POST /ciot/declarar = criar contrato + registrar CIOT na mesma chamada.
+// Não remover enquanto houver clientes/testes apontando para estas rotas.
 const ciot = Router();
 ciot.get("/", requirePermission(PERMISSIONS.CIOT_READ), ciotController.list);
 ciot.post(

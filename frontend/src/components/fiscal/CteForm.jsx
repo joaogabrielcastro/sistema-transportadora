@@ -2,6 +2,10 @@ import React, { useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { FiscalFormSteps, FiscalFormStepNav } from "./FiscalFormSteps.jsx";
 import {
+  ciotRegistradoNoContrato,
+  numeroCiotDoContrato,
+} from "../../utils/contratoFrete.js";
+import {
   Alert,
   Button,
   Card,
@@ -73,6 +77,7 @@ const emptyForm = {
   chave_nfe_referenciada: "",
   rntrc: "",
   ciot: "",
+  contrato_frete_id: "",
   // Grupo imp.ICMS (item 1.1)
   icms_cst: "",
   icms_base: "",
@@ -203,6 +208,9 @@ function formFromPayload(payload) {
           payload.modal?.infCiot?.[0]?.CIOT ||
           payload.modal?.infCiot?.[0]?.ciot,
       ),
+      contrato_frete_id: payload.contrato_frete_id
+        ? String(payload.contrato_frete_id)
+        : "",
       icms_cst: str(icms.cst),
       icms_base: str(icms.base),
       icms_aliquota: str(icms.aliquota),
@@ -595,19 +603,16 @@ export default function CteForm({
     [caminhoes],
   );
 
-  const ciotsDeclarados = useMemo(
+  const contratosComCiot = useMemo(
     () =>
       (Array.isArray(ciots) ? ciots : [])
-        .filter(
-          (c) =>
-            c.status === "declarado" &&
-            String(c.codigo_identificacao_operacao || "").replace(/\D/g, ""),
-        )
+        .filter((c) => ciotRegistradoNoContrato(c))
         .map((c) => {
-          const num = String(c.codigo_identificacao_operacao).replace(/\D/g, "");
+          const num = numeroCiotDoContrato(c);
           return {
-            value: num,
-            label: `${num}${c.caminhao_id ? ` · veículo #${c.caminhao_id}` : ""}`,
+            value: String(c.id),
+            label: `Contrato #${String(c.id).padStart(6, "0")} · CIOT ${num}`,
+            ciot: num,
           };
         }),
     [ciots],
@@ -889,6 +894,8 @@ export default function CteForm({
       payload.modal = { rntrc: form.rntrc.replace(/\D/g, "") };
     const ciotDigits = String(form.ciot || "").replace(/\D/g, "");
     if (ciotDigits) payload.ciot = ciotDigits;
+    if (form.contrato_frete_id)
+      payload.contrato_frete_id = Number(form.contrato_frete_id);
 
     return payload;
   };
@@ -1047,37 +1054,37 @@ export default function CteForm({
             className="mb-0"
           />
 
+          {contratosComCiot.length > 0 && (
+            <FormField
+              label="Contrato de frete"
+              type="select"
+              value={form.contrato_frete_id}
+              onChange={(e) => {
+                const id = e.target.value;
+                set("contrato_frete_id", id);
+                const escolhido = contratosComCiot.find((c) => c.value === id);
+                if (escolhido?.ciot) set("ciot", escolhido.ciot);
+              }}
+              options={[
+                { value: "", label: "Nenhum (informar CIOT abaixo, se houver)" },
+                ...contratosComCiot,
+              ]}
+              helperText="A operação de transporte. O número do CIOT entra no CT-e automaticamente."
+              className="mb-0"
+            />
+          )}
           <FormField
-            label="Contrato de frete (CIOT)"
+            label="Número do CIOT"
             value={form.ciot}
             onChange={(e) =>
               set("ciot", e.target.value.replace(/\D/g, "").slice(0, 12))
             }
-            placeholder="12 dígitos"
+            placeholder="Já registrado na ANTT"
             inputMode="numeric"
             maxLength={12}
-            helperText="Opcional. Número do CIOT declarado na ANTT, se esta viagem tiver contrato de frete."
+            helperText="Opcional. Código da ANTT desta operação — não é o número do contrato."
             className="mb-0"
           />
-          {ciotsDeclarados.length > 0 && (
-            <FormField
-              label="Usar CIOT já declarado"
-              type="select"
-              value={
-                ciotsDeclarados.some((c) => c.value === form.ciot)
-                  ? form.ciot
-                  : ""
-              }
-              onChange={(e) =>
-                set("ciot", e.target.value.replace(/\D/g, "").slice(0, 12))
-              }
-              options={[
-                { value: "", label: "Informar o número acima" },
-                ...ciotsDeclarados,
-              ]}
-              className="mb-0"
-            />
-          )}
         </div>
 
         {/* ------------------------------------------------------------------ */}

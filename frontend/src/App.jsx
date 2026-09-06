@@ -41,6 +41,7 @@ const NotasEstoque = lazy(() => import("./Pages/NotasEstoque.jsx"));
 const FiscalCte = lazy(() => import("./Pages/FiscalCte.jsx"));
 const FiscalMdfe = lazy(() => import("./Pages/FiscalMdfe.jsx"));
 const FiscalCiot = lazy(() => import("./Pages/FiscalCiot.jsx"));
+const FiscalEmpresas = lazy(() => import("./Pages/FiscalEmpresas.jsx"));
 const FiscalSeguro = lazy(() => import("./Pages/FiscalSeguro.jsx"));
 const Usuarios = lazy(() => import("./Pages/Usuarios.jsx"));
 const Assinatura = lazy(() => import("./Pages/Assinatura.jsx"));

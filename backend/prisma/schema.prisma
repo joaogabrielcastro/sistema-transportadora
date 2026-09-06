@@ -148,6 +148,7 @@ model motoristas {
   criado_em     DateTime    @default(now()) @db.Timestamptz(6)
   tenants       tenants     @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   caminhoes     caminhoes[]
+  gastos        gastos[]
 
   @@index([tenant_id])
   @@index([tenant_id, ativo])
@@ -270,15 +271,24 @@ model gastos {
   caminhao_id            Int?
   tipo_gasto_id          Int?
   produto_id             Int?
+  /// Motorista responsável (multa, diária, salário). Opcional.
+  motorista_id           Int?
   valor                  Decimal       @db.Decimal(10, 2)
   data_gasto             DateTime      @db.Date
   descricao              String?
   quantidade_combustivel Decimal?      @db.Decimal(10, 2)
   km_registro            Int?
+  /// pago | pendente | em_recurso | cancelado — controle de pagamento/recurso.
+  status_pagamento       String?       @db.VarChar(20)
+  /// Vencimento da multa / IPVA / seguro / fatura. Usado em Alertas.
+  data_vencimento        DateTime?     @db.Date
+  /// Detalhes por tipo (AIT, órgão, posto, apólice, praça…). Sem schema rígido.
+  detalhes               Json?         @db.JsonB
   tenants                tenants       @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   caminhoes              caminhoes?    @relation(fields: [caminhao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   tipos_gastos           tipos_gastos? @relation(fields: [tipo_gasto_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   produtos               produtos?     @relation(fields: [produto_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  motoristas             motoristas?   @relation(fields: [motorista_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([caminhao_id])
   @@index([data_gasto])
@@ -286,6 +296,8 @@ model gastos {
   @@index([caminhao_id, data_gasto])
   @@index([tenant_id])
   @@index([produto_id])
+  @@index([motorista_id])
+  @@index([tenant_id, status_pagamento, data_vencimento])
 }
 
 model itens_checklist {
@@ -574,6 +586,8 @@ model fiscal_ctes {
   numero_protocolo    String?   @db.VarChar(30)
   data_emissao        DateTime? @db.Timestamptz(6)
   valor_frete         Decimal?  @db.Decimal(14, 2)
+  /// Número do contrato de frete (CIOT / ANTT) vinculado ao CT-e, quando houver.
+  antt_ciot           String?   @db.VarChar(20)
   xml_path            String?   @db.VarChar(500)
   /// DACTE (PDF) decodificado do base64DACTe do provedor — mesmo padrão de xml_path
   pdf_path            String?   @db.VarChar(500)
@@ -967,4 +981,75 @@ model fiscal_ciots {
   @@index([tenant_id])
   @@index([tenant_id, fiscal_empresa_id])
   @@index([mdfe_id])
+}
+
+/// Configuração de averbação de seguro de transporte — 1 por tenant.
+/// Credenciais (usuario/senha AT&M) são cifradas com FISCAL_SECRETS_KEY
+/// (mesmo AES-256-GCM de fiscal_empresas). Nunca devolver plaintext na API.
+model fiscal_seguro_config {
+  id                      Int       @id @default(autoincrement())
+  tenant_id               Int       @unique
+  /// atm (primeiro provedor). Novos valores entram no factory, não no CT-e.
+  provider                String    @default("atm") @db.VarChar(32)
+  /// homologacao | producao — a URL do provedor é resolvida só por este campo.
+  ambiente                String    @default("homologacao") @db.VarChar(16)
+  automatico              Boolean   @default(false)
+  ativo                   Boolean   @default(false)
+  seguradora              String?   @db.VarChar(80)
+  numero_apolice          String?   @db.VarChar(40)
+  tipo_cobertura          String?   @db.VarChar(40)
+  /// Código AT&M do segurado (identificador da conta, não é senha).
+  codigo_atm              String?   @db.VarChar(32)
+  usuario_encrypted       String?
+  senha_encrypted         String?
+  /// inactive | ok | error
+  status_integracao       String    @default("inactive") @db.VarChar(20)
+  ultima_validacao_em     DateTime? @db.Timestamptz(6)
+  ultima_validacao_erro   String?   @db.VarChar(500)
+  criado_em               DateTime  @default(now()) @db.Timestamptz(6)
+  atualizado_em           DateTime  @updatedAt @db.Timestamptz(6)
+
+  @@index([tenant_id])
+}
+
+/// Averbação/declaração de um CT-e ou MDF-e junto à averbadora.
+/// Isolada por tenant. Idempotência: (tenant, provider, tipo, chave).
+model fiscal_averbacoes {
+  id                   Int       @id @default(autoincrement())
+  tenant_id            Int
+  cte_id               Int?
+  mdfe_id              Int?
+  /// cte | mdfe
+  tipo_documento       String    @db.VarChar(8)
+  /// averbar | cancelar | declarar
+  operacao             String    @default("averbar") @db.VarChar(16)
+  provider             String    @db.VarChar(32)
+  ambiente             String    @db.VarChar(16)
+  chave_acesso         String    @db.VarChar(44)
+  seguradora           String?   @db.VarChar(80)
+  numero_apolice       String?   @db.VarChar(40)
+  external_id          String?   @db.VarChar(80)
+  protocolo            String?   @db.VarChar(40)
+  numero_averbacao     String?   @db.VarChar(40)
+  /// pending | processing | averbed | rejected | cancelled | error
+  status               String    @default("pending") @db.VarChar(20)
+  /// Metadados sem credenciais (chave, hash do XML, ambiente).
+  request_meta         Json?     @db.JsonB
+  /// Retorno sanitizado do provedor (sem token/senha).
+  response_data        Json?     @db.JsonB
+  error_code           String?   @db.VarChar(20)
+  error_message        String?
+  attempts             Int       @default(0)
+  retryable            Boolean   @default(false)
+  averbed_at           DateTime? @db.Timestamptz(6)
+  cancelled_at         DateTime? @db.Timestamptz(6)
+  criado_em            DateTime  @default(now()) @db.Timestamptz(6)
+  atualizado_em        DateTime  @updatedAt @db.Timestamptz(6)
+
+  @@unique([tenant_id, provider, tipo_documento, chave_acesso])
+  @@index([tenant_id])
+  @@index([tenant_id, cte_id])
+  @@index([tenant_id, mdfe_id])
+  @@index([tenant_id, status])
+  @@index([chave_acesso])
 }

@@ -221,6 +221,14 @@ export default function Empresa() {
               >
                 Gerenciar usuários
               </Link>
+              {user?.features?.transporte_fiscal && (
+                <Link
+                  to="/fiscal/seguro"
+                  className="text-sm font-semibold text-secondary hover:text-secondary-dark"
+                >
+                  Seguro / Averbação
+                </Link>
+              )}
             </div>
             <p className="mt-4 text-xs text-text-secondary leading-relaxed">
               Para uma cópia dos seus dados (LGPD), escreva para{" "}

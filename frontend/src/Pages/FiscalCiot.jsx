@@ -209,7 +209,7 @@ export default function FiscalCiot() {
       <Breadcrumbs
         items={[
           { label: "Início", to: "/" },
-          { label: "CIOT" },
+          { label: "Contrato de frete" },
         ]}
       />
       <PageHeader

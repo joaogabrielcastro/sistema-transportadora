@@ -6,6 +6,7 @@ import { serializePrisma } from "../utils/prismaSerialization.js";
 const gastosInclude = {
   caminhoes: { select: { placa: true } },
   tipos_gastos: { select: { nome_tipo: true } },
+  motoristas: { select: { id: true, nome: true } },
 };
 
 const checklistInclude = {

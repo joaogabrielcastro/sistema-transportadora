@@ -1078,7 +1078,7 @@ export default function MdfeForm({
               className="mb-0"
             />
             <FormField
-              label="CIOT vinculado (se houver)"
+              label="Contrato de frete (CIOT)"
               value={form.antt_ciot}
               onChange={(e) =>
                 set("antt_ciot", e.target.value.replace(/\D/g, "").slice(0, 12))
@@ -1086,6 +1086,7 @@ export default function MdfeForm({
               placeholder="Número do CIOT"
               inputMode="numeric"
               maxLength={12}
+              helperText="Opcional. Informe o CIOT já declarado na ANTT."
               className="mb-0"
             />
             <MoneyField

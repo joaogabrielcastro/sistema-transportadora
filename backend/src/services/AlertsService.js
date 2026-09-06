@@ -18,7 +18,7 @@ function daysUntil(date, now = new Date()) {
 
 export class AlertsService {
   /**
-   * Alertas operacionais do tenant (docs, CNH, pneus, próxima manutenção).
+   * Alertas operacionais do tenant (docs, CNH, pneus, manutenção, gastos a vencer).
    */
   static async listForTenant(tenantId, { now = new Date() } = {}) {
     const tid = Number(tenantId);
@@ -27,7 +27,7 @@ export class AlertsService {
     const warnCnh = new Date(now);
     warnCnh.setDate(warnCnh.getDate() + CNH_WARN_DAYS);
 
-    const [docs, motoristas, pneus, manutencoes] = await Promise.all([
+    const [docs, motoristas, pneus, manutencoes, gastosVencer] = await Promise.all([
       prisma.caminhao_documentos.findMany({
         where: {
           tenant_id: tid,
@@ -72,6 +72,20 @@ export class AlertsService {
         },
         orderBy: { data_manutencao: "desc" },
         take: 300,
+      }),
+      prisma.gastos.findMany({
+        where: {
+          tenant_id: tid,
+          data_vencimento: { not: null, lte: warnDoc },
+          status_pagamento: { in: ["pendente", "em_recurso"] },
+        },
+        include: {
+          caminhoes: { select: { id: true, placa: true } },
+          tipos_gastos: { select: { nome_tipo: true } },
+          motoristas: { select: { nome: true } },
+        },
+        orderBy: { data_vencimento: "asc" },
+        take: 100,
       }),
     ]);
 
@@ -207,6 +221,36 @@ export class AlertsService {
           });
         }
       }
+    }
+
+    for (const g of gastosVencer) {
+      const days = daysUntil(g.data_vencimento, now);
+      const tipoNome = g.tipos_gastos?.nome_tipo || "Gasto";
+      const placa = g.caminhoes?.placa || "—";
+      const motorista = g.motoristas?.nome ? ` · ${g.motoristas.nome}` : "";
+      const overdue = days != null && days < 0;
+      const emRecurso = g.status_pagamento === "em_recurso";
+      alerts.push({
+        id: `gasto-venc-${g.id}`,
+        type: overdue ? "gasto_overdue" : "gasto_due_soon",
+        severity: overdue ? "critical" : days <= 7 ? "high" : "medium",
+        title: overdue
+          ? `${tipoNome} vencido${emRecurso ? " (em recurso)" : ""}`
+          : `${tipoNome} a vencer${emRecurso ? " (em recurso)" : ""}`,
+        message: `Placa ${placa}${motorista} · ${
+          overdue
+            ? `vencido há ${Math.abs(days)} dia(s)`
+            : `vence em ${days} dia(s)`
+        } · ${Number(g.valor).toLocaleString("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+        })}`,
+        entity: "gasto",
+        entityId: g.id,
+        placa: g.caminhoes?.placa || null,
+        daysRemaining: days,
+        href: "/manutencao-gastos",
+      });
     }
 
     const severityRank = { critical: 0, high: 1, medium: 2, low: 3 };

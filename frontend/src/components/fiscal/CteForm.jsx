@@ -72,6 +72,7 @@ const emptyForm = {
   outras_caracteristicas: "",
   chave_nfe_referenciada: "",
   rntrc: "",
+  ciot: "",
   // Grupo imp.ICMS (item 1.1)
   icms_cst: "",
   icms_base: "",
@@ -197,6 +198,11 @@ function formFromPayload(payload) {
       outras_caracteristicas: str(carga.outras_caracteristicas),
       chave_nfe_referenciada: str(payload.chave_nfe_referenciada),
       rntrc: str(payload.modal?.rntrc),
+      ciot: str(
+        payload.ciot ||
+          payload.modal?.infCiot?.[0]?.CIOT ||
+          payload.modal?.infCiot?.[0]?.ciot,
+      ),
       icms_cst: str(icms.cst),
       icms_base: str(icms.base),
       icms_aliquota: str(icms.aliquota),
@@ -511,6 +517,7 @@ ParticipanteFields.propTypes = {
 export default function CteForm({
   clientes = [],
   caminhoes = [],
+  ciots = [],
   submitting = false,
   savingDraft = false,
   simulating = false,
@@ -586,6 +593,24 @@ export default function CteForm({
   const caminhaoOptions = useMemo(
     () => formatCaminhaoOptions(caminhoes),
     [caminhoes],
+  );
+
+  const ciotsDeclarados = useMemo(
+    () =>
+      (Array.isArray(ciots) ? ciots : [])
+        .filter(
+          (c) =>
+            c.status === "declarado" &&
+            String(c.codigo_identificacao_operacao || "").replace(/\D/g, ""),
+        )
+        .map((c) => {
+          const num = String(c.codigo_identificacao_operacao).replace(/\D/g, "");
+          return {
+            value: num,
+            label: `${num}${c.caminhao_id ? ` · veículo #${c.caminhao_id}` : ""}`,
+          };
+        }),
+    [ciots],
   );
 
   const clienteSelecionado = clientes.find(
@@ -862,6 +887,8 @@ export default function CteForm({
 
     if (form.rntrc.trim())
       payload.modal = { rntrc: form.rntrc.replace(/\D/g, "") };
+    const ciotDigits = String(form.ciot || "").replace(/\D/g, "");
+    if (ciotDigits) payload.ciot = ciotDigits;
 
     return payload;
   };
@@ -1019,6 +1046,38 @@ export default function CteForm({
             helperText="Exatamente 8 dígitos."
             className="mb-0"
           />
+
+          <FormField
+            label="Contrato de frete (CIOT)"
+            value={form.ciot}
+            onChange={(e) =>
+              set("ciot", e.target.value.replace(/\D/g, "").slice(0, 12))
+            }
+            placeholder="12 dígitos"
+            inputMode="numeric"
+            maxLength={12}
+            helperText="Opcional. Número do CIOT declarado na ANTT, se esta viagem tiver contrato de frete."
+            className="mb-0"
+          />
+          {ciotsDeclarados.length > 0 && (
+            <FormField
+              label="Usar CIOT já declarado"
+              type="select"
+              value={
+                ciotsDeclarados.some((c) => c.value === form.ciot)
+                  ? form.ciot
+                  : ""
+              }
+              onChange={(e) =>
+                set("ciot", e.target.value.replace(/\D/g, "").slice(0, 12))
+              }
+              options={[
+                { value: "", label: "Informar o número acima" },
+                ...ciotsDeclarados,
+              ]}
+              className="mb-0"
+            />
+          )}
         </div>
 
         {/* ------------------------------------------------------------------ */}
@@ -1883,6 +1942,7 @@ export default function CteForm({
 CteForm.propTypes = {
   clientes: PropTypes.array,
   caminhoes: PropTypes.array,
+  ciots: PropTypes.array,
   submitting: PropTypes.bool,
   savingDraft: PropTypes.bool,
   onSubmit: PropTypes.func.isRequired,

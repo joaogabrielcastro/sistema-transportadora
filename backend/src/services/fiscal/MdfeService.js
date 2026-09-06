@@ -12,6 +12,11 @@ import { BrasilNFeClient } from "./brasilNfe/BrasilNFeClient.js";
 import { consultarDocumentoFiscal } from "./fiscalConsulta.js";
 import { resultadoSimulacaoDocumento } from "./fiscalSimulacao.js";
 import {
+  agendarAverbacaoAposAutorizacao,
+  agendarCancelamentoAverbacao,
+  anexarAverbacaoAoDocumento,
+} from "../averbacao/averbacaoHooks.js";
+import {
   assertFksVeiculoEmpresa,
   claimEmissao,
   EVENTO_PRIMEIRO_SEQUENCIAL,
@@ -756,7 +761,10 @@ export class MdfeService {
 
   static async getById(tenantId, id) {
     const row = await findOwnedOr404("fiscal_mdfes", id, tenantId, "MDF-e");
-    return serializePrisma(row);
+    const averbacao = await anexarAverbacaoAoDocumento(tenantId, {
+      mdfeId: row.id,
+    });
+    return { ...serializePrisma(row), averbacao };
   }
 
   static async criar(tenantId, body) {
@@ -873,6 +881,11 @@ export class MdfeService {
       logger.info("MDF-e emissão idempotente (já autorizado)", {
         tenantId,
         mdfeId: claimed.id,
+      });
+      agendarAverbacaoAposAutorizacao({
+        tenantId,
+        tipo: "mdfe",
+        documentoId: claimed.id,
       });
       return this.getById(tenantId, claimed.id);
     }
@@ -1116,6 +1129,11 @@ export class MdfeService {
       mdfeId: mdfeComArquivos.id,
       chave: mdfeComArquivos.chave_acesso,
     });
+    agendarAverbacaoAposAutorizacao({
+      tenantId,
+      tipo: "mdfe",
+      documentoId: mdfeComArquivos.id,
+    });
     return {
       ...serializePrisma(mdfeComArquivos),
       base64DAMDFe: resposta.base64DAMDFe ?? null,
@@ -1302,6 +1320,11 @@ export class MdfeService {
       data: { ...colunasCancelamentoMdfe(justificativa, resposta), ...sefaz },
     });
     logger.info("MDF-e cancelado", { tenantId, mdfeId: mdfe.id });
+    agendarCancelamentoAverbacao({
+      tenantId,
+      tipo: "mdfe",
+      documentoId: mdfe.id,
+    });
     return serializePrisma(updated);
   }
 }

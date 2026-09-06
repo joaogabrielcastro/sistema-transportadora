@@ -307,6 +307,13 @@ export const emitirCteSchema = z
     fiscal_empresa_id: optionalId,
     caminhao_id: optionalId,
     motorista_id: optionalId,
+    // Contrato de frete eletrônico (CIOT / ANTT). Opcional — o CT-e pode ser
+    // emitido sem CIOT; quando informado, é persistido em fiscal_ctes.antt_ciot
+    // e enviado no payload (Ciot + Modal.infCiot).
+    ciot: optionalDigitsPattern(
+      /^\d{1,12}$/,
+      "CIOT deve ter no máximo 12 dígitos numéricos",
+    ),
     tipo_cte: z.enum(TIPOS_CTE, {
       message:
         'tipo_cte deve ser "0" (Normal), "1" (Complemento de Valores) ou "3" (Substituto). O tipo "2" (Anulação) foi extinto no CT-e 4.0.',

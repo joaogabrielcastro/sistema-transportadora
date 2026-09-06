@@ -32,3 +32,28 @@ export function isManutencaoTipoGasto(nomeTipo) {
 export function tiposGastosFinanceiros(tiposGastos = []) {
   return tiposGastos.filter((t) => !isManutencaoTipoGasto(t.nome_tipo));
 }
+
+/**
+ * Família do tipo de gasto (multa, pedagio, combustivel, …) a partir do nome.
+ * @param {string} nomeTipo
+ */
+export function classifyTipoGasto(nomeTipo) {
+  const n = normalizeTipoName(nomeTipo);
+  if (n.includes("multa")) return "multa";
+  if (n.includes("pedagio")) return "pedagio";
+  if (n.includes("combust")) return "combustivel";
+  if (n.includes("seguro")) return "seguro";
+  if (n.includes("ipva") || n.includes("licenci")) return "ipva";
+  if (n.includes("salario") || n.includes("diaria")) return "salario";
+  if (n.includes("aliment")) return "alimentacao";
+  if (n.includes("hosped")) return "hospedagem";
+  if (n.includes("estacion")) return "estacionamento";
+  if (n.includes("lavagem")) return "lavagem";
+  if (n.includes("peca")) return "pecas";
+  return "outros";
+}
+
+export function classifyTipoGastoById(tipoId, tiposGastos = []) {
+  const tipo = tiposGastos.find((t) => String(t.id) === String(tipoId));
+  return classifyTipoGasto(tipo?.nome_tipo);
+}

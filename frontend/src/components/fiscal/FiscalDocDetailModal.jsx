@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { Alert, LoadingSpinner, Modal, StatusBadge } from "../ui";
+import AverbacaoStatusCard from "./AverbacaoStatusCard.jsx";
 
 function fmtDate(value) {
   if (!value) return "—";
@@ -44,6 +45,11 @@ export default function FiscalDocDetailModal({
   tipo = "cte",
   erro = null,
 }) {
+  const [averbacao, setAverbacao] = useState(doc?.averbacao ?? null);
+  useEffect(() => {
+    setAverbacao(doc?.averbacao ?? null);
+  }, [doc]);
+
   const titulo =
     tipo === "mdfe"
       ? "Detalhe do MDF-e"
@@ -93,6 +99,17 @@ export default function FiscalDocDetailModal({
               <Row label="Criado em" value={fmtDate(doc.criado_em)} />
               {tipo === "cte" && (
                 <Row label="Valor do frete" value={fmtMoney(doc.valor_frete)} />
+              )}
+              {(tipo === "cte" || tipo === "mdfe") && (
+                <Row
+                  label="Contrato de frete (CIOT)"
+                  value={
+                    doc.antt_ciot ||
+                    doc.payload_json?.ciot ||
+                    doc.payload_json?.inf_antt?.ciot ||
+                    "—"
+                  }
+                />
               )}
               {tipo !== "ciot" && (
                 <>
@@ -187,6 +204,14 @@ export default function FiscalDocDetailModal({
                 Nenhum dado para exibir.
               </p>
             )
+          )}
+          {doc && (tipo === "cte" || tipo === "mdfe") && (
+            <AverbacaoStatusCard
+              averbacao={averbacao}
+              tipo={tipo}
+              documentoId={doc.id}
+              onUpdated={setAverbacao}
+            />
           )}
         </div>
       )}

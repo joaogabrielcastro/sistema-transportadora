@@ -7,6 +7,7 @@ import { extractApiArray, extractApiData } from "../utils/extractApiArray.js";
 import {
   useApiMutation,
   useCteListQuery,
+  useCiotListQuery,
   useFiscalClientesQuery,
   useFiscalDocDownload,
   useFiscalEmpresasQuery,
@@ -58,11 +59,13 @@ export default function FiscalCte() {
   const clientesQuery = useFiscalClientesQuery();
   const ctesQuery = useCteListQuery({ status: filtroStatus || undefined });
   const empresasQuery = useFiscalEmpresasQuery();
+  const ciotsQuery = useCiotListQuery();
   const clientes = useMemo(
     () => clientesQuery.data || [],
     [clientesQuery.data],
   );
   const ctes = useMemo(() => ctesQuery.data || [], [ctesQuery.data]);
+  const ciots = useMemo(() => ciotsQuery.data || [], [ciotsQuery.data]);
   // Empresa fiscal emissora ativa — só leitura, para o CteForm ler o CRT.
   const empresaFiscal = useMemo(
     () => resolverEmpresaFiscalAtiva(empresasQuery.data),
@@ -424,6 +427,7 @@ export default function FiscalCte() {
           key={draftId || "novo"}
           clientes={clientes}
           caminhoes={caminhoes}
+          ciots={ciots}
           submitting={emitindo}
           savingDraft={savingDraft}
           simulating={simulando}

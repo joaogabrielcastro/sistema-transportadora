@@ -21,6 +21,11 @@ import {
 } from "./fiscalShared.js";
 import { consultarDocumentoFiscal } from "./fiscalConsulta.js";
 import {
+  agendarAverbacaoAposAutorizacao,
+  agendarCancelamentoAverbacao,
+  anexarAverbacaoAoDocumento,
+} from "../averbacao/averbacaoHooks.js";
+import {
   colunasSefaz,
   CTE_STATUS,
   identificadorInternoCte,
@@ -437,6 +442,7 @@ function colunasImpostoCarga(dto) {
     valor_carga: carga.valor_carga ?? null,
     produto_predominante: carga.produto_predominante ?? null,
     outras_caracteristicas: carga.outras_caracteristicas ?? null,
+    antt_ciot: dto.ciot ? String(dto.ciot).replace(/\D/g, "") : null,
   };
 }
 
@@ -475,6 +481,20 @@ export function montarCarga(dto) {
     ? [...carga.documentos, ...extras]
     : [...extras];
   return { ...carga, documentos };
+}
+
+/**
+ * Modal rodoviário + contrato de frete (CIOT). Preserva `dto.modal` e, se veio
+ * `ciot` no DTO, acrescenta infCiot sem sobrescrever um infCiot já enviado.
+ */
+export function montarModalCte(dto) {
+  const modal =
+    dto.modal && typeof dto.modal === "object" ? { ...dto.modal } : {};
+  const ciot = dto.ciot ? String(dto.ciot).replace(/\D/g, "") : "";
+  if (ciot && !modal.infCiot) {
+    modal.infCiot = [{ CIOT: ciot }];
+  }
+  return Object.keys(modal).length ? modal : undefined;
 }
 
 /**
@@ -542,7 +562,8 @@ export function montarPayloadCte(dto, chaveReferenciada, empresa, identificadorI
     UFFim: dto.uf_fim ?? undefined,
     Emit: montarEmit(empresa),
     infRespTec: montarInfRespTec(empresa),
-    Modal: dto.modal ?? undefined,
+    Modal: montarModalCte(dto),
+    Ciot: dto.ciot || undefined,
     Carga: montarCarga(dto),
     Imposto: montarImpCte(dto),
     Servico: montarServico(dto),
@@ -805,6 +826,9 @@ export class CteService {
         orderBy: { id: "asc" },
       }),
     ]);
+    const averbacao = await anexarAverbacaoAoDocumento(tenantId, {
+      cteId: row.id,
+    });
     return {
       ...serializePrisma(row),
       documentos: serializePrisma(documentos),
@@ -812,6 +836,7 @@ export class CteService {
       componentes_frete: serializePrisma(componentesFrete),
       participantes: serializePrisma(participantes),
       aut_xml: serializePrisma(autXml),
+      averbacao,
     };
   }
 
@@ -936,6 +961,11 @@ export class CteService {
       logger.info("CT-e emissão idempotente (já autorizado)", {
         tenantId,
         cteId: claimed.id,
+      });
+      agendarAverbacaoAposAutorizacao({
+        tenantId,
+        tipo: "cte",
+        documentoId: claimed.id,
       });
       return this.getById(tenantId, claimed.id);
     }
@@ -1067,6 +1097,11 @@ export class CteService {
       cteId: cte.id,
       chave: atualizado.chave_acesso,
     });
+    agendarAverbacaoAposAutorizacao({
+      tenantId,
+      tipo: "cte",
+      documentoId: cte.id,
+    });
     return {
       ...serializePrisma(atualizado),
       base64DACTe: resposta.base64DACTe ?? null,
@@ -1163,6 +1198,11 @@ export class CteService {
       },
     });
     logger.info("CT-e cancelado", { tenantId, cteId: cte.id });
+    agendarCancelamentoAverbacao({
+      tenantId,
+      tipo: "cte",
+      documentoId: cte.id,
+    });
     return serializePrisma(updated);
   }
 

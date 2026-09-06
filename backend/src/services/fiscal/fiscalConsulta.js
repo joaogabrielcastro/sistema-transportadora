@@ -133,6 +133,18 @@ export async function consultarDocumentoFiscal({
           }),
         );
 
+    const statusFinal = atualizado?.status || aposUpdate.status;
+    if (statusFinal === "processado") {
+      const { agendarAverbacaoAposAutorizacao } = await import(
+        "../averbacao/averbacaoHooks.js"
+      );
+      agendarAverbacaoAposAutorizacao({
+        tenantId,
+        tipo: tipoArquivo,
+        documentoId: row.id,
+      });
+    }
+
     return {
       ...atualizado,
       consulta: {

@@ -26,9 +26,19 @@ const fiscalSubLinks = [
       PERMISSIONS.CIOT_WRITE,
     ],
   },
+  {
+    path: "/fiscal/seguro",
+    label: "Seguro / Averbação",
+    permission: PERMISSIONS.CTE_WRITE,
+    anyPermission: [
+      PERMISSIONS.CTE_WRITE,
+      PERMISSIONS.MDFE_WRITE,
+      PERMISSIONS.CIOT_WRITE,
+    ],
+  },
   { path: "/fiscal/cte", label: "CT-e", permission: PERMISSIONS.CTE_READ },
   { path: "/fiscal/mdfe", label: "MDF-e", permission: PERMISSIONS.MDFE_READ },
-  { path: "/fiscal/ciot", label: "CIOT", permission: PERMISSIONS.CIOT_READ },
+  { path: "/fiscal/ciot", label: "Contrato de frete", permission: PERMISSIONS.CIOT_READ },
 ];
 
 function canSeeFiscalLink(user, sub) {

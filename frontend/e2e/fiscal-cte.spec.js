@@ -73,6 +73,13 @@ test.describe("Fiscal CT-e", () => {
         body: JSON.stringify({ success: true, data: [] }),
       });
     });
+    await page.route("**/api/fiscal/ciot**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true, data: [] }),
+      });
+    });
     await page.route("**/api/caminhoes**", async (route) => {
       await route.fulfill({
         status: 200,
@@ -103,5 +110,6 @@ test.describe("Fiscal CT-e", () => {
     await expect(page.getByRole("button", { name: "Salvar rascunho" })).toBeVisible();
     await expect(page.getByRole("button", { name: "1. Operação" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Continuar" })).toBeVisible();
+    await expect(page.getByLabel("Contrato de frete (CIOT)")).toBeVisible();
   });
 });

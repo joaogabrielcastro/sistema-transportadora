@@ -5,6 +5,7 @@ import {
   isCombustivelTipo,
   combustivelTipoId,
   tiposGastosFinanceiros,
+  classifyTipoGasto,
 } from "./tipoGastoUtils.js";
 
 const tipos = [
@@ -32,4 +33,11 @@ test("tiposGastosFinanceiros remove tipo Manutenção", () => {
   ]);
   assert.equal(financeiros.length, 2);
   assert.ok(financeiros.every((t) => t.id !== 3));
+});
+
+test("classifyTipoGasto cobre multa e demais tipos", () => {
+  assert.equal(classifyTipoGasto("Multa"), "multa");
+  assert.equal(classifyTipoGasto("Pedágio"), "pedagio");
+  assert.equal(classifyTipoGasto("Seguro"), "seguro");
+  assert.equal(classifyTipoGasto("Outros"), "outros");
 });

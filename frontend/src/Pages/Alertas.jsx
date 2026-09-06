@@ -35,7 +35,7 @@ export default function Alertas() {
       <div className="space-y-6">
         <PageHeader
           title="Alertas"
-          subtitle="Documentos, CNH, pneus e manutenções que precisam de atenção."
+          subtitle="Documentos, CNH, pneus, manutenções e gastos a vencer."
         />
         {error && <Alert type="error">{error}</Alert>}
 

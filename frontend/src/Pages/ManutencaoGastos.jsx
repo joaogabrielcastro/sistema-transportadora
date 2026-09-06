@@ -26,7 +26,14 @@ import PageLayout from "../components/layout/PageLayout.jsx";
 import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import { TableSkeleton } from "../components/Skeleton.jsx";
-import { isCombustivelTipo, tiposGastosFinanceiros } from "../utils/tipoGastoUtils.js";
+import { isCombustivelTipo, tiposGastosFinanceiros, classifyTipoGastoById } from "../utils/tipoGastoUtils.js";
+import {
+  defaultStatusForKind,
+  STATUS_PAGAMENTO_LABEL,
+} from "../utils/gastoDetalhes.js";
+import GastoDetalhesFields, {
+  payloadControleGasto,
+} from "../components/gasto/GastoDetalhesFields.jsx";
 import { formatDate } from "../utils/formatters.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { apiFetch } from "../lib/apiClient.js";
@@ -106,8 +113,10 @@ const RegistroForm = ({
   tiposGastos,
   itensChecklist = [],
   produtosEstoque = [],
+  motoristas = [],
   showEstoque = false,
   onChange,
+  onControleChange,
   onCaminhaoChange,
   onTipoChange,
   onSubmit,
@@ -164,7 +173,7 @@ const RegistroForm = ({
   );
 
   const campoEstoque = showEstoque ? (
-    <FormSection step={3} title="Estoque (opcional)">
+    <FormSection step={form.tipo === "gasto" && form.tipo_id ? 4 : 3} title="Estoque (opcional)">
       <FormField
         label="Usar do estoque"
         type="typeahead"
@@ -439,10 +448,27 @@ const RegistroForm = ({
               )}
             </FormSection>
 
+            {form.tipo_id && (
+              <FormSection step={3} title="Controle e detalhes">
+                <div className="sm:col-span-2 lg:col-span-3">
+                  <GastoDetalhesFields
+                    tipoId={form.tipo_id}
+                    tiposGastos={tiposGastos}
+                    motoristas={motoristas}
+                    motoristaId={form.motorista_id}
+                    statusPagamento={form.status_pagamento}
+                    dataVencimento={form.data_vencimento}
+                    detalhes={form.detalhes || {}}
+                    onChange={onControleChange}
+                  />
+                </div>
+              </FormSection>
+            )}
+
             {campoEstoque}
 
             <FormSection
-              step={showEstoque ? 4 : 3}
+              step={showEstoque ? 5 : form.tipo_id ? 4 : 3}
               title="Observações"
             >
               <FormField
@@ -631,6 +657,12 @@ const HistoricoRegistros = ({
                       {registro.valorFormatado}
                     </span>
                     <span>KM {registro.kmFormatado}</span>
+                    {registro.status_pagamento && (
+                      <span>
+                        {STATUS_PAGAMENTO_LABEL[registro.status_pagamento] ||
+                          registro.status_pagamento}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <TableRowActions
@@ -670,6 +702,13 @@ const HistoricoRegistros = ({
                   registro.observacao,
                   registro.oficina && registro.oficina !== "N/A"
                     ? `Oficina: ${registro.oficina}`
+                    : null,
+                  registro.motoristas?.nome
+                    ? `Motorista: ${registro.motoristas.nome}`
+                    : null,
+                  registro.status_pagamento
+                    ? STATUS_PAGAMENTO_LABEL[registro.status_pagamento] ||
+                      registro.status_pagamento
                     : null,
                 ]
                   .filter(Boolean)
@@ -761,6 +800,7 @@ const ManutencaoGastos = () => {
     registros,
     pagination,
     summary,
+    motoristas,
     isLoading: loading,
     refetch,
   } = useManutencaoGastosQueries({
@@ -789,6 +829,10 @@ const ManutencaoGastos = () => {
     proxima_data: "",
     produto_id: "",
     quantidade_estoque: "1",
+    motorista_id: "",
+    status_pagamento: "",
+    data_vencimento: "",
+    detalhes: {},
   });
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -852,6 +896,11 @@ const ManutencaoGastos = () => {
           next.nome_item = produto.descricao || "";
         }
       }
+      if (name === "tipo_id") {
+        const kind = classifyTipoGastoById(value, tiposGastos);
+        next.detalhes = {};
+        next.status_pagamento = defaultStatusForKind(kind);
+      }
       return next;
     });
   };
@@ -867,6 +916,11 @@ const ManutencaoGastos = () => {
       ...prev,
       caminhao_id: caminhaoId,
       km_registro: caminhaoSelecionado?.km_atual || "",
+      motorista_id:
+        prev.motorista_id ||
+        (caminhaoSelecionado?.motorista_id
+          ? String(caminhaoSelecionado.motorista_id)
+          : ""),
     }));
   };
 
@@ -887,6 +941,10 @@ const ManutencaoGastos = () => {
       proxima_data: "",
       produto_id: "",
       quantidade_estoque: "1",
+      motorista_id: form.motorista_id,
+      status_pagamento: "",
+      data_vencimento: "",
+      detalhes: {},
     });
   };
 
@@ -948,6 +1006,10 @@ const ManutencaoGastos = () => {
           quantidade_combustivel: form.quantidade_combustivel
             ? parseFloat(String(form.quantidade_combustivel).replace(",", "."))
             : null,
+          ...payloadControleGasto(
+            form,
+            classifyTipoGastoById(tipoGastoId, tiposGastos),
+          ),
         };
         if (form.produto_id) {
           payload.produto_id = parseInt(form.produto_id, 10);
@@ -996,6 +1058,10 @@ const ManutencaoGastos = () => {
         proxima_data: "",
         produto_id: "",
         quantidade_estoque: "1",
+        motorista_id: "",
+        status_pagamento: "",
+        data_vencimento: "",
+        detalhes: {},
       });
       if (showEstoque) {
         try {
@@ -1052,7 +1118,7 @@ const ManutencaoGastos = () => {
       <PageLayout className="space-y-6">
         <PageHeader
           title="Manutenção e Gastos"
-          subtitle="Controle completo de gastos e manutenções da frota"
+          subtitle="Multas, combustível, pedágio e demais despesas com vencimento e situação"
         />
         <Card>
           <TableSkeleton rows={8} columns={5} />
@@ -1068,7 +1134,7 @@ const ManutencaoGastos = () => {
       />
       <PageHeader
         title="Manutenção e Gastos"
-        subtitle="Controle completo de gastos e manutenções da frota"
+        subtitle="Multas, combustível, pedágio e demais despesas com vencimento e situação"
       />
 
       {pagination && pagination.totalItems > 0 && (
@@ -1087,8 +1153,12 @@ const ManutencaoGastos = () => {
           tiposGastos={tiposGastos}
           itensChecklist={itensChecklist}
           produtosEstoque={produtosEstoque}
+          motoristas={motoristas}
           showEstoque={showEstoque}
           onChange={handleChange}
+          onControleChange={(patch) =>
+            setForm((prev) => ({ ...prev, ...patch }))
+          }
           onCaminhaoChange={handleCaminhaoChange}
           onTipoChange={handleTipoChange}
           onSugerirProxima={handleSugerirProxima}
@@ -1120,6 +1190,7 @@ const ManutencaoGastos = () => {
         <RegistroEditModal
           registro={registroEmEdicao}
           tiposGastos={tiposGastos}
+          motoristas={motoristas}
           onClose={() => setRegistroEmEdicao(null)}
           onSaved={async () => {
             toast.success("Registro atualizado com sucesso.");

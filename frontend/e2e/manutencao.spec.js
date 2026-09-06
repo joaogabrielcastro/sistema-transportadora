@@ -51,6 +51,17 @@ test.describe("Manutenção e Gastos", () => {
       });
     });
 
+    await page.route("**/api/motoristas**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: [{ id: 1, nome: "João", ativo: true }],
+        }),
+      });
+    });
+
     await page.route("**/api/registros**", async (route) => {
       await route.fulfill({
         status: 200,

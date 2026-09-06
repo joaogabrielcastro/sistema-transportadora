@@ -35,6 +35,14 @@ export const getStatusConfig = (statusName, type = "status") => {
       encerrado: "bg-blue-100 text-blue-800 border-blue-200",
       erro: "bg-red-100 text-red-800 border-red-200",
 
+      // Averbação de seguro
+      pending: "bg-slate-100 text-slate-800 border-slate-200",
+      processing: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      averbed: "bg-green-100 text-green-800 border-green-200",
+      rejected: "bg-orange-100 text-orange-800 border-orange-200",
+      cancelled: "bg-red-100 text-red-800 border-red-200",
+      error: "bg-red-100 text-red-800 border-red-200",
+
       default: "bg-gray-100 text-gray-800 border-gray-200",
     },
     vehicle: {
@@ -53,6 +61,14 @@ export const getStatusConfig = (statusName, type = "status") => {
     },
     position: {
       default: "bg-purple-100 text-purple-800 border-purple-200",
+    },
+    payment: {
+      pago: "bg-green-100 text-green-800 border-green-200",
+      pendente: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      "em recurso": "bg-orange-100 text-orange-800 border-orange-200",
+      em_recurso: "bg-orange-100 text-orange-800 border-orange-200",
+      cancelado: "bg-red-100 text-red-800 border-red-200",
+      default: "bg-gray-100 text-gray-800 border-gray-200",
     },
   };
 

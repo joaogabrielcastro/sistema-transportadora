@@ -44,6 +44,9 @@ export const queryKeys = {
     all: ["registros"] as const,
     list: (params: ListParams) => ["registros", "list", params] as const,
   },
+  motoristas: {
+    list: (params: ListParams) => ["motoristas", "list", params] as const,
+  },
   fiscal: {
     all: ["fiscal"] as const,
     cteList: (params: ListParams) => ["fiscal", "cte", "list", params] as const,
@@ -53,6 +56,7 @@ export const queryKeys = {
       ["fiscal", "ciot", "list", params] as const,
     clientes: (term: string) => ["fiscal", "clientes", term || ""] as const,
     empresas: () => ["fiscal", "empresas"] as const,
+    seguroConfig: () => ["fiscal", "seguro", "config"] as const,
     veiculoDados: (caminhaoId: number | string) =>
       ["fiscal", "veiculo-dados", String(caminhaoId ?? "")] as const,
     reboquesPreview: (params: ListParams) =>

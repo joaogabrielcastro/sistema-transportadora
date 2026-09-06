@@ -13,6 +13,7 @@ import {
   mdfeController,
   ciotController,
 } from "../controllers/fiscalController.js";
+import { averbacaoController } from "../controllers/averbacaoController.js";
 
 // Montado em app.js como:
 //   apiRouter.use("/fiscal", requireFeature("transporte_fiscal"), fiscalRoutes)
@@ -305,5 +306,49 @@ ciot.post(
   ciotController.encerrar,
 );
 router.use("/ciot", ciot);
+
+// ---------------------- Seguro / averbação ----------------------
+const seguro = Router();
+seguro.get(
+  "/config",
+  requireAnyFiscalRead,
+  averbacaoController.getConfig,
+);
+seguro.put(
+  "/config",
+  requireAnyFiscalWrite,
+  averbacaoController.saveConfig,
+);
+seguro.post(
+  "/config/testar",
+  requireAnyFiscalWrite,
+  averbacaoController.testarConexao,
+);
+seguro.post(
+  "/averbacoes",
+  requireAnyFiscalWrite,
+  averbacaoController.solicitar,
+);
+seguro.get(
+  "/averbacoes/:id",
+  requireAnyFiscalRead,
+  averbacaoController.get,
+);
+seguro.post(
+  "/averbacoes/:id/consultar",
+  requireAnyFiscalRead,
+  averbacaoController.consultar,
+);
+seguro.post(
+  "/averbacoes/:id/reprocessar",
+  requireAnyFiscalWrite,
+  averbacaoController.reprocessar,
+);
+seguro.post(
+  "/averbacoes/:id/cancelar",
+  requireAnyFiscalWrite,
+  averbacaoController.cancelar,
+);
+router.use("/seguro", seguro);
 
 export default router;

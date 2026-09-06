@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   montarCarga,
+  montarModalCte,
   montarPayloadCte,
 } from "../../src/services/fiscal/CteService.js";
 import { emitirCteSchema } from "../../src/schemas/fiscalSchema.js";
@@ -85,4 +86,28 @@ test("Observacao e Retira entram no payload oficial quando presentes no DTO", ()
   const payload = montarPayloadCte(dto, undefined);
   assert.equal(payload.Observacao, "Entrega em horário comercial.");
   assert.equal(payload.Retira, false);
+});
+
+test("CIOT do contrato de frete entra em Ciot e Modal.infCiot", () => {
+  const dto = emitirCteSchema.parse({
+    cliente_id: 1,
+    tipo_cte: "0",
+    cfop: "5353",
+    natureza_operacao: "Transporte",
+    dt_emissao: "2026-08-22T10:00:00-03:00",
+    ciot: "123456789012",
+    modal: { rntrc: "12345678" },
+    servico: { valor_prestacao: 100 },
+    tomador: { cpf_cnpj: "12345678000199" },
+  });
+  const payload = montarPayloadCte(dto, undefined);
+  assert.equal(payload.Ciot, "123456789012");
+  assert.equal(payload.Modal.rntrc, "12345678");
+  assert.deepEqual(payload.Modal.infCiot, [{ CIOT: "123456789012" }]);
+});
+
+test("montarModalCte sem ciot devolve só o modal informado", () => {
+  const modal = montarModalCte({ modal: { rntrc: "87654321" } });
+  assert.deepEqual(modal, { rntrc: "87654321" });
+  assert.equal(montarModalCte({}), undefined);
 });

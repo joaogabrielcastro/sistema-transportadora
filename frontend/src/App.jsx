@@ -41,7 +41,7 @@ const NotasEstoque = lazy(() => import("./Pages/NotasEstoque.jsx"));
 const FiscalCte = lazy(() => import("./Pages/FiscalCte.jsx"));
 const FiscalMdfe = lazy(() => import("./Pages/FiscalMdfe.jsx"));
 const FiscalCiot = lazy(() => import("./Pages/FiscalCiot.jsx"));
-const FiscalEmpresas = lazy(() => import("./Pages/FiscalEmpresas.jsx"));
+const FiscalSeguro = lazy(() => import("./Pages/FiscalSeguro.jsx"));
 const Usuarios = lazy(() => import("./Pages/Usuarios.jsx"));
 const Assinatura = lazy(() => import("./Pages/Assinatura.jsx"));
 const Empresa = lazy(() => import("./Pages/Empresa.jsx"));
@@ -288,6 +288,21 @@ function AppRoutes() {
               ]}
             >
               <FiscalEmpresas />
+            </GuardedRoute>
+          }
+        />
+        <Route
+          path="/fiscal/seguro"
+          element={
+            <GuardedRoute
+              feature="transporte_fiscal"
+              anyPermission={[
+                PERMISSIONS.CTE_WRITE,
+                PERMISSIONS.MDFE_WRITE,
+                PERMISSIONS.CIOT_WRITE,
+              ]}
+            >
+              <FiscalSeguro />
             </GuardedRoute>
           }
         />

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import multer from "multer";
 import { requirePermission } from "../middleware/requirePermission.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import {
@@ -128,9 +129,38 @@ veiculoDados.delete(
 );
 router.use("/veiculo-dados", veiculoDados);
 
+const nfeXmlUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024, files: 20 },
+});
+
+const nfeXmlUploadError = (err, req, res, next) => {
+  if (!err) return next();
+  if (err.code === "LIMIT_FILE_SIZE") {
+    return res.status(400).json({
+      success: false,
+      error: "XML muito grande (máximo 20 MB por arquivo).",
+    });
+  }
+  return res.status(400).json({
+    success: false,
+    error: err.message || "Falha ao receber o XML.",
+  });
+};
+
 // --------------------------------- CT-e ---------------------------------
 const cte = Router();
 cte.get("/", requirePermission(PERMISSIONS.CTE_READ), cteController.list);
+cte.post(
+  "/ler-xml",
+  requirePermission(PERMISSIONS.CTE_WRITE),
+  (req, res, next) => {
+    nfeXmlUpload.array("xml", 20)(req, res, (err) =>
+      nfeXmlUploadError(err, req, res, next),
+    );
+  },
+  cteController.lerXml,
+);
 // Download em lote (zip). Declarado antes de "/:id" para o segmento fixo
 // "download-lote" não ser capturado como id.
 cte.post(

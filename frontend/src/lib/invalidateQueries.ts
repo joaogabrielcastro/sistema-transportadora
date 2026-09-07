@@ -20,6 +20,7 @@ export function invalidateQueriesFromMutation(
 
   if (/^gastos/.test(path)) {
     queryClient.invalidateQueries({ queryKey: queryKeys.gastos.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.registros.all });
     queryClient.invalidateQueries({ queryKey: ["reports"] });
   }
 

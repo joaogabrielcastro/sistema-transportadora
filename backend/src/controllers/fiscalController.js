@@ -15,6 +15,7 @@ import { MdfeService } from "../services/fiscal/MdfeService.js";
 import { CiotService } from "../services/fiscal/CiotService.js";
 import { ContratoFreteService } from "../services/fiscal/ContratoFreteService.js";
 import { FiscalDownloadService } from "../services/fiscal/FiscalDownloadService.js";
+import { lerXmlsParaCte } from "../services/NfeXmlService.js";
 
 // ---------------------- Download de CT-e/MDF-e (XML/PDF) ----------------------
 // Fábricas de handler reaproveitadas por cteController e mdfeController. Mesmo
@@ -248,6 +249,19 @@ export const cteController = {
     res.json({
       success: true,
       data: await CteService.getById(tenantId, req.params.id),
+    });
+  }),
+  lerXml: catchAsync(async (req, res) => {
+    const files = req.files?.xml || req.files || [];
+    const list = Array.isArray(files) ? files : [];
+    const data = lerXmlsParaCte(list);
+    res.json({
+      success: true,
+      data,
+      message:
+        data.notas.length > 1
+          ? `${data.notas.length} NF-e lidas. Confira carga e participantes.`
+          : "NF-e lida. Confira carga e participantes.",
     });
   }),
   criar: catchAsync(async (req, res) => {

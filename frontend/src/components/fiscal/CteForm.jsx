@@ -37,6 +37,8 @@ import {
   somenteDigitos,
   tiposDocumentoConflitantes,
 } from "../../utils/fiscalForms.js";
+import { aplicarNfesCte } from "../../utils/cteFromNfe.js";
+import NfeXmlDrop from "./NfeXmlDrop.jsx";
 
 function nowLocalInput() {
   const d = new Date();
@@ -554,6 +556,10 @@ export default function CteForm({
   const [criandoCliente, setCriandoCliente] = useState(false);
   const [erroCliente, setErroCliente] = useState("");
   const [fase, setFase] = useState(0);
+  const [extraClientes, setExtraClientes] = useState([]);
+  const [lendoXml, setLendoXml] = useState(false);
+  const [xmlMsg, setXmlMsg] = useState("");
+  const [xmlErro, setXmlErro] = useState("");
 
   const set = (campo, valor) => setForm((f) => ({ ...f, [campo]: valor }));
 
@@ -588,14 +594,22 @@ export default function CteForm({
   const removeComponente = (idx) =>
     setComponentes((cs) => cs.filter((_, i) => i !== idx));
 
+  const clientesEfetivos = useMemo(() => {
+    const seen = new Set((clientes || []).map((c) => c.id));
+    return [
+      ...(clientes || []),
+      ...extraClientes.filter((c) => !seen.has(c.id)),
+    ];
+  }, [clientes, extraClientes]);
+
   const clienteOptions = useMemo(
     () =>
-      clientes.map((c) => ({
+      clientesEfetivos.map((c) => ({
         value: String(c.id),
         label: `${c.razao_social} — ${c.cnpj_cpf}`,
         searchText: `${c.razao_social} ${c.cnpj_cpf}`,
       })),
-    [clientes],
+    [clientesEfetivos],
   );
 
   const caminhaoOptions = useMemo(
@@ -618,7 +632,7 @@ export default function CteForm({
     [ciots],
   );
 
-  const clienteSelecionado = clientes.find(
+  const clienteSelecionado = clientesEfetivos.find(
     (c) => String(c.id) === String(form.cliente_id),
   );
 
@@ -697,6 +711,85 @@ export default function CteForm({
   const difalTemValor = difalCampos.some((v) => String(v).trim() !== "");
   const difalIncompleto = mostrarDifal && !difalTemValor;
 
+  const handleLerXml = async (files) => {
+    setXmlErro("");
+    setXmlMsg("");
+    if (!files?.length) return;
+    const fd = new FormData();
+    for (const file of files) fd.append("xml", file);
+    setLendoXml(true);
+    try {
+      const res = await post("/fiscal/cte/ler-xml", fd, {
+        skipSuccessToast: true,
+        skipErrorToast: true,
+      });
+      const data = res?.data;
+      const notas = Array.isArray(data?.notas) ? data.notas : [];
+      if (!notas.length) {
+        setXmlErro("Nenhuma NF-e de carga foi lida.");
+        return;
+      }
+      const aplicado = aplicarNfesCte({
+        notas,
+        documentosAtuais: documentos,
+        clientes: [
+          ...(clientes || []),
+          ...extraClientes,
+        ],
+        caminhoes,
+      });
+      if (aplicado.conflitoPapel) {
+        setXmlErro(
+          "Este CT-e já tem NF em papel. Remova-as para importar a chave da NF-e.",
+        );
+        return;
+      }
+      setDocumentos(aplicado.documentos);
+      setForm((f) => ({ ...f, ...aplicado.formPatch }));
+      if (aplicado.remetente) setRemetente(aplicado.remetente);
+      if (aplicado.destinatario) setDestinatario(aplicado.destinatario);
+      if (aplicado.quantidades) setQuantidades(aplicado.quantidades);
+
+      if (!aplicado.formPatch.cliente_id && aplicado.clienteParaCriar) {
+        try {
+          const criadoRes = await post(
+            "/fiscal/clientes",
+            {
+              razao_social: aplicado.clienteParaCriar.razao_social,
+              cnpj_cpf: String(aplicado.clienteParaCriar.cnpj_cpf).replace(
+                /\D/g,
+                "",
+              ),
+            },
+            { skipSuccessToast: true, skipErrorToast: true },
+          );
+          const criado = criadoRes?.data;
+          if (criado?.id) {
+            setExtraClientes((xs) => [...xs, criado]);
+            setForm((f) => ({ ...f, cliente_id: String(criado.id) }));
+          }
+        } catch {
+          /* tomador fica para o usuário cadastrar */
+        }
+      }
+
+      const nIgn = Array.isArray(data?.ignoradas_combustivel)
+        ? data.ignoradas_combustivel.length
+        : 0;
+      setXmlMsg(
+        nIgn
+          ? `${notas.length} NF-e de carga aplicada${notas.length > 1 ? "s" : ""}. ${nIgn} XML de combustível foi ignorado — lance em Manutenção e gastos.`
+          : `${notas.length} NF-e aplicada${notas.length > 1 ? "s" : ""}. Confira carga, participantes e o valor do frete (o CFOP da mercadoria não entra no CT-e).`,
+      );
+      setFase(2);
+    } catch (err) {
+      const parsed = await parseApiError(err);
+      setXmlErro(parsed.message || err?.message || "Falha ao ler o XML da NF-e.");
+    } finally {
+      setLendoXml(false);
+    }
+  };
+
   const handleCriarCliente = async () => {
     setErroCliente("");
     if (
@@ -717,7 +810,10 @@ export default function CteForm({
         { skipSuccessToast: true, skipErrorToast: true },
       );
       const criado = res?.data;
-      if (criado?.id) set("cliente_id", String(criado.id));
+      if (criado?.id) {
+        setExtraClientes((xs) => [...xs, criado]);
+        set("cliente_id", String(criado.id));
+      }
       setNovoCliente({ razao_social: "", cnpj_cpf: "" });
       setNovoClienteOpen(false);
     } catch (err) {
@@ -958,6 +1054,19 @@ export default function CteForm({
               message="Sem certificado A1 a autorização na SEFAZ fica pendente. Use Simular emissão para mostrar o fluxo ao cliente; Emitir só completa com o .pfx cadastrado."
             />
           )}
+
+        <NfeXmlDrop
+          label="Enviar XML da NF-e (carga)"
+          hint="Preenche chave, peso, valor da carga e remetente/destinatário. O CFOP do CT-e continua o de transporte (ex.: 5353) — não copia o da mercadoria."
+          multiple
+          disabled={lendoXml || submitting || savingDraft}
+          onFiles={handleLerXml}
+        />
+        {lendoXml ? (
+          <p className="text-sm text-text-secondary">Lendo XML da NF-e…</p>
+        ) : null}
+        {xmlErro ? <Alert type="error" message={xmlErro} /> : null}
+        {xmlMsg ? <Alert type="success" message={xmlMsg} /> : null}
 
         <FiscalFormSteps
           steps={CTE_FASES}

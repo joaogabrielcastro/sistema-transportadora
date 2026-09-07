@@ -34,6 +34,7 @@ import {
 import GastoDetalhesFields, {
   payloadControleGasto,
 } from "../components/gasto/GastoDetalhesFields.jsx";
+import CombustivelXmlImport from "../components/gasto/CombustivelXmlImport.jsx";
 import { formatDate } from "../utils/formatters.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { apiFetch } from "../lib/apiClient.js";
@@ -1147,7 +1148,17 @@ const ManutencaoGastos = () => {
       )}
 
       {canWrite && (
-      <RegistroForm
+        <>
+          <CombustivelXmlImport
+            caminhoes={caminhoes}
+            defaultCaminhaoId={form.caminhao_id}
+            disabled={submitting}
+            onImported={async () => {
+              toast.success("Abastecimento lançado a partir do XML da NF-e.");
+              await refetch();
+            }}
+          />
+          <RegistroForm
           form={form}
           caminhoes={caminhoes}
           tiposGastos={tiposGastos}
@@ -1165,6 +1176,7 @@ const ManutencaoGastos = () => {
           onSubmit={handleSubmit}
           loading={submitting}
         />
+        </>
       )}
 
       <HistoricoRegistros

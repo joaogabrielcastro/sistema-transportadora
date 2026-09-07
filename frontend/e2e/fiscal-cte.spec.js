@@ -118,5 +118,6 @@ test.describe("Fiscal CT-e", () => {
     await expect(page.getByRole("button", { name: "1. Operação" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Continuar" })).toBeVisible();
     await expect(page.getByLabel("Número do CIOT")).toBeVisible();
+    await expect(page.getByText("Enviar XML da NF-e (carga)")).toBeVisible();
   });
 });

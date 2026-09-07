@@ -119,6 +119,9 @@ test.describe("Manutenção e Gastos", () => {
     await expect(page.getByText("Adicionar Novo Registro")).toBeVisible();
     await expect(page.getByLabel("Tipo de Registro")).toBeVisible();
     await expect(page.getByLabel("Caminhão")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Importar XML do posto" }),
+    ).toBeVisible();
   });
 
   test("lembrete de próxima troca aparece na manutenção", async ({ page }) => {

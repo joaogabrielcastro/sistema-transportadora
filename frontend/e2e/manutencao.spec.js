@@ -121,6 +121,10 @@ test.describe("Manutenção e Gastos", () => {
     await expect(page.getByLabel("Caminhão")).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Importar XML do posto" }),
+    ).toHaveCount(0);
+    await page.getByLabel("Tipo de Gasto").selectOption({ label: "Combustível" });
+    await expect(
+      page.getByRole("heading", { name: "Importar XML do posto" }),
     ).toBeVisible();
   });
 

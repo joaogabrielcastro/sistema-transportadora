@@ -24,6 +24,13 @@ test("isCombustivelTipo e combustivelTipoId", () => {
   assert.equal(isCombustivelTipo(null, tipos), false);
   assert.equal(combustivelTipoId(tipos), 2);
   assert.equal(combustivelTipoId([]), null);
+  assert.equal(
+    isCombustivelTipo(20, [
+      { id: 2, nome_tipo: "Combustível" },
+      { id: 20, nome_tipo: "Combustivel" },
+    ]),
+    true,
+  );
 });
 
 test("tiposGastosFinanceiros remove tipo Manutenção", () => {
@@ -33,6 +40,17 @@ test("tiposGastosFinanceiros remove tipo Manutenção", () => {
   ]);
   assert.equal(financeiros.length, 2);
   assert.ok(financeiros.every((t) => t.id !== 3));
+});
+
+test("tiposGastosFinanceiros remove Combustível duplicado", () => {
+  const financeiros = tiposGastosFinanceiros([
+    { id: 1, nome_tipo: "Combustivel" },
+    { id: 8, nome_tipo: "Combustível" },
+    { id: 2, nome_tipo: "Pedágio" },
+  ]);
+  const combust = financeiros.filter((t) => /combust/i.test(t.nome_tipo));
+  assert.equal(combust.length, 1);
+  assert.equal(combust[0].nome_tipo, "Combustível");
 });
 
 test("classifyTipoGasto cobre multa e demais tipos", () => {

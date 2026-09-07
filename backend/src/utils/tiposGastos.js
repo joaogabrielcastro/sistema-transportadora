@@ -2,6 +2,7 @@ import prisma from "../lib/prisma.js";
 import {
   DEFAULT_TIPOS_GASTOS,
   normalizeTipoGastoName,
+  selectCanonicalTipo,
 } from "./tiposGastosCatalog.js";
 
 const COMBUSTIVEL_NAMES = ["combustível", "combustivel", "combust"];
@@ -28,11 +29,52 @@ export function clearCombustivelTipoCache() {
   cachedCombustivelId = null;
 }
 
+async function mergeDuplicateTiposGastos() {
+  const tipos = await prisma.tipos_gastos.findMany({
+    select: { id: true, nome_tipo: true },
+    orderBy: { id: "asc" },
+  });
+  const groups = new Map();
+  for (const t of tipos) {
+    const key = normalizeTipoGastoName(t.nome_tipo);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(t);
+  }
+
+  let removed = 0;
+  for (const list of groups.values()) {
+    if (list.length < 2) continue;
+    const keeper = selectCanonicalTipo(list);
+    if (!keeper) continue;
+    const extras = list.filter((t) => t.id !== keeper.id);
+    for (const extra of extras) {
+      await prisma.gastos.updateMany({
+        where: { tipo_gasto_id: extra.id },
+        data: { tipo_gasto_id: keeper.id },
+      });
+      await prisma.tipos_gastos.delete({ where: { id: extra.id } });
+      removed += 1;
+    }
+    const catalogName = DEFAULT_TIPOS_GASTOS.find(
+      (nome) => normalizeTipoGastoName(nome) === normalizeTipoGastoName(keeper.nome_tipo),
+    );
+    if (catalogName && keeper.nome_tipo !== catalogName) {
+      await prisma.tipos_gastos.update({
+        where: { id: keeper.id },
+        data: { nome_tipo: catalogName },
+      });
+    }
+  }
+  if (removed > 0) clearCombustivelTipoCache();
+  return removed;
+}
+
 /**
  * Garante tipos de gasto padrão (idempotente).
  * Respeita "Combustivel" legado sem acento — não duplica combustível.
  */
 export async function ensureDefaultTiposGastos() {
+  await mergeDuplicateTiposGastos();
   const existing = await prisma.tipos_gastos.findMany({
     select: { nome_tipo: true },
   });

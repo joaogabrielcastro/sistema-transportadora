@@ -6,17 +6,15 @@ const normalizeTipoName = (value) =>
 
 export function findCombustivelTipo(tiposGastos = []) {
   return (
-    tiposGastos.find((t) => {
-      const n = normalizeTipoName(t.nome_tipo);
-      return n.includes("combust");
-    }) ?? null
+    tiposGastos.find((t) => classifyTipoGasto(t.nome_tipo) === "combustivel") ??
+    null
   );
 }
 
 export function isCombustivelTipo(tipoId, tiposGastos = []) {
   if (!tipoId) return false;
-  const combustivel = findCombustivelTipo(tiposGastos);
-  return combustivel != null && String(combustivel.id) === String(tipoId);
+  const tipo = tiposGastos.find((t) => String(t.id) === String(tipoId));
+  return classifyTipoGasto(tipo?.nome_tipo) === "combustivel";
 }
 
 export function combustivelTipoId(tiposGastos = []) {
@@ -29,8 +27,25 @@ export function isManutencaoTipoGasto(nomeTipo) {
   return n === "manutencao" || n === "manutenção";
 }
 
+function preferTipoGasto(a, b) {
+  const accent = (s) => /[áàâãéêíóôõúç]/i.test(String(s || ""));
+  if (accent(a.nome_tipo) !== accent(b.nome_tipo)) {
+    return accent(a.nome_tipo) ? a : b;
+  }
+  return Number(a.id) <= Number(b.id) ? a : b;
+}
+
 export function tiposGastosFinanceiros(tiposGastos = []) {
-  return tiposGastos.filter((t) => !isManutencaoTipoGasto(t.nome_tipo));
+  const financeiros = tiposGastos.filter(
+    (t) => !isManutencaoTipoGasto(t.nome_tipo),
+  );
+  const byKey = new Map();
+  for (const t of financeiros) {
+    const key = normalizeTipoName(t.nome_tipo);
+    const prev = byKey.get(key);
+    byKey.set(key, prev ? preferTipoGasto(prev, t) : t);
+  }
+  return [...byKey.values()];
 }
 
 /**

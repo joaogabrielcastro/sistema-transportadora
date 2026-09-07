@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
-import { Alert, Button, Card, FormField } from "../ui";
+import { Alert, Button, FormField } from "../ui";
 import NfeXmlDrop from "../fiscal/NfeXmlDrop.jsx";
 import { useApiMutation } from "../../hooks";
 import { parseApiError } from "../../lib/apiClient.js";
@@ -102,7 +102,10 @@ export default function CombustivelXmlImport({
   };
 
   return (
-    <Card title="Importar XML do posto" className="mb-8">
+    <section className="rounded-lg border border-border bg-white p-4 sm:col-span-2 lg:col-span-3">
+      <h3 className="mb-1 text-sm font-semibold text-text-primary">
+        Importar XML do posto
+      </h3>
       <div className="space-y-4">
         <p className="text-sm text-text-secondary">
           XML da NF-e de combustível (diesel, gasolina, etanol). Lança litros,
@@ -170,7 +173,7 @@ export default function CombustivelXmlImport({
               ) : null}
             </dl>
             <FormField
-              label="Caminhão"
+              label="Caminhão abastecido"
               type="typeahead"
               name="caminhao_id"
               value={caminhaoId}
@@ -198,7 +201,7 @@ export default function CombustivelXmlImport({
           </div>
         ) : null}
       </div>
-    </Card>
+    </section>
   );
 }
 

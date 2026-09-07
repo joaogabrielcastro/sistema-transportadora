@@ -122,6 +122,7 @@ const RegistroForm = ({
   onTipoChange,
   onSubmit,
   onSugerirProxima,
+  onXmlImported,
   loading,
 }) => {
   const isManutencao = form.tipo === "manutencao";
@@ -448,6 +449,15 @@ const RegistroForm = ({
                 />
               )}
             </FormSection>
+
+            {isCombustivel && (
+              <CombustivelXmlImport
+                caminhoes={caminhoesList}
+                defaultCaminhaoId={form.caminhao_id}
+                disabled={loading}
+                onImported={onXmlImported}
+              />
+            )}
 
             {form.tipo_id && (
               <FormSection step={3} title="Controle e detalhes">
@@ -1148,17 +1158,7 @@ const ManutencaoGastos = () => {
       )}
 
       {canWrite && (
-        <>
-          <CombustivelXmlImport
-            caminhoes={caminhoes}
-            defaultCaminhaoId={form.caminhao_id}
-            disabled={submitting}
-            onImported={async () => {
-              toast.success("Abastecimento lançado a partir do XML da NF-e.");
-              await refetch();
-            }}
-          />
-          <RegistroForm
+      <RegistroForm
           form={form}
           caminhoes={caminhoes}
           tiposGastos={tiposGastos}
@@ -1173,10 +1173,13 @@ const ManutencaoGastos = () => {
           onCaminhaoChange={handleCaminhaoChange}
           onTipoChange={handleTipoChange}
           onSugerirProxima={handleSugerirProxima}
+          onXmlImported={async () => {
+            toast.success("Abastecimento lançado a partir do XML da NF-e.");
+            await refetch();
+          }}
           onSubmit={handleSubmit}
           loading={submitting}
         />
-        </>
       )}
 
       <HistoricoRegistros

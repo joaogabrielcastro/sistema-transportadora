@@ -22,6 +22,7 @@ const baseDto = () =>
     uf_carregamento: "SP",
     uf_descarregamento: "MG",
     rodoviario: {},
+    cte_ids: [1],
   });
 
 test("exigeGruposAntt: só tipo_emitente explícito 1 ou 3", () => {
@@ -111,6 +112,7 @@ test("montarPayloadMdfe: infANTT / prodPred / infMunCarrega / ide quando present
     uf_carregamento: "SP",
     uf_descarregamento: "MG",
     rodoviario: {},
+    cte_ids: [1],
     inf_antt: { rntrc: "123456789", ciot: "999" },
     prod_pred: { descricao: "Soja", ncm: "12019000" },
     municipios_carrega: [{ codigo_municipio: "3550308", nome_municipio: "São Paulo" }],

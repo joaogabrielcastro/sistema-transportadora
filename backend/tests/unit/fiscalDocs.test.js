@@ -3,6 +3,10 @@ import assert from "node:assert/strict";
 import {
   somenteDigitos,
   chaveAcessoValida,
+  cpfValido,
+  cnpjValido,
+  ufValida,
+  inscricaoEstadualValida,
   extrairModelo,
   gerarIdOperacaoCandidato,
   gerarIdOperacaoUnico,
@@ -68,5 +72,17 @@ describe("fiscalDocs", () => {
       () => gerarIdOperacaoUnico(async () => true, 4),
       (e) => e.statusCode === 503,
     );
+  });
+
+  it("CPF/CNPJ/UF/IE: DV e lista de UFs", () => {
+    assert.equal(cpfValido("12345678909"), true);
+    assert.equal(cpfValido("12345678901"), false);
+    assert.equal(cnpjValido("12345678000195"), true);
+    assert.equal(cnpjValido("12345678000199"), false);
+    assert.equal(ufValida("SP"), true);
+    assert.equal(ufValida("XX"), false);
+    assert.equal(inscricaoEstadualValida("ISENTO"), true);
+    assert.equal(inscricaoEstadualValida("1"), false);
+    assert.equal(inscricaoEstadualValida("123", "SP"), true);
   });
 });

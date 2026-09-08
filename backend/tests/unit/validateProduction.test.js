@@ -38,7 +38,13 @@ test("getProductionConfigErrors retorna vazio fora de produção", () => {
 
 test("getProductionConfigErrors exige AUTH e JWT em produção", () => {
   const savedCors = process.env.CORS_ORIGINS;
+  const savedAmbiente = process.env.BRASIL_NFE_AMBIENTE;
+  const savedSecrets = process.env.FISCAL_SECRETS_KEY;
+  const savedUserToken = process.env.BRASIL_NFE_USER_TOKEN;
   delete process.env.CORS_ORIGINS;
+  delete process.env.BRASIL_NFE_AMBIENTE;
+  delete process.env.FISCAL_SECRETS_KEY;
+  delete process.env.BRASIL_NFE_USER_TOKEN;
 
   try {
     const errors = getProductionConfigErrors(productionConfig);
@@ -47,10 +53,18 @@ test("getProductionConfigErrors exige AUTH e JWT em produção", () => {
     assert.ok(errors.some((e) => e.includes("DATABASE_URL")));
     assert.ok(errors.some((e) => e.includes("CORS_ORIGINS")));
     assert.ok(errors.some((e) => e.includes("REDIS_URL")));
+    assert.ok(errors.some((e) => e.includes("FISCAL_SECRETS_KEY")));
+    assert.ok(errors.some((e) => e.includes("BRASIL_NFE_AMBIENTE")));
+    assert.ok(errors.some((e) => e.includes("BRASIL_NFE_USER_TOKEN")));
   } finally {
-    if (savedCors !== undefined) {
-      process.env.CORS_ORIGINS = savedCors;
-    }
+    if (savedCors !== undefined) process.env.CORS_ORIGINS = savedCors;
+    else delete process.env.CORS_ORIGINS;
+    if (savedAmbiente !== undefined) process.env.BRASIL_NFE_AMBIENTE = savedAmbiente;
+    else delete process.env.BRASIL_NFE_AMBIENTE;
+    if (savedSecrets !== undefined) process.env.FISCAL_SECRETS_KEY = savedSecrets;
+    else delete process.env.FISCAL_SECRETS_KEY;
+    if (savedUserToken !== undefined) process.env.BRASIL_NFE_USER_TOKEN = savedUserToken;
+    else delete process.env.BRASIL_NFE_USER_TOKEN;
   }
 });
 
@@ -90,5 +104,45 @@ test("getProductionConfigWarnings alerta SMTP, Sentry e backup", () => {
     else delete process.env.SENTRY_DSN;
     if (savedBackup !== undefined) process.env.BACKUP_ENABLED = savedBackup;
     else delete process.env.BACKUP_ENABLED;
+  }
+});
+
+test("produção fiscal exige BRASIL_NFE_AMBIENTE=1, secrets e UserToken", () => {
+  const saved = {
+    CORS_ORIGINS: process.env.CORS_ORIGINS,
+    BRASIL_NFE_AMBIENTE: process.env.BRASIL_NFE_AMBIENTE,
+    FISCAL_SECRETS_KEY: process.env.FISCAL_SECRETS_KEY,
+    BRASIL_NFE_USER_TOKEN: process.env.BRASIL_NFE_USER_TOKEN,
+  };
+  process.env.CORS_ORIGINS = "https://app.example.com";
+  delete process.env.BRASIL_NFE_AMBIENTE;
+  delete process.env.FISCAL_SECRETS_KEY;
+  delete process.env.BRASIL_NFE_USER_TOKEN;
+  try {
+    const missing = getProductionConfigErrors({
+      ...validProductionConfig,
+      fiscal: { ambiente: 2, secretsKey: "", brasilNfeUserToken: "" },
+    });
+    assert.ok(missing.some((e) => e.includes("BRASIL_NFE_AMBIENTE")));
+    assert.ok(missing.some((e) => e.includes("FISCAL_SECRETS_KEY")));
+    assert.ok(missing.some((e) => e.includes("BRASIL_NFE_USER_TOKEN")));
+
+    process.env.BRASIL_NFE_AMBIENTE = "1";
+    process.env.FISCAL_SECRETS_KEY = "unit-test-fiscal-secrets-key";
+    process.env.BRASIL_NFE_USER_TOKEN = "user-token-prod";
+    const ok = getProductionConfigErrors({
+      ...validProductionConfig,
+      fiscal: {
+        ambiente: 1,
+        secretsKey: "unit-test-fiscal-secrets-key",
+        brasilNfeUserToken: "user-token-prod",
+      },
+    });
+    assert.equal(ok.length, 0);
+  } finally {
+    for (const [k, v] of Object.entries(saved)) {
+      if (v !== undefined) process.env[k] = v;
+      else delete process.env[k];
+    }
   }
 });

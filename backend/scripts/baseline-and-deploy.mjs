@@ -84,6 +84,34 @@ const resolveIfNeeded = async (migrationName) => {
 };
 
 /**
+ * Índices parciais de unicidade fiscal (série+número e brasil_nfe_id).
+ * O `db push` marca a migration como aplicada sem executar o SQL, e o Prisma
+ * não modela UNIQUE ... WHERE — então o índice de numeração não nasce sozinho.
+ */
+const ensureFiscalUnicidadeIndexes = async () => {
+  const sqlPath = path.join(
+    backendRoot,
+    "prisma",
+    "migrations",
+    "20260908153000_fiscal_unicidade_emissao",
+    "migration.sql",
+  );
+  if (!fs.existsSync(sqlPath)) {
+    console.warn("(warn) Migration de unicidade fiscal não encontrada — índices não conferidos.");
+    return;
+  }
+  const statements = fs
+    .readFileSync(sqlPath, "utf8")
+    .split(";")
+    .map((s) => s.trim())
+    .filter((s) => /CREATE\s+UNIQUE\s+INDEX/i.test(s));
+  for (const statement of statements) {
+    await prisma.$executeRawUnsafe(`${statement};`);
+  }
+  console.log("(ok) Índices de unicidade fiscal conferidos/aplicados.");
+};
+
+/**
  * P3009: migração iniciou e falhou. Se o schema esperado já existe (SQL idempotente),
  * marca as applied; senão marca rolled-back para o próximo deploy tentar de novo.
  */
@@ -129,6 +157,8 @@ try {
     for (const name of migrationNames) {
       await resolveIfNeeded(name);
     }
+
+    await ensureFiscalUnicidadeIndexes();
 
     console.log(
       "\nConcluído (banco novo). Schema atual aplicado; histórico do Migrate alinhado.",
@@ -210,6 +240,7 @@ try {
   );
 
   run("npx prisma migrate deploy");
+  await ensureFiscalUnicidadeIndexes();
 
   console.log("\nConcluído. Verifique se caminhao_documentos existe (PDFs por caminhão).");
 } catch (err) {

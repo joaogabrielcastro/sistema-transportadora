@@ -26,7 +26,7 @@ function payloadCteRascunho(clienteId, extras = {}) {
     natureza_operacao: "Transporte",
     dt_emissao: new Date().toISOString(),
     servico: { valor_prestacao: 150 },
-    tomador: { cpf_cnpj: "12345678000199" },
+    tomador: { cpf_cnpj: "12345678000195" },
     chave_nfe_referenciada: CHAVE_NFE_TESTE,
     ...extras,
   };
@@ -88,7 +88,7 @@ test(
       const post = await request(app)
         .post("/api/fiscal/clientes")
         .set(authHeader)
-        .send({ razao_social: "X", cnpj_cpf: "12345678000199" });
+        .send({ razao_social: "X", cnpj_cpf: "12345678000195" });
       assert.equal(post.status, 403);
     } finally {
       await cleanupFiscal(secondary.tenant.id);
@@ -118,10 +118,10 @@ test(
         .set(authHeader)
         .send({
           razao_social: "Comércio de Peças Ltda",
-          cnpj_cpf: "12.345.678/0001-99",
+          cnpj_cpf: "12.345.678/0001-95",
         });
       assert.equal(create.status, 201, create.body?.error);
-      assert.equal(create.body.data.cnpj_cpf, "12345678000199");
+      assert.equal(create.body.data.cnpj_cpf, "12345678000195");
 
       const list = await request(app)
         .get("/api/fiscal/clientes")
@@ -253,7 +253,7 @@ test(
         .post("/api/fiscal/empresas")
         .set(a.authHeader)
         .send({
-          cnpj: "12345678000199",
+          cnpj: "12345678000195",
           razao_social: "Emissora A",
           crt: 1,
           cte_mdfe_provider_token: "token-empresa-a",
@@ -265,7 +265,7 @@ test(
       const cliente = await request(app)
         .post("/api/fiscal/clientes")
         .set(a.authHeader)
-        .send({ razao_social: "Tomador A", cnpj_cpf: "12345678000199" });
+        .send({ razao_social: "Tomador A", cnpj_cpf: "12345678000195" });
       assert.equal(cliente.status, 201, cliente.body?.error);
       const clienteId = cliente.body.data.id;
 

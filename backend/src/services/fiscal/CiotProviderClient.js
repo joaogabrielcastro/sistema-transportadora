@@ -94,11 +94,13 @@ function postJson(path, payload, certificado) {
               path,
               status: res.statusCode,
             });
-            reject(
-              serviceUnavailable(
-                `Falha ao comunicar com o provedor de CIOT (${path}): HTTP ${res.statusCode}`,
-              ),
+            const e = serviceUnavailable(
+              `Falha ao comunicar com o provedor de CIOT (${path}): HTTP ${res.statusCode}`,
             );
+            if (res.statusCode >= 500 || res.statusCode === 429) {
+              e.incerteza = true;
+            }
+            reject(e);
             return;
           }
           resolve(data);
@@ -114,11 +116,11 @@ function postJson(path, payload, certificado) {
         path,
         message: err.message,
       });
-      reject(
-        serviceUnavailable(
-          `Falha ao comunicar com o provedor de CIOT (${path}): ${err.message}`,
-        ),
+      const wrapped = serviceUnavailable(
+        `Falha ao comunicar com o provedor de CIOT (${path}): ${err.message}`,
       );
+      wrapped.incerteza = true;
+      reject(wrapped);
     });
 
     req.write(body);

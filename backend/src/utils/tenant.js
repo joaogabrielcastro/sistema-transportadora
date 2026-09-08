@@ -7,18 +7,28 @@ export const DEFAULT_TENANT_SLUG = "abbroto";
  * Garante o tenant seed `abbroto` e retorna seu id.
  */
 export async function ensureSeedTenant() {
-  return prisma.tenants.upsert({
-    where: { slug: DEFAULT_TENANT_SLUG },
-    update: {},
-    create: {
-      nome: "ABroto",
-      slug: DEFAULT_TENANT_SLUG,
-      ativo: true,
-      billing_exempt: true,
-      subscription_status: "active",
-      features: defaultFeaturesForSlug(DEFAULT_TENANT_SLUG),
-    },
-  });
+  try {
+    return await prisma.tenants.upsert({
+      where: { slug: DEFAULT_TENANT_SLUG },
+      update: {},
+      create: {
+        nome: "ABroto",
+        slug: DEFAULT_TENANT_SLUG,
+        ativo: true,
+        billing_exempt: true,
+        subscription_status: "active",
+        features: defaultFeaturesForSlug(DEFAULT_TENANT_SLUG),
+      },
+    });
+  } catch (err) {
+    if (err?.code === "P2002") {
+      const existing = await prisma.tenants.findUnique({
+        where: { slug: DEFAULT_TENANT_SLUG },
+      });
+      if (existing) return existing;
+    }
+    throw err;
+  }
 }
 
 /**

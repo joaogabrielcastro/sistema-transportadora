@@ -3,12 +3,15 @@ import { logger } from "../utils/logger.js";
 import { getBullMqConnection, isRedisConfigured } from "../lib/redis.js";
 
 export const AVERBACAO_QUEUE_NAME = "averbacao-seguro";
+export const AVERBACAO_DLQ_NAME = "averbacao-seguro-dlq";
 
 const MAX_CONCURRENT = 2;
 const JOB_ATTEMPTS = 5;
 
 /** @type {import('bullmq').Queue | null} */
 let queue = null;
+/** @type {import('bullmq').Queue | null} */
+let dlq = null;
 /** @type {import('bullmq').Worker | null} */
 let worker = null;
 
@@ -46,6 +49,14 @@ function enqueueMemory(averbacaoId, tenantId) {
   void memoryDrain();
 }
 
+function getDlq() {
+  if (dlq) return dlq;
+  const connection = getBullMqConnection();
+  if (!connection) return null;
+  dlq = new Queue(AVERBACAO_DLQ_NAME, { connection });
+  return dlq;
+}
+
 function getQueue() {
   if (queue) return queue;
   const connection = getBullMqConnection();
@@ -56,7 +67,7 @@ function getQueue() {
       attempts: JOB_ATTEMPTS,
       backoff: { type: "exponential", delay: 15_000 },
       removeOnComplete: { count: 200 },
-      removeOnFail: { count: 400 },
+      removeOnFail: { count: 0 },
     },
   });
   return queue;
@@ -76,6 +87,10 @@ async function processJob(job) {
 export async function startAverbacaoWorker() {
   if (worker) return worker;
   if (!isRedisConfigured()) {
+    if (process.env.NODE_ENV === "production") {
+      logger.error("Worker averbação: Redis obrigatório em produção — jobs não podem ficar só em memória");
+      return null;
+    }
     logger.info("Worker averbação: modo memória (REDIS_URL ausente)");
     return null;
   }
@@ -90,7 +105,7 @@ export async function startAverbacaoWorker() {
       averbacaoId: job.data?.averbacaoId,
     });
   });
-  worker.on("failed", (job, err) => {
+  worker.on("failed", async (job, err) => {
     logger.error("Averbação job falhou", {
       jobId: job?.id,
       averbacaoId: job?.data?.averbacaoId,
@@ -98,6 +113,28 @@ export async function startAverbacaoWorker() {
       attemptsMade: job?.attemptsMade,
       err: err?.message,
     });
+    if (job && job.attemptsMade >= JOB_ATTEMPTS) {
+      try {
+        const dead = getDlq();
+        if (dead) {
+          await dead.add(
+            "averbacao-dlq",
+            {
+              averbacaoId: job.data?.averbacaoId,
+              tenantId: job.data?.tenantId,
+              failedReason: err?.message,
+              failedAt: new Date().toISOString(),
+            },
+            { jobId: `dlq-${job.data?.averbacaoId}` },
+          );
+        }
+      } catch (dlqErr) {
+        logger.error("Falha ao gravar averbação na DLQ", {
+          averbacaoId: job?.data?.averbacaoId,
+          err: dlqErr?.message,
+        });
+      }
+    }
   });
   worker.on("error", (err) => {
     logger.error("Worker averbação erro", { err: err?.message });
@@ -117,6 +154,13 @@ export async function enqueueAverbacaoJob(averbacaoId, tenantId) {
   }
   const q = getQueue();
   if (!q) {
+    if (process.env.NODE_ENV === "production") {
+      const err = new Error(
+        "Redis indisponível — averbação não pode usar fila em memória em produção.",
+      );
+      err.statusCode = 503;
+      throw err;
+    }
     enqueueMemory(id, tid);
     return { mode: "memory", averbacaoId: id };
   }
@@ -153,6 +197,10 @@ export async function closeAverbacaoQueue() {
   if (queue) {
     closing.push(queue.close());
     queue = null;
+  }
+  if (dlq) {
+    closing.push(dlq.close());
+    dlq = null;
   }
   await Promise.allSettled(closing);
 }

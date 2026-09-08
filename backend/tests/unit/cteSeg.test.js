@@ -17,7 +17,7 @@ const baseCte = {
   natureza_operacao: "Transporte",
   dt_emissao: "2026-02-01T10:00:00-03:00",
   servico: { valor_prestacao: 100 },
-  tomador: { cpf_cnpj: "12345678000199" },
+  tomador: { cpf_cnpj: "12345678000195" },
 };
 
 test("montarGrupoSeguro: compatível com o contrato que o MDF-e já usava", () => {
@@ -26,14 +26,14 @@ test("montarGrupoSeguro: compatível com o contrato que o MDF-e já usava", () =
   assert.deepEqual(
     montarGrupoSeguro({
       resp_seg: 1,
-      cnpj_seguradora: "12345678000199",
+      cnpj_seguradora: "12345678000195",
       numero_apolice: "AP-1",
       numero_averbacao: "AV-1",
     }),
     [
       {
         indicadorResponsavel: 1,
-        cnpjSegurador: "12345678000199",
+        cnpjSegurador: "12345678000195",
         numeroApolice: "AP-1",
         numerosAverbacao: ["AV-1"],
       },
@@ -49,7 +49,7 @@ test("montarSegCte traduz o objeto seg aninhado para o formato do provedor", () 
   const out = montarSegCte({
     seg: {
       responsavel: 5,
-      cnpj_seguradora: "12345678000199",
+      cnpj_seguradora: "12345678000195",
       numero_apolice: "AP-9",
       numero_averbacao: "AV-9",
       nome_seguradora: "Seguradora X",
@@ -58,7 +58,7 @@ test("montarSegCte traduz o objeto seg aninhado para o formato do provedor", () 
   assert.deepEqual(out, [
     {
       indicadorResponsavel: 5,
-      cnpjSegurador: "12345678000199",
+      cnpjSegurador: "12345678000195",
       numeroApolice: "AP-9",
       numerosAverbacao: ["AV-9"],
     },
@@ -69,9 +69,9 @@ test("schema aceita seg opcional e NÃO exige nada quando ausente", () => {
   assert.doesNotThrow(() => emitirCteSchema.parse(baseCte));
   const ok = emitirCteSchema.parse({
     ...baseCte,
-    seg: { responsavel: 5, cnpj_seguradora: "12.345.678/0001-99" },
+    seg: { responsavel: 5, cnpj_seguradora: "12.345.678/0001-95" },
   });
-  assert.equal(ok.seg.cnpj_seguradora, "12345678000199");
+  assert.equal(ok.seg.cnpj_seguradora, "12345678000195");
 });
 
 test("montarPayloadCte expõe Seg quando informado e omite quando não", () => {

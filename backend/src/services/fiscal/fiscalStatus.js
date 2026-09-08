@@ -36,6 +36,11 @@ export const STATUS_RASCUNHO_EDITAVEL = Object.freeze([
 
 const LOCK_MS = 2 * 60 * 1000;
 
+/** Status 1 = evento autorizado. Documentado na Brasil NFe; não inventar outros. */
+export const EVENTO_STATUS_AUTORIZADO = 1;
+export const EVENTO_STATUS_AGUARDANDO = 2;
+export const EVENTO_STATUS_ERRO = 3;
+
 export function httpError(statusCode, message, extra) {
   const err = new Error(message);
   err.statusCode = statusCode;
@@ -51,9 +56,48 @@ export function documentoJaEnviadoAoProvedor(row) {
 }
 
 /**
+ * Timeout, abort, 5xx, 429 ou falha de rede: a requisição PODE ter chegado
+ * ao provedor. Não marcar `erro` reemitível.
+ */
+export function incertezaDeComunicacao(err) {
+  if (!err) return false;
+  if (err.incerteza === true) return true;
+  const status = Number(err.statusCode);
+  const http = Number(err.details?.httpStatus);
+  if (status === 429) return true;
+  if (http === 429 || (Number.isFinite(http) && http >= 500)) return true;
+  const name = String(err.name || "");
+  if (name === "AbortError" || name === "TimeoutError") return true;
+  const code = String(err.code || err.cause?.code || "");
+  if (
+    [
+      "ETIMEDOUT",
+      "ECONNRESET",
+      "ECONNREFUSED",
+      "ENOTFOUND",
+      "EAI_AGAIN",
+      "UND_ERR_CONNECT_TIMEOUT",
+    ].includes(code)
+  ) {
+    return true;
+  }
+  const msg = String(err.message || "").toLowerCase();
+  return (
+    msg.includes("timeout") ||
+    msg.includes("aborted") ||
+    msg.includes("fetch failed") ||
+    msg.includes("network") ||
+    msg.includes("econnreset") ||
+    msg.includes("socket")
+  );
+}
+
+/**
  * Decide se a linha pode ser enviada à Brasil NFe.
- * `processando` só é retomável depois do timeout (crash a meio da emissão),
- * e somente se ainda não houver chave/identificador interno.
+ *
+ * `processando` NUNCA reenvia: o identificador interno é gravado no claim,
+ * antes do POST. Recuperação = consultar. `erro` com identificador também
+ * consulta (legado de timeout antigo). Só `erro` sem id volta a claim.
  */
 export function avaliarClaimEmissao(row, { now = Date.now() } = {}) {
   const status = String(row?.status || "");
@@ -73,23 +117,10 @@ export function avaliarClaimEmissao(row, { now = Date.now() } = {}) {
     };
   }
   if (status === CTE_STATUS.PROCESSANDO) {
-    // Já aceito pela Brasil NFe (lote / chave / identificador): consultar, não reenviar.
-    if (documentoJaEnviadoAoProvedor(row)) {
-      return { action: "consult" };
-    }
-    const started = row?.emissao_iniciada_em
-      ? new Date(row.emissao_iniciada_em).getTime()
-      : 0;
-    if (started && now - started < LOCK_MS) {
-      return {
-        action: "reject",
-        error: httpError(
-          409,
-          "Emissão já em andamento. Aguarde o retorno da SEFAZ ou consulte o status.",
-        ),
-      };
-    }
-    return { action: "claim" };
+    return { action: "consult" };
+  }
+  if (status === CTE_STATUS.ERRO && documentoJaEnviadoAoProvedor(row)) {
+    return { action: "consult" };
   }
   if (STATUS_RASCUNHO_EDITAVEL.includes(status) || !status) {
     return { action: "claim" };
@@ -101,6 +132,74 @@ export function avaliarClaimEmissao(row, { now = Date.now() } = {}) {
       `Não é possível emitir um documento com status "${status}".`,
     ),
   };
+}
+
+export function avaliarClaimEvento(row, tipo, { now = Date.now() } = {}) {
+  const status = String(row?.status || "");
+  const op = String(row?.sefaz_operacao || "");
+  if (tipo === "cancelamento") {
+    if (status === CTE_STATUS.CANCELADO) {
+      return { action: "already_done" };
+    }
+    if (status !== CTE_STATUS.PROCESSADO) {
+      return {
+        action: "reject",
+        error: httpError(
+          400,
+          `Só é possível cancelar documento autorizado (status atual: "${status}").`,
+        ),
+      };
+    }
+  }
+  if (tipo === "encerramento") {
+    if (status === MDFE_STATUS.ENCERRADO) {
+      return { action: "already_done" };
+    }
+    if (status !== CTE_STATUS.PROCESSADO) {
+      return {
+        action: "reject",
+        error: httpError(
+          400,
+          `Só é possível encerrar MDF-e autorizado (status atual: "${status}").`,
+        ),
+      };
+    }
+  }
+  const enviando =
+    (tipo === "cancelamento" && op === "cancelamento_enviando") ||
+    (tipo === "encerramento" && op === "encerramento_enviando");
+  if (enviando) {
+    const started = row?.sefaz_em ? new Date(row.sefaz_em).getTime() : 0;
+    if (started && now - started < LOCK_MS) {
+      return {
+        action: "reject",
+        error: httpError(
+          409,
+          "Evento já em andamento. Aguarde ou consulte o status.",
+        ),
+      };
+    }
+  }
+  return { action: "claim" };
+}
+
+/**
+ * Após o claim (`processando`), decide o estado local se a emissão falhar.
+ * POST já disparado + timeout/5xx/rede → incerto (não reemitível).
+ * Falha local antes do POST → volta a rascunho.
+ * HTTP 4xx do provedor → rejeitado.
+ */
+export function decidirPosFalhaEmissao(err, { postIniciado } = {}) {
+  if (!postIniciado) return "rascunho";
+  if (incertezaDeComunicacao(err)) return "incerto";
+  const http = Number(err.details?.httpStatus);
+  if (err.statusCode === 400 && Number.isFinite(http) && http < 500) {
+    return "rejeitado";
+  }
+  if (err.statusCode === 400 && !Number.isFinite(http)) {
+    return "rascunho";
+  }
+  return "incerto";
 }
 
 export function mensagemSefaz(resposta) {
@@ -227,17 +326,38 @@ export function interpretarRespostaMdfe(resposta) {
   };
 }
 
-/** Eventos (cancelamento / encerramento): Status 1 ok, 2 aguardando, 3 erro. */
+/**
+ * Eventos (cancelamento / encerramento).
+ * Só Status 1 é sucesso documentado. Ausência, status desconhecido ou
+ * resposta incompleta NÃO autorizam o evento localmente.
+ */
 export function interpretarRespostaEvento(resposta) {
-  const status = resposta?.Status ?? resposta?.status;
+  if (!resposta || typeof resposta !== "object") {
+    return {
+      outcome: "error",
+      mensagem: "Resposta vazia ou inválida do provedor para o evento.",
+    };
+  }
+  const status = resposta.Status ?? resposta.status;
   const msg = mensagemSefaz(resposta);
-  if (status === 3) {
+  if (status === EVENTO_STATUS_ERRO) {
     return { outcome: "error", mensagem: msg || "A SEFAZ rejeitou o evento." };
   }
-  if (status === 2) {
-    return { outcome: "processing", mensagem: msg };
+  if (status === EVENTO_STATUS_AGUARDANDO) {
+    return {
+      outcome: "processing",
+      mensagem: msg || "Evento aguardando processamento na SEFAZ.",
+    };
   }
-  return { outcome: "authorized", mensagem: msg };
+  if (status === EVENTO_STATUS_AUTORIZADO) {
+    return { outcome: "authorized", mensagem: msg };
+  }
+  return {
+    outcome: "incerto",
+    mensagem:
+      msg ||
+      `Resposta de evento sem status de sucesso (recebido: ${String(status)}). Consulte o documento antes de repetir.`,
+  };
 }
 
 export function prazoCancelamentoExpirado(autorizadoEm, { now = Date.now() } = {}) {

@@ -16,7 +16,7 @@ import { emitirCteSchema } from "../../src/schemas/fiscalSchema.js";
 
 test("fiscalEmpresaSchema aceita resp_tec_* opcionais e normaliza o CNPJ", () => {
   const ok = fiscalEmpresaSchema.parse({
-    cnpj: "11.222.333/0001-44",
+    cnpj: "11.222.333/0001-81",
     razao_social: "Emitente LTDA",
     resp_tec_cnpj: "99.888.777/0001-66",
     resp_tec_contato: "TI",
@@ -31,7 +31,7 @@ test("fiscalEmpresaSchema aceita resp_tec_* opcionais e normaliza o CNPJ", () =>
 test("toPublicEmpresa nunca devolve resp_tec_csrt cru, s√≥ o booleano *_set", () => {
   const pub = toPublicEmpresa({
     id: 1,
-    cnpj: "11222333000144",
+    cnpj: "11222333000181",
     resp_tec_csrt: "fsc1:aaa:bbb:ccc",
     cte_mdfe_provider_token: null,
     certificado_senha: null,
@@ -71,7 +71,7 @@ test("montarPayloadCte inclui infRespTec quando a empresa tem, e omite quando n√
     natureza_operacao: "Transporte",
     dt_emissao: "2026-02-01T10:00:00-03:00",
     servico: { valor_prestacao: 100 },
-    tomador: { cpf_cnpj: "12345678000199" },
+    tomador: { cpf_cnpj: "12345678000195" },
   });
   const comInfo = montarPayloadCte(dto, undefined, {
     id: 1,

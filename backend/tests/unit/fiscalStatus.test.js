@@ -2,14 +2,17 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   avaliarClaimEmissao,
+  avaliarClaimEvento,
   CTE_STATUS,
   codigoSefaz,
   dadosPersistenciaConsulta,
+  decidirPosFalhaEmissao,
   deveConsultarProvedor,
   documentoJaEnviadoAoProvedor,
   escolherNotaConsultada,
   identificadorInternoCte,
   identificadorInternoMdfe,
+  incertezaDeComunicacao,
   interpretarNotaConsultada,
   interpretarRespostaCte,
   interpretarRespostaEvento,
@@ -52,26 +55,29 @@ describe("avaliarClaimEmissao", () => {
     );
   });
 
-  it("bloqueia processando dentro da janela de lock", () => {
+  it("consulta processando sempre — nunca reenvia, mesmo após o lock", () => {
     const now = Date.now();
-    const r = avaliarClaimEmissao(
+    const recente = avaliarClaimEmissao(
       { status: CTE_STATUS.PROCESSANDO, emissao_iniciada_em: new Date(now - 10_000) },
       { now },
     );
-    assert.equal(r.action, "reject");
-    assert.equal(r.error.statusCode, 409);
-  });
-
-  it("permite retomar processando após o lock expirar", () => {
-    const now = Date.now();
-    const r = avaliarClaimEmissao(
+    assert.equal(recente.action, "consult");
+    const expirado = avaliarClaimEmissao(
       {
         status: CTE_STATUS.PROCESSANDO,
         emissao_iniciada_em: new Date(now - 3 * 60 * 1000),
       },
       { now },
     );
-    assert.equal(r.action, "claim");
+    assert.equal(expirado.action, "consult");
+  });
+
+  it("erro com identificador interno consulta; erro sem id permite claim", () => {
+    assert.equal(
+      avaliarClaimEmissao({ status: CTE_STATUS.ERRO, brasil_nfe_id: "cte-1" }).action,
+      "consult",
+    );
+    assert.equal(avaliarClaimEmissao({ status: CTE_STATUS.ERRO }).action, "claim");
   });
 
   it("consulta em vez de reenviar se processando já tem chave ou identificador", () => {
@@ -133,6 +139,65 @@ describe("interpretarRespostaMdfe", () => {
 describe("interpretarRespostaEvento", () => {
   it("erro no evento com Status 3", () => {
     assert.equal(interpretarRespostaEvento({ Status: 3 }).outcome, "error");
+  });
+
+  it("só Status 1 autoriza; ausência e desconhecido são incertos", () => {
+    assert.equal(interpretarRespostaEvento({ Status: 1 }).outcome, "authorized");
+    assert.equal(interpretarRespostaEvento({ Status: 2 }).outcome, "processing");
+    assert.equal(interpretarRespostaEvento({}).outcome, "incerto");
+    assert.equal(interpretarRespostaEvento(null).outcome, "error");
+    assert.equal(interpretarRespostaEvento({ Status: 99 }).outcome, "incerto");
+    assert.equal(interpretarRespostaEvento({ Status: "ok" }).outcome, "incerto");
+  });
+});
+
+describe("incertezaDeComunicacao e decidirPosFalhaEmissao", () => {
+  it("timeout/5xx/abort são incerteza; validação local não", () => {
+    assert.equal(incertezaDeComunicacao({ name: "AbortError" }), true);
+    assert.equal(incertezaDeComunicacao({ details: { httpStatus: 500 } }), true);
+    assert.equal(incertezaDeComunicacao({ incerteza: true, statusCode: 400 }), true);
+    assert.equal(incertezaDeComunicacao({ statusCode: 503 }), false);
+    assert.equal(
+      incertezaDeComunicacao({ statusCode: 400, message: "token ausente" }),
+      false,
+    );
+  });
+
+  it("falha antes do POST volta a rascunho; depois do POST fica incerto", () => {
+    const timeout = { name: "TimeoutError", message: "timeout" };
+    assert.equal(decidirPosFalhaEmissao(timeout, { postIniciado: false }), "rascunho");
+    assert.equal(decidirPosFalhaEmissao(timeout, { postIniciado: true }), "incerto");
+    assert.equal(
+      decidirPosFalhaEmissao(
+        { statusCode: 400, details: { httpStatus: 400 } },
+        { postIniciado: true },
+      ),
+      "rejeitado",
+    );
+  });
+});
+
+describe("avaliarClaimEvento", () => {
+  it("impede segundo cancelamento enquanto o primeiro está enviando", () => {
+    const now = Date.now();
+    const r = avaliarClaimEvento(
+      {
+        status: CTE_STATUS.PROCESSADO,
+        sefaz_operacao: "cancelamento_enviando",
+        sefaz_em: new Date(now - 10_000),
+      },
+      "cancelamento",
+      { now },
+    );
+    assert.equal(r.action, "reject");
+    assert.equal(r.error.statusCode, 409);
+  });
+
+  it("já cancelado é idempotente", () => {
+    assert.equal(
+      avaliarClaimEvento({ status: CTE_STATUS.CANCELADO }, "cancelamento").action,
+      "already_done",
+    );
   });
 });
 

@@ -22,9 +22,9 @@ function payloadContrato(empresaId, extras = {}) {
   return {
     fiscal_empresa_id: empresaId,
     tipo_operacao: 3,
-    cpf_cnpj_contratado: "12345678000199",
+    cpf_cnpj_contratado: "12345678000195",
     rntrc_contratado: "123456789",
-    cpf_cnpj_contratante: "98765432000199",
+    cpf_cnpj_contratante: "98765432000198",
     valor_frete: 2500,
     valor_piso_minimo_frete: 2100,
     valor_vale_pedagio: 0,
@@ -75,7 +75,7 @@ test(
         .post("/api/fiscal/empresas")
         .set(a.authHeader)
         .send({
-          cnpj: "12345678000199",
+          cnpj: "12345678000195",
           razao_social: "Transportes A",
           crt: 1,
         });
@@ -177,7 +177,7 @@ test(
         .post("/api/fiscal/empresas")
         .set(a.authHeader)
         .send({
-          cnpj: "12345678000199",
+          cnpj: "12345678000195",
           razao_social: "Transportes CIOT",
           crt: 1,
           certificado_senha: "senha-teste",
@@ -242,13 +242,13 @@ test(
       const empresa = await request(app)
         .post("/api/fiscal/empresas")
         .set(a.authHeader)
-        .send({ cnpj: "12345678000199", razao_social: "Emissora", crt: 1 });
+        .send({ cnpj: "12345678000195", razao_social: "Emissora", crt: 1 });
       assert.equal(empresa.status, 201, empresa.body?.error);
 
       const cliente = await request(app)
         .post("/api/fiscal/clientes")
         .set(a.authHeader)
-        .send({ razao_social: "Tomador", cnpj_cpf: "12345678000199" });
+        .send({ razao_social: "Tomador", cnpj_cpf: "12345678000195" });
       assert.equal(cliente.status, 201, cliente.body?.error);
 
       const contrato = await request(app)
@@ -271,7 +271,7 @@ test(
           natureza_operacao: "Transporte",
           dt_emissao: new Date().toISOString(),
           servico: { valor_prestacao: 150 },
-          tomador: { cpf_cnpj: "12345678000199" },
+          tomador: { cpf_cnpj: "12345678000195" },
           ciot: "999888777666",
         });
       assert.equal(cte.status, 201, cte.body?.error);
@@ -293,7 +293,7 @@ test(
           natureza_operacao: "Transporte",
           dt_emissao: new Date().toISOString(),
           servico: { valor_prestacao: 150 },
-          tomador: { cpf_cnpj: "12345678000199" },
+          tomador: { cpf_cnpj: "12345678000195" },
           contrato_frete_id: contrato.body.data.id,
         });
       assert.equal(cteVinculado.status, 400, cteVinculado.body?.error);

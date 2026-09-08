@@ -580,7 +580,9 @@ model fiscal_ctes {
   sefaz_detalhes      Json?     @db.JsonB
   sefaz_operacao      String?   @db.VarChar(40)
   sefaz_em            DateTime? @db.Timestamptz(6)
-  brasil_nfe_id       String?   @db.VarChar(80)
+  brasil_nfe_id       String?   @unique @db.VarChar(80)
+  /// Unicidade de numeração (tenant+empresa+ambiente+série+número) é índice
+  /// parcial na migration fiscal_unicidade_emissao — Prisma não modela WHERE.
   emissao_iniciada_em DateTime? @db.Timestamptz(6)
   numero              String?   @db.VarChar(20)
   serie               String?   @db.VarChar(10)
@@ -822,7 +824,7 @@ model fiscal_mdfes {
   sefaz_detalhes    Json?     @db.JsonB
   sefaz_operacao    String?   @db.VarChar(40)
   sefaz_em          DateTime? @db.Timestamptz(6)
-  brasil_nfe_id     String?   @db.VarChar(80)
+  brasil_nfe_id     String?   @unique @db.VarChar(80)
   emissao_iniciada_em DateTime? @db.Timestamptz(6)
   data_emissao      DateTime? @db.Timestamptz(6)
   xml_path          String?   @db.VarChar(500)

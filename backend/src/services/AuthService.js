@@ -131,16 +131,21 @@ export class AuthService {
     const password = process.env.ADMIN_PASSWORD || DEFAULT_BOOTSTRAP.password;
     const nome = process.env.ADMIN_NOME || DEFAULT_BOOTSTRAP.nome;
 
-    await prisma.users.create({
-      data: {
-        tenant_id: tenant.id,
-        email,
-        nome,
-        role: "admin",
-        password_hash: await hashPassword(password),
-        ativo: true,
-      },
-    });
+    try {
+      await prisma.users.create({
+        data: {
+          tenant_id: tenant.id,
+          email,
+          nome,
+          role: "admin",
+          password_hash: await hashPassword(password),
+          ativo: true,
+        },
+      });
+    } catch (err) {
+      if (err?.code === "P2002") return;
+      throw err;
+    }
 
     logger.warn("Usuário administrador inicial criado", {
       email,

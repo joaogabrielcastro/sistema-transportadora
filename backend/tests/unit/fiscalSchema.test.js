@@ -13,17 +13,17 @@ describe("fiscalSchema", () => {
   it("fiscal_clientes.cnpj_cpf é normalizado (só dígitos)", () => {
     const out = fiscalClienteSchema.parse({
       razao_social: "Comércio de Peças Ltda",
-      cnpj_cpf: "12.345.678/0001-99",
+      cnpj_cpf: "12.345.678/0001-95",
     });
-    assert.equal(out.cnpj_cpf, "12345678000199");
+    assert.equal(out.cnpj_cpf, "12345678000195");
   });
 
   it("fiscal_empresas.cnpj normalizado", () => {
     const out = fiscalEmpresaSchema.parse({
-      cnpj: "12.345.678/0001-99",
+      cnpj: "12.345.678/0001-95",
       razao_social: "Transportadora X",
     });
-    assert.equal(out.cnpj, "12345678000199");
+    assert.equal(out.cnpj, "12345678000195");
   });
 
   it("cancelar: justificativa < 15 é rejeitada", () => {
@@ -52,9 +52,9 @@ describe("fiscalSchema", () => {
       natureza_operacao: "Transporte",
       dt_emissao: "2026-08-22T10:00:00-03:00",
       servico: { valor_prestacao: 2500 },
-      tomador: { cpf_cnpj: "12.345.678/0001-99", nome: "Tomador" },
+      tomador: { cpf_cnpj: "12.345.678/0001-95", nome: "Tomador" },
     });
-    assert.equal(ok.tomador.cpf_cnpj, "12345678000199");
+    assert.equal(ok.tomador.cpf_cnpj, "12345678000195");
     assert.equal(ok.servico.valor_prestacao, 2500);
   });
 
@@ -67,7 +67,7 @@ describe("fiscalSchema", () => {
         natureza_operacao: "Transporte",
         dt_emissao: "2026-08-22T10:00:00-03:00",
         servico: { valor_prestacao: 100 },
-        tomador: { cpf_cnpj: "12345678000199" },
+        tomador: { cpf_cnpj: "12345678000195" },
       }),
     );
   });
@@ -79,7 +79,7 @@ describe("fiscalSchema", () => {
       natureza_operacao: "Transporte",
       dt_emissao: "2026-08-22T10:00:00-03:00",
       servico: { valor_prestacao: 100 },
-      tomador: { cpf_cnpj: "12345678000199" },
+      tomador: { cpf_cnpj: "12345678000195" },
     };
     assert.throws(() => emitirCteSchema.parse({ ...base, tipo_cte: "1" }));
     assert.throws(() => emitirCteSchema.parse({ ...base, tipo_cte: "3" }));
@@ -101,7 +101,7 @@ describe("fiscalSchema", () => {
         natureza_operacao: "Transporte",
         dt_emissao: "2026-08-22T10:00:00-03:00",
         servico: { valor_prestacao: 0 },
-        tomador: { cpf_cnpj: "12345678000199" },
+        tomador: { cpf_cnpj: "12345678000195" },
       }),
     );
   });
@@ -114,7 +114,7 @@ describe("fiscalSchema", () => {
       natureza_operacao: "Transporte",
       dt_emissao: "2026-08-22T10:00:00-03:00",
       servico: { valor_prestacao: 2500 },
-      tomador: { cpf_cnpj: "12345678000199" },
+      tomador: { cpf_cnpj: "12345678000195" },
       carga: { peso: 15000, produto_predominante: "Soja" },
       chave_nfe_referenciada: "3524 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000",
     });
@@ -129,7 +129,7 @@ describe("fiscalSchema", () => {
         natureza_operacao: "Transporte",
         dt_emissao: "2026-08-22T10:00:00-03:00",
         servico: { valor_prestacao: 1 },
-        tomador: { cpf_cnpj: "12345678000199" },
+        tomador: { cpf_cnpj: "12345678000195" },
         chave_nfe_referenciada: "3".repeat(44),
       }),
     );
@@ -143,22 +143,40 @@ describe("fiscalSchema", () => {
       rodoviario: {},
       cte_ids: [10, 11],
       resp_seg: 1,
-      cnpj_seguradora: "12.345.678/0001-99",
+      cnpj_seguradora: "12.345.678/0001-95",
       numero_apolice: "AP-2026-001",
       numero_averbacao: "AV-9",
     });
     assert.deepEqual(ok.cte_ids, [10, 11]);
     assert.equal(ok.resp_seg, 1);
-    assert.equal(ok.cnpj_seguradora, "12345678000199");
+    assert.equal(ok.cnpj_seguradora, "12345678000195");
+  });
+
+  it("MDF-e rejeita cte_ids vazio e CNPJ com DV inválido", () => {
+    assert.throws(() =>
+      emitirMdfeSchema.parse({
+        data_emissao: "2026-08-31T12:00:00-03:00",
+        uf_carregamento: "SP",
+        uf_descarregamento: "MG",
+        rodoviario: {},
+        cte_ids: [],
+      }),
+    );
+    assert.throws(() =>
+      fiscalEmpresaSchema.parse({
+        cnpj: "12345678000199",
+        razao_social: "Transportadora X",
+      }),
+    );
   });
 
   it("CIOT Lotação (1) exige destinatário, origem_destino e dados_carga", () => {
     const base = {
       fiscal_empresa_id: 1,
       tipo_operacao: 1,
-      cpf_cnpj_contratado: "12345678000199",
+      cpf_cnpj_contratado: "12345678000195",
       rntrc_contratado: "123456789",
-      cpf_cnpj_contratante: "98765432000199",
+      cpf_cnpj_contratante: "98765432000198",
       valor_frete: 2500.5,
       valor_piso_minimo_frete: 2100,
       valor_vale_pedagio: 180.5,
@@ -175,7 +193,7 @@ describe("fiscalSchema", () => {
 
     const ok = declararCiotSchema.parse({
       ...base,
-      cpf_cnpj_destinatario: "11222333000144",
+      cpf_cnpj_destinatario: "11222333000181",
       origem_destino: {
         codigo_municipio_origem: "3550308",
         codigo_municipio_destino: "3304557",
@@ -188,7 +206,7 @@ describe("fiscalSchema", () => {
       inf_indicadores_operacionais: { possui_rastreamento: false },
     });
     assert.equal(ok.tipo_operacao, 1);
-    assert.equal(ok.cpf_cnpj_contratado, "12345678000199");
+    assert.equal(ok.cpf_cnpj_contratado, "12345678000195");
     assert.equal(ok.valor_piso_minimo_frete, 2100);
     assert.equal(ok.valor_vale_pedagio, 180.5);
   });
@@ -197,9 +215,9 @@ describe("fiscalSchema", () => {
     const base = {
       fiscal_empresa_id: 1,
       tipo_operacao: 3,
-      cpf_cnpj_contratado: "12345678000199",
+      cpf_cnpj_contratado: "12345678000195",
       rntrc_contratado: "123456789",
-      cpf_cnpj_contratante: "98765432000199",
+      cpf_cnpj_contratante: "98765432000198",
       valor_frete: 1000,
       data_declaracao: "2026-08-27T10:00:00-03:00",
       data_inicio_viagem: "2026-08-27",
@@ -224,10 +242,10 @@ describe("fiscalSchema", () => {
       declararCiotSchema.parse({
         fiscal_empresa_id: 1,
         tipo_operacao: 3,
-        cpf_cnpj_contratado: "12345678000199",
+        cpf_cnpj_contratado: "12345678000195",
         rntrc_contratado: "123456789",
-        cpf_cnpj_contratante: "98765432000199",
-        cpf_cnpj_destinatario: "11222333000144",
+        cpf_cnpj_contratante: "98765432000198",
+        cpf_cnpj_destinatario: "11222333000181",
         valor_frete: 1000,
         valor_piso_minimo_frete: 950,
         valor_vale_pedagio: 0,
@@ -247,9 +265,9 @@ describe("fiscalSchema", () => {
     const base = {
       fiscal_empresa_id: 1,
       tipo_operacao: 3,
-      cpf_cnpj_contratado: "12345678000199",
+      cpf_cnpj_contratado: "12345678000195",
       rntrc_contratado: "123456789",
-      cpf_cnpj_contratante: "98765432000199",
+      cpf_cnpj_contratante: "98765432000198",
       valor_frete: 1000,
       valor_piso_minimo_frete: 950,
       valor_vale_pedagio: 0,

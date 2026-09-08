@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { chaveAcessoValida } from "../utils/fiscalDocs.js";
+import { chaveAcessoValida, cpfCnpjValido, cnpjValido, cpfValido, ufValida, inscricaoEstadualValida } from "../utils/fiscalDocs.js";
 
 /**
  * Schemas Zod do módulo fiscal de transporte (CT-e / MDF-e / Contrato de Frete / CIOT).
@@ -84,7 +84,8 @@ const cpfCnpj = z
   .pipe(
     z
       .string()
-      .regex(/^\d{11}$|^\d{14}$/, "CNPJ/CPF deve ter 11 (CPF) ou 14 (CNPJ) dígitos"),
+      .regex(/^\d{11}$|^\d{14}$/, "CNPJ/CPF deve ter 11 (CPF) ou 14 (CNPJ) dígitos")
+      .refine(cpfCnpjValido, "CNPJ/CPF inválido (dígito verificador)"),
   );
 
 const optionalCpfCnpj = z.preprocess(
@@ -102,6 +103,7 @@ const optionalCnpj14 = z.preprocess(
     .trim()
     .transform((v) => v.replace(/\D/g, ""))
     .pipe(z.string().regex(/^\d{14}$/, "CNPJ deve ter 14 dígitos"))
+    .refine(cnpjValido, "CNPJ inválido (dígito verificador)")
     .optional()
     .nullable(),
 );
@@ -112,7 +114,8 @@ const ufSigla = z
   .string()
   .trim()
   .transform((v) => v.toUpperCase())
-  .pipe(z.string().length(2).regex(/^[A-Z]{2}$/, "UF inválida (use a sigla de 2 letras)"));
+  .pipe(z.string().length(2).regex(/^[A-Z]{2}$/, "UF inválida (use a sigla de 2 letras)"))
+  .refine(ufValida, "UF inválida (não é uma unidade federativa do Brasil)");
 
 const optionalUfSigla = z.preprocess(
   (v) =>
@@ -164,7 +167,12 @@ const optionalChaveAcesso = z
 // fiscal_empresas
 // ---------------------------------------------------------------------
 export const fiscalEmpresaSchema = z.object({
-  cnpj: digits(18),
+  cnpj: z
+    .string()
+    .trim()
+    .transform((v) => v.replace(/\D/g, ""))
+    .pipe(z.string().length(14, "CNPJ deve ter 14 dígitos"))
+    .refine(cnpjValido, "CNPJ inválido (dígito verificador)"),
   razao_social: z.string().trim().min(2).max(255),
   rntrc: optionalDigits(9),
   cte_mdfe_provider_token: z.string().trim().min(1).optional().nullable(),
@@ -179,7 +187,16 @@ export const fiscalEmpresaSchema = z.object({
     .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)])
     .optional()
     .nullable(),
-  inscricao_estadual: z.string().trim().max(20).optional().nullable(),
+  inscricao_estadual: z
+    .string()
+    .trim()
+    .max(20)
+    .optional()
+    .nullable()
+    .refine(
+      (v) => v == null || v === "" || inscricaoEstadualValida(v),
+      "Inscrição estadual inválida",
+    ),
   // Grupo infRespTec (item 1.4). Todos opcionais no cadastro; a ausência NÃO
   // bloqueia emissão de CT-e (só gera aviso em log). resp_tec_csrt é cifrado
   // no service antes de gravar, igual ao token do provedor.
@@ -677,7 +694,9 @@ export const emitirMdfeSchema = z.object({
   // CT-e já emitidos (mesmo tenant, status "processado", ainda sem manifesto)
   // a vincular a este MDF-e. Validados no MdfeService, que grava manifesto_id
   // em cada um após a emissão.
-  cte_ids: z.array(z.number().int().positive()).optional(),
+  cte_ids: z
+    .array(z.number().int().positive())
+    .min(1, "Informe ao menos um CT-e autorizado para vincular a este MDF-e"),
   // Seguro da carga (grupo seg do MDF-e). resp_seg: 1 = emitente do MDF-e,
   // 2 = contratante do serviço de transporte. Os demais são opcionais.
   resp_seg: z.union([z.literal(1), z.literal(2)]).optional(),
@@ -698,7 +717,16 @@ export const emitirMdfeSchema = z.object({
           z
             .object({
               nome: z.string().trim().min(1).max(60),
-              cpf: digits(11),
+              cpf: z
+                .string()
+                .trim()
+                .transform((v) => v.replace(/\D/g, ""))
+                .pipe(
+                  z
+                    .string()
+                    .length(11, "CPF do condutor deve ter 11 dígitos")
+                    .refine(cpfValido, "CPF do condutor inválido (dígito verificador)"),
+                ),
             })
             .catchall(z.any()),
         )
@@ -922,15 +950,15 @@ export const declararCiotSchema = z
       .enum(["lotacao", "fracionada", "tac_agregado"])
       .optional()
       .nullable(),
-    cpf_cnpj_contratado: digits(14),
+    cpf_cnpj_contratado: cpfCnpj,
     rntrc_contratado: digits(9),
     // Snapshot da situação do RNTRC do contratado (item 3.1). Nesta rodada só
     // é gravado o que vier aqui — sem consulta automática à ANTT.
     rntrc_contratado_situacao: z.string().trim().max(20).optional().nullable(),
     rntrc_contratado_snapshot: looseObject.optional().nullable(),
-    cpf_cnpj_contratante: digits(14),
+    cpf_cnpj_contratante: cpfCnpj,
     rntrc_contratante: optionalDigits(9),
-    cpf_cnpj_destinatario: optionalDigits(14),
+    cpf_cnpj_destinatario: optionalCpfCnpj,
     valor_frete: z.number().positive(),
     // Obrigatórios por lei na Declaração de Operação de Transporte (ANTT):
     // piso mínimo de frete (Lei 13.703/2018) e Vale-Pedágio obrigatório

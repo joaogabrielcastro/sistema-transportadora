@@ -15,6 +15,7 @@ const baseDto = () =>
     uf_carregamento: "SP",
     uf_descarregamento: "MG",
     rodoviario: {},
+    cte_ids: [1],
   });
 
 test("sem campos de seguro -> seguros undefined", () => {
@@ -29,8 +30,9 @@ test("resp_seg + apólice -> monta uma entrada em seguros", () => {
     uf_carregamento: "SP",
     uf_descarregamento: "MG",
     rodoviario: {},
+    cte_ids: [1],
     resp_seg: 2,
-    cnpj_seguradora: "12345678000199",
+    cnpj_seguradora: "12345678000195",
     numero_apolice: "AP-1",
     numero_averbacao: "AV-1",
   });
@@ -38,7 +40,7 @@ test("resp_seg + apólice -> monta uma entrada em seguros", () => {
   assert.deepEqual(payload.seguros, [
     {
       indicadorResponsavel: 2,
-      cnpjSegurador: "12345678000199",
+      cnpjSegurador: "12345678000195",
       numeroApolice: "AP-1",
       numerosAverbacao: ["AV-1"],
     },

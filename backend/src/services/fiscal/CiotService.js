@@ -11,6 +11,7 @@ import {
   findOwnedOr404,
   resolveEmpresaCertificado,
 } from "./fiscalShared.js";
+import { incertezaDeComunicacao } from "./fiscalStatus.js";
 import { resultadoSimulacaoDocumento } from "./fiscalSimulacao.js";
 import {
   ContratoFreteService,
@@ -193,33 +194,22 @@ export class CiotService {
   }
 
   static async registrar(tenantId, contratoId, extras = {}) {
-    const contrato = await findOwnedOr404(
+    const contratoPre = await findOwnedOr404(
       "fiscal_contratos_frete",
       contratoId,
       tenantId,
       "Contrato de frete",
     );
-    if (contrato.status === CONTRATO_STATUS.CANCELADO) {
+    if (contratoPre.status === CONTRATO_STATUS.CANCELADO) {
       throw badRequest(
         "Não é possível registrar CIOT de um contrato de frete cancelado.",
       );
     }
 
-    let ciot = await carregarCiotDoContrato(tenantId, contrato.id);
-    if (
-      ciot &&
-      (ciot.status === CIOT_STATUS.REGISTRADO ||
-        ciot.status === CIOT_STATUS.ENCERRADO)
-    ) {
-      throw badRequest(
-        "Este contrato de frete já possui um CIOT registrado.",
-      );
-    }
-
-    const dto = dtoProntoParaRegistro(contrato, extras);
+    const dto = dtoProntoParaRegistro(contratoPre, extras);
     const { empresa, certificado } = await resolveEmpresaCertificado(
       tenantId,
-      contrato.fiscal_empresa_id,
+      contratoPre.fiscal_empresa_id,
     );
     validarCnpjCertificado(
       empresa.cnpj,
@@ -227,55 +217,101 @@ export class CiotService {
       dto.cpf_cnpj_contratante,
     );
 
-    const reusarId =
-      ciot &&
-      (ciot.status === CIOT_STATUS.ERRO ||
-        ciot.status === CIOT_STATUS.REGISTRANDO)
-        ? ciot.id_operacao_transporte
-        : null;
-    const idOperacaoTransporte =
-      reusarId ||
-      (await gerarIdOperacaoUnico(async (candidato) => {
-        const existente = await prisma.fiscal_ciots.findUnique({
-          where: { id_operacao_transporte: candidato },
-          select: { id: true },
-        });
-        return Boolean(existente);
-      }));
+    const locked = await prisma.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw`
+        SELECT id, status FROM fiscal_contratos_frete
+        WHERE id = ${Number(contratoPre.id)} AND tenant_id = ${Number(tenantId)}
+        FOR UPDATE
+      `;
+      const contrato = Array.isArray(rows) ? rows[0] : null;
+      if (!contrato) {
+        const err = new Error("Contrato de frete não encontrado");
+        err.statusCode = 404;
+        throw err;
+      }
+      const ciotExistente = await tx.fiscal_ciots.findFirst({
+        where: { contrato_frete_id: contrato.id, tenant_id: Number(tenantId) },
+      });
+      if (
+        ciotExistente &&
+        (ciotExistente.status === CIOT_STATUS.REGISTRADO ||
+          ciotExistente.status === CIOT_STATUS.ENCERRADO)
+      ) {
+        throw badRequest(
+          "Este contrato de frete já possui um CIOT registrado.",
+        );
+      }
+      if (ciotExistente?.status === CIOT_STATUS.REGISTRANDO) {
+        const err = new Error(
+          "Registro de CIOT já em andamento para este contrato. Consulte antes de tentar de novo.",
+        );
+        err.statusCode = 409;
+        throw err;
+      }
 
-    const retencoes = retencoesDoContrato(contrato);
+      const reusarId = ciotExistente?.id_operacao_transporte || null;
+      const idOperacaoTransporte =
+        reusarId ||
+        (await gerarIdOperacaoUnico(async (candidato) => {
+          const existente = await tx.fiscal_ciots.findUnique({
+            where: { id_operacao_transporte: candidato },
+            select: { id: true },
+          });
+          return Boolean(existente);
+        }));
+
+      const dataBase = {
+        tenant_id: Number(tenantId),
+        contrato_frete_id: contrato.id,
+        provider: nomeProvedorCiot(),
+        id_operacao_transporte: idOperacaoTransporte,
+        status: CIOT_STATUS.REGISTRANDO,
+        error_code: null,
+        error_message: null,
+      };
+
+      const ciot = ciotExistente
+        ? await tx.fiscal_ciots.update({
+            where: { id: ciotExistente.id },
+            data: dataBase,
+          })
+        : await tx.fiscal_ciots.create({ data: dataBase });
+
+      return { contratoId: contrato.id, ciot, idOperacaoTransporte };
+    });
+
+    const retencoes = retencoesDoContrato(contratoPre);
     const payload = montarPayloadDeclaracao(
       dto,
-      idOperacaoTransporte,
+      locked.idOperacaoTransporte,
       retencoes,
     );
 
-    const dataBase = {
-      tenant_id: Number(tenantId),
-      contrato_frete_id: contrato.id,
-      provider: nomeProvedorCiot(),
-      id_operacao_transporte: idOperacaoTransporte,
-      status: CIOT_STATUS.REGISTRANDO,
-      error_code: null,
-      error_message: null,
-    };
-
-    if (ciot) {
-      ciot = await prisma.fiscal_ciots.update({
-        where: { id: ciot.id },
-        data: dataBase,
-      });
-    } else {
-      ciot = await prisma.fiscal_ciots.create({ data: dataBase });
-    }
-
+    let ciot = locked.ciot;
     let resposta;
+    let postIniciado = false;
     try {
+      postIniciado = true;
       resposta = await CiotProviderClient.declararOperacaoTransporte(
         payload,
         certificado,
       );
     } catch (err) {
+      if (postIniciado && (incertezaDeComunicacao(err) || err.incerteza)) {
+        await prisma.fiscal_ciots.update({
+          where: { id: ciot.id },
+          data: {
+            error_message: err.message,
+            response_data: { incerteza: true, erro: err.message },
+          },
+        });
+        const wrapped = new Error(
+          "O registro de CIOT pode ter sido recebido pelo provedor. Consulte antes de registrar de novo.",
+        );
+        wrapped.statusCode = 503;
+        wrapped.details = { incerteza: true, causa: err.message };
+        throw wrapped;
+      }
       await prisma.fiscal_ciots.update({
         where: { id: ciot.id },
         data: {
@@ -324,16 +360,16 @@ export class CiotService {
     });
 
     await prisma.fiscal_contratos_frete.update({
-      where: { id: contrato.id },
+      where: { id: locked.contratoId },
       data: { status: CONTRATO_STATUS.EM_ANDAMENTO },
     });
 
     const atualizado = await prisma.fiscal_contratos_frete.findFirst({
-      where: { id: contrato.id, tenant_id: Number(tenantId) },
+      where: { id: locked.contratoId, tenant_id: Number(tenantId) },
     });
     logger.info("CIOT registrado", {
       tenantId,
-      contratoId: contrato.id,
+      contratoId: locked.contratoId,
       id_operacao: registered.id_operacao_transporte,
       ciot: registered.codigo_identificacao_operacao,
       provider: registered.provider,

@@ -43,13 +43,13 @@ test("0.6 cancelamento: manda ChaveNF/Justificativa/NumeroProtocolo/NumeroSequen
     chave: "35260900000000000000000000000000000000000009",
     justificativa: "Erro de digitação no valor do frete do documento",
     protocolo: "135260000000009",
-    cnpjRemetente: "12345678000199",
+    cnpjRemetente: "12345678000195",
   });
   assert.equal(payload.ChaveNF, "35260900000000000000000000000000000000000009");
   assert.equal(payload.Justificativa, "Erro de digitação no valor do frete do documento");
   assert.equal(payload.NumeroProtocolo, "135260000000009");
   assert.equal(payload.NumeroSequencial, 1);
-  assert.equal(payload.CpfCnpjRemetenteDCe, "12345678000199");
+  assert.equal(payload.CpfCnpjRemetenteDCe, "12345678000195");
   assert.ok(typeof payload.DataEvento === "string" && payload.DataEvento.length > 0);
 });
 

@@ -33,7 +33,7 @@ const payloadCte = {
   natureza_operacao: "Transporte",
   dt_emissao: "2026-09-01T10:00:00-03:00",
   servico: { valor_prestacao: 150 },
-  tomador: { cpf_cnpj: "12345678000199" },
+  tomador: { cpf_cnpj: "12345678000195" },
   chave_nfe_referenciada: "35240000000000000000000000000000000000000000",
 };
 
@@ -116,6 +116,27 @@ function stubEmpresa(tenantId = 1) {
     return [empresa];
   });
   return empresa;
+}
+
+function stubMdfeRelacionamentos() {
+  const none = async () => ({ count: 0 });
+  stubPrisma("fiscal_mdfe_municipios_carrega", "deleteMany", none);
+  stubPrisma("fiscal_mdfe_documentos_descarga", "deleteMany", none);
+  stubPrisma("fiscal_mdfe_seguros", "deleteMany", none);
+  stubPrisma("fiscal_mdfe_municipios_carrega", "createMany", none);
+  stubPrisma("fiscal_mdfe_documentos_descarga", "createMany", none);
+  stubPrisma("fiscal_mdfe_seguros", "createMany", none);
+  stubPrisma("fiscal_ctes", "updateMany", none);
+  stubPrisma("fiscal_ctes", "findMany", async () => [
+    {
+      id: 99,
+      chave_acesso: CHAVE_CTE,
+      status: "processado",
+      manifesto_id: null,
+      valor_frete: 150,
+      valor_carga: 150,
+    },
+  ]);
 }
 
 function stubClaim(table, row) {
@@ -262,7 +283,7 @@ describe("CT-e ciclo com Brasil NFe mockada", () => {
     });
     stubPrisma("fiscal_clientes", "findFirst",  async ({ where }) => {
       if (Number(where.tenant_id) !== 1) return null;
-      return { id: 7, tenant_id: 1, cnpj_cpf: "12345678000199" };
+      return { id: 7, tenant_id: 1, cnpj_cpf: "12345678000195" };
     });
     stubEmpresa(1);
     let envios = 0;
@@ -314,7 +335,7 @@ describe("CT-e ciclo com Brasil NFe mockada", () => {
     stubPrisma("fiscal_clientes", "findFirst", async () => ({
       id: 7,
       tenant_id: 1,
-      cnpj_cpf: "12345678000199",
+      cnpj_cpf: "12345678000195",
     }));
     stubEmpresa(1);
     BrasilNFeClient.enviarConhecimentoTransporte = async () => ({
@@ -338,6 +359,7 @@ describe("CT-e ciclo com Brasil NFe mockada", () => {
       autorizado_em: new Date(),
       data_emissao: new Date(),
     };
+    stubClaim("fiscal_ctes", row);
     stubPrisma("fiscal_ctes", "findFirst", async ({ where }) => {
       if (Number(where.tenant_id) !== 1) return null;
       return row;
@@ -376,15 +398,20 @@ describe("MDF-e ciclo com Brasil NFe mockada", () => {
         uf_descarregamento: "RJ",
         data_emissao: "2026-09-01T10:00:00-03:00",
         rodoviario: {
-          condutores: [{ nome: "Joao Motorista", cpf: "12345678901" }],
+          condutores: [{ nome: "Joao Motorista", cpf: "12345678909" }],
         },
-        cte_ids: [],
+        cte_ids: [99],
         resp_seg: 1,
+        municipios_carrega: [
+          { codigo_municipio: "3550308", nome_municipio: "Sao Paulo" },
+        ],
+        numero_apolice: "AP-1",
       },
       emissao_iniciada_em: null,
       criado_em: new Date(),
     };
     stubClaim("fiscal_mdfes", row);
+    stubMdfeRelacionamentos();
     stubPrisma("fiscal_mdfes", "findFirst",  async ({ where }) => {
       if (Number(where.tenant_id) !== 1) return null;
       return row;
@@ -442,6 +469,7 @@ describe("MDF-e ciclo com Brasil NFe mockada", () => {
       numero_protocolo: "mdfe-prot",
       fiscal_empresa_id: 9,
     };
+    stubClaim("fiscal_mdfes", row);
     stubPrisma("fiscal_mdfes", "findFirst", async ({ where }) => {
       if (Number(where.tenant_id) !== 1) return null;
       return row;
@@ -476,6 +504,7 @@ describe("MDF-e ciclo com Brasil NFe mockada", () => {
       autorizado_em: new Date(),
       data_emissao: new Date(),
     };
+    stubClaim("fiscal_mdfes", row);
     stubPrisma("fiscal_mdfes", "findFirst", async ({ where }) => {
       if (Number(where.tenant_id) !== 1) return null;
       return row;
@@ -502,3 +531,236 @@ describe("MDF-e ciclo com Brasil NFe mockada", () => {
     await assert.rejects(() => MdfeService.consultarStatus(2, 3), /não encontrado/i);
   });
 });
+
+describe("CT-e recuperação / anti-duplicidade", () => {
+  beforeEach(() => {
+    stubChildrenEmpty();
+  });
+
+  function stubCteRascunho(row) {
+    stubClaim("fiscal_ctes", row);
+    stubPrisma("fiscal_ctes", "findFirst", async () => row);
+    stubPrisma("fiscal_ctes", "update", async ({ data }) => {
+      Object.assign(row, data);
+      return row;
+    });
+    stubPrisma("fiscal_clientes", "findFirst", async () => ({
+      id: 7,
+      tenant_id: 1,
+      cnpj_cpf: "12345678000195",
+    }));
+    stubEmpresa(1);
+  }
+
+  it("grava brasil_nfe_id no claim antes do POST", async () => {
+    const row = {
+      id: 21,
+      tenant_id: 1,
+      status: "rascunho",
+      chave_acesso: null,
+      brasil_nfe_id: null,
+      fiscal_empresa_id: 9,
+      xml_path: null,
+      cliente_id: 7,
+      payload_json: payloadCte,
+      emissao_iniciada_em: null,
+      criado_em: new Date(),
+    };
+    stubCteRascunho(row);
+    let idNoPost = null;
+    BrasilNFeClient.enviarConhecimentoTransporte = async () => {
+      idNoPost = row.brasil_nfe_id;
+      assert.equal(row.status, "processando");
+      return { status: 0, chave: CHAVE_CTE, numero: 1, serie: 1 };
+    };
+    await CteService.emitirPorId(1, 21);
+    assert.equal(idNoPost, "cte-21");
+  });
+
+  it("timeout depois do POST mantém processando e não reemite", async () => {
+    const row = {
+      id: 22,
+      tenant_id: 1,
+      status: "rascunho",
+      chave_acesso: null,
+      brasil_nfe_id: null,
+      fiscal_empresa_id: 9,
+      xml_path: null,
+      cliente_id: 7,
+      payload_json: payloadCte,
+      emissao_iniciada_em: null,
+      criado_em: new Date(),
+    };
+    stubCteRascunho(row);
+    let envios = 0;
+    BrasilNFeClient.enviarConhecimentoTransporte = async () => {
+      envios += 1;
+      const err = new Error("timeout");
+      err.name = "TimeoutError";
+      err.incerteza = true;
+      throw err;
+    };
+    await assert.rejects(() => CteService.emitirPorId(1, 22), (e) => e.statusCode === 503);
+    assert.equal(row.status, "processando");
+    assert.equal(row.brasil_nfe_id, "cte-22");
+
+    BrasilNFeClient.obterNotasFiscais = async () => ({
+      Notas: [{ chave: CHAVE_CTE, Situacao: "autorizado" }],
+    });
+    BrasilNFeClient.obterArquivoNotaFiscal = async () => null;
+    const recovered = await CteService.emitirPorId(1, 22);
+    assert.equal(envios, 1);
+    assert.equal(recovered.status, "processado");
+  });
+
+  it("HTTP 500 depois do POST não vira erro reemitível", async () => {
+    const row = {
+      id: 23,
+      tenant_id: 1,
+      status: "rascunho",
+      chave_acesso: null,
+      brasil_nfe_id: null,
+      fiscal_empresa_id: 9,
+      xml_path: null,
+      cliente_id: 7,
+      payload_json: payloadCte,
+      emissao_iniciada_em: null,
+      criado_em: new Date(),
+    };
+    stubCteRascunho(row);
+    BrasilNFeClient.enviarConhecimentoTransporte = async () => {
+      const err = new Error("HTTP 500");
+      err.statusCode = 400;
+      err.details = { httpStatus: 500 };
+      err.incerteza = true;
+      throw err;
+    };
+    await assert.rejects(() => CteService.emitirPorId(1, 23), (e) => e.statusCode === 503);
+    assert.equal(row.status, "processando");
+  });
+
+  it("timeout antes do POST (validação) volta a rascunho", async () => {
+    const row = {
+      id: 24,
+      tenant_id: 1,
+      status: "rascunho",
+      chave_acesso: null,
+      brasil_nfe_id: null,
+      fiscal_empresa_id: 9,
+      xml_path: null,
+      cliente_id: 7,
+      payload_json: payloadCte,
+      emissao_iniciada_em: null,
+      criado_em: new Date(),
+    };
+    stubClaim("fiscal_ctes", row);
+    stubPrisma("fiscal_ctes", "findFirst", async () => row);
+    stubPrisma("fiscal_ctes", "update", async ({ data }) => {
+      Object.assign(row, data);
+      return row;
+    });
+    stubPrisma("fiscal_clientes", "findFirst", async () => null);
+    stubEmpresa(1);
+    let envios = 0;
+    BrasilNFeClient.enviarConhecimentoTransporte = async () => {
+      envios += 1;
+      return { status: 0, chave: CHAVE_CTE };
+    };
+    await assert.rejects(() => CteService.emitirPorId(1, 24), /cliente/i);
+    assert.equal(envios, 0);
+    assert.equal(row.status, "rascunho");
+  });
+
+  it("restart com processando consulta e não faz novo POST", async () => {
+    const row = {
+      id: 25,
+      tenant_id: 1,
+      status: "processando",
+      chave_acesso: null,
+      brasil_nfe_id: "cte-25",
+      fiscal_empresa_id: 9,
+      xml_path: null,
+      cliente_id: 7,
+      payload_json: payloadCte,
+      criado_em: new Date(),
+    };
+    stubClaim("fiscal_ctes", row);
+    stubPrisma("fiscal_ctes", "findFirst", async () => row);
+    stubPrisma("fiscal_ctes", "update", async ({ data }) => {
+      Object.assign(row, data);
+      return row;
+    });
+    stubEmpresa(1);
+    let envios = 0;
+    BrasilNFeClient.enviarConhecimentoTransporte = async () => {
+      envios += 1;
+      return { status: 0, chave: CHAVE_CTE };
+    };
+    BrasilNFeClient.obterNotasFiscais = async () => ({
+      Notas: [{ chave: CHAVE_CTE, Situacao: "autorizado" }],
+    });
+    BrasilNFeClient.obterArquivoNotaFiscal = async () =>
+      Buffer.from("<cte/>").toString("base64");
+    const result = await CteService.emitirPorId(1, 25);
+    assert.equal(envios, 0);
+    assert.equal(result.status, "processado");
+    assert.ok(result.consulta);
+  });
+
+  it("cancelamento concorrente retorna 409", async () => {
+    const row = {
+      id: 26,
+      tenant_id: 1,
+      status: "processado",
+      chave_acesso: CHAVE_CTE,
+      numero_protocolo: "p1",
+      fiscal_empresa_id: 9,
+      autorizado_em: new Date(),
+      data_emissao: new Date(),
+      sefaz_operacao: "cancelamento_enviando",
+      sefaz_em: new Date(),
+    };
+    stubClaim("fiscal_ctes", row);
+    stubPrisma("fiscal_ctes", "findFirst", async () => row);
+    stubEmpresa(1);
+    let posts = 0;
+    BrasilNFeClient.cancelarNotaFiscal = async () => {
+      posts += 1;
+      return { Status: 1 };
+    };
+    await assert.rejects(
+      () => CteService.cancelar(1, 26, "erro de digitação no tomador"),
+      (e) => e.statusCode === 409,
+    );
+    assert.equal(posts, 0);
+    assert.equal(row.status, "processado");
+  });
+
+  it("evento sem Status não marca cancelado", async () => {
+    const row = {
+      id: 27,
+      tenant_id: 1,
+      status: "processado",
+      chave_acesso: CHAVE_CTE,
+      numero_protocolo: "p1",
+      fiscal_empresa_id: 9,
+      autorizado_em: new Date(),
+      data_emissao: new Date(),
+    };
+    stubClaim("fiscal_ctes", row);
+    stubPrisma("fiscal_ctes", "findFirst", async () => row);
+    stubPrisma("fiscal_ctes", "update", async ({ data }) => {
+      Object.assign(row, data);
+      return row;
+    });
+    stubEmpresa(1);
+    BrasilNFeClient.cancelarNotaFiscal = async () => ({});
+    await assert.rejects(
+      () => CteService.cancelar(1, 27, "erro de digitação no tomador"),
+      (e) => e.statusCode === 503,
+    );
+    assert.equal(row.status, "processado");
+    assert.equal(row.sefaz_operacao, "cancelamento_enviando");
+  });
+});
+

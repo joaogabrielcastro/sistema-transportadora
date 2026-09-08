@@ -23,18 +23,18 @@ const baseCte = {
   natureza_operacao: "Transporte",
   dt_emissao: "2026-02-01T10:00:00-03:00",
   servico: { valor_prestacao: 100 },
-  tomador: { cpf_cnpj: "12345678000199" },
+  tomador: { cpf_cnpj: "12345678000195" },
 };
 
 // ------------------------------------------------------------------ 0.7
 test("0.7 schema: tomador aceita endereço + contato completos e ainda { cpf_cnpj } sozinho", () => {
   const minimo = emitirCteSchema.parse(baseCte);
-  assert.equal(minimo.tomador.cpf_cnpj, "12345678000199");
+  assert.equal(minimo.tomador.cpf_cnpj, "12345678000195");
 
   const completo = emitirCteSchema.parse({
     ...baseCte,
     tomador: {
-      cpf_cnpj: "12.345.678/0001-99",
+      cpf_cnpj: "12.345.678/0001-95",
       razao_social: "Tomador LTDA",
       email: "fin@tomador.com",
       endereco: { uf: "SP", codigo_municipio: "3550308", cep: "01001-000" },
@@ -48,9 +48,9 @@ test("0.7 schema: tomador aceita endereço + contato completos e ainda { cpf_cnp
 
 test("0.7 normalizarParticipantesCte grava o tomador como papel 'toma' (doc no campo cpf_cnpj)", () => {
   const dto = {
-    remetente: { razao_social: "Origem", cnpj_cpf: "11222333000144" },
+    remetente: { razao_social: "Origem", cnpj_cpf: "11222333000181" },
     tomador: {
-      cpf_cnpj: "12345678000199",
+      cpf_cnpj: "12345678000195",
       razao_social: "Tomador LTDA",
       endereco: { uf: "SP", nome_municipio: "São Paulo" },
     },
@@ -58,7 +58,7 @@ test("0.7 normalizarParticipantesCte grava o tomador como papel 'toma' (doc no c
   const linhas = normalizarParticipantesCte(dto);
   const toma = linhas.find((l) => l.papel === "toma");
   assert.ok(toma, "esperava uma linha de participante com papel 'toma'");
-  assert.equal(toma.cnpj_cpf, "12345678000199");
+  assert.equal(toma.cnpj_cpf, "12345678000195");
   assert.equal(toma.razao_social, "Tomador LTDA");
   assert.equal(toma.uf, "SP");
 });
@@ -72,11 +72,11 @@ test("0.7 sem tomador no objeto cru: nenhuma linha 'toma' (compatível pra trás
 test("0.7 montarPayloadCte envia o objeto Tomador por inteiro", () => {
   const dto = emitirCteSchema.parse({
     ...baseCte,
-    tomador: { cpf_cnpj: "12345678000199", razao_social: "Tomador LTDA" },
+    tomador: { cpf_cnpj: "12345678000195", razao_social: "Tomador LTDA" },
   });
   const payload = montarPayloadCte(dto, undefined, undefined);
   assert.equal(payload.Tomador.razao_social, "Tomador LTDA");
-  assert.equal(payload.Tomador.cpf_cnpj, "12345678000199");
+  assert.equal(payload.Tomador.cpf_cnpj, "12345678000195");
 });
 
 // ------------------------------------------------------------------ 0.8

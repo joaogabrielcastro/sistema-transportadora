@@ -25,7 +25,7 @@ const sucessoCte = {
         NumeroAverbacao: "AV-999",
         NomeSeguradora: "SEGURADORA X",
         NumApolice: "AP-1",
-        CNPJSeguradora: "12345678000199",
+        CNPJSeguradora: "12345678000195",
       },
     ],
   },

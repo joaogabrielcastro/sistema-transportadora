@@ -11,6 +11,7 @@ import {
   assertFksVeiculoEmpresa,
   assertTenantFk,
   claimEmissao,
+  claimEvento,
   extrairNumeroProtocolo,
   findOwnedOr404,
   montarGrupoSeguro,
@@ -18,6 +19,8 @@ import {
   resolveEmpresaCteMdfe,
   salvarPdfBase64,
   salvarXmlBase64,
+  tratarFalhaAposClaim,
+  wrapErroEvento,
 } from "./fiscalShared.js";
 import { consultarDocumentoFiscal } from "./fiscalConsulta.js";
 import {
@@ -29,6 +32,7 @@ import { resolverCiotParaDocumento } from "./ciotOperacao.js";
 import {
   colunasSefaz,
   CTE_STATUS,
+  httpError,
   identificadorInternoCte,
   interpretarRespostaCte,
   interpretarRespostaEvento,
@@ -539,6 +543,9 @@ export function montarPayloadCte(dto, chaveReferenciada, empresa, identificadorI
   return {
     ModeloDocumento: MODELO_DOCUMENTO_CTE,
     TipoAmbiente: config.fiscal.ambiente,
+    // 1 = emissão normal. Contingência (tpEmis 6/7/8) e CCe/inutilização
+    // NÃO estão implementadas — PENDÊNCIA EXTERNA / A10.
+    TpEmis: toInt(dto.tp_emis) ?? 1,
     TipoCte: toInt(dto.tipo_cte),
     IdentificadorInterno: identificadorInterno ?? undefined,
     // Chave do CT-e original. Mantido o campo genérico (nome exato do provedor
@@ -1003,6 +1010,7 @@ export class CteService {
     }
 
     const cte = await findOwnedOr404("fiscal_ctes", claimed.id, tenantId, "CT-e");
+    let postIniciado = false;
     try {
     const {
       dto,
@@ -1017,6 +1025,7 @@ export class CteService {
       payload,
     } = await prepararEmissaoCte(tenantId, cte);
 
+    postIniciado = true;
     const resposta = await BrasilNFeClient.enviarConhecimentoTransporte(
       payload,
       token,
@@ -1132,22 +1141,7 @@ export class CteService {
       base64DACTe: resposta.base64DACTe ?? null,
     };
     } catch (err) {
-      const stuck = await prisma.fiscal_ctes.findFirst({
-        where: { id: claimed.id },
-        select: { status: true },
-      });
-      if (stuck?.status === CTE_STATUS.PROCESSANDO) {
-        await prisma.fiscal_ctes.update({
-          where: { id: claimed.id },
-          data: {
-            status: CTE_STATUS.ERRO,
-            sefaz_mensagem: err.message,
-            sefaz_operacao: "emissao",
-            sefaz_em: new Date(),
-          },
-        });
-      }
-      throw err;
+      await tratarFalhaAposClaim("fiscal_ctes", claimed.id, err, { postIniciado });
     }
   }
 
@@ -1165,15 +1159,20 @@ export class CteService {
 
   static async cancelar(tenantId, id, justificativa) {
     const cte = await findOwnedOr404("fiscal_ctes", id, tenantId, "CT-e");
-    if (cte.status !== CTE_STATUS.PROCESSADO) {
-      throw badRequest(
-        `Só é possível cancelar CT-e autorizado (status atual: "${cte.status}").`,
-      );
-    }
     if (prazoCancelamentoExpirado(cte.autorizado_em || cte.data_emissao)) {
       throw badRequest(
         "O prazo legal de 24 horas para cancelamento do CT-e expirou. Use CT-e de Anulação ou Substituto.",
       );
+    }
+    const claimed = await claimEvento(
+      "fiscal_ctes",
+      id,
+      tenantId,
+      "CT-e",
+      "cancelamento",
+    );
+    if (claimed.alreadyDone) {
+      return this.getById(tenantId, claimed.id);
     }
 
     const { empresa, token } = await resolveEmpresaCteMdfe(
@@ -1181,15 +1180,21 @@ export class CteService {
       cte.fiscal_empresa_id ?? undefined,
     );
 
-    const resposta = await BrasilNFeClient.cancelarNotaFiscal(
-      montarPayloadCancelamento({
-        chave: cte.chave_acesso,
-        justificativa,
-        protocolo: cte.numero_protocolo ?? undefined,
-        cnpjRemetente: empresa.cnpj,
-      }),
-      token,
-    );
+    let resposta;
+    try {
+      resposta = await BrasilNFeClient.cancelarNotaFiscal(
+        montarPayloadCancelamento({
+          chave: cte.chave_acesso,
+          justificativa,
+          protocolo: cte.numero_protocolo ?? undefined,
+          cnpjRemetente: empresa.cnpj,
+        }),
+        token,
+      );
+    } catch (err) {
+      wrapErroEvento(err);
+      throw err;
+    }
 
     const interpretacao = interpretarRespostaEvento(resposta);
     const sefaz = colunasSefaz(resposta, "cancelamento");
@@ -1204,12 +1209,29 @@ export class CteService {
         sefaz,
       );
     }
-    if (interpretacao.outcome === "processing") {
+    if (
+      interpretacao.outcome === "processing" ||
+      interpretacao.outcome === "incerto"
+    ) {
+      const waiting = await prisma.fiscal_ctes.update({
+        where: { id: cte.id },
+        data: {
+          ...sefaz,
+          sefaz_operacao: "cancelamento_enviando",
+        },
+      });
+      if (interpretacao.outcome === "incerto") {
+        throw httpError(
+          503,
+          interpretacao.mensagem,
+          { incerteza: true },
+        );
+      }
       logger.info("CT-e cancelamento aguardando SEFAZ", {
         tenantId,
         cteId: cte.id,
       });
-      return serializePrisma(cte);
+      return serializePrisma(waiting);
     }
 
     const updated = await prisma.fiscal_ctes.update({

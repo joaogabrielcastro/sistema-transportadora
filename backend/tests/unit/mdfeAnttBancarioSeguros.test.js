@@ -23,6 +23,7 @@ const parse = (over = {}) =>
     uf_carregamento: "SP",
     uf_descarregamento: "MG",
     rodoviario: {},
+    cte_ids: [1],
     ...over,
   });
 
@@ -40,7 +41,7 @@ test("0.1 infoBancaria: com PIX/banco -> pagamentos[0].infoBancaria preenchido",
       rntrc: "123456789",
       cod_banco: "001",
       cod_agencia: "1234",
-      cnpj_instituicao_pagamento: "12.345.678/0001-99",
+      cnpj_instituicao_pagamento: "12.345.678/0001-95",
       pix: "chave-pix@ex.com",
     },
   });
@@ -49,7 +50,7 @@ test("0.1 infoBancaria: com PIX/banco -> pagamentos[0].infoBancaria preenchido",
   assert.deepEqual(pg[0].infoBancaria, {
     codBanco: "001",
     codAgencia: "1234",
-    cnpjInstituicaoPagamento: "12345678000199",
+    cnpjInstituicaoPagamento: "12345678000195",
     pix: "chave-pix@ex.com",
   });
   const payload = montarPayloadMdfe(dto, "ABC1D23", [], [], []);
@@ -83,14 +84,14 @@ test("0.2 seguros: múltiplos seguros com múltiplas averbações vão como arra
 test("0.2 normalizarSegurosMdfe: linhas p/ fiscal_mdfe_seguros (provider e snake_case)", () => {
   const linhas = normalizarSegurosMdfe({
     seguros: [
-      { indicadorResponsavel: 1, cnpjSegurador: "12345678000199", numeroApolice: "AP1", numerosAverbacao: ["X", "Y"] },
+      { indicadorResponsavel: 1, cnpjSegurador: "12345678000195", numeroApolice: "AP1", numerosAverbacao: ["X", "Y"] },
       { responsavel: 2, cnpj_seguradora: "999", numero_apolice: "AP2", numero_averbacao: "Z" },
     ],
   });
   assert.equal(linhas.length, 2);
   assert.deepEqual(linhas[0], {
     responsavel: 1,
-    cnpj_seguradora: "12345678000199",
+    cnpj_seguradora: "12345678000195",
     numero_apolice: "AP1",
     nome_seguradora: null,
     numeros_averbacao: ["X", "Y"],

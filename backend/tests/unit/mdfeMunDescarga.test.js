@@ -21,6 +21,7 @@ const baseInput = {
   uf_carregamento: "SP",
   uf_descarregamento: "MG",
   rodoviario: {},
+  cte_ids: [1],
 };
 
 test("sem municipios_descarga: payload não ganha infMunDescarga (comportamento atual)", () => {

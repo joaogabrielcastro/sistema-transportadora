@@ -1,9 +1,18 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import prisma from "../../lib/prisma.js";
-import { UPLOADS_ROOT } from "../../utils/uploadPaths.js";
+import { UPLOADS_ROOT, resolverPathNaRaiz } from "../../utils/uploadPaths.js";
 import { decryptSecret } from "../../utils/fiscalCrypto.js";
-import { avaliarClaimEmissao, CTE_STATUS } from "./fiscalStatus.js";
+import {
+  avaliarClaimEmissao,
+  avaliarClaimEvento,
+  CTE_STATUS,
+  decidirPosFalhaEmissao,
+  httpError,
+  identificadorInternoCte,
+  identificadorInternoMdfe,
+  incertezaDeComunicacao,
+} from "./fiscalStatus.js";
 
 /** Raiz dos XML de documentos fiscais de transporte (mesmo padrão de arquivo das NF-e de compra). */
 const FISCAL_XML_ROOT = path.join(UPLOADS_ROOT, "fiscal");
@@ -280,7 +289,11 @@ export async function resolveEmpresaCertificado(tenantId, fiscalEmpresaId) {
   return {
     empresa,
     certificado: {
-      pfxPath: empresa.certificado_pfx_path,
+      pfxPath: resolverPathNaRaiz(
+        UPLOADS_ROOT,
+        empresa.certificado_pfx_path,
+        "Certificado digital não encontrado.",
+      ),
       senha: decryptSecret(empresa.certificado_senha),
     },
   };
@@ -323,13 +336,132 @@ export async function claimEmissao(table, id, tenantId, label) {
       return { alreadyAuthorized: false, consultInstead: true, id: Number(row.id) };
     }
     if (decision.action === "reject") throw decision.error;
+    const interno =
+      table === "fiscal_ctes"
+        ? identificadorInternoCte(row.id)
+        : identificadorInternoMdfe(row.id);
     await tx[table].update({
       where: { id: Number(row.id) },
       data: {
         status: CTE_STATUS.PROCESSANDO,
         emissao_iniciada_em: new Date(),
+        brasil_nfe_id: row.brasil_nfe_id || interno,
       },
     });
-    return { alreadyAuthorized: false, id: Number(row.id) };
+    return { alreadyAuthorized: false, id: Number(row.id), brasilNfeId: interno };
   });
+}
+
+/**
+ * Trava cancelamento/encerramento. Dois POSTs simultâneos não saem:
+ * o segundo espera o FOR UPDATE e vê o evento já em andamento ou concluído.
+ *
+ * @param {"fiscal_ctes"|"fiscal_mdfes"} table
+ * @param {"cancelamento"|"encerramento"} tipo
+ */
+export async function claimEvento(table, id, tenantId, label, tipo) {
+  if (table !== "fiscal_ctes" && table !== "fiscal_mdfes") {
+    throw new Error("Tabela fiscal inválida para claim de evento");
+  }
+  const operacao =
+    tipo === "encerramento" ? "encerramento_enviando" : "cancelamento_enviando";
+  return prisma.$transaction(async (tx) => {
+    const rows =
+      table === "fiscal_ctes"
+        ? await tx.$queryRaw`
+            SELECT id, status, sefaz_operacao, sefaz_em, chave_acesso, numero_protocolo,
+                   autorizado_em, data_emissao, fiscal_empresa_id
+            FROM fiscal_ctes
+            WHERE id = ${Number(id)} AND tenant_id = ${Number(tenantId)}
+            FOR UPDATE
+          `
+        : await tx.$queryRaw`
+            SELECT id, status, sefaz_operacao, sefaz_em, chave_acesso, numero_protocolo,
+                   autorizado_em, data_emissao, fiscal_empresa_id, encerrado_em
+            FROM fiscal_mdfes
+            WHERE id = ${Number(id)} AND tenant_id = ${Number(tenantId)}
+            FOR UPDATE
+          `;
+    const row = Array.isArray(rows) ? rows[0] : null;
+    if (!row) {
+      throw notFound(`${label} não encontrado`);
+    }
+    const decision = avaliarClaimEvento(row, tipo);
+    if (decision.action === "already_done") {
+      return { alreadyDone: true, id: Number(row.id), row };
+    }
+    if (decision.action === "reject") throw decision.error;
+    await tx[table].update({
+      where: { id: Number(row.id) },
+      data: {
+        sefaz_operacao: operacao,
+        sefaz_em: new Date(),
+      },
+    });
+    return { alreadyDone: false, id: Number(row.id), row };
+  });
+}
+
+/**
+ * Após claim de emissão: timeout/5xx não voltam a `erro` reemitível.
+ * Falha local (antes do POST) reverte a rascunho.
+ */
+export async function tratarFalhaAposClaim(table, id, err, { postIniciado }) {
+  const stuck = await prisma[table].findFirst({
+    where: { id: Number(id) },
+    select: { status: true },
+  });
+  if (stuck?.status !== CTE_STATUS.PROCESSANDO) {
+    throw err;
+  }
+  const decisao = decidirPosFalhaEmissao(err, { postIniciado });
+  if (decisao === "incerto") {
+    await prisma[table].update({
+      where: { id: Number(id) },
+      data: {
+        sefaz_mensagem: err.message,
+        sefaz_operacao: "emissao_incerta",
+        sefaz_em: new Date(),
+      },
+    });
+    throw httpError(
+      503,
+      "A emissão pode ter sido recebida pela Brasil NFe. Consulte o status antes de emitir de novo.",
+      { incerteza: true, causa: err.message },
+    );
+  }
+  if (decisao === "rejeitado") {
+    await prisma[table].update({
+      where: { id: Number(id) },
+      data: {
+        status: CTE_STATUS.REJEITADO,
+        sefaz_mensagem: err.message,
+        sefaz_operacao: "emissao",
+        sefaz_em: new Date(),
+      },
+    });
+    throw err;
+  }
+  await prisma[table].update({
+    where: { id: Number(id) },
+    data: {
+      status: CTE_STATUS.RASCUNHO,
+      sefaz_mensagem: err.message,
+      sefaz_operacao: "validacao",
+      sefaz_em: new Date(),
+    },
+  });
+  throw err;
+}
+
+/** Timeout/5xx em cancelamento/encerramento: não marca o evento como concluído. */
+export function wrapErroEvento(err) {
+  if (incertezaDeComunicacao(err) || err.incerteza) {
+    throw httpError(
+      503,
+      "O evento pode ter sido recebido pela Brasil NFe. Consulte o status antes de repetir.",
+      { incerteza: true, causa: err.message },
+    );
+  }
+  return err;
 }

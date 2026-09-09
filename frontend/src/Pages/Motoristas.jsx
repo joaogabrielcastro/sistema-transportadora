@@ -225,8 +225,12 @@ export default function Motoristas() {
           <p className="text-sm text-slate-500">Carregando…</p>
         ) : items.length === 0 ? (
           <EmptyState
-            title="Nenhum motorista cadastrado"
-            description="Cadastre o primeiro motorista para controlar CNH e vincular à frota."
+            title="Você ainda não possui motoristas cadastrados."
+            description={
+              canWrite
+                ? "Use o formulário acima para cadastrar o primeiro motorista e controlar CNH e vínculos com a frota."
+                : "Quando a equipe cadastrar motoristas, eles aparecerão aqui."
+            }
             dashed
           />
         ) : (

@@ -9,6 +9,7 @@ export {
   useCaminhaoDocumentosQuery,
   useReportsOverviewQuery,
   useCostPerKmReportQuery,
+  useCostPerKmTrendQuery,
   useManutencaoGastosQueries,
   useOrdemColetaHistoricoQuery,
   usePneusEmUsoQuery,

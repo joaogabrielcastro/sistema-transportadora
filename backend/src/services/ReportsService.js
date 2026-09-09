@@ -88,24 +88,48 @@ export function computeKmDrivenFromTimeline(records) {
 export class ReportsService {
   static async getOverview(tenantId) {
     const tenantWhere = { tenant_id: Number(tenantId) };
-    const [totalCaminhoes, gastosAgg, checklistAgg] = await Promise.all([
-      prisma.caminhoes.count({ where: tenantWhere }),
-      prisma.gastos.aggregate({
-        where: tenantWhere,
-        _count: { id: true },
-        _sum: { valor: true },
-      }),
-      prisma.checklist.aggregate({
-        where: tenantWhere,
-        _count: { id: true },
-        _sum: { valor: true },
-      }),
-    ]);
+    const [totalCaminhoes, gastosAgg, checklistAgg, frotaTipos, comMotorista] =
+      await Promise.all([
+        prisma.caminhoes.count({ where: tenantWhere }),
+        prisma.gastos.aggregate({
+          where: tenantWhere,
+          _count: { id: true },
+          _sum: { valor: true },
+        }),
+        prisma.checklist.aggregate({
+          where: tenantWhere,
+          _count: { id: true },
+          _sum: { valor: true },
+        }),
+        prisma.caminhoes.groupBy({
+          by: ["tipo_veiculo"],
+          where: tenantWhere,
+          _count: { id: true },
+        }),
+        prisma.caminhoes.count({
+          where: {
+            ...tenantWhere,
+            OR: [
+              { motorista_id: { not: null } },
+              {
+                AND: [
+                  { motorista: { not: null } },
+                  { motorista: { not: "" } },
+                ],
+              },
+            ],
+          },
+        }),
+      ]);
 
     const gastosTotal = Number(gastosAgg._sum.valor || 0);
     const manutencoesTotal = Number(checklistAgg._sum.valor || 0);
     const totalRegistros =
       (gastosAgg._count.id || 0) + (checklistAgg._count.id || 0);
+    const frotaPorTipo = frotaTipos.map((row) => ({
+      tipo: row.tipo_veiculo || "truck",
+      count: row._count.id,
+    }));
 
     return {
       totalCaminhoes,
@@ -119,6 +143,12 @@ export class ReportsService {
         totalRegistros > 0
           ? (gastosTotal + manutencoesTotal) / totalRegistros
           : 0,
+      gastosValor: gastosTotal,
+      manutencoesValor: manutencoesTotal,
+      gastosCount: gastosAgg._count.id || 0,
+      frotaPorTipo,
+      comMotorista,
+      semMotorista: Math.max(0, totalCaminhoes - comMotorista),
     };
   }
 

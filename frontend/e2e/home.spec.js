@@ -31,7 +31,65 @@ test.describe("Home — busca de caminhões", () => {
             totalCaminhoes: 2,
             totalGastos: 1500,
             totalManutencoes: 3,
+            gastosValor: 1500,
+            manutencoesValor: 0,
+            frotaPorTipo: [{ tipo: "truck", count: 2 }],
+            comMotorista: 2,
+            semMotorista: 0,
           },
+        }),
+      });
+    });
+
+    await page.route("**/api/reports/cost-per-km-trend**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: {
+            months: [
+              { month: "2026-08", totalCost: 800, costPerKm: 1.2 },
+              { month: "2026-09", totalCost: 700, costPerKm: 1.1 },
+            ],
+          },
+        }),
+      });
+    });
+
+    await page.route(
+      (url) =>
+        url.pathname.includes("/api/reports/cost-per-km") &&
+        !url.pathname.includes("trend"),
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            success: true,
+            data: {
+              items: [{ placa: "ABC1D23", totalCost: 1500 }],
+              entries: [],
+              stats: {
+                grandTotal: 1500,
+                totalKm: 0,
+                avgCostPerKm: 0,
+                truckCount: 1,
+                entryCount: 0,
+              },
+            },
+          }),
+        });
+      },
+    );
+
+    await page.route("**/api/ops/alerts**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: { counts: { total: 0, critical: 0, high: 0, medium: 0 }, alerts: [] },
         }),
       });
     });
@@ -88,6 +146,8 @@ test.describe("Home — busca de caminhões", () => {
     await expect(page.getByRole("heading", { name: "Frota recente" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 3, name: "ABC1D23" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 3, name: "XYZ9Z99" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Evolução de custos" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Composição da frota" })).toBeVisible();
   });
 
   test("navbar mostra itens principais e esconde CT-e sem feature fiscal", async ({

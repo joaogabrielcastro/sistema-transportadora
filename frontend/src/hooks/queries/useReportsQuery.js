@@ -13,6 +13,30 @@ export function useReportsOverviewQuery() {
   });
 }
 
+export function useCostPerKmTrendQuery(params, enabled = false) {
+  return useQuery({
+    queryKey: queryKeys.reports.costPerKmTrend(params),
+    enabled: enabled && Boolean(params?.startDate && params?.endDate),
+    queryFn: async () => {
+      const searchParams = new URLSearchParams({
+        startDate: params.startDate,
+        endDate: params.endDate,
+      });
+      if (params.caminhaoId) {
+        searchParams.append("caminhaoId", String(params.caminhaoId));
+      }
+      const res = await apiFetch({
+        method: "GET",
+        url: `/reports/cost-per-km-trend?${searchParams.toString()}`,
+      });
+      const payload = extractApiData(res);
+      return {
+        months: Array.isArray(payload.months) ? payload.months : [],
+      };
+    },
+  });
+}
+
 export function useCostPerKmReportQuery(params, enabled = false) {
   return useQuery({
     queryKey: queryKeys.reports.costPerKm(params),
@@ -25,6 +49,9 @@ export function useCostPerKmReportQuery(params, enabled = false) {
 
       if (params.caminhaoId) {
         searchParams.append("caminhaoId", String(params.caminhaoId));
+      }
+      if (params.entriesLimit) {
+        searchParams.append("entriesLimit", String(params.entriesLimit));
       }
 
       const res = await apiFetch({

@@ -2,8 +2,15 @@ import {
   PLANS,
   PLAN_FEATURES,
   PUBLIC_BILLING_PLANS,
+  isPublicBillingPlan,
 } from "./tenantFeatures.js";
 import { PLAN_QUOTAS } from "./planQuotas.js";
+
+export const PLAN_UNAVAILABLE_MESSAGE =
+  "Este plano não está disponível para contratação. Escolha um plano válido na página de planos.";
+
+export const LID_MISSING_MESSAGE =
+  "Selecione um plano para continuar a contratação.";
 
 /**
  * Catálogo comercial dos planos (preços de referência em BRL/mês).
@@ -13,17 +20,16 @@ export const PLAN_CATALOG = Object.freeze([
   {
     id: PLANS.starter,
     name: "Starter",
-    tagline: "Organize a frota",
+    tagline: "Frota pequena",
     description:
-      "Veículos, pneus, manutenção, gastos e relatórios — o essencial para sair da planilha.",
+      "Cadastre veículos, lance gastos e manutenção. Para quem está saindo da planilha — não para operação de porte médio.",
     priceMonthlyBrl: 199,
     highlights: [
-      "Até 15 veículos e 3 usuários",
-      "Cadastro de frota e composição",
-      "Gastos, checklist e manutenção",
-      "Controle de pneus e documentos",
+      "Até 8 veículos e 2 usuários",
+      "Dashboard, frota, motoristas e documentos",
+      "Pneus, gastos, manutenção e alertas",
       "Relatórios de custo por km",
-      "Motoristas e alertas",
+      "Sem NF-e, estoque e emissão de CT-e / MDF-e",
     ],
     modules: [],
     trialEligible: true,
@@ -31,44 +37,107 @@ export const PLAN_CATALOG = Object.freeze([
   {
     id: PLANS.fiscal,
     name: "Fiscal",
-    tagline: "NF-e e estoque",
+    tagline: "NF-e, estoque e emissão fiscal",
     description:
-      "Tudo do Starter + importação de NF-e, estoque de peças e baixa por caminhão.",
+      "Tudo do Starter, com teto maior, NF-e ligada à frota e emissão de CT-e, MDF-e e contrato de frete.",
     priceMonthlyBrl: 499,
     highlights: [
       "Até 40 veículos e 8 usuários",
       "Tudo do Starter",
-      "Importação de XML da NF-e",
-      "Cadastro manual de notas",
-      "Estoque ligado à frota",
+      "Importação de XML da NF-e e estoque de peças",
+      "Baixa de peças na manutenção",
+      "CT-e, MDF-e, averbação e contrato de frete (CIOT)",
     ],
-    modules: ["notas_estoque"],
+    modules: ["notas_estoque", "transporte_fiscal"],
     popular: true,
   },
   {
     id: PLANS.complete,
     name: "Completo",
-    tagline: "Operação full",
+    tagline: "Operação maior",
     description:
-      "Pacote premium: frota + NF-e/estoque, suporte prioritário e tudo que o ATrack oferece para novos clientes.",
+      "Mesmos módulos do Fiscal, com mais veículos e usuários para operação que já cresceu.",
     priceMonthlyBrl: 699,
     highlights: [
       "Até 100 veículos e 20 usuários",
       "Tudo do Starter e do Fiscal",
-      "NF-e, estoque e frota integrados",
-      "Relatórios e documentos",
-      "Melhor opção para operação madura",
+      "NF-e, estoque, CT-e, MDF-e e CIOT",
+      "Para frota e equipe que já passaram do porte médio",
     ],
-    modules: ["notas_estoque"],
+    modules: ["notas_estoque", "transporte_fiscal"],
     bestValue: true,
   },
 ]);
 
-/** Payload para API / billing status (somente planos públicos). */
-export function buildPlansPublic({ priceConfiguredFor }) {
+/**
+ * LID público da oferta = id do catálogo (starter | fiscal | complete).
+ * Não usar o nome comercial nem o Price ID do Stripe no frontend.
+ * @param {string | null | undefined} planId
+ */
+export function lidForPlan(planId) {
+  return isPublicBillingPlan(planId) ? planId : null;
+}
+
+/**
+ * Normaliza o identificador recebido do frontend (query, body ou slug).
+ * @param {unknown} value
+ */
+export function normalizeLid(value) {
+  if (typeof value !== "string") return "";
+  return value.trim().toLowerCase();
+}
+
+/**
+ * Resolve um LID público para o plano do catálogo.
+ * O Stripe Price ID nunca é o LID — o backend mapeia lid → plan → preço.
+ *
+ * @param {unknown} lid
+ * @returns {{ ok: true, plan: (typeof PLAN_CATALOG)[number], lid: string } | { ok: false, code: string, message: string }}
+ */
+export function resolvePublicPlanByLid(lid) {
+  const normalized = normalizeLid(lid);
+  if (!normalized) {
+    return {
+      ok: false,
+      code: "LID_MISSING",
+      message: LID_MISSING_MESSAGE,
+    };
+  }
+
+  const plan = PLAN_CATALOG.find((item) => item.id === normalized);
+  if (!plan || !PUBLIC_BILLING_PLANS.includes(plan.id)) {
+    return {
+      ok: false,
+      code: "LID_INVALID",
+      message: PLAN_UNAVAILABLE_MESSAGE,
+    };
+  }
+
+  return { ok: true, plan, lid: plan.id };
+}
+
+/**
+ * Erro HTTP amigável para LID inválido / plano indisponível.
+ * @param {{ code?: string, message?: string, statusCode?: number }} [opts]
+ */
+export function planUnavailableError(opts = {}) {
+  const err = new Error(opts.message || PLAN_UNAVAILABLE_MESSAGE);
+  err.statusCode = opts.statusCode ?? 400;
+  err.code = opts.code || "LID_INVALID";
+  return err;
+}
+
+/** Payload para API / billing status e catálogo público. */
+export function buildPlansPublic({ priceConfiguredFor } = {}) {
+  const configured =
+    typeof priceConfiguredFor === "function"
+      ? priceConfiguredFor
+      : () => false;
+
   return PLAN_CATALOG.filter((plan) => PUBLIC_BILLING_PLANS.includes(plan.id)).map(
     (plan) => ({
       id: plan.id,
+      lid: lidForPlan(plan.id),
       name: plan.name,
       tagline: plan.tagline,
       description: plan.description,
@@ -81,7 +150,8 @@ export function buildPlansPublic({ priceConfiguredFor }) {
       popular: Boolean(plan.popular),
       bestValue: Boolean(plan.bestValue),
       trialEligible: Boolean(plan.trialEligible),
-      priceConfigured: priceConfiguredFor(plan.id),
+      available: true,
+      priceConfigured: configured(plan.id),
     }),
   );
 }

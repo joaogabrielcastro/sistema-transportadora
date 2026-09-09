@@ -1,438 +1,146 @@
-import React, { useEffect } from "react";
-import PropTypes from "prop-types";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "../components/ui";
 import PlanComparison from "../components/PlanComparison.jsx";
-import LegalLinks from "../components/LegalLinks.jsx";
+import SiteLayout from "../components/site/SiteLayout.jsx";
+import ProductPreview from "../components/site/ProductPreview.jsx";
+import PlanCardGrid from "../components/site/PlanCardGrid.jsx";
+import Seo from "../components/Seo.jsx";
 import {
-  PRODUCT_LOGO_ALT,
-  PRODUCT_LOGO_SRC,
   PRODUCT_NAME,
   PRODUCT_TAGLINE,
   PUBLIC_REGISTER_ENABLED,
 } from "../brand.js";
-import {
-  BILLING_TRIAL_DAYS,
-  PLAN_CARDS,
-  formatPlanPrice,
-} from "../utils/billing.js";
-
-const signupHref = PUBLIC_REGISTER_ENABLED ? "/register" : "/login";
+import { BILLING_TRIAL_DAYS, resolvePlanCards } from "../utils/billing.js";
+import { registerHref } from "../utils/planLid.js";
+import { trackFunnel } from "../utils/funnel.js";
+import { usePublicPlansQuery } from "../hooks/queries/usePublicPlansQuery.js";
+import { useAuth } from "../context/AuthContext.jsx";
 
 const HERO_IMG = "/images/landing-hero-truck.jpg";
 const PATIO_IMG = "/images/landing-frota-patio.jpg";
 const PNEUS_IMG = "/images/landing-pneus.jpg";
 const ESTRADA_IMG = "/images/landing-estrada.jpg";
+const DASHBOARD_IMG = "/images/landing-dashboard.jpg";
+const OFICINA_IMG = "/images/landing-oficina.jpg";
+const RELATORIOS_IMG = "/images/landing-relatorios.jpg";
 
-const PILLARS = [
-  {
-    title: "Frota no mesmo lugar",
-    text: "Caminhões, cavalos, carretas, composição, motoristas e documentos — sem planilha paralela.",
-    image: PATIO_IMG,
-    alt: "Pátio com caminhões da frota alinhados",
-  },
-  {
-    title: "Pneus com vida útil",
-    text: "Posição, estoque, instalação e km rodado. Você vê o pneu acabar antes de estourar o custo.",
-    image: PNEUS_IMG,
-    alt: "Pneus de caminhão em detalhe",
-  },
-  {
-    title: "Custo por km de verdade",
-    text: "Gastos, manutenção e relatórios no mesmo painel, por veículo e no consolidado da operação.",
-    image: ESTRADA_IMG,
-    alt: "Caminhão em operação na estrada",
-  },
+const BENEFITS = [
+  { eyebrow: "01", title: "Controle da frota", text: "Veículos, composição, motoristas e documentos em um só cadastro." },
+  { eyebrow: "02", title: "Controle financeiro", text: "Acompanhe gastos e custos da operação por veículo e no consolidado." },
+  { eyebrow: "03", title: "Manutenção", text: "Checklist, pendências e histórico para não perder o que vence." },
+  { eyebrow: "04", title: "Pneus", text: "Posição, estoque e vida útil no veículo, junto da manutenção da frota." },
+  { eyebrow: "05", title: "Fiscal", text: "NF-e, estoque de peças, CT-e, MDF-e e contrato de frete a partir do plano Fiscal." },
+  { eyebrow: "06", title: "Indicadores", text: "Dashboard, custo por km e relatórios da frota. No Fiscal e no Completo, entram também NF-e, estoque e emissão." },
 ];
 
-const STEPS = [
-  {
-    n: "1",
-    title: "Crie a empresa",
-    text: `Cadastro em minutos. ${BILLING_TRIAL_DAYS} dias para usar o Starter sem cartão na porta.`,
-  },
-  {
-    n: "2",
-    title: "Suba a frota",
-    text: "Cadastre veículos, pneus e a equipe. Convide operadores por e-mail.",
-  },
-  {
-    n: "3",
-    title: "Opere o dia a dia",
-    text: "Lance gastos, acompanhe manutenções e exporte relatórios quando precisar.",
-  },
+const PRODUCT_SHOTS = [
+  { title: "Dashboard", text: "Indicadores e gráficos de custo da frota.", image: DASHBOARD_IMG, alt: "Painel de controle da operação" },
+  { title: "Frota", text: "Caminhões, cavalos e carretas no mesmo cadastro.", image: PATIO_IMG, alt: "Frota estacionada no pátio" },
+  { title: "Gastos", text: "Abastecimento e custos lançados por veículo.", image: ESTRADA_IMG, alt: "Caminhão em operação na estrada" },
+  { title: "Manutenção", text: "Checklist e histórico de serviços.", image: OFICINA_IMG, alt: "Oficina e manutenção da frota" },
+  { title: "Pneus", text: "Posição, estoque e vida útil no veículo.", image: PNEUS_IMG, alt: "Controle de pneus" },
+  { title: "Relatórios", text: "Custo por km e exportação quando precisar.", image: RELATORIOS_IMG, alt: "Relatórios e indicadores da frota" },
 ];
 
-const FAQS = [
-  {
-    q: "O trial precisa de cartão?",
-    a: `Não. Você cria a empresa, usa o plano Starter por ${BILLING_TRIAL_DAYS} dias e só assina se quiser continuar.`,
-  },
-  {
-    q: "Meus dados ficam misturados com outra transportadora?",
-    a: "Não. Cada empresa é um espaço isolado (tenant). Usuários só veem a frota da própria conta.",
-  },
-  {
-    q: "Posso começar no Starter e subir de plano?",
-    a: "Sim. Fiscal e Completo acrescentam NF-e e estoque. A ordem de coleta não entra nos planos públicos.",
-  },
-  {
-    q: "Há limite de veículos e usuários?",
-    a: "Sim. Starter inclui até 15 veículos e 3 usuários; Fiscal, 40 e 8; Completo, 100 e 20. Convites pendentes também ocupam vaga.",
-  },
-  {
-    q: "Já tenho login. Onde entro?",
-    a: "Use Entrar no topo. Esta página é só para quem ainda não conhece o produto.",
-  },
-];
-
-function CheckItem({ children }) {
-  return (
-    <li className="flex gap-2">
-      <span
-        className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-secondary/15 text-[10px] font-bold text-secondary"
-        aria-hidden
-      >
-        ✓
-      </span>
-      <span className="leading-snug">{children}</span>
-    </li>
-  );
+function faqs(trialDays) {
+  return [
+    { q: "O que é a Atrack?", a: `${PRODUCT_NAME} é um sistema de ${PRODUCT_TAGLINE.toLowerCase()} para transportadoras: frota, gastos, manutenção, documentos, pneus e relatórios no mesmo lugar.` },
+    { q: "Para quem é a Atrack?", a: "Para empresas de transporte que precisam sair da planilha e acompanhar a operação com dados isolados da própria conta." },
+    { q: "Existe período de teste?", a: `Sim. O cadastro abre ${trialDays} dias no plano Starter, sem cartão. Depois, você assina para continuar.` },
+    { q: "Posso cancelar?", a: "Sim. Encerre a conta ou cancele a assinatura antes do fim do trial se não quiser continuar. Clientes com Stripe gerenciam o pagamento no portal da assinatura." },
+    { q: "Quais recursos estão disponíveis em cada plano?", a: "Starter é entrada: até 8 veículos e 2 usuários, com dashboard, frota, pneus, gastos, manutenção, documentos e relatórios. Fiscal e Completo abrem NF-e, estoque e emissão de CT-e, MDF-e e CIOT. A ordem de coleta não entra nos planos públicos." },
+    { q: "Como funciona a contratação?", a: "Você escolhe o plano, cria a empresa e, se não for o trial Starter, conclui o pagamento no checkout. O identificador do plano segue do site até a assinatura." },
+    { q: "Posso trocar de plano?", a: "Sim. Administradores acessam Assinatura no sistema e escolhem Starter, Fiscal ou Completo." },
+    { q: "Meus dados ficam seguros?", a: "Cada empresa é um espaço isolado (tenant). Usuários só veem a frota da própria conta. Detalhes estão na política de privacidade." },
+  ];
 }
 
-CheckItem.propTypes = {
-  children: PropTypes.node,
-};
+function ArrowIcon() {
+  return <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 10h11M10.5 5.5 15 10l-4.5 4.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+function CheckIcon() {
+  return <svg aria-hidden="true" viewBox="0 0 20 20" className="h-5 w-5 shrink-0 text-secondary"><path fill="currentColor" d="m8.2 14.7-4-4 1.4-1.4 2.6 2.6 6.2-6.2 1.4 1.4-7.6 7.6Z" /></svg>;
+}
 
 export default function Landing() {
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
+  const { data, isError } = usePublicPlansQuery();
+  const [openFaq, setOpenFaq] = useState(0);
+  const trialDays = data?.trialDays || BILLING_TRIAL_DAYS;
+  const plans = resolvePlanCards(data?.plans);
+  const signupHref = PUBLIC_REGISTER_ENABLED ? registerHref("starter") : "/login";
+  const faqItems = faqs(trialDays);
+
+  useEffect(() => { trackFunnel("view_home"); }, []);
 
   useEffect(() => {
     const id = location.hash.replace("#", "");
     if (!id) return undefined;
     const node = document.getElementById(id);
-    if (node) node.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (node) window.setTimeout(() => node.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
     return undefined;
   }, [location.hash]);
 
   return (
-    <div className="min-h-screen bg-background text-text-primary">
-      <header className="sticky top-0 z-40 border-b border-border bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <a href="#conteudo" className="flex min-w-0 items-center gap-3">
-            <img
-              src={PRODUCT_LOGO_SRC}
-              alt={PRODUCT_LOGO_ALT}
-              className="h-10 w-10 shrink-0 rounded-lg border border-border bg-white object-contain p-1"
-            />
-            <div className="min-w-0 leading-tight">
-              <p className="truncate font-bold">{PRODUCT_NAME}</p>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">
-                {PRODUCT_TAGLINE}
-              </p>
+    <SiteLayout signupHref={signupHref}>
+      <Seo title={`${PRODUCT_NAME} — Controle sua transportadora em um só lugar`} description={`${PRODUCT_NAME} concentra frota, gastos, manutenção, pneus, documentos e indicadores. ${trialDays} dias para testar o Starter.`} path="/" />
+
+      <section className="relative isolate min-h-[720px] overflow-hidden bg-primary-dark lg:min-h-[760px]">
+        <img src={HERO_IMG} alt="Caminhão em operação na rodovia" className="absolute inset-0 h-full w-full object-cover object-[68%_center]" width={1920} height={1080} fetchPriority="high" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_38%,rgba(255,255,255,.12),transparent_27%),linear-gradient(90deg,#081a2c_0%,rgba(8,26,44,.96)_35%,rgba(8,26,44,.45)_72%,rgba(8,26,44,.2)_100%)]" aria-hidden />
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-primary-dark/40 to-transparent" aria-hidden />
+        <div className="relative mx-auto flex min-h-[720px] max-w-6xl items-center px-4 py-20 sm:px-6 lg:min-h-[760px]">
+          <div className="max-w-2xl pt-10">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-secondary-light backdrop-blur-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-secondary-light" /> Gestão feita para transportadoras
             </div>
-          </a>
-          <nav className="flex items-center gap-2 sm:gap-3">
-            <a
-              href="#precos"
-              className="hidden text-sm font-medium text-text-secondary hover:text-text-primary sm:inline"
-            >
-              Preços
-            </a>
-            <Link
-              to="/login"
-              className="text-sm font-medium text-text-secondary hover:text-text-primary"
-            >
-              Entrar
-            </Link>
-            <Link to={signupHref}>
-              <Button variant="secondary" size="sm">
-                Começar trial
-              </Button>
-            </Link>
-          </nav>
+            <h1 className="max-w-3xl text-4xl font-bold leading-[1.06] tracking-[-0.035em] text-white sm:text-6xl lg:text-[4.5rem]">Mais controle.<br /><span className="text-secondary-light">Menos improviso.</span></h1>
+            <p className="mt-6 max-w-xl text-base leading-7 text-slate-200 sm:text-lg">A Atrack conecta frota, gastos, manutenção, documentos e indicadores para sua transportadora operar com clareza todos os dias.</p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link to={signupHref} onClick={() => trackFunnel("cta_start", { lid: "starter", location: "hero" })}><Button variant="secondary" size="lg" className="group gap-2 shadow-lg shadow-secondary/20">Começar agora <ArrowIcon /></Button></Link>
+              <a href="#produto"><Button variant="outline" size="lg" className="border-white/25 bg-white/10 text-white backdrop-blur-sm hover:bg-white/20">Ver como funciona</Button></a>
+            </div>
+            <div className="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-200">
+              <span className="flex items-center gap-2"><CheckIcon /> {trialDays} dias para testar</span>
+              <span className="flex items-center gap-2"><CheckIcon /> Sem cartão no cadastro</span>
+            </div>
+          </div>
         </div>
-      </header>
-
-      <main id="conteudo">
-        <section className="relative isolate min-h-[78vh] overflow-hidden bg-primary-dark lg:min-h-[86vh]">
-          <img
-            src={HERO_IMG}
-            alt="Caminhão em operação na rodovia ao entardecer"
-            className="absolute inset-0 h-full w-full object-cover object-[70%_center]"
-            width={1920}
-            height={1080}
-            fetchPriority="high"
-          />
-          <div
-            className="absolute inset-0 bg-gradient-to-r from-primary-dark via-primary-dark/85 to-primary-dark/25"
-            aria-hidden
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-primary-dark/80 via-transparent to-primary-dark/30" aria-hidden />
-
-          <div className="relative mx-auto flex min-h-[78vh] max-w-6xl flex-col justify-end px-4 py-16 sm:px-6 sm:py-20 lg:min-h-[86vh] lg:justify-center">
-            <div className="max-w-2xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-secondary-light">
-                SaaS para transportadoras
-              </p>
-              <h1 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-5xl xl:text-[3.35rem] xl:leading-[1.1]">
-                Gestão de frotas para quem já opera no pátio — não na planilha
-              </h1>
-              <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-100 sm:text-lg">
-                {PRODUCT_NAME} concentra veículos, pneus, custos, documentos e
-                relatórios de custo/km. {BILLING_TRIAL_DAYS} dias grátis no
-                Starter para a sua empresa testar com dados reais.
-              </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link to={signupHref}>
-                  <Button variant="secondary" size="lg">
-                    Começar {BILLING_TRIAL_DAYS} dias grátis
-                  </Button>
-                </Link>
-                <a href="#precos">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="border-white/30 bg-white/10 text-white hover:bg-white/20"
-                  >
-                    Ver preços
-                  </Button>
-                </a>
-              </div>
-              <p className="mt-4 text-sm text-slate-200">
-                Sem cartão no cadastro. Cancele antes do fim do trial se não
-                quiser assinar.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section className="bg-white py-16 sm:py-20" id="produto">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <div className="max-w-2xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary">
-                Operação real
-              </p>
-              <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
-                Feito para o pátio, a estrada e o custo da viagem
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-text-secondary sm:text-base">
-                Menos planilha, mais visão da frota: cadastro, pneus e
-                relatórios no mesmo sistema.
-              </p>
-            </div>
-            <ul className="mt-10 grid gap-6 md:grid-cols-3">
-              {PILLARS.map((item) => (
-                <li
-                  key={item.title}
-                  className="overflow-hidden rounded-2xl border border-border bg-white shadow-card"
-                >
-                  <div className="aspect-[16/10] overflow-hidden bg-slate-200">
-                    <img
-                      src={item.image}
-                      alt={item.alt}
-                      className="h-full w-full object-cover transition duration-500 hover:scale-[1.04]"
-                      loading="lazy"
-                      width={800}
-                      height={500}
-                    />
-                  </div>
-                  <div className="p-5">
-                    <h3 className="font-semibold">{item.title}</h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">
-                      {item.text}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        <section
-          className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20"
-          id="como-funciona"
-        >
-          <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-            <div className="overflow-hidden rounded-3xl border border-border shadow-card">
-              <img
-                src={PATIO_IMG}
-                alt="Frota estacionada no pátio da transportadora"
-                className="h-full min-h-[280px] w-full object-cover lg:min-h-[420px]"
-                loading="lazy"
-                width={1200}
-                height={750}
-              />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                Do cadastro ao custo/km em três passos
-              </h2>
-              <ol className="mt-8 grid gap-4">
-                {STEPS.map((step) => (
-                  <li
-                    key={step.n}
-                    className="rounded-2xl border border-border bg-white p-5 shadow-card"
-                  >
-                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-secondary/15 text-sm font-bold text-secondary">
-                      {step.n}
-                    </span>
-                    <h3 className="mt-3 font-semibold">{step.title}</h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">
-                      {step.text}
-                    </p>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          </div>
-        </section>
-
-        <section
-          id="precos"
-          className="scroll-mt-20 border-y border-border bg-white py-16"
-        >
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <div className="max-w-2xl">
-              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                Planos claros, trial no Starter
-              </h2>
-              <p className="mt-2 text-sm text-text-secondary sm:text-base">
-                Preços mensais de referência. A ordem de coleta não é vendida nos
-                planos públicos.
-              </p>
-            </div>
-            <div className="mt-8 grid gap-5 lg:grid-cols-3">
-              {PLAN_CARDS.map((plan) => (
-                <article
-                  key={plan.id}
-                  className={`flex h-full flex-col rounded-2xl border border-border bg-background p-5 shadow-card sm:p-6 ${
-                    plan.popular
-                      ? "border-t-4 border-t-secondary"
-                      : plan.bestValue
-                        ? "border-t-4 border-t-primary"
-                        : "border-t-4 border-t-border"
-                  }`}
-                >
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <h3 className="text-lg font-bold">{plan.name}</h3>
-                    {plan.popular ? (
-                      <span className="rounded-full bg-secondary/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-secondary">
-                        Popular
-                      </span>
-                    ) : null}
-                    {plan.bestValue ? (
-                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
-                        Completo
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="text-[11px] font-semibold uppercase tracking-widest text-secondary">
-                    {plan.tagline}
-                  </p>
-                  <p className="mt-3 flex items-baseline gap-1">
-                    <span className="text-3xl font-bold tracking-tight text-primary">
-                      {formatPlanPrice(plan.priceMonthlyBrl)}
-                    </span>
-                    <span className="text-sm text-text-light">/mês</span>
-                  </p>
-                  {plan.trialEligible ? (
-                    <p className="mt-1.5 text-xs font-medium text-success-dark">
-                      {BILLING_TRIAL_DAYS} dias grátis no cadastro
-                    </p>
-                  ) : (
-                    <p className="mt-1.5 text-xs text-text-secondary">
-                      Assinatura após criar a conta
-                    </p>
-                  )}
-                  <p className="mt-4 text-sm leading-relaxed text-text-secondary">
-                    {plan.description}
-                  </p>
-                  <ul className="mt-4 mb-5 flex-1 space-y-2 text-sm">
-                    {plan.highlights.map((h) => (
-                      <CheckItem key={h}>{h}</CheckItem>
-                    ))}
-                  </ul>
-                  <Link to={signupHref} className="mt-auto">
-                    <Button
-                      className="w-full"
-                      variant={plan.popular ? "secondary" : "primary"}
-                    >
-                      {plan.trialEligible ? "Começar trial" : "Criar conta"}
-                    </Button>
-                  </Link>
-                </article>
-              ))}
-            </div>
-            <div className="mt-10">
-              <PlanComparison />
-            </div>
-          </div>
-        </section>
-
-        <section className="mx-auto max-w-3xl px-4 py-16 sm:px-6" id="faq">
-          <h2 className="text-2xl font-bold tracking-tight">Perguntas frequentes</h2>
-          <dl className="mt-6 space-y-4">
-            {FAQS.map((item) => (
-              <div
-                key={item.q}
-                className="rounded-2xl border border-border bg-white p-5 shadow-card"
-              >
-                <dt className="font-semibold">{item.q}</dt>
-                <dd className="mt-1.5 text-sm leading-relaxed text-text-secondary">
-                  {item.a}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-
-        <section className="relative overflow-hidden py-20 text-white">
-          <img
-            src={ESTRADA_IMG}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover"
-            loading="lazy"
-            width={1600}
-            height={900}
-          />
-          <div className="absolute inset-0 bg-primary-dark/80" aria-hidden />
-          <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
-            <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              Teste com a frota da sua empresa
-            </h2>
-            <p className="mt-3 text-slate-100">
-              {BILLING_TRIAL_DAYS} dias no Starter. Se servir, assine. Se não,
-              encerre antes do vencimento.
-            </p>
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <Link to={signupHref}>
-                <Button variant="secondary" size="lg">
-                  Criar conta
-                </Button>
-              </Link>
-              <Link to="/login">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="border-white/30 bg-white/10 text-white hover:bg-white/20"
-                >
-                  Já tenho acesso
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <footer className="border-t border-border bg-white py-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6">
-          <p className="text-xs text-text-light">
-            © {new Date().getFullYear()} {PRODUCT_NAME} {PRODUCT_TAGLINE}
-          </p>
-          <LegalLinks className="text-center text-xs text-text-light" />
+        <div className="absolute bottom-7 right-6 hidden rounded-2xl border border-white/15 bg-white/10 p-4 text-white backdrop-blur-md lg:block">
+          <p className="text-xs uppercase tracking-[0.16em] text-slate-300">Uma visão da operação</p>
+          <p className="mt-1 text-sm font-semibold">Decisões melhores começam com dados.</p>
         </div>
-      </footer>
-    </div>
+      </section>
+
+      <section className="relative z-10 -mt-8 mx-auto max-w-6xl px-4 sm:px-6" aria-label="Benefícios principais">
+        <div className="grid overflow-hidden rounded-2xl border border-border bg-white shadow-[0_18px_60px_rgba(8,26,44,.12)] sm:grid-cols-3">
+          {[['01', 'Tudo em um só lugar', 'Fim da informação espalhada em planilhas.'], ['02', 'Visão por veículo', 'Entenda onde a operação ganha ou perde dinheiro.'], ['03', 'Decisão com contexto', 'Acompanhe a rotina antes que o problema apareça.']].map(([number, title, text]) => <div key={number} className="border-b border-border p-5 last:border-0 sm:border-b-0 sm:border-r sm:last:border-r-0 sm:p-6"><p className="text-xs font-bold tracking-[0.18em] text-secondary">{number}</p><p className="mt-2 font-semibold text-primary-dark">{title}</p><p className="mt-1 text-sm leading-relaxed text-text-secondary">{text}</p></div>)}
+        </div>
+      </section>
+
+      <section className="bg-white py-20 sm:py-28" id="produto">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="grid items-end gap-6 lg:grid-cols-[1fr_auto]">
+            <div className="max-w-2xl"><p className="text-xs font-bold uppercase tracking-[0.2em] text-secondary">O produto</p><h2 className="mt-3 text-3xl font-bold tracking-[-0.025em] text-primary-dark sm:text-4xl">A operação inteira no seu campo de visão.</h2><p className="mt-4 text-base leading-7 text-text-secondary">Um sistema simples de usar, mas completo o suficiente para acompanhar a realidade de uma transportadora.</p></div>
+            <a href="#beneficios" className="hidden items-center gap-2 text-sm font-semibold text-secondary transition hover:gap-3 sm:flex">Explorar recursos <ArrowIcon /></a>
+          </div>
+          <div className="mt-10 rounded-3xl bg-slate-50 p-2 ring-1 ring-border sm:p-3"><ProductPreview /></div>
+          <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{PRODUCT_SHOTS.map((item, index) => <li key={item.title} className="group overflow-hidden rounded-2xl border border-border bg-white shadow-card transition duration-200 hover:-translate-y-1 hover:shadow-lg"><div className="relative aspect-[16/10] overflow-hidden bg-slate-200"><img src={item.image} alt={item.alt} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy" width={800} height={500} /><span className="absolute left-3 top-3 rounded-full bg-primary-dark/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-white backdrop-blur">0{index + 1}</span></div><div className="p-5"><h3 className="font-semibold text-primary-dark">{item.title}</h3><p className="mt-1.5 text-sm leading-relaxed text-text-secondary">{item.text}</p></div></li>)}</ul>
+        </div>
+      </section>
+
+      <section className="bg-slate-50 py-20 sm:py-28" id="beneficios">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6"><div className="max-w-2xl"><p className="text-xs font-bold uppercase tracking-[0.2em] text-secondary">Visão 360º</p><h2 className="mt-3 text-3xl font-bold tracking-[-0.025em] text-primary-dark sm:text-4xl">O que você controla</h2><p className="mt-4 text-base leading-7 text-text-secondary">Menos tempo procurando informação. Mais tempo cuidando da operação.</p></div><ul className="mt-10 grid gap-px overflow-hidden rounded-3xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">{BENEFITS.map((item) => <li key={item.title} className="group bg-white p-6 transition hover:bg-secondary/5 sm:p-7"><p className="text-xs font-bold tracking-[0.18em] text-secondary">{item.eyebrow}</p><h3 className="mt-8 font-semibold">{item.title}</h3><p className="mt-2 text-sm leading-6 text-text-secondary">{item.text}</p><div className="mt-6 h-px w-8 bg-secondary transition-all group-hover:w-14" /></li>)}</ul></div>
+      </section>
+
+      <section id="precos" className="scroll-mt-20 border-y border-border bg-white py-20 sm:py-28"><div className="mx-auto max-w-6xl px-4 sm:px-6"><div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div className="max-w-2xl"><p className="text-xs font-bold uppercase tracking-[0.2em] text-secondary">Planos transparentes</p><h2 className="mt-3 text-3xl font-bold tracking-[-0.025em] text-primary-dark sm:text-4xl">Escolha o ritmo da sua operação.</h2><p className="mt-4 text-base leading-7 text-text-secondary">Comece pelo essencial e evolua quando a sua empresa precisar.</p></div><Link to="/planos" className="flex items-center gap-2 text-sm font-semibold text-secondary hover:gap-3">Comparar todos os planos <ArrowIcon /></Link></div>{isError ? <p className="mt-8 rounded-xl border border-border bg-slate-50 p-4 text-sm text-text-secondary">Exibindo os planos de referência. Confira detalhes em <Link to="/planos" className="font-medium text-secondary">/planos</Link>.</p> : null}<div className="mt-10"><PlanCardGrid plans={plans} isAuthenticated={isAuthenticated} registerEnabled={PUBLIC_REGISTER_ENABLED} trialDays={trialDays} /></div><div className="mt-12"><PlanComparison /></div></div></section>
+
+      <section className="bg-slate-50 py-20 sm:py-28" id="faq"><div className="mx-auto max-w-4xl px-4 sm:px-6"><div className="text-center"><p className="text-xs font-bold uppercase tracking-[0.2em] text-secondary">Dúvidas?</p><h2 className="mt-3 text-3xl font-bold tracking-[-0.025em] text-primary-dark sm:text-4xl">Perguntas frequentes</h2></div><dl className="mt-10 space-y-3">{faqItems.map((item, index) => { const isOpen = openFaq === index; return <div key={item.q} className={`overflow-hidden rounded-2xl border bg-white transition ${isOpen ? "border-secondary/50 shadow-sm" : "border-border"}`}><dt><button type="button" aria-expanded={isOpen} onClick={() => setOpenFaq(isOpen ? -1 : index)} className="flex w-full items-center justify-between gap-5 p-5 text-left font-semibold text-primary-dark sm:p-6"><span>{item.q}</span><span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xl font-normal text-secondary transition-transform ${isOpen ? "rotate-45" : ""}`}>+</span></button></dt>{isOpen ? <dd className="px-5 pb-6 text-sm leading-7 text-text-secondary sm:px-6">{item.a}</dd> : null}</div>; })}</dl></div></section>
+
+      <section className="relative overflow-hidden py-24 text-white sm:py-32"><img src={ESTRADA_IMG} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" width={1600} height={900} /><div className="absolute inset-0 bg-primary-dark/85" aria-hidden /><div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6"><p className="text-xs font-bold uppercase tracking-[0.2em] text-secondary-light">Pronto para organizar a operação?</p><h2 className="mt-4 text-3xl font-bold tracking-[-0.025em] text-white sm:text-5xl">Comece com a frota da sua empresa.</h2><p className="mx-auto mt-5 max-w-xl text-base leading-7 text-slate-200">{trialDays} dias no Starter. Sem cartão no cadastro e sem compromisso para começar.</p><div className="mt-8 flex flex-wrap justify-center gap-3"><Link to={signupHref} onClick={() => trackFunnel("cta_start", { lid: "starter", location: "footer_cta" })}><Button variant="secondary" size="lg" className="gap-2 shadow-lg shadow-secondary/20">Começar agora <ArrowIcon /></Button></Link><Link to="/planos"><Button variant="outline" size="lg" className="border-white/30 bg-white/10 text-white hover:bg-white/20">Ver planos</Button></Link></div></div></section>
+    </SiteLayout>
   );
 }

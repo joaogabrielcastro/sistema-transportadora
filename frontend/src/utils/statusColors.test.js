@@ -11,6 +11,9 @@ test("getStatusConfig status conhecidos e default", () => {
   assert.match(getStatusConfig("rejeitado"), /orange/);
   assert.match(getStatusConfig("averbed"), /green/);
   assert.match(getStatusConfig("rejected"), /orange/);
+  assert.match(getStatusConfig("Crítico"), /red/);
+  assert.match(getStatusConfig("Alto"), /orange/);
+  assert.match(getStatusConfig("Médio"), /yellow/);
 });
 
 test("getStatusConfig vehicle e record", () => {

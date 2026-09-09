@@ -26,6 +26,41 @@ test.describe("Smoke", () => {
         body: JSON.stringify({ success: true, data: {} }),
       });
     });
+
+    await page.route("**/api/reports/cost-per-km-trend**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true, data: { months: [] } }),
+      });
+    });
+
+    await page.route(
+      (url) =>
+        url.pathname.includes("/api/reports/cost-per-km") &&
+        !url.pathname.includes("trend"),
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            success: true,
+            data: { items: [], entries: [], stats: {} },
+          }),
+        });
+      },
+    );
+
+    await page.route("**/api/ops/alerts**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: { counts: { total: 0, critical: 0, high: 0, medium: 0 }, alerts: [] },
+        }),
+      });
+    });
   });
 
   test("home carrega com branding ATrack", async ({ page }) => {

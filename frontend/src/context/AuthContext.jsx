@@ -95,11 +95,18 @@ export function AuthProvider({ children }) {
     return payload.user;
   }, []);
 
-  const register = useCallback(async ({ empresaNome, email, password, nome, acceptedLegal }) => {
+  const register = useCallback(async ({ empresaNome, email, password, nome, acceptedLegal, lid }) => {
     const res = await apiFetch({
       method: "POST",
       url: "/auth/register",
-      data: { empresaNome, email, password, nome, acceptedLegal },
+      data: {
+        empresaNome,
+        email,
+        password,
+        nome,
+        acceptedLegal,
+        ...(lid ? { lid } : {}),
+      },
     });
 
     const payload = res.data;

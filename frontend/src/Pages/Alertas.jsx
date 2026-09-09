@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import PageLayout from "../components/layout/PageLayout.jsx";
-import { Alert, Card, PageHeader, StatCard } from "../components/ui";
+import { Alert, Button, Card, PageHeader, StatCard } from "../components/ui";
 import EmptyState from "../components/EmptyState.jsx";
+import { CardSkeleton } from "../components/Skeleton.jsx";
 import { apiFetch, parseApiError } from "../lib/apiClient.js";
 
 const SEVERITY_LABEL = {
@@ -16,18 +17,23 @@ export default function Alertas() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
+  const load = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await apiFetch({ url: "/ops/alerts" });
+      setData(res.data);
+    } catch (err) {
+      const parsed = await parseApiError(err);
+      setError(parsed.message);
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await apiFetch({ url: "/ops/alerts" });
-        setData(res.data);
-      } catch (err) {
-        const parsed = await parseApiError(err);
-        setError(parsed.message);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    load();
   }, []);
 
   return (
@@ -37,7 +43,16 @@ export default function Alertas() {
           title="Alertas"
           subtitle="Documentos, CNH, pneus, manutenções e gastos a vencer."
         />
-        {error && <Alert type="error">{error}</Alert>}
+        {error && (
+          <Alert type="error" title="Não foi possível carregar os alertas">
+            {error}
+            <div className="mt-3">
+              <Button variant="outline" size="sm" onClick={load}>
+                Tentar novamente
+              </Button>
+            </div>
+          </Alert>
+        )}
 
         {data?.counts && (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -49,8 +64,8 @@ export default function Alertas() {
         )}
 
         {loading ? (
-          <p className="text-sm text-slate-500">Carregando…</p>
-        ) : !data?.alerts?.length ? (
+          <CardSkeleton />
+        ) : error ? null : !data?.alerts?.length ? (
           <EmptyState
             title="Nenhum alerta no momento"
             description="Quando documentos, CNHs, pneus ou manutenções entrarem em risco, eles aparecem aqui."

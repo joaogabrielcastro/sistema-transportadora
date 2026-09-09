@@ -5,11 +5,14 @@ import { logger } from "../utils/logger.js";
 import {
   buildBillingPublic,
   featuresForPlan,
-  isPublicBillingPlan,
   isValidPlan,
   PLANS,
 } from "../utils/tenantFeatures.js";
-import { buildPlansPublic } from "../utils/planCatalog.js";
+import {
+  buildPlansPublic,
+  planUnavailableError,
+  resolvePublicPlanByLid,
+} from "../utils/planCatalog.js";
 import { getQuotaUsage } from "../utils/planQuotas.js";
 
 let stripeClient = null;
@@ -117,14 +120,51 @@ export class BillingService {
   }
 
   /**
-   * @param {{ tenantId: number, plan: string, email?: string }} opts
+   * Catálogo comercial público (sem autenticação).
+   * Não inclui Price IDs do Stripe.
    */
-  static async createCheckoutSession({ tenantId, plan, email }) {
-    if (!isValidPlan(plan) || !isPublicBillingPlan(plan)) {
-      const err = new Error("Plano inválido ou indisponível para contratação");
-      err.statusCode = 400;
-      throw err;
+  static getPublicCatalog() {
+    const plans = buildPlansPublic({
+      priceConfiguredFor: (key) => Boolean(priceIdForPlan(key)),
+    });
+    return {
+      plans,
+      trialDays: config.billing.trialDays,
+    };
+  }
+
+  /**
+   * @param {unknown} lid
+   */
+  static getPublicPlanByLid(lid) {
+    const resolved = resolvePublicPlanByLid(lid);
+    if (!resolved.ok) {
+      throw planUnavailableError({
+        code: resolved.code,
+        message: resolved.message,
+        statusCode: resolved.code === "LID_MISSING" ? 400 : 404,
+      });
     }
+    const catalog = this.getPublicCatalog();
+    const plan = catalog.plans.find((item) => item.lid === resolved.lid);
+    if (!plan || plan.available === false) {
+      throw planUnavailableError({ statusCode: 404 });
+    }
+    return { plan, trialDays: catalog.trialDays };
+  }
+
+  /**
+   * @param {{ tenantId: number, plan?: string, lid?: string, email?: string }} opts
+   */
+  static async createCheckoutSession({ tenantId, plan, lid, email }) {
+    const resolved = resolvePublicPlanByLid(lid || plan);
+    if (!resolved.ok) {
+      throw planUnavailableError({
+        code: resolved.code,
+        message: resolved.message,
+      });
+    }
+    plan = resolved.plan.id;
 
     const priceId = priceIdForPlan(plan);
     if (!priceId) {
@@ -166,17 +206,19 @@ export class BillingService {
       metadata: {
         tenantId: String(tenant.id),
         plan,
+        lid: resolved.lid,
       },
       subscription_data: {
         metadata: {
           tenantId: String(tenant.id),
           plan,
+          lid: resolved.lid,
         },
       },
       allow_promotion_codes: true,
     });
 
-    return { url: session.url, sessionId: session.id };
+    return { url: session.url, sessionId: session.id, lid: resolved.lid, plan };
   }
 
   static async createPortalSession(tenantId) {

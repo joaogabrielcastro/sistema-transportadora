@@ -48,9 +48,27 @@ function canSeeFiscalLink(user, sub) {
   return userHasPermission(user, sub.permission);
 }
 
-function buildMainLinks(features = {}) {
-  const links = [
-    { path: "/", label: "Início", exact: true },
+function filterLinks(links, user) {
+  return links.filter(
+    (link) => !link.permission || userHasPermission(user, link.permission),
+  );
+}
+
+function buildNavGroups(features = {}) {
+  const visao = [{ path: "/", label: "Início", exact: true }];
+  const frota = [
+    {
+      path: "/motoristas",
+      label: "Motoristas",
+      permission: PERMISSIONS.MOTORISTAS_READ,
+    },
+    {
+      path: "/documentos",
+      label: "Documentos",
+      permission: PERMISSIONS.DOCS_READ,
+    },
+  ];
+  const operacao = [
     { path: "/manutencao-gastos", label: "Manutenção" },
     {
       path: "/relatorios",
@@ -58,26 +76,14 @@ function buildMainLinks(features = {}) {
       permission: PERMISSIONS.REPORTS_READ,
     },
     { path: "/alertas", label: "Alertas", permission: PERMISSIONS.ALERTS_READ },
-    {
-      path: "/documentos",
-      label: "Documentos",
-      permission: PERMISSIONS.DOCS_READ,
-    },
-    {
-      path: "/motoristas",
-      label: "Motoristas",
-      permission: PERMISSIONS.MOTORISTAS_READ,
-    },
   ];
-
   if (features.ordem_coleta === true) {
-    links.push({ path: "/ordem-coleta", label: "Ordem de coleta" });
+    operacao.push({ path: "/ordem-coleta", label: "Ordem de coleta" });
   }
   if (features.notas_estoque === true) {
-    links.push({ path: "/notas-estoque", label: "Notas / Estoque" });
+    operacao.push({ path: "/notas-estoque", label: "Notas / Estoque" });
   }
-
-  return links;
+  return { visao, frota, operacao };
 }
 
 const isActivePath = (pathname, path, exact = false) => {
@@ -86,11 +92,37 @@ const isActivePath = (pathname, path, exact = false) => {
 };
 
 const sideLinkClass = (active) =>
-  `flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+  `flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
     active
       ? "bg-white/10 text-white"
       : "text-gray-300 hover:bg-white/5 hover:text-white"
   }`;
+
+function linkIcon(path) {
+  const d =
+    path === "/"
+      ? "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 00-1-1h-2a1 1 0 00-1 1v4"
+      : path === "/manutencao-gastos"
+        ? "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+        : path === "/relatorios"
+          ? "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-1-1z"
+          : path === "/alertas"
+            ? "M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+            : path === "/documentos"
+              ? "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              : path === "/motoristas"
+                ? "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                : path === "/ordem-coleta"
+                  ? "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                  : path === "/notas-estoque"
+                    ? "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                    : "M4 6h16M4 12h16M4 18h16";
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={d} />
+    </svg>
+  );
+}
 
 const Chevron = ({ open }) => (
   <svg
@@ -109,8 +141,32 @@ const Chevron = ({ open }) => (
   </svg>
 );
 
+function NavLink({ link, pathname }) {
+  return (
+    <Link
+      to={link.path}
+      className={sideLinkClass(isActivePath(pathname, link.path, link.exact))}
+    >
+      <span className="opacity-80" aria-hidden>
+        {linkIcon(link.path)}
+      </span>
+      {link.label}
+    </Link>
+  );
+}
+
+function GroupLabel({ children }) {
+  return (
+    <p className="px-3 pb-1.5 pt-3 text-[10px] font-semibold uppercase tracking-wider text-gray-500 first:pt-0">
+      {children}
+    </p>
+  );
+}
+
 function SidebarNav({
-  mainLinks,
+  visaoLinks,
+  frotaLinks,
+  operacaoLinks,
   fiscalLinks,
   pathname,
   pneusOpen,
@@ -143,19 +199,18 @@ function SidebarNav({
           </Link>
         )}
 
+        <GroupLabel>Visão geral</GroupLabel>
         <div className="flex flex-col gap-0.5">
-          {mainLinks.map((link) => (
-            <Link
-              key={link.path}
-              to={link.path}
-              className={sideLinkClass(
-                isActivePath(pathname, link.path, link.exact),
-              )}
-            >
-              {link.label}
-            </Link>
+          {visaoLinks.map((link) => (
+            <NavLink key={link.path} link={link} pathname={pathname} />
           ))}
+        </div>
 
+        <GroupLabel>Frota</GroupLabel>
+        <div className="flex flex-col gap-0.5">
+          {frotaLinks.map((link) => (
+            <NavLink key={link.path} link={link} pathname={pathname} />
+          ))}
           <div>
             <button
               type="button"
@@ -186,34 +241,41 @@ function SidebarNav({
               </div>
             )}
           </div>
-
-          {showFiscalMenu && (
-            <div>
-              <button
-                type="button"
-                className={`${sideLinkClass(isFiscalSection)} justify-between gap-2`}
-                aria-expanded={fiscalOpen}
-                onClick={() => setFiscalOpen((open) => !open)}
-              >
-                Fiscal
-                <Chevron open={fiscalOpen} />
-              </button>
-              {fiscalOpen && (
-                <div className="mt-0.5 flex flex-col gap-0.5 pl-2">
-                  {fiscalLinks.map((sub) => (
-                    <Link
-                      key={sub.path}
-                      to={sub.path}
-                      className={`${sideLinkClass(isActivePath(pathname, sub.path))} py-1.5 text-[13px]`}
-                    >
-                      {sub.label}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </div>
+
+        <GroupLabel>Operação</GroupLabel>
+        <div className="flex flex-col gap-0.5">
+          {operacaoLinks.map((link) => (
+            <NavLink key={link.path} link={link} pathname={pathname} />
+          ))}
+        </div>
+
+        {showFiscalMenu && (
+          <div className="flex flex-col gap-0.5 pt-3">
+            <button
+              type="button"
+              className={`${sideLinkClass(isFiscalSection)} justify-between gap-2`}
+              aria-expanded={fiscalOpen}
+              onClick={() => setFiscalOpen((open) => !open)}
+            >
+              Fiscal
+              <Chevron open={fiscalOpen} />
+            </button>
+            {fiscalOpen && (
+              <div className="mt-0.5 flex flex-col gap-0.5 pl-2">
+                {fiscalLinks.map((sub) => (
+                  <Link
+                    key={sub.path}
+                    to={sub.path}
+                    className={`${sideLinkClass(isActivePath(pathname, sub.path))} py-1.5 text-[13px]`}
+                  >
+                    {sub.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="mt-4 border-t border-white/10 pt-3">
           <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
@@ -293,9 +355,10 @@ const Navbar = ({ children }) => {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
 
-  const mainLinks = buildMainLinks(user?.features).filter(
-    (link) => !link.permission || userHasPermission(user, link.permission),
-  );
+  const navGroups = buildNavGroups(user?.features);
+  const visaoLinks = filterLinks(navGroups.visao, user);
+  const frotaLinks = filterLinks(navGroups.frota, user);
+  const operacaoLinks = filterLinks(navGroups.operacao, user);
   const fiscalLinks = fiscalSubLinks.filter((sub) => canSeeFiscalLink(user, sub));
   const showBillingLink = isAuthenticated && user?.billingExempt === false;
   const canWriteFrota = userHasPermission(user, PERMISSIONS.FROTA_WRITE);
@@ -339,7 +402,9 @@ const Navbar = ({ children }) => {
   };
 
   const navProps = {
-    mainLinks,
+    visaoLinks,
+    frotaLinks,
+    operacaoLinks,
     fiscalLinks,
     pathname: location.pathname,
     pneusOpen,

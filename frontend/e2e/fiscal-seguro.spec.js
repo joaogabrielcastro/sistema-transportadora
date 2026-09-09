@@ -65,7 +65,7 @@ test.describe("Fiscal seguro / averbação", () => {
     await expect(
       page.getByRole("heading", { name: "Seguro / Averbação", exact: true }),
     ).toBeVisible();
-    await expect(page.getByText("Homologação")).toBeVisible();
+    await expect(page.getByLabel("Ambiente")).toHaveValue("homologacao");
     await expect(page.getByRole("button", { name: "Testar conexão" })).toBeVisible();
     await expect(page.locator("input[type='password']")).toBeVisible();
     const senha = await page.locator("input[type='password']").inputValue();

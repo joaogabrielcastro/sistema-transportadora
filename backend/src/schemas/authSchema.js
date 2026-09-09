@@ -23,6 +23,7 @@ export const registerSchema = z.object({
     .min(8, "Senha deve ter no mínimo 8 caracteres")
     .max(128),
   acceptedLegal: acceptedLegalField,
+  lid: z.string().trim().max(64).optional(),
 });
 
 export const forgotPasswordSchema = z.object({

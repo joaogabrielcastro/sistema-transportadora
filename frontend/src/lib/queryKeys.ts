@@ -14,6 +14,8 @@ export const queryKeys = {
     overview: ["reports", "overview"] as const,
     costPerKm: (params: ListParams) =>
       ["reports", "cost-per-km", params] as const,
+    costPerKmTrend: (params: ListParams) =>
+      ["reports", "cost-per-km-trend", params] as const,
   },
   gastos: {
     all: ["gastos"] as const,
@@ -63,5 +65,10 @@ export const queryKeys = {
       ["fiscal", "veiculo-dados", String(caminhaoId ?? "")] as const,
     reboquesPreview: (params: ListParams) =>
       ["fiscal", "mdfe", "reboques-preview", params] as const,
+  },
+  billing: {
+    plans: ["billing", "plans"] as const,
+    plan: (lid: string) => ["billing", "plan", lid] as const,
+    status: ["billing", "status"] as const,
   },
 };

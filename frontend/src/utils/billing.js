@@ -46,66 +46,72 @@ export function formatPlanPrice(value) {
 export const PLAN_CARDS = [
   {
     id: "starter",
+    lid: "starter",
     name: "Starter",
-    tagline: "Organize a frota",
+    tagline: "Frota pequena",
     description:
-      "Veículos, pneus, manutenção, gastos e relatórios — o essencial para sair da planilha.",
+      "Cadastre veículos, lance gastos e manutenção. Para quem está saindo da planilha — não para operação de porte médio.",
     priceMonthlyBrl: 199,
     highlights: [
-      "Até 15 veículos e 3 usuários",
-      "Cadastro de frota e composição",
-      "Gastos, checklist e manutenção",
-      "Controle de pneus e documentos",
+      "Até 8 veículos e 2 usuários",
+      "Dashboard, frota, motoristas e documentos",
+      "Pneus, gastos, manutenção e alertas",
       "Relatórios de custo por km",
-      "Motoristas e alertas",
+      "Sem NF-e, estoque e emissão de CT-e / MDF-e",
     ],
     trialEligible: true,
   },
   {
     id: "fiscal",
+    lid: "fiscal",
     name: "Fiscal",
-    tagline: "NF-e e estoque",
+    tagline: "NF-e, estoque e emissão fiscal",
     description:
-      "Tudo do Starter + importação de NF-e, estoque de peças e baixa por caminhão.",
+      "Tudo do Starter, com teto maior, NF-e ligada à frota e emissão de CT-e, MDF-e e contrato de frete.",
     priceMonthlyBrl: 499,
     highlights: [
       "Até 40 veículos e 8 usuários",
       "Tudo do Starter",
-      "Importação de XML da NF-e",
-      "Cadastro manual de notas",
-      "Estoque ligado à frota",
+      "Importação de XML da NF-e e estoque de peças",
+      "Baixa de peças na manutenção",
+      "CT-e, MDF-e, averbação e contrato de frete (CIOT)",
     ],
     popular: true,
   },
   {
     id: "complete",
+    lid: "complete",
     name: "Completo",
-    tagline: "Operação full",
+    tagline: "Operação maior",
     description:
-      "Pacote premium: frota + NF-e/estoque e tudo que o ATrack oferece para novos clientes.",
+      "Mesmos módulos do Fiscal, com mais veículos e usuários para operação que já cresceu.",
     priceMonthlyBrl: 699,
     highlights: [
       "Até 100 veículos e 20 usuários",
       "Tudo do Starter e do Fiscal",
-      "NF-e, estoque e frota integrados",
-      "Relatórios e documentos",
-      "Melhor opção para operação madura",
+      "NF-e, estoque, CT-e, MDF-e e CIOT",
+      "Para frota e equipe que já passaram do porte médio",
     ],
     bestValue: true,
   },
 ];
 
-/** Mescla catálogo local com payload da API (se existir). */
+/** Mescla catálogo local com payload da API (fonte oficial quando disponível). */
 export function resolvePlanCards(apiPlans) {
   if (Array.isArray(apiPlans) && apiPlans.length) {
-    return apiPlans.map((p) => ({
-      ...p,
-      priceLabel:
-        p.priceLabel ?? formatPlanPrice(p.priceMonthlyBrl ?? 0),
-    }));
+    return apiPlans.map((p) => {
+      const lid = p.lid || p.id;
+      return {
+        ...p,
+        id: p.id || lid,
+        lid,
+        priceLabel: p.priceLabel ?? formatPlanPrice(p.priceMonthlyBrl ?? 0),
+      };
+    });
   }
   return PLAN_CARDS.map((p) => ({
     ...p,
+    lid: p.lid || p.id,
     priceLabel: formatPlanPrice(p.priceMonthlyBrl),
   }));
 }
@@ -123,7 +129,7 @@ export function planDisplayName(planId) {
 
 /** Espelha backend/src/utils/planQuotas.js */
 export const PLAN_QUOTAS = {
-  starter: { maxVehicles: 15, maxUsers: 3 },
+  starter: { maxVehicles: 8, maxUsers: 2 },
   ops: { maxVehicles: 40, maxUsers: 8 },
   fiscal: { maxVehicles: 40, maxUsers: 8 },
   complete: { maxVehicles: 100, maxUsers: 20 },

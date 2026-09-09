@@ -106,16 +106,17 @@ export default function PlanComparison() {
           Compare os planos
         </h2>
         <p className="mt-1.5 text-sm text-text-secondary">
-          Detalhes do que cada plano inclui na ATrack.
+          Starter organiza a frota. Fiscal e Completo abrem NF-e, estoque e
+          emissão de CT-e, MDF-e e contrato de frete.
         </p>
       </div>
 
       <div className="mt-6 flex flex-col gap-2.5">
-        {PLAN_COMPARE_SECTIONS.map((section, index) => (
+        {PLAN_COMPARE_SECTIONS.map((section) => (
           <CompareSection
             key={section.id}
             section={section}
-            defaultOpen={index === 0}
+            defaultOpen={section.id === "frota" || section.id === "fiscal"}
           />
         ))}
       </div>

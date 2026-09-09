@@ -57,18 +57,19 @@ describe("billing utils", () => {
   it("PLAN_CARDS e trial padrão", () => {
     assert.equal(PLAN_CARDS.length, 3);
     assert.equal(PLAN_CARDS[0].id, "starter");
+    assert.equal(PLAN_CARDS[0].lid, "starter");
     assert.equal(PLAN_CARDS[0].trialEligible, true);
     assert.equal(BILLING_TRIAL_DAYS, 14);
-    assert.match(PLAN_CARDS[0].highlights[0], /15 veículos/);
+    assert.match(PLAN_CARDS[0].highlights[0], /8 veículos/);
   });
 
   it("PLAN_QUOTAS e tetos na sessão", () => {
-    assert.equal(PLAN_QUOTAS.starter.maxUsers, 3);
+    assert.equal(PLAN_QUOTAS.starter.maxUsers, 2);
     assert.equal(
       isVehicleQuotaReached({
         quota: {
           unlimited: false,
-          vehicles: { used: 15, limit: 15 },
+          vehicles: { used: 8, limit: 8 },
         },
       }),
       true,
@@ -81,7 +82,7 @@ describe("billing utils", () => {
     );
     assert.equal(
       isUserQuotaReached({
-        quota: { unlimited: false, users: { used: 2, limit: 3 } },
+        quota: { unlimited: false, users: { used: 1, limit: 2 } },
       }),
       false,
     );

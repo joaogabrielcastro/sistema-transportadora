@@ -2,11 +2,18 @@ import { z } from "zod";
 import { BillingService } from "../services/BillingService.js";
 import { catchAsync } from "../utils/catchAsync.js";
 import { requireTenantId } from "../utils/tenant.js";
-import { PLANS, PUBLIC_BILLING_PLANS } from "../utils/tenantFeatures.js";
+import { PLANS } from "../utils/tenantFeatures.js";
 
-const checkoutSchema = z.object({
-  plan: z.enum(PUBLIC_BILLING_PLANS),
-});
+const lidField = z.string().trim().min(1).max(64).optional();
+
+const checkoutSchema = z
+  .object({
+    lid: lidField,
+    plan: z.string().trim().min(1).max(64).optional(),
+  })
+  .refine((body) => Boolean(body.lid || body.plan), {
+    message: "Informe o LID do plano para iniciar o checkout.",
+  });
 
 const adminPatchSchema = z.object({
   billingExempt: z.boolean().optional(),
@@ -18,6 +25,16 @@ const adminPatchSchema = z.object({
 });
 
 export const billingController = {
+  listPublicPlans: catchAsync(async (req, res) => {
+    const data = BillingService.getPublicCatalog();
+    res.json({ success: true, data });
+  }),
+
+  getPublicPlan: catchAsync(async (req, res) => {
+    const data = BillingService.getPublicPlanByLid(req.params.lid);
+    res.json({ success: true, data });
+  }),
+
   status: catchAsync(async (req, res) => {
     const tenantId = requireTenantId(req);
     const status = await BillingService.getStatus(tenantId);
@@ -26,9 +43,10 @@ export const billingController = {
 
   checkout: catchAsync(async (req, res) => {
     const tenantId = requireTenantId(req);
-    const { plan } = checkoutSchema.parse(req.body);
+    const { lid, plan } = checkoutSchema.parse(req.body);
     const result = await BillingService.createCheckoutSession({
       tenantId,
+      lid,
       plan,
       email: req.context?.user?.email,
     });

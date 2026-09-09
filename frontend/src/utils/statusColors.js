@@ -45,6 +45,12 @@ export const getStatusConfig = (statusName, type = "status") => {
       "não registrado": "bg-slate-100 text-slate-800 border-slate-200",
       "erro no registro": "bg-red-100 text-red-800 border-red-200",
 
+      crítico: "bg-red-100 text-red-800 border-red-200",
+      critico: "bg-red-100 text-red-800 border-red-200",
+      alto: "bg-orange-100 text-orange-800 border-orange-200",
+      médio: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      medio: "bg-yellow-100 text-yellow-800 border-yellow-200",
+
       // Averbação de seguro
       pending: "bg-slate-100 text-slate-800 border-slate-200",
       processing: "bg-yellow-100 text-yellow-800 border-yellow-200",

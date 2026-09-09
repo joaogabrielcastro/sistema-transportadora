@@ -14,17 +14,15 @@ import {
 } from "../../src/utils/permissions.js";
 
 describe("feature flag transporte_fiscal", () => {
-  it("default false em todos os planos existentes", () => {
-    for (const plano of ["starter", "ops", "fiscal", "complete"]) {
-      assert.equal(
-        PLAN_FEATURES[plano].transporte_fiscal,
-        false,
-        `plano ${plano}`,
-      );
-    }
+  it("default false em Starter e ops; Fiscal e Completo abrem o módulo", () => {
+    assert.equal(PLAN_FEATURES.starter.transporte_fiscal, false);
+    assert.equal(PLAN_FEATURES.ops.transporte_fiscal, false);
+    assert.equal(PLAN_FEATURES.fiscal.transporte_fiscal, true);
+    assert.equal(PLAN_FEATURES.complete.transporte_fiscal, true);
     assert.equal(DEFAULT_TENANT_FEATURES.transporte_fiscal, false);
     assert.equal(TRANS_MOTIN_FEATURES.transporte_fiscal, false);
-    assert.equal(featuresForPlan("complete").transporte_fiscal, false);
+    assert.equal(featuresForPlan("starter").transporte_fiscal, false);
+    assert.equal(featuresForPlan("complete").transporte_fiscal, true);
   });
 
   it("não quebra as chaves existentes (ordem_coleta / notas_estoque)", () => {

@@ -5,6 +5,7 @@ import {
   formatNumber,
   formatDate,
   formatDateTime,
+  lastMonthsIsoRange,
 } from "./formatters.js";
 
 test("formatCurrency e formatNumber tratam nulos", () => {
@@ -23,4 +24,10 @@ test("formatDateTime inclui hora", () => {
   const formatted = formatDateTime("2026-07-01T15:30:00-03:00");
   assert.match(formatted, /01\/07\/2026/);
   assert.match(formatted, /15:30/);
+});
+
+test("lastMonthsIsoRange cobre N meses até a data local", () => {
+  const range = lastMonthsIsoRange(6, new Date(2026, 8, 8));
+  assert.equal(range.startDate, "2026-04-01");
+  assert.equal(range.endDate, "2026-09-08");
 });

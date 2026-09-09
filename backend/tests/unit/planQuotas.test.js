@@ -9,8 +9,8 @@ import {
 } from "../../src/utils/planQuotas.js";
 
 test("PLAN_QUOTAS: starter mais restrito que fiscal e complete", () => {
-  assert.equal(PLAN_QUOTAS.starter.maxVehicles, 15);
-  assert.equal(PLAN_QUOTAS.starter.maxUsers, 3);
+  assert.equal(PLAN_QUOTAS.starter.maxVehicles, 8);
+  assert.equal(PLAN_QUOTAS.starter.maxUsers, 2);
   assert.ok(PLAN_QUOTAS.fiscal.maxVehicles > PLAN_QUOTAS.starter.maxVehicles);
   assert.ok(PLAN_QUOTAS.complete.maxVehicles > PLAN_QUOTAS.fiscal.maxVehicles);
 });
@@ -32,12 +32,12 @@ test("quotasForTenant: cobrado usa o plano (fallback starter)", () => {
     plan: "starter",
   });
   assert.equal(starter.unlimited, false);
-  assert.equal(starter.maxVehicles, 15);
-  assert.equal(starter.maxUsers, 3);
+  assert.equal(starter.maxVehicles, 8);
+  assert.equal(starter.maxUsers, 2);
 
   const unknown = quotasForTenant({ billing_exempt: false, plan: null });
   assert.equal(unknown.plan, "starter");
-  assert.equal(unknown.maxUsers, 3);
+  assert.equal(unknown.maxUsers, 2);
 });
 
 test("isQuotaReached ignora limite nulo e bloqueia no teto", () => {
@@ -73,9 +73,9 @@ test("getQuotaUsage soma usuários ativos + convites pendentes", async () => {
   });
   assert.equal(usage.unlimited, false);
   assert.equal(usage.vehicles.used, 12);
-  assert.equal(usage.vehicles.limit, 15);
+  assert.equal(usage.vehicles.limit, 8);
   assert.equal(usage.users.activeUsers, 2);
   assert.equal(usage.users.pendingInvites, 1);
   assert.equal(usage.users.used, 3);
-  assert.equal(usage.users.limit, 3);
+  assert.equal(usage.users.limit, 2);
 });

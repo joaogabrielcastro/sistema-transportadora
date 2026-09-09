@@ -630,12 +630,12 @@ const HistoricoRegistros = ({
             title={
               filtroPlaca
                 ? "Nenhum registro encontrado"
-                : "Nenhum registro cadastrado"
+                : "Você ainda não possui gastos ou manutenções."
             }
             description={
               filtroPlaca
                 ? `Não há registros para a placa "${filtroPlaca}".`
-                : "Cadastre o primeiro registro no formulário acima."
+                : "Lance o primeiro registro no formulário acima."
             }
           />
         </div>

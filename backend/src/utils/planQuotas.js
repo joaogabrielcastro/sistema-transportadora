@@ -2,7 +2,7 @@ import { AUTH_TOKEN_PURPOSE } from "./authTokens.js";
 
 /** Tetos por plano cobrado. `null` = ilimitado (tenants isentos). */
 export const PLAN_QUOTAS = Object.freeze({
-  starter: Object.freeze({ maxVehicles: 15, maxUsers: 3 }),
+  starter: Object.freeze({ maxVehicles: 8, maxUsers: 2 }),
   ops: Object.freeze({ maxVehicles: 40, maxUsers: 8 }),
   fiscal: Object.freeze({ maxVehicles: 40, maxUsers: 8 }),
   complete: Object.freeze({ maxVehicles: 100, maxUsers: 20 }),

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import PageLayout from "../components/layout/PageLayout.jsx";
-import { Alert, Card, PageHeader, StatCard } from "../components/ui";
+import { Alert, Button, Card, PageHeader, StatCard } from "../components/ui";
 import EmptyState from "../components/EmptyState.jsx";
 import { apiFetch, parseApiError } from "../lib/apiClient.js";
 
@@ -27,18 +27,23 @@ export default function Documentos() {
   const [filter, setFilter] = useState("todos");
   const [loading, setLoading] = useState(true);
 
+  const load = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await apiFetch({ url: "/ops/documentos" });
+      setData(res.data);
+    } catch (err) {
+      const parsed = await parseApiError(err);
+      setError(parsed.message);
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await apiFetch({ url: "/ops/documentos" });
-        setData(res.data);
-      } catch (err) {
-        const parsed = await parseApiError(err);
-        setError(parsed.message);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    load();
   }, []);
 
   const items = useMemo(() => {
@@ -54,7 +59,16 @@ export default function Documentos() {
           title="Documentos da frota"
           subtitle="Vencimentos de CRLV, ANTT, seguro e outros documentos dos caminhões."
         />
-        {error && <Alert type="error">{error}</Alert>}
+        {error && (
+          <Alert type="error" title="Não foi possível carregar os documentos">
+            {error}
+            <div className="mt-3">
+              <Button variant="outline" size="sm" onClick={load}>
+                Tentar novamente
+              </Button>
+            </div>
+          </Alert>
+        )}
 
         {data?.summary && (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -84,9 +98,13 @@ export default function Documentos() {
 
         {loading ? (
           <p className="text-sm text-slate-500">Carregando…</p>
-        ) : items.length === 0 ? (
+        ) : error ? null : items.length === 0 ? (
           <EmptyState
-            title="Nenhum documento neste filtro"
+            title={
+              filter === "todos"
+                ? "Você ainda não possui documentos cadastrados."
+                : "Nenhum documento neste filtro"
+            }
             description="Anexe PDFs no detalhe do caminhão e informe a data de validade."
             dashed
             action={

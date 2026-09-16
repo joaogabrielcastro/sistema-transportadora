@@ -6,6 +6,10 @@ import { verifyAccessToken } from "../utils/jwt.js";
 import { resolveDefaultTenantId } from "../utils/tenant.js";
 import { resolvePermissions } from "../utils/permissions.js";
 import { AuditService } from "../services/AuditService.js";
+import {
+  patchRequestContext,
+  runWithRequestContext,
+} from "../utils/requestContext.js";
 
 const SENSITIVE_KEY = /pass|password|token|secret|authorization|smtp|certificado|senha|pfx|usertoken/i;
 
@@ -87,7 +91,7 @@ export const attachRequestContext = (req, res, next) => {
   };
 
   res.setHeader("x-request-id", requestId);
-  next();
+  runWithRequestContext({ requestId }, () => next());
 };
 
 export const apiRateLimiter = rateLimit({
@@ -116,6 +120,9 @@ export const authRateLimiter = rateLimit({
 function applyAuthUser(req, user) {
   if (req.context?.user) {
     req.context.user = user;
+  }
+  if (user?.tenantId != null) {
+    patchRequestContext({ tenantId: user.tenantId });
   }
 }
 

@@ -145,6 +145,8 @@ apiRouter.post(
   authRateLimiter,
   authController.acceptInvite,
 );
+apiRouter.get("/billing/plans", billingController.listPublicPlans);
+apiRouter.get("/billing/plans/:lid", billingController.getPublicPlan);
 apiRouter.use(requireAuth);
 apiRouter.use(auditLog);
 apiRouter.get("/auth/me", authController.me);

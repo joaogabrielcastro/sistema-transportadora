@@ -35,6 +35,7 @@ const StatCard = ({
   icon,
   color = "blue",
   layout = "dashboard",
+  hint,
   className = "",
 }) => {
   const styles = colorStyles[color] || colorStyles.blue;
@@ -49,6 +50,9 @@ const StatCard = ({
           <div>
             <h3 className="text-2xl font-bold text-text-primary">{value}</h3>
             <p className="text-sm font-medium opacity-80">{title}</p>
+            {hint ? (
+              <p className="mt-0.5 text-xs opacity-70">{hint}</p>
+            ) : null}
           </div>
         </div>
       </div>
@@ -63,6 +67,9 @@ const StatCard = ({
         <div>
           <p className="text-sm font-medium text-text-secondary mb-1">{title}</p>
           <h3 className="text-2xl font-bold text-text-primary">{value}</h3>
+          {hint ? (
+            <p className="mt-1 text-xs text-text-secondary">{hint}</p>
+          ) : null}
         </div>
         <div
           className={`p-3 rounded-lg ${styles.icon} group-hover:opacity-90 transition-colors`}
@@ -80,6 +87,7 @@ StatCard.propTypes = {
   icon: PropTypes.node,
   color: PropTypes.oneOf(["blue", "green", "purple", "orange", "amber"]),
   layout: PropTypes.oneOf(["dashboard", "compact"]),
+  hint: PropTypes.node,
   className: PropTypes.string,
 };
 

@@ -3,7 +3,11 @@ import Modal from "./ui/Modal.jsx";
 import { Button, FormField } from "./ui";
 import { useApiMutation } from "../hooks";
 import { apiFetch } from "../lib/apiClient.js";
-import { isCombustivelTipo, tiposGastosFinanceiros } from "../utils/tipoGastoUtils.js";
+import { isCombustivelTipo, tiposGastosFinanceiros, classifyTipoGastoById } from "../utils/tipoGastoUtils.js";
+import { detalhesFromRaw } from "../utils/gastoDetalhes.js";
+import GastoDetalhesFields, {
+  payloadControleGasto,
+} from "./gasto/GastoDetalhesFields.jsx";
 
 /** Converte DATE da API para yyyy-MM-dd sem deslocar fuso. */
 function toInputDate(value) {
@@ -58,12 +62,18 @@ function buildInitialForm(registro, isManutencao) {
     descricao: displayValue(registro.descricao || registro.observacao),
     km_registro: displayValue(registro.km_registro),
     quantidade_combustivel: displayValue(registro.quantidade_combustivel),
+    motorista_id:
+      registro.motorista_id != null ? String(registro.motorista_id) : "",
+    status_pagamento: registro.status_pagamento || "",
+    data_vencimento: toInputDate(registro.data_vencimento),
+    detalhes: detalhesFromRaw(registro.detalhes),
   };
 }
 
 export default function RegistroEditModal({
   registro,
   tiposGastos = [],
+  motoristas = [],
   onClose,
   onSaved,
 }) {
@@ -118,6 +128,11 @@ export default function RegistroEditModal({
             descricao: displayValue(data.descricao),
             km_registro: displayValue(data.km_registro),
             quantidade_combustivel: displayValue(data.quantidade_combustivel),
+            motorista_id:
+              data.motorista_id != null ? String(data.motorista_id) : "",
+            status_pagamento: data.status_pagamento || "",
+            data_vencimento: toInputDate(data.data_vencimento),
+            detalhes: detalhesFromRaw(data.detalhes),
           });
         }
       } finally {
@@ -132,7 +147,12 @@ export default function RegistroEditModal({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => {
+      if (name === "tipo_gasto_id") {
+        return { ...prev, tipo_gasto_id: value, detalhes: {} };
+      }
+      return { ...prev, [name]: value };
+    });
   };
 
   const handleSave = async (e) => {
@@ -188,6 +208,10 @@ export default function RegistroEditModal({
             quantidade_combustivel: isCombustivel
               ? parseFloat(String(form.quantidade_combustivel).replace(",", "."))
               : null,
+            ...payloadControleGasto(
+              form,
+              classifyTipoGastoById(form.tipo_gasto_id, tiposGastos),
+            ),
           },
           { skipSuccessToast: true },
         );
@@ -329,6 +353,18 @@ export default function RegistroEditModal({
                   required
                 />
               )}
+              <GastoDetalhesFields
+                tipoId={form.tipo_gasto_id}
+                tiposGastos={tiposGastos}
+                motoristas={motoristas}
+                motoristaId={form.motorista_id}
+                statusPagamento={form.status_pagamento}
+                dataVencimento={form.data_vencimento}
+                detalhes={form.detalhes || {}}
+                onChange={(patch) =>
+                  setForm((prev) => ({ ...prev, ...patch }))
+                }
+              />
               <FormField
                 label="Descrição"
                 name="descricao"

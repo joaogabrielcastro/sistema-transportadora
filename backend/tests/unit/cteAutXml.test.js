@@ -20,7 +20,7 @@ const baseCte = {
   natureza_operacao: "Transporte",
   dt_emissao: "2026-02-01T10:00:00-03:00",
   servico: { valor_prestacao: 100 },
-  tomador: { cpf_cnpj: "12345678000199" },
+  tomador: { cpf_cnpj: "12345678000195" },
 };
 
 test("schema aceita CT-e sem aut_xml (0 registros é válido)", () => {
@@ -38,29 +38,29 @@ test("schema aceita aut_xml como lista vazia", () => {
 test("aut_xml com 2 registros (string e objeto) normaliza para 2 linhas", () => {
   const ok = emitirCteSchema.parse({
     ...baseCte,
-    aut_xml: ["12.345.678/0001-99", { cnpj_cpf: "98765432000188" }],
+    aut_xml: ["12.345.678/0001-95", { cnpj_cpf: "98765432000198" }],
   });
   const linhas = normalizarAutXmlCte(ok);
   assert.equal(linhas.length, 2);
   assert.deepEqual(linhas, [
-    { cnpj_cpf: "12345678000199" },
-    { cnpj_cpf: "98765432000188" },
+    { cnpj_cpf: "12345678000195" },
+    { cnpj_cpf: "98765432000198" },
   ]);
 });
 
 test("montarAutXmlCte: undefined quando não há autorizados; array quando há", () => {
   assert.equal(montarAutXmlCte(emitirCteSchema.parse(baseCte)), undefined);
   const out = montarAutXmlCte(
-    emitirCteSchema.parse({ ...baseCte, aut_xml: ["12345678000199"] }),
+    emitirCteSchema.parse({ ...baseCte, aut_xml: ["12345678000195"] }),
   );
-  assert.deepEqual(out, [{ CnpjCpf: "12345678000199" }]);
+  assert.deepEqual(out, [{ CnpjCpf: "12345678000195" }]);
 });
 
 test("montarPayloadCte expõe AutXML só quando há autorizados", () => {
   const com = montarPayloadCte(
     emitirCteSchema.parse({
       ...baseCte,
-      aut_xml: ["12345678000199", "98765432000188"],
+      aut_xml: ["12345678000195", "98765432000198"],
     }),
     undefined,
     undefined,

@@ -1,10 +1,11 @@
 import { z } from "zod";
-import { chaveAcessoValida } from "../utils/fiscalDocs.js";
+import { chaveAcessoValida, cpfCnpjValido, cnpjValido, cpfValido, ufValida, inscricaoEstadualValida } from "../utils/fiscalDocs.js";
 
 /**
- * Schemas Zod do módulo fiscal de transporte (CT-e / MDF-e / CIOT).
+ * Schemas Zod do módulo fiscal de transporte (CT-e / MDF-e / Contrato de Frete / CIOT).
  * Campos da nossa API em snake_case (convenção ATrack). Cada service traduz
- * para o JSON da Brasil NFe (CT-e / MDF-e). CIOT permanece em provedor próprio.
+ * para o JSON da Brasil NFe (CT-e / MDF-e). CIOT permanece em provedor próprio
+ * e é um registro vinculado ao contrato de frete — não substitui o contrato.
  *
  * Os payloads de emissão têm dezenas de campos fiscais aninhados (endereços,
  * impostos, DIFAL, IBS/CBS, seguros, ...). Só validamos a fundo o que o
@@ -83,7 +84,8 @@ const cpfCnpj = z
   .pipe(
     z
       .string()
-      .regex(/^\d{11}$|^\d{14}$/, "CNPJ/CPF deve ter 11 (CPF) ou 14 (CNPJ) dígitos"),
+      .regex(/^\d{11}$|^\d{14}$/, "CNPJ/CPF deve ter 11 (CPF) ou 14 (CNPJ) dígitos")
+      .refine(cpfCnpjValido, "CNPJ/CPF inválido (dígito verificador)"),
   );
 
 const optionalCpfCnpj = z.preprocess(
@@ -101,6 +103,7 @@ const optionalCnpj14 = z.preprocess(
     .trim()
     .transform((v) => v.replace(/\D/g, ""))
     .pipe(z.string().regex(/^\d{14}$/, "CNPJ deve ter 14 dígitos"))
+    .refine(cnpjValido, "CNPJ inválido (dígito verificador)")
     .optional()
     .nullable(),
 );
@@ -111,7 +114,8 @@ const ufSigla = z
   .string()
   .trim()
   .transform((v) => v.toUpperCase())
-  .pipe(z.string().length(2).regex(/^[A-Z]{2}$/, "UF inválida (use a sigla de 2 letras)"));
+  .pipe(z.string().length(2).regex(/^[A-Z]{2}$/, "UF inválida (use a sigla de 2 letras)"))
+  .refine(ufValida, "UF inválida (não é uma unidade federativa do Brasil)");
 
 const optionalUfSigla = z.preprocess(
   (v) =>
@@ -163,7 +167,12 @@ const optionalChaveAcesso = z
 // fiscal_empresas
 // ---------------------------------------------------------------------
 export const fiscalEmpresaSchema = z.object({
-  cnpj: digits(18),
+  cnpj: z
+    .string()
+    .trim()
+    .transform((v) => v.replace(/\D/g, ""))
+    .pipe(z.string().length(14, "CNPJ deve ter 14 dígitos"))
+    .refine(cnpjValido, "CNPJ inválido (dígito verificador)"),
   razao_social: z.string().trim().min(2).max(255),
   rntrc: optionalDigits(9),
   cte_mdfe_provider_token: z.string().trim().min(1).optional().nullable(),
@@ -178,7 +187,16 @@ export const fiscalEmpresaSchema = z.object({
     .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)])
     .optional()
     .nullable(),
-  inscricao_estadual: z.string().trim().max(20).optional().nullable(),
+  inscricao_estadual: z
+    .string()
+    .trim()
+    .max(20)
+    .optional()
+    .nullable()
+    .refine(
+      (v) => v == null || v === "" || inscricaoEstadualValida(v),
+      "Inscrição estadual inválida",
+    ),
   // Grupo infRespTec (item 1.4). Todos opcionais no cadastro; a ausência NÃO
   // bloqueia emissão de CT-e (só gera aviso em log). resp_tec_csrt é cifrado
   // no service antes de gravar, igual ao token do provedor.
@@ -307,6 +325,15 @@ export const emitirCteSchema = z
     fiscal_empresa_id: optionalId,
     caminhao_id: optionalId,
     motorista_id: optionalId,
+    // FK do Contrato de Frete (operação). O CIOT usado no CT-e sai desse
+    // contrato quando já estiver registrado — não criar contrato a partir do CT-e.
+    contrato_frete_id: optionalId,
+    // Número do CIOT já obtido (ANTT). Opcional. Persistido em fiscal_ctes.antt_ciot
+    // e enviado no payload (Ciot + Modal.infCiot). Não é o número do contrato.
+    ciot: optionalDigitsPattern(
+      /^\d{1,12}$/,
+      "CIOT deve ter no máximo 12 dígitos numéricos",
+    ),
     tipo_cte: z.enum(TIPOS_CTE, {
       message:
         'tipo_cte deve ser "0" (Normal), "1" (Complemento de Valores) ou "3" (Substituto). O tipo "2" (Anulação) foi extinto no CT-e 4.0.',
@@ -667,7 +694,9 @@ export const emitirMdfeSchema = z.object({
   // CT-e já emitidos (mesmo tenant, status "processado", ainda sem manifesto)
   // a vincular a este MDF-e. Validados no MdfeService, que grava manifesto_id
   // em cada um após a emissão.
-  cte_ids: z.array(z.number().int().positive()).optional(),
+  cte_ids: z
+    .array(z.number().int().positive())
+    .min(1, "Informe ao menos um CT-e autorizado para vincular a este MDF-e"),
   // Seguro da carga (grupo seg do MDF-e). resp_seg: 1 = emitente do MDF-e,
   // 2 = contratante do serviço de transporte. Os demais são opcionais.
   resp_seg: z.union([z.literal(1), z.literal(2)]).optional(),
@@ -688,7 +717,16 @@ export const emitirMdfeSchema = z.object({
           z
             .object({
               nome: z.string().trim().min(1).max(60),
-              cpf: digits(11),
+              cpf: z
+                .string()
+                .trim()
+                .transform((v) => v.replace(/\D/g, ""))
+                .pipe(
+                  z
+                    .string()
+                    .length(11, "CPF do condutor deve ter 11 dígitos")
+                    .refine(cpfValido, "CPF do condutor inválido (dígito verificador)"),
+                ),
             })
             .catchall(z.any()),
         )
@@ -746,10 +784,13 @@ export const emitirMdfeSchema = z.object({
   produto_predominante: looseObject.optional(),
   // Grupo infANTT do MDF-e (2.2). Obrigatoriedade (quando não é frota própria)
   // cobrada no MdfeService, não aqui.
+  // FK do Contrato de Frete (operação). O CIOT do infANTT sai desse contrato
+  // quando já estiver registrado.
+  contrato_frete_id: optionalId,
   inf_antt: z
     .object({
       rntrc: optionalDigits(9),
-      // CIOT: só dígitos, no máx. 12 (era .max(20), teto errado).
+      // Número do CIOT já obtido — não é o contrato de frete.
       ciot: optionalDigitsPattern(
         /^\d{1,12}$/,
         "CIOT deve ter no máximo 12 dígitos numéricos",
@@ -909,22 +950,24 @@ export const declararCiotSchema = z
       .enum(["lotacao", "fracionada", "tac_agregado"])
       .optional()
       .nullable(),
-    cpf_cnpj_contratado: digits(14),
+    cpf_cnpj_contratado: cpfCnpj,
     rntrc_contratado: digits(9),
     // Snapshot da situação do RNTRC do contratado (item 3.1). Nesta rodada só
     // é gravado o que vier aqui — sem consulta automática à ANTT.
     rntrc_contratado_situacao: z.string().trim().max(20).optional().nullable(),
     rntrc_contratado_snapshot: looseObject.optional().nullable(),
-    cpf_cnpj_contratante: digits(14),
+    cpf_cnpj_contratante: cpfCnpj,
     rntrc_contratante: optionalDigits(9),
-    cpf_cnpj_destinatario: optionalDigits(14),
+    cpf_cnpj_destinatario: optionalCpfCnpj,
     valor_frete: z.number().positive(),
     // Obrigatórios por lei na Declaração de Operação de Transporte (ANTT):
     // piso mínimo de frete (Lei 13.703/2018) e Vale-Pedágio obrigatório
     // (Lei 10.209/2001). Sempre informados; 0 quando não há pedágio no percurso.
     valor_piso_minimo_frete: z.number().nonnegative(),
     valor_vale_pedagio: z.number().nonnegative(),
-    data_declaracao: isoDateish,
+    // Data enviada ao provedor no registro do CIOT. Opcional no contrato:
+    // na hora de registrar, o service usa agora() se faltar.
+    data_declaracao: isoDateish.optional(),
     data_inicio_viagem: isoDateish,
     data_fim_viagem: isoDateish,
     veiculos: z.array(veiculoDeclaracaoSchema).min(2).max(5),
@@ -970,6 +1013,7 @@ export const declararCiotSchema = z
       .catchall(z.any())
       .optional()
       .nullable(),
+    informacoes_adicionais: z.string().trim().max(2000).optional().nullable(),
   })
   .superRefine((dto, ctx) => {
     if (dto.tipo_operacao === 1 || dto.tipo_operacao === 2) {
@@ -1015,6 +1059,9 @@ export const declararCiotSchema = z
       });
     }
   });
+
+/** Contrato de Frete = a operação. O schema é o da declaração, sem exigir CIOT. */
+export const contratoFreteSchema = declararCiotSchema;
 
 export const consultarSituacaoTransportadorSchema = z.object({
   fiscal_empresa_id: z.number().int().positive(),

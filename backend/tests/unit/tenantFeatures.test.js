@@ -101,8 +101,8 @@ describe("tenantFeatures", () => {
     assert.equal(featuresForPlan("fiscal").notas_estoque, true);
     assert.equal(featuresForPlan("complete").ordem_coleta, false);
     assert.equal(featuresForPlan("complete").notas_estoque, true);
-    assert.equal(featuresForPlan("complete").transporte_fiscal, true);
-    assert.equal(featuresForPlan("fiscal").transporte_fiscal, false);
+    assert.equal(featuresForPlan("fiscal").transporte_fiscal, true);
+    assert.equal(featuresForPlan("starter").transporte_fiscal, false);
   });
 
   it("isPublicBillingPlan: starter, fiscal e complete", () => {
@@ -171,6 +171,7 @@ describe("tenantFeatures", () => {
     assert.equal(d.plan, "starter");
     assert.equal(d.features.ordem_coleta, false);
     assert.equal(d.features.notas_estoque, false);
+    assert.equal(d.features.transporte_fiscal, false);
     assert.equal(d.subscription_status, "trialing");
     const days =
       (d.trial_ends_at.getTime() - start.getTime()) / (24 * 60 * 60 * 1000);
@@ -190,6 +191,7 @@ describe("tenantFeatures", () => {
     assert.equal(pub.plan, "fiscal");
     assert.equal(pub.features.ordem_coleta, false);
     assert.equal(pub.features.notas_estoque, true);
+    assert.equal(pub.features.transporte_fiscal, true);
     assert.equal(pub.hasAccess, true);
   });
 });

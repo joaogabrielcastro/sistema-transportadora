@@ -70,7 +70,7 @@ test("schema aceita retencoes opcional e segue válido sem ele", () => {
   const baseCiot = {
     fiscal_empresa_id: 1,
     tipo_operacao: 3,
-    cpf_cnpj_contratado: "12345678000199",
+    cpf_cnpj_contratado: "12345678000195",
     rntrc_contratado: "123456789",
     cpf_cnpj_contratante: "99999999000191",
     valor_frete: 1000,

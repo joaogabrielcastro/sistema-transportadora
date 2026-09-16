@@ -19,12 +19,12 @@ const dtoCte = emitirCteSchema.parse({
   natureza_operacao: "Transporte",
   dt_emissao: "2026-02-01T10:00:00-03:00",
   servico: { valor_prestacao: 100 },
-  tomador: { cpf_cnpj: "12345678000199" },
+  tomador: { cpf_cnpj: "12345678000195" },
 });
 
 test("fiscalEmpresaSchema ignora certificado_pfx_path vindo do cliente", () => {
   const stripped = fiscalEmpresaSchema.parse({
-    cnpj: "12345678000199",
+    cnpj: "12345678000195",
     razao_social: "Transportadora X",
     certificado_pfx_path: "../../../../etc/passwd",
   });
@@ -42,7 +42,7 @@ test("fiscalEmpresaUpdateSchema também ignora certificado_pfx_path", () => {
 
 test("fiscalEmpresaSchema aceita crt (1..4) e inscricao_estadual", () => {
   const ok = fiscalEmpresaSchema.parse({
-    cnpj: "12.345.678/0001-99",
+    cnpj: "12.345.678/0001-95",
     razao_social: "Transportadora X",
     crt: 3,
     inscricao_estadual: "123456789",
@@ -54,7 +54,7 @@ test("fiscalEmpresaSchema aceita crt (1..4) e inscricao_estadual", () => {
 test("fiscalEmpresaSchema rejeita crt fora de 1..4", () => {
   assert.throws(() =>
     fiscalEmpresaSchema.parse({
-      cnpj: "12345678000199",
+      cnpj: "12345678000195",
       razao_social: "X",
       crt: 9,
     }),

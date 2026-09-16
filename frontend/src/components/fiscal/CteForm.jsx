@@ -2,6 +2,10 @@ import React, { useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { FiscalFormSteps, FiscalFormStepNav } from "./FiscalFormSteps.jsx";
 import {
+  ciotRegistradoNoContrato,
+  numeroCiotDoContrato,
+} from "../../utils/contratoFrete.js";
+import {
   Alert,
   Button,
   Card,
@@ -33,6 +37,8 @@ import {
   somenteDigitos,
   tiposDocumentoConflitantes,
 } from "../../utils/fiscalForms.js";
+import { aplicarNfesCte } from "../../utils/cteFromNfe.js";
+import NfeXmlDrop from "./NfeXmlDrop.jsx";
 
 function nowLocalInput() {
   const d = new Date();
@@ -72,6 +78,8 @@ const emptyForm = {
   outras_caracteristicas: "",
   chave_nfe_referenciada: "",
   rntrc: "",
+  ciot: "",
+  contrato_frete_id: "",
   // Grupo imp.ICMS (item 1.1)
   icms_cst: "",
   icms_base: "",
@@ -197,6 +205,14 @@ function formFromPayload(payload) {
       outras_caracteristicas: str(carga.outras_caracteristicas),
       chave_nfe_referenciada: str(payload.chave_nfe_referenciada),
       rntrc: str(payload.modal?.rntrc),
+      ciot: str(
+        payload.ciot ||
+          payload.modal?.infCiot?.[0]?.CIOT ||
+          payload.modal?.infCiot?.[0]?.ciot,
+      ),
+      contrato_frete_id: payload.contrato_frete_id
+        ? String(payload.contrato_frete_id)
+        : "",
       icms_cst: str(icms.cst),
       icms_base: str(icms.base),
       icms_aliquota: str(icms.aliquota),
@@ -511,6 +527,7 @@ ParticipanteFields.propTypes = {
 export default function CteForm({
   clientes = [],
   caminhoes = [],
+  ciots = [],
   submitting = false,
   savingDraft = false,
   simulating = false,
@@ -539,6 +556,10 @@ export default function CteForm({
   const [criandoCliente, setCriandoCliente] = useState(false);
   const [erroCliente, setErroCliente] = useState("");
   const [fase, setFase] = useState(0);
+  const [extraClientes, setExtraClientes] = useState([]);
+  const [lendoXml, setLendoXml] = useState(false);
+  const [xmlMsg, setXmlMsg] = useState("");
+  const [xmlErro, setXmlErro] = useState("");
 
   const set = (campo, valor) => setForm((f) => ({ ...f, [campo]: valor }));
 
@@ -573,14 +594,22 @@ export default function CteForm({
   const removeComponente = (idx) =>
     setComponentes((cs) => cs.filter((_, i) => i !== idx));
 
+  const clientesEfetivos = useMemo(() => {
+    const seen = new Set((clientes || []).map((c) => c.id));
+    return [
+      ...(clientes || []),
+      ...extraClientes.filter((c) => !seen.has(c.id)),
+    ];
+  }, [clientes, extraClientes]);
+
   const clienteOptions = useMemo(
     () =>
-      clientes.map((c) => ({
+      clientesEfetivos.map((c) => ({
         value: String(c.id),
         label: `${c.razao_social} — ${c.cnpj_cpf}`,
         searchText: `${c.razao_social} ${c.cnpj_cpf}`,
       })),
-    [clientes],
+    [clientesEfetivos],
   );
 
   const caminhaoOptions = useMemo(
@@ -588,7 +617,22 @@ export default function CteForm({
     [caminhoes],
   );
 
-  const clienteSelecionado = clientes.find(
+  const contratosComCiot = useMemo(
+    () =>
+      (Array.isArray(ciots) ? ciots : [])
+        .filter((c) => ciotRegistradoNoContrato(c))
+        .map((c) => {
+          const num = numeroCiotDoContrato(c);
+          return {
+            value: String(c.id),
+            label: `Contrato #${String(c.id).padStart(6, "0")} · CIOT ${num}`,
+            ciot: num,
+          };
+        }),
+    [ciots],
+  );
+
+  const clienteSelecionado = clientesEfetivos.find(
     (c) => String(c.id) === String(form.cliente_id),
   );
 
@@ -667,6 +711,85 @@ export default function CteForm({
   const difalTemValor = difalCampos.some((v) => String(v).trim() !== "");
   const difalIncompleto = mostrarDifal && !difalTemValor;
 
+  const handleLerXml = async (files) => {
+    setXmlErro("");
+    setXmlMsg("");
+    if (!files?.length) return;
+    const fd = new FormData();
+    for (const file of files) fd.append("xml", file);
+    setLendoXml(true);
+    try {
+      const res = await post("/fiscal/cte/ler-xml", fd, {
+        skipSuccessToast: true,
+        skipErrorToast: true,
+      });
+      const data = res?.data;
+      const notas = Array.isArray(data?.notas) ? data.notas : [];
+      if (!notas.length) {
+        setXmlErro("Nenhuma NF-e de carga foi lida.");
+        return;
+      }
+      const aplicado = aplicarNfesCte({
+        notas,
+        documentosAtuais: documentos,
+        clientes: [
+          ...(clientes || []),
+          ...extraClientes,
+        ],
+        caminhoes,
+      });
+      if (aplicado.conflitoPapel) {
+        setXmlErro(
+          "Este CT-e já tem NF em papel. Remova-as para importar a chave da NF-e.",
+        );
+        return;
+      }
+      setDocumentos(aplicado.documentos);
+      setForm((f) => ({ ...f, ...aplicado.formPatch }));
+      if (aplicado.remetente) setRemetente(aplicado.remetente);
+      if (aplicado.destinatario) setDestinatario(aplicado.destinatario);
+      if (aplicado.quantidades) setQuantidades(aplicado.quantidades);
+
+      if (!aplicado.formPatch.cliente_id && aplicado.clienteParaCriar) {
+        try {
+          const criadoRes = await post(
+            "/fiscal/clientes",
+            {
+              razao_social: aplicado.clienteParaCriar.razao_social,
+              cnpj_cpf: String(aplicado.clienteParaCriar.cnpj_cpf).replace(
+                /\D/g,
+                "",
+              ),
+            },
+            { skipSuccessToast: true, skipErrorToast: true },
+          );
+          const criado = criadoRes?.data;
+          if (criado?.id) {
+            setExtraClientes((xs) => [...xs, criado]);
+            setForm((f) => ({ ...f, cliente_id: String(criado.id) }));
+          }
+        } catch {
+          /* tomador fica para o usuário cadastrar */
+        }
+      }
+
+      const nIgn = Array.isArray(data?.ignoradas_combustivel)
+        ? data.ignoradas_combustivel.length
+        : 0;
+      setXmlMsg(
+        nIgn
+          ? `${notas.length} NF-e de carga aplicada${notas.length > 1 ? "s" : ""}. ${nIgn} XML de combustível foi ignorado — lance em Manutenção e gastos.`
+          : `${notas.length} NF-e aplicada${notas.length > 1 ? "s" : ""}. Confira carga, participantes e o valor do frete (o CFOP da mercadoria não entra no CT-e).`,
+      );
+      setFase(2);
+    } catch (err) {
+      const parsed = await parseApiError(err);
+      setXmlErro(parsed.message || err?.message || "Falha ao ler o XML da NF-e.");
+    } finally {
+      setLendoXml(false);
+    }
+  };
+
   const handleCriarCliente = async () => {
     setErroCliente("");
     if (
@@ -687,7 +810,10 @@ export default function CteForm({
         { skipSuccessToast: true, skipErrorToast: true },
       );
       const criado = res?.data;
-      if (criado?.id) set("cliente_id", String(criado.id));
+      if (criado?.id) {
+        setExtraClientes((xs) => [...xs, criado]);
+        set("cliente_id", String(criado.id));
+      }
       setNovoCliente({ razao_social: "", cnpj_cpf: "" });
       setNovoClienteOpen(false);
     } catch (err) {
@@ -862,6 +988,10 @@ export default function CteForm({
 
     if (form.rntrc.trim())
       payload.modal = { rntrc: form.rntrc.replace(/\D/g, "") };
+    const ciotDigits = String(form.ciot || "").replace(/\D/g, "");
+    if (ciotDigits) payload.ciot = ciotDigits;
+    if (form.contrato_frete_id)
+      payload.contrato_frete_id = Number(form.contrato_frete_id);
 
     return payload;
   };
@@ -924,6 +1054,19 @@ export default function CteForm({
               message="Sem certificado A1 a autorização na SEFAZ fica pendente. Use Simular emissão para mostrar o fluxo ao cliente; Emitir só completa com o .pfx cadastrado."
             />
           )}
+
+        <NfeXmlDrop
+          label="Enviar XML da NF-e (carga)"
+          hint="Preenche chave, peso, valor da carga e remetente/destinatário. O CFOP do CT-e continua o de transporte (ex.: 5353) — não copia o da mercadoria."
+          multiple
+          disabled={lendoXml || submitting || savingDraft}
+          onFiles={handleLerXml}
+        />
+        {lendoXml ? (
+          <p className="text-sm text-text-secondary">Lendo XML da NF-e…</p>
+        ) : null}
+        {xmlErro ? <Alert type="error" message={xmlErro} /> : null}
+        {xmlMsg ? <Alert type="success" message={xmlMsg} /> : null}
 
         <FiscalFormSteps
           steps={CTE_FASES}
@@ -1017,6 +1160,38 @@ export default function CteForm({
             inputMode="numeric"
             maxLength={8}
             helperText="Exatamente 8 dígitos."
+            className="mb-0"
+          />
+
+          {contratosComCiot.length > 0 && (
+            <FormField
+              label="Contrato de frete"
+              type="select"
+              value={form.contrato_frete_id}
+              onChange={(e) => {
+                const id = e.target.value;
+                set("contrato_frete_id", id);
+                const escolhido = contratosComCiot.find((c) => c.value === id);
+                if (escolhido?.ciot) set("ciot", escolhido.ciot);
+              }}
+              options={[
+                { value: "", label: "Nenhum (informar CIOT abaixo, se houver)" },
+                ...contratosComCiot,
+              ]}
+              helperText="A operação de transporte. O número do CIOT entra no CT-e automaticamente."
+              className="mb-0"
+            />
+          )}
+          <FormField
+            label="Número do CIOT"
+            value={form.ciot}
+            onChange={(e) =>
+              set("ciot", e.target.value.replace(/\D/g, "").slice(0, 12))
+            }
+            placeholder="Já registrado na ANTT"
+            inputMode="numeric"
+            maxLength={12}
+            helperText="Opcional. Código da ANTT desta operação — não é o número do contrato."
             className="mb-0"
           />
         </div>
@@ -1883,6 +2058,7 @@ export default function CteForm({
 CteForm.propTypes = {
   clientes: PropTypes.array,
   caminhoes: PropTypes.array,
+  ciots: PropTypes.array,
   submitting: PropTypes.bool,
   savingDraft: PropTypes.bool,
   onSubmit: PropTypes.func.isRequired,

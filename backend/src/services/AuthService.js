@@ -18,6 +18,7 @@ import {
   isAuthTokenUsable,
 } from "../utils/authTokens.js";
 import { LEGAL_VERSION } from "../utils/legal.js";
+import { planUnavailableError, resolvePublicPlanByLid } from "../utils/planCatalog.js";
 import {
   assertCanAddUserSeat,
   getQuotaUsage,
@@ -131,16 +132,21 @@ export class AuthService {
     const password = process.env.ADMIN_PASSWORD || DEFAULT_BOOTSTRAP.password;
     const nome = process.env.ADMIN_NOME || DEFAULT_BOOTSTRAP.nome;
 
-    await prisma.users.create({
-      data: {
-        tenant_id: tenant.id,
-        email,
-        nome,
-        role: "admin",
-        password_hash: await hashPassword(password),
-        ativo: true,
-      },
-    });
+    try {
+      await prisma.users.create({
+        data: {
+          tenant_id: tenant.id,
+          email,
+          nome,
+          role: "admin",
+          password_hash: await hashPassword(password),
+          ativo: true,
+        },
+      });
+    } catch (err) {
+      if (err?.code === "P2002") return;
+      throw err;
+    }
 
     logger.warn("Usuário administrador inicial criado", {
       email,
@@ -152,13 +158,27 @@ export class AuthService {
 
   /**
    * Cadastro público: nova empresa (tenant) + admin.
-   * Novos tenants entram em trial (billing_exempt=false).
+   * Novos tenants entram em trial Starter (billing_exempt=false).
+   * O LID escolhido no site é validado e devolvido para o checkout — o trial
+   * continua no Starter, regra comercial do catálogo.
    */
-  static async register({ empresaNome, email, password, nome }) {
+  static async register({ empresaNome, email, password, nome, lid }) {
     if (process.env.ALLOW_PUBLIC_REGISTER === "false") {
       const err = new Error("Cadastro de novas empresas está desabilitado");
       err.statusCode = 403;
       throw err;
+    }
+
+    let intended = null;
+    if (lid) {
+      const resolved = resolvePublicPlanByLid(lid);
+      if (!resolved.ok) {
+        throw planUnavailableError({
+          code: resolved.code,
+          message: resolved.message,
+        });
+      }
+      intended = { lid: resolved.lid, plan: resolved.plan.id };
     }
 
     const normalizedEmail = String(email).trim().toLowerCase();
@@ -217,10 +237,16 @@ export class AuthService {
       slug: tenant.slug,
       email: user.email,
       plan: tenant.plan,
+      intendedLid: intended?.lid ?? null,
       trialEndsAt: tenant.trial_ends_at,
     });
 
-    return buildAuthPayloadWithQuota(user, tenant);
+    const payload = await buildAuthPayloadWithQuota(user, tenant);
+    if (intended) {
+      payload.intendedLid = intended.lid;
+      payload.intendedPlan = intended.plan;
+    }
+    return payload;
   }
 
   static async login({ email, password }) {

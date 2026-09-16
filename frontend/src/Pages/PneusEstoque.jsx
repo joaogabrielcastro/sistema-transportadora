@@ -14,6 +14,7 @@ import {
   PageHeader,
   StatusBadge,
 } from "../components/ui";
+import EmptyState from "../components/EmptyState.jsx";
 import { Link } from "react-router-dom";
 
 const ESTOQUE_PAGE_SIZE = 20;
@@ -424,7 +425,10 @@ const PneusEstoque = () => {
           ) : (
             <div className="space-y-3">
               {pneus.length === 0 ? (
-                <p className="text-gray-500">Nenhum pneu em estoque.</p>
+                <EmptyState
+                  title="Você ainda não possui pneus em estoque."
+                  description="Cadastre pneus no formulário acima para depois instalar nos veículos."
+                />
               ) : (
                 pneus.map((p) => (
                   <div

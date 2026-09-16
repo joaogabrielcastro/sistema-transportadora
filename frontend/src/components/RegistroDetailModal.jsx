@@ -1,6 +1,11 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { Modal, Button } from "./ui";
+import {
+  camposDetalheGasto,
+  STATUS_PAGAMENTO_LABEL,
+} from "../utils/gastoDetalhes.js";
+import { classifyTipoGasto } from "../utils/tipoGastoUtils.js";
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("pt-BR", {
@@ -59,6 +64,39 @@ const RegistroDetailModal = ({ registro, onClose }) => {
                   value={`${registro.quantidade_combustivel} L`}
                 />
               )}
+            {registro.motoristas?.nome && (
+              <Row label="Motorista" value={registro.motoristas.nome} />
+            )}
+            {registro.status_pagamento && (
+              <Row
+                label="Situação"
+                value={
+                  STATUS_PAGAMENTO_LABEL[registro.status_pagamento] ||
+                  registro.status_pagamento
+                }
+              />
+            )}
+            {registro.data_vencimento && (
+              <Row
+                label="Vencimento"
+                value={formatDate(registro.data_vencimento)}
+              />
+            )}
+            {Object.entries(registro.detalhes || {})
+              .filter(([, v]) => v != null && v !== "")
+              .map(([key, value]) => {
+                const kind = classifyTipoGasto(
+                  registro.nome_tipo || registro.tipos_gastos?.nome_tipo,
+                );
+                const campo = camposDetalheGasto(kind).find((c) => c.name === key);
+                return (
+                  <Row
+                    key={key}
+                    label={campo?.label || key}
+                    value={String(value)}
+                  />
+                );
+              })}
             {(registro.descricao || registro.observacao) && (
               <Row
                 label="Descrição"

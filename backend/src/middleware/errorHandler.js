@@ -201,6 +201,7 @@ export const errorHandler = (err, req, res, _next) => {
       success: false,
       error: err.message || "Requisição inválida.",
       details: err.details,
+      ...(err.code ? { code: err.code } : {}),
     });
   }
 
@@ -229,6 +230,7 @@ export const errorHandler = (err, req, res, _next) => {
     return res.status(404).json({
       success: false,
       error: err.message || "Não encontrado.",
+      ...(err.code ? { code: err.code } : {}),
     });
   }
 

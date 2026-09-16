@@ -14,6 +14,8 @@ export const queryKeys = {
     overview: ["reports", "overview"] as const,
     costPerKm: (params: ListParams) =>
       ["reports", "cost-per-km", params] as const,
+    costPerKmTrend: (params: ListParams) =>
+      ["reports", "cost-per-km-trend", params] as const,
   },
   gastos: {
     all: ["gastos"] as const,
@@ -44,6 +46,9 @@ export const queryKeys = {
     all: ["registros"] as const,
     list: (params: ListParams) => ["registros", "list", params] as const,
   },
+  motoristas: {
+    list: (params: ListParams) => ["motoristas", "list", params] as const,
+  },
   fiscal: {
     all: ["fiscal"] as const,
     cteList: (params: ListParams) => ["fiscal", "cte", "list", params] as const,
@@ -51,11 +56,19 @@ export const queryKeys = {
       ["fiscal", "mdfe", "list", params] as const,
     ciotList: (params: ListParams) =>
       ["fiscal", "ciot", "list", params] as const,
+    contratosFrete: (params: ListParams) =>
+      ["fiscal", "contratos-frete", "list", params] as const,
     clientes: (term: string) => ["fiscal", "clientes", term || ""] as const,
     empresas: () => ["fiscal", "empresas"] as const,
+    seguroConfig: () => ["fiscal", "seguro", "config"] as const,
     veiculoDados: (caminhaoId: number | string) =>
       ["fiscal", "veiculo-dados", String(caminhaoId ?? "")] as const,
     reboquesPreview: (params: ListParams) =>
       ["fiscal", "mdfe", "reboques-preview", params] as const,
+  },
+  billing: {
+    plans: ["billing", "plans"] as const,
+    plan: (lid: string) => ["billing", "plan", lid] as const,
+    status: ["billing", "status"] as const,
   },
 };

@@ -1,5 +1,5 @@
-// backend/src/utils/logger.js
 import { config } from "../config/index.js";
+import { withLogContext } from "./redact.js";
 
 const LEVELS = {
   debug: 10,
@@ -21,25 +21,25 @@ class Logger {
 
   info(message, meta = {}) {
     if (this.enableConsole && this.minLevel <= LEVELS.info) {
-      console.log(`[INFO] ${new Date().toISOString()} - ${message}`, meta);
+      console.log(`[INFO] ${new Date().toISOString()} - ${message}`, withLogContext(meta));
     }
   }
 
   error(message, error = null) {
     if (this.enableConsole && this.minLevel <= LEVELS.error) {
-      console.error(`[ERROR] ${new Date().toISOString()} - ${message}`, error);
+      console.error(`[ERROR] ${new Date().toISOString()} - ${message}`, withLogContext(error || {}));
     }
   }
 
   warn(message, meta = {}) {
     if (this.enableConsole && this.minLevel <= LEVELS.warn) {
-      console.warn(`[WARN] ${new Date().toISOString()} - ${message}`, meta);
+      console.warn(`[WARN] ${new Date().toISOString()} - ${message}`, withLogContext(meta));
     }
   }
 
   debug(message, meta = {}) {
     if (this.enableConsole && this.minLevel <= LEVELS.debug) {
-      console.debug(`[DEBUG] ${new Date().toISOString()} - ${message}`, meta);
+      console.debug(`[DEBUG] ${new Date().toISOString()} - ${message}`, withLogContext(meta));
     }
   }
 }

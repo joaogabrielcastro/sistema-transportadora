@@ -14,6 +14,13 @@ import {
   resolvePlanCards,
   trialDaysRemaining,
 } from "../utils/billing.js";
+import {
+  PLAN_UNAVAILABLE_MESSAGE,
+  clearStoredLid,
+  persistSelectedLid,
+  resolveSelectedLid,
+} from "../utils/planLid.js";
+import { trackFunnel } from "../utils/funnel.js";
 
 function PlanBadge({ children, variant = "default" }) {
   const styles =
@@ -36,6 +43,7 @@ function PlanBadge({ children, variant = "default" }) {
 function PlanCard({
   plan,
   currentPlan,
+  selectedLid,
   isTrialing,
   isActive,
   user,
@@ -44,14 +52,17 @@ function PlanCard({
   onSubscribe,
 }) {
   const isCurrent = currentPlan === plan.id;
+  const selectedOffer = selectedLid && selectedLid === (plan.lid || plan.id);
   const onTrialThisPlan = isTrialing && isCurrent;
   const showAsCurrent = isCurrent && (isActive || isTrialing);
 
-  const accent = plan.popular
-    ? "border-secondary/40 ring-2 ring-secondary/25"
-    : plan.bestValue
-      ? "border-t-4 border-t-primary"
-      : "border-t-4 border-t-border";
+  const accent = selectedOffer
+    ? "border-secondary/40 ring-2 ring-secondary/30"
+    : plan.popular
+      ? "border-secondary/40 ring-2 ring-secondary/25"
+      : plan.bestValue
+        ? "border-t-4 border-t-primary"
+        : "border-t-4 border-t-border";
 
   return (
     <Card
@@ -89,7 +100,7 @@ function PlanCard({
           </div>
           {plan.trialEligible && !isActive && (
             <p className="mt-1.5 text-xs font-medium text-success-dark">
-              {BILLING_TRIAL_DAYS} dias grátis no cadastro · sem cartão
+              {BILLING_TRIAL_DAYS} dias grátis no cadastro
             </p>
           )}
         </div>
@@ -122,7 +133,7 @@ function PlanCard({
             (isActive && isCurrent)
           }
           loading={loadingPlan === plan.id}
-          onClick={() => onSubscribe(plan.id)}
+          onClick={() => onSubscribe(plan.lid || plan.id)}
         >
           {isActive && isCurrent
             ? "Plano atual"
@@ -147,17 +158,25 @@ export default function Assinatura() {
   const [status, setStatus] = useState(null);
 
   const checkoutFlag = searchParams.get("checkout");
+  const selected = resolveSelectedLid({ searchLid: searchParams.get("lid") });
+
+  useEffect(() => {
+    trackFunnel("view_plans", { lid: selected.invalid ? null : selected.lid });
+  }, [selected.invalid, selected.lid]);
 
   useEffect(() => {
     if (checkoutFlag === "success") {
       setInfo("Pagamento recebido. Atualizando sua assinatura…");
+      clearStoredLid();
+      trackFunnel("checkout_success", { lid: selected.lid });
       refreshProfile?.().finally(() => {
         setInfo("Assinatura atualizada com sucesso.");
       });
     } else if (checkoutFlag === "cancel") {
       setInfo("Checkout cancelado. Você pode escolher um plano quando quiser.");
+      trackFunnel("checkout_cancel", { lid: selected.lid });
     }
-  }, [checkoutFlag, refreshProfile]);
+  }, [checkoutFlag, refreshProfile, selected.lid]);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -220,20 +239,22 @@ export default function Assinatura() {
   const canManage = isActive;
 
   const startCheckout = async (planId) => {
+    const lid = persistSelectedLid(planId);
     setError("");
     setLoadingPlan(planId);
+    trackFunnel("checkout_start", { lid });
     try {
       const res = await apiFetch({
         method: "POST",
         url: "/billing/checkout-session",
-        data: { plan: planId },
+        data: { lid: lid || planId },
       });
       const url = res.data?.url;
       if (!url) throw new Error("URL de checkout não retornada");
       window.location.href = url;
     } catch (err) {
       const parsed = await parseApiError(err);
-      setError(parsed.message || "Falha ao iniciar checkout");
+      setError(parsed.message || PLAN_UNAVAILABLE_MESSAGE);
       setLoadingPlan(null);
     }
   };
@@ -265,7 +286,7 @@ export default function Assinatura() {
           </p>
           <PageHeader
             title="Escolha seu plano"
-            subtitle="Starter para organizar a frota, Fiscal para NF-e/estoque e Completo com CT-e e MDF-e. Cobrança mensal por empresa."
+            subtitle="Três opções para sua transportadora — cobrança mensal por empresa, sem surpresas."
             centered
             actions={
               canManage ? (
@@ -284,6 +305,16 @@ export default function Assinatura() {
         <div className="mx-auto max-w-3xl space-y-3">
           {info && <Alert type="success">{info}</Alert>}
           {error && <Alert type="error">{error}</Alert>}
+          {selected.invalid && (
+            <Alert type="warning">{PLAN_UNAVAILABLE_MESSAGE}</Alert>
+          )}
+          {selected.lid && !selected.invalid && (
+            <Alert type="info">
+              Plano escolhido:{" "}
+              <strong>{planDisplayName(selected.lid)}</strong>. O checkout usa
+              o identificador <code className="text-xs">{selected.lid}</code>.
+            </Alert>
+          )}
 
           {!accessOk && (
             <Alert type="warning">
@@ -332,6 +363,7 @@ export default function Assinatura() {
               key={plan.id}
               plan={plan}
               currentPlan={currentPlan}
+              selectedLid={selected.invalid ? null : selected.lid}
               isTrialing={isTrialing}
               isActive={isActive}
               user={user}

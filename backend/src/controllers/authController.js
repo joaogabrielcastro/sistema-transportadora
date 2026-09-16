@@ -28,6 +28,7 @@ export const authController = {
       email: parsed.email,
       password: parsed.password,
       nome: parsed.nome || undefined,
+      lid: parsed.lid || undefined,
     });
 
     res.status(201).json({

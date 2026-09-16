@@ -84,3 +84,21 @@ export const formatNumber = (value, decimals = 0) => {
     maximumFractionDigits: decimals,
   }).format(value);
 };
+
+/**
+ * Intervalo ISO (YYYY-MM-DD) dos últimos N meses, até a data de referência.
+ * Usado no dashboard e nos relatórios — calendário local, sem inventar períodos.
+ */
+export function lastMonthsIsoRange(months = 6, now = new Date()) {
+  const n = Number(months);
+  const count = Number.isFinite(n) && n >= 1 ? Math.floor(n) : 6;
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const start = new Date(end.getFullYear(), end.getMonth() - (count - 1), 1);
+  const toIso = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+  return { startDate: toIso(start), endDate: toIso(end) };
+}

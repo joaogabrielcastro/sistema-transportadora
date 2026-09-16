@@ -133,6 +133,33 @@ export async function consultarDocumentoFiscal({
           }),
         );
 
+    const statusFinal = atualizado?.status || aposUpdate.status;
+    if (statusFinal === "processado") {
+      const { agendarAverbacaoAposAutorizacao } = await import(
+        "../averbacao/averbacaoHooks.js"
+      );
+      agendarAverbacaoAposAutorizacao({
+        tenantId,
+        tipo: tipoArquivo,
+        documentoId: row.id,
+      });
+      if (tipoArquivo === "mdfe") {
+        try {
+          const { MdfeService } = await import("./MdfeService.js");
+          await MdfeService.persistirRelacionamentosAposAutorizacao(
+            tenantId,
+            row.id,
+          );
+        } catch (err) {
+          logger.error("Falha ao regravar relacionamentos do MDF-e na consulta", {
+            tenantId,
+            id: row.id,
+            message: err.message,
+          });
+        }
+      }
+    }
+
     return {
       ...atualizado,
       consulta: {

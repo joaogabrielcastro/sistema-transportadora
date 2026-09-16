@@ -170,7 +170,7 @@ export class FiscalEmpresaService {
       tenantId,
       "Empresa fiscal",
     );
-    const ciotVinculados = await prisma.fiscal_ciots.count({
+    const ciotVinculados = await prisma.fiscal_contratos_frete.count({
       where: {
         tenant_id: Number(tenantId),
         fiscal_empresa_id: empresa.id,
@@ -178,7 +178,7 @@ export class FiscalEmpresaService {
     });
     if (ciotVinculados > 0) {
       throw conflict(
-        "Não é possível excluir: há contratos de frete (CIOT) vinculados a esta empresa.",
+        "Não é possível excluir: há contratos de frete vinculados a esta empresa.",
       );
     }
 

@@ -15,7 +15,12 @@ import {
   errosDeclaracaoCiot,
 } from "../../utils/ciotForms.js";
 
-const CIOT_FASES = ["Operação", "Contrato", "Viagem e carga", "Frota e pagamento"];
+const CIOT_FASES = [
+  "Dados da operação",
+  "Partes",
+  "Carga",
+  "Transporte e pagamento",
+];
 
 function nowLocalInput() {
   const d = new Date();
@@ -58,8 +63,8 @@ const emptyForm = {
 };
 
 /**
- * Declaração de operação de transporte (CIOT / contrato de frete).
- * `fiscal_empresa_id` é obrigatório no backend — o certificado mTLS sai dela.
+ * Formulário do Contrato de Frete (operação de transporte).
+ * O CIOT é registrado depois, na ficha do contrato — não nesta etapa.
  */
 export default function CiotForm({
   empresas = [],
@@ -195,14 +200,14 @@ export default function CiotForm({
         {empresas.length === 0 && (
           <Alert
             type="warning"
-            message="Cadastre a empresa fiscal (CNPJ emissor) antes de declarar o CIOT. Sem ela o certificado A1 e o RNTRC não entram na declaração."
+            message="Cadastre a empresa fiscal (CNPJ emissor) antes de criar o contrato. Sem ela o certificado A1 não entra no registro do CIOT."
           />
         )}
         {semCertificado && (
           <Alert type="warning">
             A empresa fiscal selecionada está sem certificado digital (PFX +
-            senha). Use Simular declaração para mostrar o fluxo ao cliente;
-            Declarar só completa com o .pfx cadastrado (mTLS com o provedor).
+            senha). Você pode salvar o contrato agora; o registro do CIOT só
+            completa com o .pfx cadastrado.
           </Alert>
         )}
 
@@ -215,11 +220,12 @@ export default function CiotForm({
         {fase === 0 && (
           <div className="space-y-4">
             <div>
-              <p className="text-sm font-semibold text-text-primary">Operação</p>
+              <p className="text-sm font-semibold text-text-primary">
+                Dados da operação
+              </p>
               <p className="text-xs text-text-secondary">
-                Contrato de frete eletrônico (CIOT). Piso mínimo e vale-pedágio
-                são obrigatórios por lei — informe 0 no pedágio se não houver no
-                percurso.
+                Preencha a contratação de transporte. O CIOT (código da ANTT) é
+                registrado depois, se a operação exigir.
               </p>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
@@ -271,7 +277,7 @@ export default function CiotForm({
         {fase === 1 && (
           <div className="space-y-4">
             <p className="text-sm font-semibold text-text-primary">
-              Contrato — partes
+              Contratante e transportador
             </p>
             <div className="grid gap-4 md:grid-cols-2">
               <CpfCnpjField
@@ -345,9 +351,8 @@ export default function CiotForm({
                   onChange={(e) => set("valor_vale_pedagio", e.target.value)}
                 />
                 <FormField
-                  label="Data da declaração"
+                  label="Data da operação"
                   type="datetime-local"
-                  required
                   value={form.data_declaracao}
                   onChange={(e) => set("data_declaracao", e.target.value)}
                 />
@@ -607,11 +612,11 @@ export default function CiotForm({
                   disabled={!form.fiscal_empresa_id}
                   onClick={handleSimular}
                 >
-                  Simular declaração
+                  Simular registro de CIOT
                 </Button>
               )}
               <Button type="submit" variant="primary" loading={submitting}>
-                Declarar contrato de frete
+                Salvar contrato
               </Button>
             </>
           )}

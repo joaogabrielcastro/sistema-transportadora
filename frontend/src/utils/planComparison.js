@@ -10,6 +10,7 @@ export const COMPARE_PLAN_HEADERS = {
 /**
  * Matriz de funcionalidades por plano.
  * Valor: true | false | string (texto curto)
+ * Deve espelhar PLAN_FEATURES + o que o app já entrega em todos os planos.
  */
 export const PLAN_COMPARE_SECTIONS = [
   {
@@ -18,9 +19,21 @@ export const PLAN_COMPARE_SECTIONS = [
     rows: [
       {
         label: "Veículos na frota",
-        starter: "Até 15",
+        starter: "Até 8",
         fiscal: "Até 40",
         complete: "Até 100",
+      },
+      {
+        label: "Perfil da operação",
+        starter: "Frota pequena",
+        fiscal: "Porte médio",
+        complete: "Porte maior",
+      },
+      {
+        label: "Dashboard da operação",
+        starter: true,
+        fiscal: true,
+        complete: true,
       },
       {
         label: "Cadastro de caminhões, cavalos e carretas",
@@ -41,7 +54,7 @@ export const PLAN_COMPARE_SECTIONS = [
         complete: true,
       },
       {
-        label: "Controle de pneus (posição, estoque e km)",
+        label: "Controle de pneus (uso e estoque)",
         starter: true,
         fiscal: true,
         complete: true,
@@ -65,7 +78,7 @@ export const PLAN_COMPARE_SECTIONS = [
         complete: true,
       },
       {
-        label: "Checklist e manutenção programada",
+        label: "Checklist e manutenção",
         starter: true,
         fiscal: true,
         complete: true,
@@ -86,7 +99,7 @@ export const PLAN_COMPARE_SECTIONS = [
   },
   {
     id: "fiscal",
-    title: "NF-e de compra e estoque",
+    title: "NF-e, estoque e documentos fiscais",
     rows: [
       {
         label: "Importação de XML da NF-e",
@@ -106,22 +119,34 @@ export const PLAN_COMPARE_SECTIONS = [
         fiscal: true,
         complete: true,
       },
-    ],
-  },
-  {
-    id: "transporte",
-    title: "Fiscal de transporte",
-    rows: [
+      {
+        label: "Empresa fiscal e certificado",
+        starter: false,
+        fiscal: true,
+        complete: true,
+      },
       {
         label: "Emissão de CT-e",
         starter: false,
-        fiscal: false,
+        fiscal: true,
         complete: true,
       },
       {
         label: "Emissão de MDF-e",
         starter: false,
-        fiscal: false,
+        fiscal: true,
+        complete: true,
+      },
+      {
+        label: "Seguro / averbação",
+        starter: false,
+        fiscal: true,
+        complete: true,
+      },
+      {
+        label: "Contrato de frete e CIOT",
+        starter: false,
+        fiscal: true,
         complete: true,
       },
       {
@@ -156,7 +181,7 @@ export const PLAN_COMPARE_SECTIONS = [
       },
       {
         label: "Auditoria de alterações",
-        starter: "Básico",
+        starter: true,
         fiscal: true,
         complete: true,
       },
@@ -168,7 +193,7 @@ export const PLAN_COMPARE_SECTIONS = [
     rows: [
       {
         label: "Usuários por empresa",
-        starter: "Até 3",
+        starter: "Até 2",
         fiscal: "Até 8",
         complete: "Até 20",
       },
@@ -183,12 +208,6 @@ export const PLAN_COMPARE_SECTIONS = [
         starter: true,
         fiscal: false,
         complete: false,
-      },
-      {
-        label: "Suporte prioritário",
-        starter: false,
-        fiscal: false,
-        complete: true,
       },
     ],
   },

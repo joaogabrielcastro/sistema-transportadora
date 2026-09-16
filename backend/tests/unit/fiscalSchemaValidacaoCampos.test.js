@@ -21,7 +21,7 @@ const baseCte = () => ({
   natureza_operacao: "Transporte",
   dt_emissao: "2026-08-22T10:00:00-03:00",
   servico: { valor_prestacao: 2500 },
-  tomador: { cpf_cnpj: "12345678000199" },
+  tomador: { cpf_cnpj: "12345678000195" },
 });
 
 const okCte = (over) => emitirCteSchema.parse({ ...baseCte(), ...over });
@@ -33,6 +33,7 @@ const baseMdfe = () => ({
   uf_carregamento: "SP",
   uf_descarregamento: "MG",
   rodoviario: {},
+  cte_ids: [1],
 });
 
 const okMdfe = (over) => emitirMdfeSchema.parse({ ...baseMdfe(), ...over });
@@ -50,9 +51,9 @@ describe("CPF/CNPJ — regra única 11 ou 14 dígitos", () => {
     assert.equal(
       fiscalClienteSchema.parse({
         razao_social: "Cliente X",
-        cnpj_cpf: "12.345.678/0001-99",
+        cnpj_cpf: "12.345.678/0001-95",
       }).cnpj_cpf,
-      "12345678000199",
+      "12345678000195",
     );
     assert.throws(() =>
       fiscalClienteSchema.parse({ razao_social: "Cliente X", cnpj_cpf: "123456789012" }),
@@ -73,9 +74,9 @@ describe("CPF/CNPJ — regra única 11 ou 14 dígitos", () => {
 
   it("CT-e participante e autXML: só dígitos, 11 ou 14", () => {
     failCte({ remetente: { cnpj_cpf: "123" } });
-    okCte({ remetente: { cnpj_cpf: "12.345.678/0001-99" } });
+    okCte({ remetente: { cnpj_cpf: "12.345.678/0001-95" } });
     failCte({ aut_xml: ["123"] });
-    okCte({ aut_xml: ["12345678000199"] });
+    okCte({ aut_xml: ["12345678000195"] });
   });
 });
 
@@ -191,12 +192,12 @@ describe("Seguro do MDF-e — schema tipado (era looseObject)", () => {
       seguros: [
         {
           responsavel: 2,
-          cnpj_seguradora: "12.345.678/0001-99",
+          cnpj_seguradora: "12.345.678/0001-95",
           numeros_averbacao: ["AV-1", "AV-2"],
         },
       ],
     });
-    assert.equal(ok.seguros[0].cnpj_seguradora, "12345678000199");
+    assert.equal(ok.seguros[0].cnpj_seguradora, "12345678000195");
   });
 
   it("passthrough no formato do provedor continua aceito", () => {
@@ -215,9 +216,9 @@ describe("Pontuais", () => {
   });
 
   it("e-mail do Tomador do serviço também exige formato de e-mail", () => {
-    failCte({ tomador: { cpf_cnpj: "12345678000199", email: "sem-arroba" } });
+    failCte({ tomador: { cpf_cnpj: "12345678000195", email: "sem-arroba" } });
     okCte({
-      tomador: { cpf_cnpj: "12345678000199", email: "financeiro@tomador.com.br" },
+      tomador: { cpf_cnpj: "12345678000195", email: "financeiro@tomador.com.br" },
     });
   });
 

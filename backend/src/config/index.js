@@ -204,6 +204,10 @@ export const config = {
     get ciotBaseUrl() {
       return (process.env.FISCAL_CIOT_URL || "").trim().replace(/\/$/, "");
     },
+    /** Identificador do provedor gravado no registro de CIOT (não no contrato). */
+    get ciotProvider() {
+      return (process.env.FISCAL_CIOT_PROVIDER || "antt").trim() || "antt";
+    },
     get httpTimeoutMs() {
       const n = Number(process.env.FISCAL_HTTP_TIMEOUT_MS || 30000);
       return Number.isFinite(n) && n > 0 ? Math.floor(n) : 30000;

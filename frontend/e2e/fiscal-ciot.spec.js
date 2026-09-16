@@ -1,6 +1,6 @@
 import { test, expect } from "./helpers/auth.js";
 
-test.describe("Contrato de frete (CIOT)", () => {
+test.describe("Contrato de Frete", () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       try {
@@ -40,6 +40,13 @@ test.describe("Contrato de frete (CIOT)", () => {
     });
 
     await page.route("**/api/fiscal/ciot**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true, data: [] }),
+      });
+    });
+    await page.route("**/api/fiscal/contratos-frete**", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -101,16 +108,16 @@ test.describe("Contrato de frete (CIOT)", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
-    await page.goto("/fiscal/ciot");
+    await page.goto("/fiscal/contratos-frete");
     await expect(
-      page.getByRole("heading", { name: "CIOT — Contrato de frete", exact: true }),
+      page.getByRole("heading", { name: "Contrato de Frete", exact: true }),
     ).toBeVisible();
-    await expect(page.getByRole("tab", { name: "Contrato de frete" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "1. Operação" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "2. Contrato" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "3. Viagem e carga" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Novo contrato" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "1. Dados da operação" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "2. Partes" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "3. Carga" })).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "4. Frota e pagamento" }),
+      page.getByRole("button", { name: "4. Transporte e pagamento" }),
     ).toBeVisible();
     await expect(page.getByRole("button", { name: "Continuar" })).toBeVisible();
   });

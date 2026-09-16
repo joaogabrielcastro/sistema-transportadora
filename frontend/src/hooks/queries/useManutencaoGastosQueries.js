@@ -56,6 +56,17 @@ export function useManutencaoGastosQueries({
             await apiFetch({ method: "GET", url: "/tipos-gastos" }),
           ),
       },
+      {
+        queryKey: queryKeys.motoristas.list({ ativo: true }),
+        queryFn: async () =>
+          extractApiArray(
+            await apiFetch({
+              method: "GET",
+              url: "/motoristas",
+              params: { ativo: true },
+            }),
+          ),
+      },
     ],
   });
 
@@ -75,12 +86,13 @@ export function useManutencaoGastosQueries({
     },
   });
 
-  const [caminhoesQ, itensQ, tiposQ] = results;
+  const [caminhoesQ, itensQ, tiposQ, motoristasQ] = results;
 
   return {
     caminhoes: caminhoesQ.data?.data ?? [],
     itensChecklist: itensQ.data ?? [],
     tiposGastos: tiposQ.data ?? [],
+    motoristas: motoristasQ.data ?? [],
     registros: registrosQuery.data?.data ?? [],
     pagination: registrosQuery.data?.pagination ?? null,
     summary: registrosQuery.data?.summary ?? null,

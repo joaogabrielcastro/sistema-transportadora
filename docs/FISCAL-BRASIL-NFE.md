@@ -172,6 +172,38 @@ BRASIL_NFE_AMBIENTE=1
 
 4. Reinicie o backend. Não misture Token de homologação com ambiente 1.
 
+Em `NODE_ENV=production` o boot **recusa** subir sem `BRASIL_NFE_AMBIENTE=1` e
+sem `FISCAL_SECRETS_KEY`. O ambiente SEFAZ é **global do processo** — não há
+homologação e produção no mesmo deploy. Use um servidor de homologação
+(`BRASIL_NFE_AMBIENTE=2`) separado.
+
+## Persistência de XML, DACTE, DAMDFE e certificado A1
+
+Arquivos fiscais ficam em disco, relativos a `UPLOADS_DIR` (default
+`backend/uploads`):
+
+- `uploads/fiscal/cte/{tenantId}/{chave}.xml|pdf`
+- `uploads/fiscal/mdfe/{tenantId}/{chave}.xml|pdf`
+- `uploads/fiscal/certificados/{tenantId}/{empresaId}.pfx`
+
+**Produção:** monte volume persistente em `/app/uploads` (Coolify/Docker) e
+faça backup. Sem volume, XML/PFX se perdem no restart e a averbação falha com
+409. S3 ainda **não** cobre o módulo fiscal.
+
+Se a gravação do XML falhar após autorização, o documento permanece autorizado;
+`GET /cte|mdfe/:id/status` tenta `ObterArquivoNotaFiscal` de novo.
+
+## O que ainda não está implementado (PENDÊNCIA EXTERNA / A10)
+
+- Carta de correção (CCe)
+- Inutilização de numeração
+- Contingência FS-DA / SVC (`tpEmis` diferente de 1). O payload envia
+  `TpEmis=1` (emissão normal). Não inventamos eventos da SEFAZ.
+
+CIOT: o provedor real ainda **não está definido**. `FISCAL_CIOT_URL` é
+obrigatória para registrar. Não considere CIOT pronto para produção até
+haver contrato de API, mTLS homologado e teste real.
+
 ## Rotas da API (prefixo `/api/fiscal`)
 
 CT-e: `POST/GET /cte`, `GET/PUT/DELETE /cte/:id`, `POST /cte/emitir`,

@@ -14,6 +14,7 @@
     "tenant:create": "node scripts/create-tenant.mjs",
     "tenant:billing": "node scripts/set-tenant-billing.mjs",
     "worker:ordem-coleta": "node scripts/worker-ordem-coleta.mjs",
+    "worker:averbacao": "node scripts/worker-averbacao.mjs",
     "job:weekly-digest": "node scripts/run-weekly-digest.mjs",
     "db:backup": "node scripts/backup-db.mjs",
     "import:trans-motin": "node scripts/import-trans-motin-historico.mjs",

@@ -11,9 +11,9 @@ import { verificarPisoMinimoFrete } from "../../src/services/fiscal/CiotService.
 const baseCiot = {
   fiscal_empresa_id: 1,
   tipo_operacao: 3,
-  cpf_cnpj_contratado: "12345678000199",
+  cpf_cnpj_contratado: "12345678000195",
   rntrc_contratado: "123456789",
-  cpf_cnpj_contratante: "98765432000199",
+  cpf_cnpj_contratante: "98765432000198",
   valor_frete: 1000,
   valor_piso_minimo_frete: 950,
   valor_vale_pedagio: 0,

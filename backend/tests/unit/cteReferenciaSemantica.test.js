@@ -15,7 +15,7 @@ const baseCte = {
   cfop: "6353",
   natureza_operacao: "Complemento",
   dt_emissao: "2026-02-01T10:00:00-03:00",
-  tomador: { cpf_cnpj: "12345678000199" },
+  tomador: { cpf_cnpj: "12345678000195" },
 };
 
 test("Complemento (tipo 1): payload leva infCteComp com a chave original", () => {

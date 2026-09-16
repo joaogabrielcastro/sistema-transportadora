@@ -87,9 +87,6 @@ const ConfirmModal = ({
             {dependencias.ordens_envio > 0 && (
               <li>{dependencias.ordens_envio} ordens de coleta</li>
             )}
-            {dependencias.total_viagens > 0 && (
-              <li>{dependencias.total_viagens} viagens</li>
-            )}
           </ul>
           <p className="text-xs text-amber-600 mt-3 font-medium">
             Delete primeiro esses registros antes de excluir o caminhão.

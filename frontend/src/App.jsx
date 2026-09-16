@@ -42,6 +42,7 @@ const FiscalCte = lazy(() => import("./Pages/FiscalCte.jsx"));
 const FiscalMdfe = lazy(() => import("./Pages/FiscalMdfe.jsx"));
 const FiscalCiot = lazy(() => import("./Pages/FiscalCiot.jsx"));
 const FiscalEmpresas = lazy(() => import("./Pages/FiscalEmpresas.jsx"));
+const FiscalSeguro = lazy(() => import("./Pages/FiscalSeguro.jsx"));
 const Usuarios = lazy(() => import("./Pages/Usuarios.jsx"));
 const Assinatura = lazy(() => import("./Pages/Assinatura.jsx"));
 const Empresa = lazy(() => import("./Pages/Empresa.jsx"));
@@ -50,6 +51,7 @@ const Documentos = lazy(() => import("./Pages/Documentos.jsx"));
 const Alertas = lazy(() => import("./Pages/Alertas.jsx"));
 const Auditoria = lazy(() => import("./Pages/Auditoria.jsx"));
 const Landing = lazy(() => import("./Pages/Landing.jsx"));
+const Planos = lazy(() => import("./Pages/Planos.jsx"));
 const NotFound = lazy(() => import("./Pages/NotFound.jsx"));
 
 function GuardedRoute({
@@ -95,15 +97,18 @@ function AppRoutes() {
   const authRequired = import.meta.env.VITE_AUTH_REQUIRED !== "false";
   const isPublicHome =
     location.pathname === "/" && authRequired && !isAuthenticated;
-  const hideChrome = isPublicHome || [
-    "/login",
-    "/register",
-    "/forgot-password",
-    "/reset-senha",
-    "/convite",
-    "/termos",
-    "/privacidade",
-  ].includes(location.pathname);
+  const hideChrome =
+    isPublicHome ||
+    location.pathname.startsWith("/planos") ||
+    [
+      "/login",
+      "/register",
+      "/forgot-password",
+      "/reset-senha",
+      "/convite",
+      "/termos",
+      "/privacidade",
+    ].includes(location.pathname);
 
   const routes = (
     <Suspense
@@ -121,7 +126,9 @@ function AppRoutes() {
         <Route path="/convite" element={<AcceptInvite />} />
         <Route path="/termos" element={<Termos />} />
         <Route path="/privacidade" element={<Privacidade />} />
-        <Route path="/precos" element={<Navigate to="/#precos" replace />} />
+        <Route path="/precos" element={<Navigate to="/planos" replace />} />
+        <Route path="/planos" element={<Planos />} />
+        <Route path="/planos/:lid" element={<Planos />} />
         <Route path="/" element={<HomeOrLanding />} />
         <Route
           path="/conta"
@@ -292,6 +299,21 @@ function AppRoutes() {
           }
         />
         <Route
+          path="/fiscal/seguro"
+          element={
+            <GuardedRoute
+              feature="transporte_fiscal"
+              anyPermission={[
+                PERMISSIONS.CTE_WRITE,
+                PERMISSIONS.MDFE_WRITE,
+                PERMISSIONS.CIOT_WRITE,
+              ]}
+            >
+              <FiscalSeguro />
+            </GuardedRoute>
+          }
+        />
+        <Route
           path="/fiscal/cte"
           element={
             <GuardedRoute
@@ -314,7 +336,7 @@ function AppRoutes() {
           }
         />
         <Route
-          path="/fiscal/ciot"
+          path="/fiscal/contratos-frete"
           element={
             <GuardedRoute
               feature="transporte_fiscal"
@@ -323,6 +345,11 @@ function AppRoutes() {
               <FiscalCiot />
             </GuardedRoute>
           }
+        />
+        {/* Legado: /fiscal/ciot era a tela da operação. O fluxo oficial é /fiscal/contratos-frete. */}
+        <Route
+          path="/fiscal/ciot"
+          element={<Navigate to="/fiscal/contratos-frete" replace />}
         />
         <Route
           path="/usuarios"

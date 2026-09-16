@@ -3,6 +3,12 @@ import PropTypes from "prop-types";
 import { Button, LoadingSpinner, StatusBadge } from "../ui";
 import EmptyState from "../EmptyState.jsx";
 import { CATEGORIA_CIOT } from "../../utils/ciotForms.js";
+import {
+  ciotRegistradoNoContrato,
+  labelStatusCiot,
+  labelStatusContrato,
+  numeroCiotDoContrato,
+} from "../../utils/contratoFrete.js";
 
 function fmtDate(value) {
   if (!value) return "—";
@@ -31,6 +37,7 @@ export default function CiotList({
   onView,
   onCancel,
   onEncerrar,
+  onRegistrarCiot,
 }) {
   const placaById = useMemo(() => {
     const map = new Map();
@@ -44,7 +51,7 @@ export default function CiotList({
     return (
       <EmptyState
         title="Nenhum contrato de frete"
-        description="Declare o primeiro CIOT na aba Contrato de frete."
+        description="Crie o contrato da operação. O CIOT é registrado depois, quando for necessário."
         dashed
       />
     );
@@ -55,8 +62,9 @@ export default function CiotList({
       <table className="min-w-full text-sm">
         <thead className="bg-gray-50">
           <tr className="text-left text-text-secondary">
-            <th className="px-3 py-2.5 font-medium">CIOT</th>
+            <th className="px-3 py-2.5 font-medium">Contrato</th>
             <th className="px-3 py-2.5 font-medium">Status</th>
+            <th className="px-3 py-2.5 font-medium">CIOT</th>
             <th className="px-3 py-2.5 font-medium">Categoria</th>
             <th className="px-3 py-2.5 font-medium">Veículo</th>
             <th className="px-3 py-2.5 font-medium">Frete</th>
@@ -66,7 +74,8 @@ export default function CiotList({
         </thead>
         <tbody>
           {items.map((row) => {
-            const podeAcao = row.status === "declarado";
+            const ciotOk = ciotRegistradoNoContrato(row);
+            const ciotStatus = row.ciot?.status || row.ciot_status || "nao_registrado";
             const categoria =
               row.categoria_operacao ||
               CATEGORIA_CIOT[row.tipo_operacao] ||
@@ -74,12 +83,18 @@ export default function CiotList({
             return (
               <tr key={row.id} className="border-t border-border">
                 <td className="px-3 py-2.5 font-medium">
-                  {row.codigo_identificacao_operacao ||
-                    row.id_operacao_transporte ||
-                    `#${row.id}`}
+                  #{String(row.id).padStart(6, "0")}
                 </td>
                 <td className="px-3 py-2.5">
-                  <StatusBadge status={row.status || "pendente"} />
+                  <StatusBadge status={labelStatusContrato(row.status)} />
+                </td>
+                <td className="px-3 py-2.5">
+                  <div className="flex flex-col gap-0.5">
+                    <StatusBadge status={labelStatusCiot(ciotStatus)} />
+                    <span className="text-xs text-text-secondary">
+                      {numeroCiotDoContrato(row) || "—"}
+                    </span>
+                  </div>
                 </td>
                 <td className="px-3 py-2.5">
                   {CATEGORIA_LABEL[categoria] || categoria}
@@ -102,24 +117,36 @@ export default function CiotList({
                     >
                       Ver detalhe
                     </Button>
-                    {podeAcao && (
+                    {!ciotOk &&
+                      row.status !== "cancelado" &&
+                      typeof onRegistrarCiot === "function" && (
+                        <Button
+                          type="button"
+                          variant="primary"
+                          size="sm"
+                          onClick={() => onRegistrarCiot?.(row)}
+                        >
+                          Registrar CIOT
+                        </Button>
+                      )}
+                    {ciotOk && (
                       <Button
                         type="button"
                         variant="secondary"
                         size="sm"
                         onClick={() => onEncerrar?.(row)}
                       >
-                        Encerrar
+                        Encerrar CIOT
                       </Button>
                     )}
-                    {podeAcao && (
+                    {ciotOk && (
                       <Button
                         type="button"
                         variant="danger"
                         size="sm"
                         onClick={() => onCancel?.(row)}
                       >
-                        Cancelar
+                        Cancelar CIOT
                       </Button>
                     )}
                   </div>
@@ -140,4 +167,5 @@ CiotList.propTypes = {
   onView: PropTypes.func,
   onCancel: PropTypes.func,
   onEncerrar: PropTypes.func,
+  onRegistrarCiot: PropTypes.func,
 };

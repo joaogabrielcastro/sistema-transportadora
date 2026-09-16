@@ -46,6 +46,39 @@ test.describe("Fiscal MDF-e", () => {
         body: JSON.stringify({ success: true, data: [] }),
       });
     });
+    await page.route("**/api/fiscal/contratos-frete**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true, data: [] }),
+      });
+    });
+    await page.route("**/api/fiscal/ciot**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true, data: [] }),
+      });
+    });
+    await page.route("**/api/fiscal/empresas**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: [
+            {
+              id: 1,
+              razao_social: "Transportes E2E",
+              cnpj: "12345678000199",
+              rntrc: "123456789",
+              ativo: true,
+              certificado_senha_set: true,
+            },
+          ],
+        }),
+      });
+    });
     await page.route("**/api/fiscal/cte**", async (route) => {
       await route.fulfill({
         status: 200,
@@ -90,5 +123,8 @@ test.describe("Fiscal MDF-e", () => {
     await expect(page.getByRole("button", { name: "Salvar rascunho" })).toBeVisible();
     await expect(page.getByRole("button", { name: "1. Viagem" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Continuar" })).toBeVisible();
+    await page.getByRole("button", { name: "3. Seguro e ANTT" }).click();
+    await expect(page.getByLabel("Número do CIOT")).toBeVisible();
+    await expect(page.getByLabel("Contrato de frete")).toHaveCount(0);
   });
 });

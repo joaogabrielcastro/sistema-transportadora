@@ -16,7 +16,7 @@ const baseCte = {
   natureza_operacao: "Transporte",
   dt_emissao: "2026-02-01T10:00:00-03:00",
   servico: { valor_prestacao: 100 },
-  tomador: { cpf_cnpj: "12345678000199" },
+  tomador: { cpf_cnpj: "12345678000195" },
 };
 
 test("schema aceita servico.componentes com nome e valor", () => {

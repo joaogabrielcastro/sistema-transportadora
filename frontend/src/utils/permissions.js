@@ -19,11 +19,12 @@ export const PERMISSIONS = Object.freeze({
   AUDIT_READ: "audit.read",
   ALERTS_READ: "alerts.read",
   SETTINGS_WRITE: "settings.write",
-  // Módulo fiscal de transporte (CT-e / MDF-e / CIOT) — espelha o backend.
+  // Módulo fiscal de transporte (CT-e / MDF-e / Contrato de Frete / CIOT) — espelha o backend.
   CTE_READ: "cte.read",
   CTE_WRITE: "cte.write",
   MDFE_READ: "mdfe.read",
   MDFE_WRITE: "mdfe.write",
+  // Contrato de Frete e CIOT usam as mesmas chaves (não quebrar extras já gravados).
   CIOT_READ: "ciot.read",
   CIOT_WRITE: "ciot.write",
 });

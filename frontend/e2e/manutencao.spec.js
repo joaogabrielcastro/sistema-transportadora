@@ -51,6 +51,17 @@ test.describe("Manutenção e Gastos", () => {
       });
     });
 
+    await page.route("**/api/motoristas**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: [{ id: 1, nome: "João", ativo: true }],
+        }),
+      });
+    });
+
     await page.route("**/api/registros**", async (route) => {
       await route.fulfill({
         status: 200,
@@ -108,6 +119,13 @@ test.describe("Manutenção e Gastos", () => {
     await expect(page.getByText("Adicionar Novo Registro")).toBeVisible();
     await expect(page.getByLabel("Tipo de Registro")).toBeVisible();
     await expect(page.getByLabel("Caminhão")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Importar XML do posto" }),
+    ).toHaveCount(0);
+    await page.getByLabel("Tipo de Gasto").selectOption({ label: "Combustível" });
+    await expect(
+      page.getByRole("heading", { name: "Importar XML do posto" }),
+    ).toBeVisible();
   });
 
   test("lembrete de próxima troca aparece na manutenção", async ({ page }) => {

@@ -9,11 +9,21 @@ test("getStatusConfig status conhecidos e default", () => {
   assert.match(getStatusConfig("rascunho"), /slate/);
   assert.match(getStatusConfig("processado"), /green/);
   assert.match(getStatusConfig("rejeitado"), /orange/);
-  assert.match(getStatusConfig("encerrado"), /blue/);
+  assert.match(getStatusConfig("averbed"), /green/);
+  assert.match(getStatusConfig("rejected"), /orange/);
+  assert.match(getStatusConfig("Crítico"), /red/);
+  assert.match(getStatusConfig("Alto"), /orange/);
+  assert.match(getStatusConfig("Médio"), /yellow/);
 });
 
 test("getStatusConfig vehicle e record", () => {
   assert.match(getStatusConfig("ativo", "vehicle"), /green/);
   assert.match(getStatusConfig("gasto", "record"), /blue/);
   assert.match(getStatusConfig("x", "vehicle"), /slate/);
+});
+
+test("getStatusConfig payment de gasto", () => {
+  assert.match(getStatusConfig("pago", "payment"), /green/);
+  assert.match(getStatusConfig("pendente", "payment"), /yellow/);
+  assert.match(getStatusConfig("em_recurso", "payment"), /orange/);
 });

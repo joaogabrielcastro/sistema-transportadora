@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import React, { useMemo, useState } from "react";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Button, FormField, Alert } from "../components/ui";
 import { parseApiError } from "../lib/apiClient.js";
@@ -13,9 +13,23 @@ import {
 import { FIELD_LIMITS } from "../utils/fieldLimits.js";
 import LegalAcceptCheckbox from "../components/LegalAcceptCheckbox.jsx";
 import LegalLinks from "../components/LegalLinks.jsx";
+import {
+  PLAN_UNAVAILABLE_MESSAGE,
+  assinaturaHref,
+  persistSelectedLid,
+  resolveSelectedLid,
+} from "../utils/planLid.js";
+import { PLAN_CARDS, planDisplayName } from "../utils/billing.js";
+import { trackFunnel } from "../utils/funnel.js";
 
 export default function Register() {
   const { register, isAuthenticated } = useAuth();
+  const [searchParams] = useSearchParams();
+  const selected = useMemo(
+    () => resolveSelectedLid({ searchLid: searchParams.get("lid") }),
+    [searchParams],
+  );
+  const selectedPlan = PLAN_CARDS.find((p) => p.lid === selected.lid);
   const [empresaNome, setEmpresaNome] = useState("");
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
@@ -30,6 +44,9 @@ export default function Register() {
   }
 
   if (isAuthenticated) {
+    if (selected.lid && selected.lid !== "starter") {
+      return <Navigate to={assinaturaHref(selected.lid)} replace />;
+    }
     return <Navigate to="/" replace />;
   }
 
@@ -43,7 +60,10 @@ export default function Register() {
     setError("");
 
     try {
-      await register({ empresaNome, email, password, nome, acceptedLegal });
+      const lid = persistSelectedLid(selected.lid);
+      trackFunnel("register_start", { lid });
+      await register({ empresaNome, email, password, nome, acceptedLegal, lid });
+      trackFunnel("register_complete", { lid });
     } catch (err) {
       const parsed = await parseApiError(err);
       setError(parsed.message || "Falha ao criar conta");
@@ -111,7 +131,18 @@ export default function Register() {
               <p className="mt-1.5 text-sm text-text-secondary">
                 Informe os dados da empresa e do administrador.
               </p>
+              {selectedPlan ? (
+                <p className="mt-2 text-sm font-medium text-secondary">
+                  Plano escolhido: {planDisplayName(selectedPlan.id)}
+                </p>
+              ) : null}
             </div>
+
+            {selected.invalid && (
+              <Alert type="warning" className="mb-5">
+                {PLAN_UNAVAILABLE_MESSAGE} O cadastro segue no trial Starter.
+              </Alert>
+            )}
 
             {error && <Alert type="error" message={error} className="mb-5" />}
 

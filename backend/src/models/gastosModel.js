@@ -18,6 +18,12 @@ const gastoInclude = {
       nome_tipo: true,
     },
   },
+  motoristas: {
+    select: {
+      id: true,
+      nome: true,
+    },
+  },
 };
 
 const parseId = (value) => {

@@ -45,6 +45,8 @@ test(
       assert.equal(res.body.success, true);
       assert.ok(res.body.data.totalCaminhoes >= 1);
       assert.ok(Number(res.body.data.totalGastos) >= 500);
+      assert.ok(Number(res.body.data.gastosValor) >= 500);
+      assert.ok(Array.isArray(res.body.data.frotaPorTipo));
     } finally {
       await cleanupCaminhao(caminhao.id);
     }

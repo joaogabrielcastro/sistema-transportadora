@@ -27,9 +27,13 @@ const server = app.listen(PORT, async () => {
         "./src/queues/ordemColetaJobQueue.js"
       );
       await startOrdemColetaWorker();
+      const { startAverbacaoWorker } = await import(
+        "./src/queues/averbacaoJobQueue.js"
+      );
+      await startAverbacaoWorker();
     } else {
       console.log(
-        "Worker ordem-coleta desabilitado na API (use scripts/worker-ordem-coleta.mjs).",
+        "Worker ordem-coleta/averbação desabilitado na API (use scripts/worker-*.mjs).",
       );
     }
   } catch (err) {
@@ -88,6 +92,15 @@ const shutdown = async (signal) => {
     await closeOrdemColetaQueue();
   } catch (err) {
     console.error("Erro ao fechar fila ordem coleta:", err?.message);
+  }
+
+  try {
+    const { closeAverbacaoQueue } = await import(
+      "./src/queues/averbacaoJobQueue.js"
+    );
+    await closeAverbacaoQueue();
+  } catch (err) {
+    console.error("Erro ao fechar fila averbação:", err?.message);
   }
 
   try {

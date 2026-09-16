@@ -195,12 +195,17 @@ export function parseNfeXml(xmlContent) {
       valor_unitario = valor_unitario_bruto;
     }
     const xPed = textOf(prod, "xPed") || "";
+    const cfop = textOf(prod, "CFOP") || null;
+    const combBlock = allBlocks(prod, "comb")[0] || "";
+    const codigo_anp = textOf(combBlock, "cANP") || textOf(prod, "cANP") || null;
 
     return {
       codigo,
       descricao: descricao.slice(0, 500),
       unidade: (unidade || "UN").slice(0, 20),
       ncm: ncm ? ncm.slice(0, 20) : null,
+      cfop: cfop ? String(cfop).replace(/\D/g, "").slice(0, 4) : null,
+      codigo_anp: codigo_anp ? String(codigo_anp).replace(/\D/g, "").slice(0, 9) : null,
       quantidade,
       valor_unitario,
       valor_unitario_bruto,
@@ -225,10 +230,27 @@ export function parseNfeXml(xmlContent) {
     ...itens.map((i) => i.descricao || ""),
   ].join(" ");
 
-  const placas_sugeridas = extractPlacasFromText(obsText);
+  const dest = allBlocks(xml, "dest")[0] || "";
+  const transp = allBlocks(xml, "transp")[0] || "";
+  const veic = allBlocks(transp, "veicTransp")[0] || transp;
+  const placaTransp = normalizePlaca(textOf(veic, "placa"));
+
+  const vols = allBlocks(xml, "vol");
+  let peso_bruto = 0;
+  let peso_liquido = 0;
+  for (const vol of vols) {
+    peso_bruto += toNumber(textOf(vol, "pesoB")) || 0;
+    peso_liquido += toNumber(textOf(vol, "pesoL")) || 0;
+  }
+
+  const placas_sugeridas = [
+    ...extractPlacasFromText(obsText),
+    ...(placaTransp.length >= 7 ? [placaTransp] : []),
+  ];
+  const placasUnicas = [...new Set(placas_sugeridas.filter(Boolean))];
   const itensLimpos = itens.map(({ _ped, ...rest }) => rest);
 
-  return {
+  const parsed = {
     chave_acesso: chave_acesso ? chave_acesso.slice(0, 44) : null,
     numero: String(numero).slice(0, 20),
     serie: serie ? String(serie).slice(0, 10) : null,
@@ -239,10 +261,83 @@ export function parseNfeXml(xmlContent) {
     valor_desconto,
     valor_frete,
     valor_ipi,
+    peso_bruto: peso_bruto || null,
+    peso_liquido: peso_liquido || null,
+    remetente: parsePessoaNfe(emit, "enderEmit"),
+    destinatario: parsePessoaNfe(dest, "enderDest"),
     itens: itensLimpos,
-    placas_sugeridas,
-    placa_sugerida: placas_sugeridas[0] || null,
+    placas_sugeridas: placasUnicas,
+    placa_sugerida: placasUnicas[0] || null,
+  };
+
+  parsed.uso = classificarNfe(parsed);
+  parsed.produto_predominante = (itensLimpos[0]?.descricao || "").slice(0, 60) || null;
+  parsed.quantidade_litros = litrosDoCombustivel(parsed);
+  parsed.preco_litro = precoLitroDoCombustivel(parsed);
+  const ymd = String(dataRaw || "").match(/^(\d{4}-\d{2}-\d{2})/);
+  parsed.data_emissao_ymd = ymd ? ymd[1] : null;
+  return parsed;
+}
+
+function parsePessoaNfe(block, enderTag) {
+  if (!block) return null;
+  const ender = allBlocks(block, enderTag)[0] || allBlocks(block, "ender")[0] || block;
+  const doc = digits(textOf(block, "CNPJ") || textOf(block, "CPF"));
+  const razao = textOf(block, "xNome");
+  if (!doc && !razao) return null;
+  return {
+    cnpj_cpf: doc || null,
+    ie: textOf(block, "IE") || null,
+    razao_social: razao ? razao.slice(0, 255) : null,
+    nome_fantasia: textOf(block, "xFant") || null,
+    fone: digits(textOf(ender, "fone") || textOf(block, "fone")) || null,
+    email: textOf(block, "email") || null,
+    logradouro: textOf(ender, "xLgr") || null,
+    numero: textOf(ender, "nro") || null,
+    complemento: textOf(ender, "xCpl") || null,
+    bairro: textOf(ender, "xBairro") || null,
+    codigo_municipio: digits(textOf(ender, "cMun")) || null,
+    nome_municipio: textOf(ender, "xMun") || null,
+    uf: (textOf(ender, "UF") || "").toUpperCase().slice(0, 2) || null,
+    cep: digits(textOf(ender, "CEP")) || null,
   };
 }
 
-export { stripNs, extractPlacasFromText, normalizePlaca };
+const DESC_COMBUSTIVEL =
+  /diesel|s-?10|s-?500|gasolina|etanol|alcool|álcool|biodiesel|\bgnv\b|oleo diesel|óleo diesel/i;
+
+export function itemPareceCombustivel(item) {
+  if (!item) return false;
+  if (item.codigo_anp) return true;
+  const ncm = String(item.ncm || "").replace(/\D/g, "");
+  if (ncm.startsWith("2710")) return true;
+  const unidade = String(item.unidade || "").toUpperCase();
+  const litro = /^(L|LT|LTR|LITRO)/.test(unidade);
+  return litro && DESC_COMBUSTIVEL.test(String(item.descricao || ""));
+}
+
+export function classificarNfe(parsed) {
+  const itens = Array.isArray(parsed?.itens) ? parsed.itens : [];
+  if (!itens.length) return "carga";
+  const fuel = itens.filter(itemPareceCombustivel);
+  if (fuel.length === 0) return "carga";
+  if (fuel.length === itens.length || fuel.length >= Math.ceil(itens.length / 2)) {
+    return "combustivel";
+  }
+  return "carga";
+}
+
+function litrosDoCombustivel(parsed) {
+  const itens = (parsed.itens || []).filter(itemPareceCombustivel);
+  const base = itens.length ? itens : parsed.uso === "combustivel" ? parsed.itens : [];
+  const soma = base.reduce((acc, item) => acc + (Number(item.quantidade) || 0), 0);
+  return soma > 0 ? Math.round(soma * 1000) / 1000 : null;
+}
+
+function precoLitroDoCombustivel(parsed) {
+  const item = (parsed.itens || []).find(itemPareceCombustivel) || parsed.itens?.[0];
+  const n = Number(item?.valor_unitario);
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 1000) / 1000 : null;
+}
+
+export { stripNs, extractPlacasFromText, normalizePlaca, parsePessoaNfe };

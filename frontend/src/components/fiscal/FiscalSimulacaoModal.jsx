@@ -41,7 +41,7 @@ export default function FiscalSimulacaoModal({
       onClose={onClose}
       title={
         isCiot
-          ? `Simulação de declaração — ${tipo}`
+          ? `Simulação de registro de CIOT — ${tipo}`
           : `Simulação de emissão — ${tipo}`
       }
       size="lg"
@@ -68,10 +68,10 @@ export default function FiscalSimulacaoModal({
               {resultado.aviso}
               {resultado.pendencias?.certificado_a1
                 ? isCiot
-                  ? " A declaração na ANTT está pendente do certificado A1 do cliente."
+                  ? " O registro do CIOT na ANTT está pendente do certificado A1 do cliente."
                   : " Autorização SEFAZ está pendente do certificado A1 do cliente."
                 : isCiot
-                  ? " Com o A1 cadastrado, o botão Declarar faz a transmissão de verdade."
+                  ? " Com o A1 cadastrado, o botão Registrar CIOT faz a transmissão de verdade."
                   : " Com o A1 cadastrado, o botão Emitir faz a transmissão de verdade."}
             </Alert>
 

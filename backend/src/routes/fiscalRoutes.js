@@ -1,4 +1,5 @@
 import { Router } from "express";
+import multer from "multer";
 import { requirePermission } from "../middleware/requirePermission.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import {
@@ -12,7 +13,9 @@ import {
   cteController,
   mdfeController,
   ciotController,
+  contratoFreteController,
 } from "../controllers/fiscalController.js";
+import { averbacaoController } from "../controllers/averbacaoController.js";
 
 // Montado em app.js como:
 //   apiRouter.use("/fiscal", requireFeature("transporte_fiscal"), fiscalRoutes)
@@ -126,9 +129,38 @@ veiculoDados.delete(
 );
 router.use("/veiculo-dados", veiculoDados);
 
+const nfeXmlUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024, files: 20 },
+});
+
+const nfeXmlUploadError = (err, req, res, next) => {
+  if (!err) return next();
+  if (err.code === "LIMIT_FILE_SIZE") {
+    return res.status(400).json({
+      success: false,
+      error: "XML muito grande (máximo 20 MB por arquivo).",
+    });
+  }
+  return res.status(400).json({
+    success: false,
+    error: err.message || "Falha ao receber o XML.",
+  });
+};
+
 // --------------------------------- CT-e ---------------------------------
 const cte = Router();
 cte.get("/", requirePermission(PERMISSIONS.CTE_READ), cteController.list);
+cte.post(
+  "/ler-xml",
+  requirePermission(PERMISSIONS.CTE_WRITE),
+  (req, res, next) => {
+    nfeXmlUpload.array("xml", 20)(req, res, (err) =>
+      nfeXmlUploadError(err, req, res, next),
+    );
+  },
+  cteController.lerXml,
+);
 // Download em lote (zip). Declarado antes de "/:id" para o segmento fixo
 // "download-lote" não ser capturado como id.
 cte.post(
@@ -266,7 +298,76 @@ mdfe.post(
 );
 router.use("/mdfe", mdfe);
 
-// --------------------------------- CIOT ---------------------------------
+// Fluxo oficial: Contrato de Frete (operação) + CIOT vinculado.
+// GET/POST /contratos-frete criam/listam a operação sem falar com a ANTT.
+// POST /contratos-frete/:id/ciot registra o identificador no provedor.
+const contratosFrete = Router();
+contratosFrete.get(
+  "/",
+  requirePermission(PERMISSIONS.CIOT_READ),
+  contratoFreteController.list,
+);
+contratosFrete.post(
+  "/",
+  requirePermission(PERMISSIONS.CIOT_WRITE),
+  contratoFreteController.create,
+);
+contratosFrete.post(
+  "/simular",
+  requirePermission(PERMISSIONS.CIOT_WRITE),
+  ciotController.simular,
+);
+contratosFrete.get(
+  "/:id",
+  requirePermission(PERMISSIONS.CIOT_READ),
+  contratoFreteController.get,
+);
+contratosFrete.put(
+  "/:id",
+  requirePermission(PERMISSIONS.CIOT_WRITE),
+  contratoFreteController.update,
+);
+contratosFrete.post(
+  "/:id/cancelar",
+  requirePermission(PERMISSIONS.CIOT_WRITE),
+  contratoFreteController.cancelar,
+);
+contratosFrete.post(
+  "/:id/simular",
+  requirePermission(PERMISSIONS.CIOT_WRITE),
+  contratoFreteController.simular,
+);
+contratosFrete.get(
+  "/:id/ciot",
+  requirePermission(PERMISSIONS.CIOT_READ),
+  contratoFreteController.getCiot,
+);
+contratosFrete.post(
+  "/:id/ciot",
+  requirePermission(PERMISSIONS.CIOT_WRITE),
+  contratoFreteController.registrarCiot,
+);
+contratosFrete.post(
+  "/:id/ciot/cancelar",
+  requirePermission(PERMISSIONS.CIOT_WRITE),
+  contratoFreteController.cancelarCiot,
+);
+contratosFrete.post(
+  "/:id/ciot/encerrar",
+  requirePermission(PERMISSIONS.CIOT_WRITE),
+  contratoFreteController.encerrarCiot,
+);
+contratosFrete.get(
+  "/:id/ciot/consultar",
+  requirePermission(PERMISSIONS.CIOT_READ),
+  contratoFreteController.consultarCiot,
+);
+router.use("/contratos-frete", contratosFrete);
+
+// LEGADO / compatibilidade: /fiscal/ciot lista e opera sobre o CONTRATO de
+// frete (não é mais a entidade da operação). Preferir /fiscal/contratos-frete.
+// POST /ciot/declarar = criar contrato + registrar CIOT na mesma chamada.
+// Não remover enquanto houver clientes/testes apontando para estas rotas.
 const ciot = Router();
 ciot.get("/", requirePermission(PERMISSIONS.CIOT_READ), ciotController.list);
 ciot.post(
@@ -305,5 +406,49 @@ ciot.post(
   ciotController.encerrar,
 );
 router.use("/ciot", ciot);
+
+// ---------------------- Seguro / averbação ----------------------
+const seguro = Router();
+seguro.get(
+  "/config",
+  requireAnyFiscalRead,
+  averbacaoController.getConfig,
+);
+seguro.put(
+  "/config",
+  requireAnyFiscalWrite,
+  averbacaoController.saveConfig,
+);
+seguro.post(
+  "/config/testar",
+  requireAnyFiscalWrite,
+  averbacaoController.testarConexao,
+);
+seguro.post(
+  "/averbacoes",
+  requireAnyFiscalWrite,
+  averbacaoController.solicitar,
+);
+seguro.get(
+  "/averbacoes/:id",
+  requireAnyFiscalRead,
+  averbacaoController.get,
+);
+seguro.post(
+  "/averbacoes/:id/consultar",
+  requireAnyFiscalRead,
+  averbacaoController.consultar,
+);
+seguro.post(
+  "/averbacoes/:id/reprocessar",
+  requireAnyFiscalWrite,
+  averbacaoController.reprocessar,
+);
+seguro.post(
+  "/averbacoes/:id/cancelar",
+  requireAnyFiscalWrite,
+  averbacaoController.cancelar,
+);
+router.use("/seguro", seguro);
 
 export default router;

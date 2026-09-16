@@ -119,7 +119,7 @@ async function postJson(path, body, { token, userToken, requireUserToken = false
       }
     }
 
-    if (!response.ok) {
+      if (!response.ok) {
       logger.error("Brasil NFe respondeu erro HTTP", {
         path,
         status: response.status,
@@ -127,22 +127,29 @@ async function postJson(path, body, { token, userToken, requireUserToken = false
       const msg =
         (data && (data.Error || data.error || data.DsMotivo)) ||
         `Falha ao comunicar com a Brasil NFe (${path}): HTTP ${response.status}`;
-      throw providerError(String(msg), {
+      const e = providerError(String(msg), {
         httpStatus: response.status,
         erros: data?.erros ?? data?.Avisos ?? [],
       });
+      if (response.status >= 500 || response.status === 429) {
+        e.incerteza = true;
+      }
+      throw e;
     }
 
     return data;
   } catch (err) {
-    if (err.statusCode === 503 || err.statusCode === 400) throw err;
+    if (err.statusCode === 400 && !err.incerteza) throw err;
+    if (err.statusCode === 503 && err.incerteza) throw err;
     logger.error("Falha ao chamar a Brasil NFe", {
       path,
       message: err.message,
     });
-    throw serviceUnavailable(
+    const wrapped = serviceUnavailable(
       `Falha ao comunicar com a Brasil NFe (${path}): ${err.message}`,
     );
+    wrapped.incerteza = true;
+    throw wrapped;
   } finally {
     clearTimeout(timeout);
   }

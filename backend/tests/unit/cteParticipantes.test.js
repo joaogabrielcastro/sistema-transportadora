@@ -19,7 +19,7 @@ const baseCte = {
   natureza_operacao: "Transporte",
   dt_emissao: "2026-02-01T10:00:00-03:00",
   servico: { valor_prestacao: 100 },
-  tomador: { cpf_cnpj: "12345678000199" },
+  tomador: { cpf_cnpj: "12345678000195" },
 };
 
 test("schema aceita remetente/destinatario tipados com endereco e ainda chaves extras", () => {
@@ -27,7 +27,7 @@ test("schema aceita remetente/destinatario tipados com endereco e ainda chaves e
     ...baseCte,
     toma: 3,
     remetente: {
-      cnpj_cpf: "11.222.333/0001-44",
+      cnpj_cpf: "11.222.333/0001-81",
       razao_social: "Origem LTDA",
       endereco: { uf: "SP", codigo_municipio: "3550308", cep: "01001-000" },
       campoLivreDoProvedor: "mantido",
@@ -36,7 +36,7 @@ test("schema aceita remetente/destinatario tipados com endereco e ainda chaves e
   });
   assert.equal(ok.toma, 3);
   // digits() normaliza o CNPJ
-  assert.equal(ok.remetente.cnpj_cpf, "11222333000144");
+  assert.equal(ok.remetente.cnpj_cpf, "11222333000181");
   assert.equal(ok.remetente.endereco.cep, "01001000");
   assert.equal(ok.remetente.campoLivreDoProvedor, "mantido");
 });
@@ -55,7 +55,7 @@ test("normalizarParticipantesCte achata endereco e ignora papéis ausentes", () 
   const dto = {
     remetente: {
       razao_social: "Origem LTDA",
-      cnpj_cpf: "11222333000144",
+      cnpj_cpf: "11222333000181",
       endereco: { uf: "SP", nome_municipio: "São Paulo" },
     },
     recebedor: { razao_social: "Quem recebe" },

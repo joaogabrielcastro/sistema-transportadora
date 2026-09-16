@@ -17,3 +17,9 @@
     @apply font-bold tracking-tight text-text-primary;
   }
 }
+
+@layer components {
+  .card {
+    @apply bg-white rounded-xl border border-border shadow-card;
+  }
+}

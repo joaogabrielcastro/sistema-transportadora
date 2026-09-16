@@ -23,7 +23,7 @@ DataTable.propTypes = {
 };
 
 export const DataTableHead = ({ children }) => (
-  <thead className="bg-gray-50/90 sticky top-0 z-10 backdrop-blur-sm">
+  <thead className="bg-slate-50/95 sticky top-0 z-10 backdrop-blur-sm">
     {children}
   </thead>
 );
@@ -38,7 +38,7 @@ DataTableBody.propTypes = { children: PropTypes.node };
 
 export const DataTableRow = ({ children, className = "", onClick }) => (
   <tr
-    className={`hover:bg-gray-50/80 transition-colors ${onClick ? "cursor-pointer" : ""} ${className}`}
+    className={`hover:bg-slate-50/80 transition-colors ${onClick ? "cursor-pointer" : ""} ${className}`}
     onClick={onClick}
   >
     {children}

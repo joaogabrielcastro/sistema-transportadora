@@ -277,9 +277,10 @@ test("emitirMdfeSchema aceita 3 reboques manuais e rejeita o 4º", () => {
     uf_descarregamento: "PR",
     rodoviario: {
       placa: "CAV1D23",
-      condutores: [{ nome: "Fulano", cpf: "111.222.333-44" }],
+      condutores: [{ nome: "Fulano", cpf: "123.456.789-09" }],
       reboques: [],
     },
+    cte_ids: [1],
   };
   const reboque = (placa) => ({
     placa,
@@ -388,7 +389,7 @@ test("emitirMdfeSchema aceita rodoviario.reboques e exige os campos essenciais",
     uf_descarregamento: "PR",
     rodoviario: {
       placa: "CAV1D23",
-      condutores: [{ nome: "Fulano", cpf: "111.222.333-44" }],
+      condutores: [{ nome: "Fulano", cpf: "123.456.789-09" }],
       reboques: [
         {
           placa: "RBQ1D23",
@@ -399,6 +400,7 @@ test("emitirMdfeSchema aceita rodoviario.reboques e exige os campos essenciais",
         },
       ],
     },
+    cte_ids: [1],
   };
   const ok = emitirMdfeSchema.parse(base);
   assert.equal(ok.rodoviario.reboques[0].uf, "SP");

@@ -15,6 +15,20 @@ const assertCaminhaoPertenceAoTenant = async (tenantId, caminhaoId) => {
   return caminhao;
 };
 
+const assertMotoristaPertenceAoTenant = async (tenantId, motoristaId) => {
+  if (motoristaId == null || motoristaId === "") return null;
+  const motorista = await prisma.motoristas.findFirst({
+    where: { id: Number(motoristaId), tenant_id: Number(tenantId) },
+    select: { id: true },
+  });
+  if (!motorista) {
+    const err = new Error("Motorista não encontrado");
+    err.statusCode = 400;
+    throw err;
+  }
+  return motorista;
+};
+
 export class GastoService {
   static async createWithCaminhaoUpdate(tenantId, gastoData) {
     const {
@@ -27,6 +41,9 @@ export class GastoService {
 
     if (caminhaoId) {
       await assertCaminhaoPertenceAoTenant(tenantId, caminhaoId);
+    }
+    if (rest.motorista_id) {
+      await assertMotoristaPertenceAoTenant(tenantId, rest.motorista_id);
     }
 
     const novoGasto = await prisma.$transaction(async (tx) => {
@@ -87,6 +104,9 @@ export class GastoService {
 
     if (rest.caminhao_id) {
       await assertCaminhaoPertenceAoTenant(tenantId, rest.caminhao_id);
+    }
+    if (rest.motorista_id) {
+      await assertMotoristaPertenceAoTenant(tenantId, rest.motorista_id);
     }
 
     const parsedId = Number(id);

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -6,23 +6,30 @@ import {
   useApiMutation,
   useCaminhoesListQuery,
   useReportsOverviewQuery,
+  useCostPerKmReportQuery,
+  useCostPerKmTrendQuery,
   useDebouncedValue,
 } from "../hooks";
-import { Button, LoadingSpinner, Alert, PageHeader, StatCard, StatusBadge } from "../components/ui";
+import { Button, Alert, PageHeader, StatCard, StatusBadge } from "../components/ui";
 import { useToast } from "../components/ui/useToast.js";
 import PageLayout from "../components/layout/PageLayout.jsx";
-import { formatCurrency, formatNumber } from "../utils";
+import { formatCurrency, formatNumber, lastMonthsIsoRange } from "../utils";
 import { extractApiArray, extractApiData } from "../utils/extractApiArray.js";
 import { queryKeys } from "../lib/queryKeys.ts";
 import { apiFetch, parseApiError } from "../lib/apiClient.js";
 import ConfirmModal from "../components/ConfirmModal";
 import Pagination from "../components/Pagination.jsx";
+import { CardSkeleton } from "../components/Skeleton.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import OnboardingBanner from "../components/OnboardingBanner.jsx";
 import PlanQuotaBanner from "../components/PlanQuotaBanner.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { PERMISSIONS, userHasPermission } from "../utils/permissions.js";
 import { isVehicleQuotaReached } from "../utils/billing.js";
+
+const DashboardCharts = lazy(
+  () => import("../components/dashboard/DashboardCharts.jsx"),
+);
 
 const TIPO_FILTROS = [
   { id: "", label: "Todos" },
@@ -44,6 +51,8 @@ const Home = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const canWriteFrota = userHasPermission(user, PERMISSIONS.FROTA_WRITE);
+  const canReadAlerts = userHasPermission(user, PERMISSIONS.ALERTS_READ);
+  const canReadReports = userHasPermission(user, PERMISSIONS.REPORTS_READ);
   const vehicleQuotaReached = isVehicleQuotaReached(user);
 
   const listParams = useMemo(
@@ -59,12 +68,29 @@ const Home = () => {
     data: caminhoesPage,
     isLoading: loadingCaminhoes,
     error: errorCaminhoes,
+    refetch: refetchCaminhoes,
   } = useCaminhoesListQuery(listParams);
 
   const caminhoes = caminhoesPage?.data ?? [];
   const pagination = caminhoesPage?.pagination;
 
   const { data: overview } = useReportsOverviewQuery();
+  const dashboardRange = useMemo(() => lastMonthsIsoRange(6), []);
+  const costParams = useMemo(
+    () => ({ ...dashboardRange, entriesLimit: 1 }),
+    [dashboardRange],
+  );
+  const trendQuery = useCostPerKmTrendQuery(dashboardRange, canReadReports);
+  const costQuery = useCostPerKmReportQuery(costParams, canReadReports);
+
+  const alertsQuery = useQuery({
+    queryKey: ["ops", "alerts", "dashboard"],
+    queryFn: async () => {
+      const res = await apiFetch({ url: "/ops/alerts" });
+      return extractApiData(res);
+    },
+    enabled: canReadAlerts,
+  });
 
   const { get: apiGet } = useApi();
   const { delete: apiDelete } = useApiMutation();
@@ -78,8 +104,10 @@ const Home = () => {
         0,
       totalGastos: overview?.totalGastos || 0,
       totalManutencoes: overview?.totalManutencoes || 0,
+      mediaGastos: overview?.mediaPorLancamento || overview?.mediaGastos || 0,
+      alertas: alertsQuery.data?.counts?.total || 0,
     }),
-    [overview, pagination?.totalItems, caminhoes?.length],
+    [overview, pagination?.totalItems, caminhoes?.length, alertsQuery.data],
   );
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -200,7 +228,7 @@ const Home = () => {
         <OnboardingBanner />
         <PageHeader
           title="Dashboard"
-          subtitle="Visão geral da frota, custos e próximos passos."
+          subtitle="Indicadores, custos e situação da frota."
         />
 
         <PlanQuotaBanner user={user} resource="vehicles" />
@@ -218,10 +246,11 @@ const Home = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-slide-up">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 animate-slide-up">
           <StatCard
             title="Total de Caminhões"
             value={formatNumber(stats.totalCaminhoes)}
+            hint="Veículos cadastrados"
             color="blue"
             icon={
               <svg
@@ -248,6 +277,7 @@ const Home = () => {
           <StatCard
             title="Gastos Totais"
             value={formatCurrency(stats.totalGastos)}
+            hint="Gastos + manutenções"
             color="green"
             icon={
               <svg
@@ -268,6 +298,7 @@ const Home = () => {
           <StatCard
             title="Manutenções"
             value={formatNumber(stats.totalManutencoes)}
+            hint="Registros de checklist"
             color="orange"
             icon={
               <svg
@@ -291,7 +322,48 @@ const Home = () => {
               </svg>
             }
           />
+          <StatCard
+            title={canReadAlerts ? "Alertas" : "Média por lançamento"}
+            value={
+              canReadAlerts
+                ? formatNumber(stats.alertas)
+                : formatCurrency(stats.mediaGastos)
+            }
+            hint={canReadAlerts ? "Pendências da operação" : "Custo médio"}
+            color="amber"
+            icon={
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                />
+              </svg>
+            }
+          />
         </div>
+
+        {canReadReports ? (
+          <Suspense
+            fallback={
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <div className="lg:col-span-2">
+                  <CardSkeleton />
+                </div>
+                <CardSkeleton />
+              </div>
+            }
+          >
+            <DashboardCharts
+              overview={overview}
+              trendMonths={trendQuery.data?.months}
+              trendLoading={trendQuery.isLoading}
+              truckCosts={costQuery.data?.items}
+              truckCostsLoading={costQuery.isFetching}
+            />
+          </Suspense>
+        ) : null}
 
         <div className="max-w-2xl mx-auto w-full space-y-3">
           <label htmlFor="home-search" className="sr-only">
@@ -353,11 +425,25 @@ const Home = () => {
           <Alert
             type="error"
             title="Erro ao carregar frota"
-            message={listError.message || "Tente recarregar a página."}
-          />
+            message={listError.message || "Não foi possível carregar a frota."}
+          >
+            <div className="mt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  isSearching ? searchQuery.refetch() : refetchCaminhoes()
+                }
+              >
+                Tentar novamente
+              </Button>
+            </div>
+          </Alert>
         ) : listLoading ? (
-          <div className="flex justify-center py-20">
-            <LoadingSpinner size="lg" text="Carregando frota..." />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
           </div>
         ) : (
           <div className="space-y-6">
@@ -401,14 +487,14 @@ const Home = () => {
                 title={
                   isSearching || tipoFiltro
                     ? "Nenhum veículo encontrado"
-                    : "Nenhum caminhão cadastrado"
+                    : "Você ainda não possui veículos cadastrados."
                 }
                 description={
                   isSearching
                     ? "Tente outro termo ou mude o filtro de tipo."
                     : tipoFiltro
                       ? `Não há ${tipoFiltroLabel.toLowerCase()} cadastrados.`
-                      : "Comece cadastrando seu primeiro veículo."
+                      : "Cadastre o primeiro caminhão para acompanhar gastos, manutenção e documentos."
                 }
                 action={
                   !isSearching && !tipoFiltro && canWriteFrota ? (
@@ -422,7 +508,7 @@ const Home = () => {
                       <Button variant="primary">
                         {vehicleQuotaReached
                           ? "Fazer upgrade"
-                          : "Cadastrar Caminhão"}
+                          : "Adicionar veículo"}
                       </Button>
                     </Link>
                   ) : null
@@ -477,12 +563,12 @@ const TruckCard = ({ caminhao, onDelete, canWrite = true }) => {
     (caminhao.tipo_veiculo ? String(caminhao.tipo_veiculo) : "Truck");
 
   return (
-  <div className="bg-white rounded-xl border border-border shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group flex flex-col">
+  <div className="bg-white rounded-xl border border-border shadow-card hover:shadow-soft transition-all duration-300 overflow-hidden group flex flex-col">
     <div className="p-5 flex-1">
       <div className="flex justify-between items-start mb-4">
-        <div className="bg-gray-100 p-2 rounded-lg">
+        <div className="bg-secondary/10 p-2 rounded-lg">
           <svg
-            className="w-6 h-6 text-gray-600"
+            className="w-6 h-6 text-secondary"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -551,7 +637,7 @@ const TruckCard = ({ caminhao, onDelete, canWrite = true }) => {
       </div>
     </div>
 
-    <div className="px-5 py-4 bg-gray-50 border-t border-border flex justify-between items-center">
+    <div className="px-5 py-4 bg-slate-50 border-t border-border flex justify-between items-center">
       <Link
         to={`/caminhao/${caminhao.placa}`}
         className="text-sm font-medium text-primary hover:text-primary-dark transition-colors"

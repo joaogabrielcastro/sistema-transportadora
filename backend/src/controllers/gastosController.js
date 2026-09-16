@@ -2,6 +2,7 @@ import { gastosModel } from "../models/gastosModel.js";
 import { gastoSchema, gastoUpdateSchema } from "../schemas/gastoSchema.js";
 import { catchAsync } from "../utils/catchAsync.js";
 import { GastoService } from "../services/GastoService.js";
+import { CombustivelNfeService } from "../services/NfeXmlService.js";
 import { normalizeDatesForDb } from "../utils/dates.js";
 import { parseListLimit } from "../utils/listLimits.js";
 import { requireTenantId } from "../utils/tenant.js";
@@ -102,5 +103,37 @@ export const gastosController = {
       req.params.id,
     );
     res.status(200).json({ success: true, data: consumoData });
+  }),
+
+  previewXmlCombustivel: catchAsync(async (req, res) => {
+    const file = req.file || req.files?.xml?.[0];
+    if (!file?.buffer) {
+      const err = new Error("Envie o arquivo XML da NF-e do posto.");
+      err.statusCode = 400;
+      throw err;
+    }
+    const data = CombustivelNfeService.preview(file.buffer.toString("utf8"));
+    res.json({ success: true, data });
+  }),
+
+  importarXmlCombustivel: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    const file = req.file || req.files?.xml?.[0];
+    if (!file?.buffer) {
+      const err = new Error("Envie o arquivo XML da NF-e do posto.");
+      err.statusCode = 400;
+      throw err;
+    }
+    const caminhaoId = req.body?.caminhao_id || req.query?.caminhao_id;
+    const data = await CombustivelNfeService.importar(
+      tenantId,
+      file.buffer.toString("utf8"),
+      { caminhao_id: caminhaoId },
+    );
+    res.status(201).json({
+      success: true,
+      data,
+      message: "Abastecimento lançado a partir do XML da NF-e.",
+    });
   }),
 };

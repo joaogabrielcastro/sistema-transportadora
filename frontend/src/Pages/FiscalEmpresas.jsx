@@ -254,7 +254,7 @@ export default function FiscalEmpresas() {
         ) : empresas.length === 0 ? (
           <EmptyState
             title="Nenhuma empresa fiscal"
-            description="Cadastre o CNPJ emissor, o Token da Brasil NFe e o certificado A1 antes de emitir CT-e, MDF-e ou declarar CIOT."
+            description="Cadastre o CNPJ emissor, o Token da Brasil NFe e o certificado A1 antes de emitir CT-e, MDF-e ou criar o contrato de frete."
             dashed
           />
         ) : (

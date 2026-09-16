@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import Button from "../ui/Button.jsx";
 
 /**
- * Navegação por fases nos formulários longos de CT-e / MDF-e / CIOT.
+ * Navegação por fases nos formulários longos de CT-e / MDF-e / Contrato de Frete.
  * O estado dos campos fica no formulário pai; clicar numa fase só troca a vista.
  */
 export function FiscalFormSteps({ steps, current, onSelect }) {

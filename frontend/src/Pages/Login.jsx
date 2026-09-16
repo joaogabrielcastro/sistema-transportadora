@@ -4,6 +4,8 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { Button, FormField, Alert } from "../components/ui";
 import { parseApiError } from "../lib/apiClient.js";
 import { resolvePostLoginRedirect } from "../utils/safeRedirect.js";
+import { assinaturaHref, readStoredLid, registerHref } from "../utils/planLid.js";
+import { trackFunnel } from "../utils/funnel.js";
 import {
   PRODUCT_LOGO_ALT,
   PRODUCT_LOGO_SRC,
@@ -63,7 +65,14 @@ export default function Login() {
   });
 
   if (isAuthenticated) {
-    return <Navigate to={from} replace />;
+    const lid = readStoredLid();
+    const dest =
+      from && from !== "/"
+        ? from
+        : lid
+          ? assinaturaHref(lid)
+          : "/";
+    return <Navigate to={dest} replace />;
   }
 
   const handleSubmit = async (e) => {
@@ -72,6 +81,7 @@ export default function Login() {
     setError("");
 
     try {
+      trackFunnel("login_start", { lid: readStoredLid() });
       await login(email, password);
     } catch (err) {
       const parsed = await parseApiError(err);
@@ -229,7 +239,7 @@ export default function Login() {
               <p className="mt-6 text-center text-sm text-text-secondary">
                 Nova empresa?{" "}
                 <Link
-                  to="/register"
+                  to={registerHref(readStoredLid())}
                   className="font-semibold text-secondary hover:text-secondary-dark"
                 >
                   Criar conta

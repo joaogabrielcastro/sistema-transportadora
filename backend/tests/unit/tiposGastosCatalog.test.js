@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   DEFAULT_TIPOS_GASTOS,
   sortTiposGastos,
+  selectCanonicalTipo,
+  dedupeTiposGastos,
 } from "../../src/utils/tiposGastosCatalog.js";
 
 test("DEFAULT_TIPOS_GASTOS inclui pedágio e multa", () => {
@@ -21,4 +23,23 @@ test("sortTiposGastos prioriza catálogo e deixa Outros por último entre conhec
 
   const sorted = sortTiposGastos(shuffled).map((t) => t.nome_tipo);
   assert.deepEqual(sorted, ["Combustivel", "Pedágio", "Multa", "Outros"]);
+});
+
+test("selectCanonicalTipo prefere a grafia do catálogo (Combustível)", () => {
+  const keeper = selectCanonicalTipo([
+    { id: 1, nome_tipo: "Combustivel" },
+    { id: 8, nome_tipo: "Combustível" },
+  ]);
+  assert.equal(keeper.id, 8);
+  assert.equal(keeper.nome_tipo, "Combustível");
+});
+
+test("dedupeTiposGastos deixa um só Combustível", () => {
+  const deduped = dedupeTiposGastos([
+    { id: 1, nome_tipo: "Combustivel" },
+    { id: 8, nome_tipo: "Combustível" },
+    { id: 2, nome_tipo: "Pedágio" },
+  ]);
+  assert.equal(deduped.filter((t) => /combust/i.test(t.nome_tipo)).length, 1);
+  assert.equal(deduped.find((t) => /combust/i.test(t.nome_tipo)).nome_tipo, "Combustível");
 });

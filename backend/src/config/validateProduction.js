@@ -36,6 +36,35 @@ export function getProductionConfigErrors(cfg = config) {
     );
   }
 
+  const secretsKey = String(cfg.fiscal?.secretsKey || process.env.FISCAL_SECRETS_KEY || "").trim();
+  if (!secretsKey) {
+    errors.push(
+      "FISCAL_SECRETS_KEY é obrigatório em produção (cifra de token/senha fiscal).",
+    );
+  }
+
+  const brasilNfeAmbiente = String(process.env.BRASIL_NFE_AMBIENTE || "")
+    .trim()
+    .toLowerCase();
+  if (brasilNfeAmbiente !== "1" && brasilNfeAmbiente !== "producao") {
+    errors.push(
+      "BRASIL_NFE_AMBIENTE=1 é obrigatório em produção. O default (homologação) não é permitido — defina explicitamente.",
+    );
+  } else if (cfg.fiscal?.ambiente != null && Number(cfg.fiscal.ambiente) !== 1) {
+    errors.push(
+      "Ambiente fiscal do processo não é produção (BRASIL_NFE_AMBIENTE deve ser 1). Não misture homologação e produção no mesmo processo.",
+    );
+  }
+
+  const userToken = String(
+    cfg.fiscal?.brasilNfeUserToken || process.env.BRASIL_NFE_USER_TOKEN || "",
+  ).trim();
+  if (!userToken) {
+    errors.push(
+      "BRASIL_NFE_USER_TOKEN é obrigatório em produção (gestão de certificado/empresas na Brasil NFe).",
+    );
+  }
+
   return errors;
 }
 
@@ -60,7 +89,7 @@ export function getProductionConfigWarnings(cfg = config) {
 
   if (!cfg.storage?.s3Enabled) {
     warnings.push(
-      "S3 não configurado — uploads ficam só no disco local (monte volume /app/uploads).",
+      "S3 não configurado — uploads (incluindo XML/DACTE/DAMDFE e certificado A1 em uploads/fiscal/) ficam só no disco local. Em produção monte volume persistente em /app/uploads (UPLOADS_DIR) e backup.",
     );
   }
 

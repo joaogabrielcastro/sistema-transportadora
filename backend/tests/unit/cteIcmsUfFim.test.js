@@ -20,7 +20,7 @@ const baseCte = {
   natureza_operacao: "Transporte",
   dt_emissao: "2026-02-01T10:00:00-03:00",
   servico: { valor_prestacao: 100 },
-  tomador: { cpf_cnpj: "12345678000199" },
+  tomador: { cpf_cnpj: "12345678000195" },
 };
 
 const difalCompleto = {
@@ -55,8 +55,8 @@ test("interestadual + não contribuinte + tomador == remetente: não exige DIFAL
       uf_ini: "SP",
       uf_fim: "MG",
       tomador_ind_ie: 9,
-      tomador: { cpf_cnpj: "12345678000199" },
-      remetente: { cnpj_cpf: "12.345.678/0001-99" },
+      tomador: { cpf_cnpj: "12345678000195" },
+      remetente: { cnpj_cpf: "12.345.678/0001-95" },
     }),
   );
 });

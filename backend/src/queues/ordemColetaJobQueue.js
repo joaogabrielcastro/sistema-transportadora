@@ -1,6 +1,12 @@
 import { Queue, Worker } from "bullmq";
 import { logger } from "../utils/logger.js";
-import { getBullMqConnection, isRedisConfigured } from "../lib/redis.js";
+import {
+  getBullMqConnection,
+  isRedisConfigured,
+  memoryQueueAllowed,
+  redisRequiredError,
+} from "../lib/redis.js";
+import { noteWorkerJob } from "../lib/workerHeartbeat.js";
 
 export const ORDEM_COLETA_QUEUE_NAME = "ordem-coleta-envio";
 
@@ -95,6 +101,14 @@ export async function startOrdemColetaWorker() {
   });
 
   worker.on("completed", (job) => {
+    noteWorkerJob({
+      queue: ORDEM_COLETA_QUEUE_NAME,
+      ok: true,
+      durationMs:
+        job.finishedOn && job.processedOn
+          ? job.finishedOn - job.processedOn
+          : null,
+    });
     logger.info("Ordem coleta job concluído", {
       jobId: job.id,
       envioId: job.data?.envioId,
@@ -135,6 +149,12 @@ export async function enqueueOrdemEnvio(envioId, parsed) {
 
   const q = getQueue();
   if (!q) {
+    if (!memoryQueueAllowed()) {
+      throw redisRequiredError();
+    }
+    logger.warn("Fila ordem de coleta em memória (somente fora de produção).", {
+      envioId: id,
+    });
     enqueueMemory(id, parsed);
     return { mode: "memory", envioId: id };
   }
@@ -187,4 +207,20 @@ export async function closeOrdemColetaQueue() {
 
 export function getOrdemColetaQueueMode() {
   return isRedisConfigured() ? "redis" : "memory";
+}
+
+export async function getOrdemColetaJobCounts() {
+  try {
+    const q = getQueue();
+    if (!q) return null;
+    return await q.getJobCounts("waiting", "active", "failed", "delayed");
+  } catch (err) {
+    logger.warn("Falha ao ler fila de ordem de coleta", {
+      err: String(err?.message || "unavailable").replace(
+        /rediss?:\/\/\S+/gi,
+        "redis://[redacted]",
+      ),
+    });
+    return null;
+  }
 }

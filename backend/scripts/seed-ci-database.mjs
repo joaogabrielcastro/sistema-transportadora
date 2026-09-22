@@ -42,6 +42,16 @@ async function main() {
     });
   }
   console.log(`Seed CI: ${POSICOES_EXTRA.length} posições de pneu ok.`);
+
+  await prisma.$executeRawUnsafe(`
+    CREATE UNIQUE INDEX IF NOT EXISTS "telemetry_device_assignments_device_open_idx"
+    ON "telemetry_device_assignments" ("device_id") WHERE "fim_em" IS NULL
+  `);
+  await prisma.$executeRawUnsafe(`
+    CREATE UNIQUE INDEX IF NOT EXISTS "telemetry_device_assignments_caminhao_open_idx"
+    ON "telemetry_device_assignments" ("caminhao_id") WHERE "fim_em" IS NULL
+  `);
+  console.log("Seed CI: índices parciais de telemetria ok.");
 }
 
 main()

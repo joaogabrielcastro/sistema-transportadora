@@ -57,8 +57,8 @@ test(
       tenantId = res.body.data.user.tenantId;
       assert.equal(res.body.data.user.plan, "starter");
       assert.equal(res.body.data.user.quota?.unlimited, false);
-      assert.equal(res.body.data.user.quota?.vehicles?.limit, 15);
-      assert.equal(res.body.data.user.quota?.users?.limit, 3);
+      assert.equal(res.body.data.user.quota?.vehicles?.limit, 8);
+      assert.equal(res.body.data.user.quota?.users?.limit, 2);
       assert.equal(res.body.data.user.quota?.users?.used, 1);
 
       const authHeader = { Authorization: `Bearer ${res.body.data.token}` };
@@ -73,7 +73,7 @@ test(
 );
 
 test(
-  "plano Starter bloqueia o 16º veículo com PLAN_QUOTA_EXCEEDED",
+  "plano Starter bloqueia o 9º veículo com PLAN_QUOTA_EXCEEDED",
   { skip: skipDb },
   async () => {
     const stamp = Date.now().toString(36);
@@ -92,7 +92,7 @@ test(
         secondary.password,
       );
 
-      await seedCaminhoes(secondary.tenant.id, 15);
+      await seedCaminhoes(secondary.tenant.id, 8);
 
       const blocked = await request(app)
         .post("/api/caminhoes")
@@ -102,8 +102,8 @@ test(
       assert.equal(blocked.status, 403);
       assert.equal(blocked.body.code, "PLAN_QUOTA_EXCEEDED");
       assert.equal(blocked.body.quota?.resource, "vehicles");
-      assert.equal(blocked.body.quota?.limit, 15);
-      assert.equal(blocked.body.quota?.used, 15);
+      assert.equal(blocked.body.quota?.limit, 8);
+      assert.equal(blocked.body.quota?.used, 8);
     } finally {
       await cleanupTenant(secondary.tenant.id);
     }
@@ -111,7 +111,7 @@ test(
 );
 
 test(
-  "plano Starter bloqueia o 4º usuário; isento não tem teto",
+  "plano Starter bloqueia o 3º usuário; isento não tem teto",
   { skip: skipDb },
   async () => {
     const stamp = Date.now().toString(36);
@@ -147,7 +147,7 @@ test(
         });
       assert.equal(first.status, 201, first.body?.error);
 
-      const second = await request(app)
+      const blocked = await request(app)
         .post("/api/users")
         .set(billedAuth.authHeader)
         .send({
@@ -156,21 +156,10 @@ test(
           password: "Operador123456!",
           role: "viewer",
         });
-      assert.equal(second.status, 201, second.body?.error);
-
-      const blocked = await request(app)
-        .post("/api/users")
-        .set(billedAuth.authHeader)
-        .send({
-          email: `op3-${stamp}@saas.test`,
-          nome: "Operador Três",
-          password: "Operador123456!",
-          role: "operator",
-        });
-      assert.equal(blocked.status, 403);
+      assert.equal(blocked.status, 403, blocked.body?.error);
       assert.equal(blocked.body.code, "PLAN_QUOTA_EXCEEDED");
       assert.equal(blocked.body.quota?.resource, "users");
-      assert.equal(blocked.body.quota?.limit, 3);
+      assert.equal(blocked.body.quota?.limit, 2);
 
       const exemptAuth = await loginWithCredentials(
         app,

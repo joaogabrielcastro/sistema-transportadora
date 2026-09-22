@@ -9,7 +9,7 @@ Site comercial → plano (LID) → cadastro → sistema. Tudo deve contar a mesm
 - **Backend:** Node.js, Express, Prisma 7, PostgreSQL, Zod, JWT.
 - **Frontend:** React, Vite, Tailwind, TanStack Query, Chart.js.
 - **Isolamento:** banco compartilhado com `tenant_id` em todas as tabelas de negócio (sem RLS).
-- **Filas:** Redis + BullMQ (ordem de coleta e averbação). Sem Redis, a fila fica em memória (dev/test).
+- **Filas:** Redis + BullMQ (ordem de coleta e averbação). Em produção o Redis é obrigatório e não há fila em memória. Fora de produção, sem `REDIS_URL`, a fila fica em memória e o log avisa.
 
 ## O que o produto entrega
 
@@ -65,7 +65,7 @@ Rotas públicas: `/`, `/planos`, `/planos/:lid`, `/login`, `/register`, `/termos
 
 - Alertas / documentos / motoristas: `/alertas`, `/documentos`, `/motoristas`
 - Digest semanal: `npm run job:weekly-digest` (cron sugerido: segunda 8h)
-- Worker PDF: por padrão na API; `RUN_ORDEM_WORKER_IN_API=false` + `npm run worker:ordem-coleta` para processo separado
+- Worker: por padrão ainda na API (`RUN_ORDEM_WORKER_IN_API`). Para separar: `false` na API e `npm run worker` (health em `WORKER_HEALTH_PORT`, padrão 3021). Ver [`ATRACK_PRE_TELEMETRY_HARDENING.md`](ATRACK_PRE_TELEMETRY_HARDENING.md).
 - S3 (`S3_BUCKET` + keys): uploads saem do disco local
 - WhatsApp: `WHATSAPP_API_URL` + `WHATSAPP_TOKEN` — `POST /api/ops/whatsapp/test`
 - Auditoria: `GET /api/ops/audit-logs` (admin)

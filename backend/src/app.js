@@ -33,6 +33,7 @@ import motoristasRoutes from "./routes/motoristasRoutes.js";
 import tenantRoutes from "./routes/tenantRoutes.js";
 import opsRoutes from "./routes/opsRoutes.js";
 import fiscalRoutes from "./routes/fiscalRoutes.js";
+import telemetryRoutes from "./routes/telemetryRoutes.js";
 import { requireFeature } from "./middleware/requireFeature.js";
 import { requireActiveSubscription } from "./middleware/requireActiveSubscription.js";
 import { ensureUploadDirs } from "./utils/uploadPaths.js";
@@ -94,7 +95,7 @@ app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
 app.use((req, res, next) => {
-  logger.info("Request received", {
+  logger.debug("Request received", {
     requestId: req.context?.requestId,
     method: req.method,
     path: req.path,
@@ -117,6 +118,8 @@ app.get("/health", async (req, res) => {
   const { httpStatus, payload } = await runHealthCheck();
   res.status(httpStatus).json(payload);
 });
+
+app.use("/api/v1/telemetry", telemetryRoutes);
 
 // Admin interno (API_TOKEN): togglear billing_exempt / plan
 app.patch(

@@ -20,7 +20,6 @@ import {
 import {
   calcularRetencoes,
   CODIGO_SUCESSO_OPERACAO,
-  colunasRntrcSnapshot,
   janelaCancelamentoHoras,
   montarPayloadDeclaracao,
   resolverCategoriaOperacao,

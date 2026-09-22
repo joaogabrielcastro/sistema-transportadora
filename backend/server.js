@@ -8,6 +8,9 @@ const { validateProductionConfig } = await import(
 );
 validateProductionConfig();
 
+const { assertRedisReachableInProduction } = await import("./src/lib/redis.js");
+await assertRedisReachableInProduction();
+
 const { initSentry } = await import("./src/lib/sentry.js");
 await initSentry();
 
@@ -31,9 +34,17 @@ const server = app.listen(PORT, async () => {
         "./src/queues/averbacaoJobQueue.js"
       );
       await startAverbacaoWorker();
+      const { startTelemetryWorker } = await import(
+        "./src/queues/telemetryJobQueue.js"
+      );
+      await startTelemetryWorker();
+      const { startWorkerHeartbeat } = await import("./src/lib/workerHeartbeat.js");
+      startWorkerHeartbeat({
+        queues: ["ordem-coleta-envio", "averbacao-seguro", "telemetry-ingest"],
+      });
     } else {
       console.log(
-        "Worker ordem-coleta/averbação desabilitado na API (use scripts/worker-*.mjs).",
+        "Workers desligados na API. Use npm run worker (scripts/worker.mjs).",
       );
     }
   } catch (err) {
@@ -101,6 +112,22 @@ const shutdown = async (signal) => {
     await closeAverbacaoQueue();
   } catch (err) {
     console.error("Erro ao fechar fila averbação:", err?.message);
+  }
+
+  try {
+    const { closeTelemetryQueue } = await import(
+      "./src/queues/telemetryJobQueue.js"
+    );
+    await closeTelemetryQueue();
+  } catch (err) {
+    console.error("Erro ao fechar fila telemetria:", err?.message);
+  }
+
+  try {
+    const { closeWorkerHeartbeat } = await import("./src/lib/workerHeartbeat.js");
+    await closeWorkerHeartbeat();
+  } catch (err) {
+    console.error("Erro ao fechar heartbeat do worker:", err?.message);
   }
 
   try {

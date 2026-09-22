@@ -99,7 +99,7 @@ export function incertezaDeComunicacao(err) {
  * antes do POST. Recuperação = consultar. `erro` com identificador também
  * consulta (legado de timeout antigo). Só `erro` sem id volta a claim.
  */
-export function avaliarClaimEmissao(row, { now = Date.now() } = {}) {
+export function avaliarClaimEmissao(row, { now: _now = Date.now() } = {}) {
   const status = String(row?.status || "");
   if (status === CTE_STATUS.PROCESSADO) {
     return { action: "already_authorized" };

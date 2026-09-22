@@ -45,6 +45,11 @@ model tenants {
   estoque_movimentos     estoque_movimentos[]
   motoristas             motoristas[]
   auth_tokens            auth_tokens[]
+  telemetry_devices      telemetry_devices[]
+  telemetry_device_assignments telemetry_device_assignments[]
+  telemetry_events       telemetry_events[]
+  telemetry_current_state telemetry_current_state[]
+  telemetry_daily        telemetry_daily[]
 
   @@index([slug])
   @@index([stripe_customer_id])
@@ -88,6 +93,10 @@ model caminhoes {
   vinculos_como_carreta vinculos_composicao[] @relation("VinculoCarreta")
   estoque_movimentos  estoque_movimentos[]
   notas_fiscais       notas_fiscais[]
+  telemetry_device_assignments telemetry_device_assignments[]
+  telemetry_events    telemetry_events[]
+  telemetry_current_state telemetry_current_state?
+  telemetry_daily     telemetry_daily[]
 
   @@unique([tenant_id, placa])
   @@index([tenant_id])
@@ -1098,4 +1107,119 @@ model fiscal_averbacoes {
   @@index([tenant_id, mdfe_id])
   @@index([tenant_id, status])
   @@index([chave_acesso])
+}
+
+// =====================================================================
+// Preparação para telemetria. Sem ingestão, sem rastreador e sem mapa.
+//
+// O tenant do ponto futuro sai de telemetry_devices, nunca do JSON.
+// registrado_em = relógio do aparelho (recorded_at).
+// recebido_em   = relógio do servidor (received_at).
+// Estado atual só avança se registrado_em for mais novo.
+// Retenção prevista: bruto 90 dias; estado atual e resumo diário sem prazo.
+// O unique (device_id, event_id) é a idempotência. Não depende do Redis.
+// =====================================================================
+
+model telemetry_devices {
+  id              Int       @id @default(autoincrement())
+  tenant_id       Int
+  external_id     String    @db.VarChar(64)
+  nome            String?   @db.VarChar(120)
+  /// SHA-256 da credencial. Nunca o segredo em claro.
+  credential_hash String    @unique @db.VarChar(64)
+  ativo           Boolean   @default(true)
+  revogado_em     DateTime? @db.Timestamptz(6)
+  criado_em       DateTime  @default(now()) @db.Timestamptz(6)
+  atualizado_em   DateTime  @updatedAt @db.Timestamptz(6)
+  tenants         tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  assignments     telemetry_device_assignments[]
+  events          telemetry_events[]
+  current_states  telemetry_current_state[]
+
+  @@unique([tenant_id, external_id])
+  @@index([tenant_id])
+  @@index([tenant_id, ativo])
+}
+
+model telemetry_device_assignments {
+  id          Int       @id @default(autoincrement())
+  tenant_id   Int
+  device_id   Int
+  caminhao_id Int
+  inicio_em   DateTime  @default(now()) @db.Timestamptz(6)
+  fim_em      DateTime? @db.Timestamptz(6)
+  criado_em   DateTime  @default(now()) @db.Timestamptz(6)
+  atualizado_em DateTime @updatedAt @db.Timestamptz(6)
+  tenants     tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  devices     telemetry_devices @relation(fields: [device_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  caminhoes   caminhoes @relation(fields: [caminhao_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([tenant_id])
+  @@index([device_id, inicio_em])
+  @@index([caminhao_id, inicio_em])
+}
+
+model telemetry_events {
+  id             BigInt    @id @default(autoincrement())
+  tenant_id      Int
+  device_id      Int
+  caminhao_id    Int?
+  event_id       String    @db.VarChar(80)
+  registrado_em  DateTime  @db.Timestamptz(6)
+  recebido_em    DateTime  @db.Timestamptz(6)
+  latitude       Decimal?  @db.Decimal(9, 6)
+  longitude      Decimal?  @db.Decimal(9, 6)
+  velocidade_kmh Decimal?  @db.Decimal(8, 2)
+  odometro_km    Decimal?  @db.Decimal(14, 3)
+  /// Ignição no instante do ponto. Não altera caminhoes.km_atual.
+  ignicao        Boolean?
+  criado_em      DateTime  @default(now()) @db.Timestamptz(6)
+  tenants        tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  devices        telemetry_devices @relation(fields: [device_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  caminhoes      caminhoes? @relation(fields: [caminhao_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([device_id, event_id])
+  @@index([tenant_id, registrado_em])
+  @@index([caminhao_id, registrado_em])
+  @@index([device_id, registrado_em])
+}
+
+/// Uma linha por veículo. Não é histórico. Não substitui caminhoes.km_atual.
+model telemetry_current_state {
+  id             Int      @id @default(autoincrement())
+  tenant_id      Int
+  caminhao_id    Int      @unique
+  device_id      Int?
+  registrado_em  DateTime @db.Timestamptz(6)
+  recebido_em    DateTime @db.Timestamptz(6)
+  latitude       Decimal? @db.Decimal(9, 6)
+  longitude      Decimal? @db.Decimal(9, 6)
+  velocidade_kmh Decimal? @db.Decimal(8, 2)
+  odometro_km    Decimal? @db.Decimal(14, 3)
+  ignicao        Boolean?
+  atualizado_em  DateTime @updatedAt @db.Timestamptz(6)
+  tenants        tenants  @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  caminhoes      caminhoes @relation(fields: [caminhao_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  devices        telemetry_devices? @relation(fields: [device_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([tenant_id])
+  @@index([device_id])
+}
+
+/// Resumo por veículo e dia. Retenção longa. Não guarda o ponto bruto.
+model telemetry_daily {
+  id                 Int      @id @default(autoincrement())
+  tenant_id          Int
+  caminhao_id        Int
+  dia                DateTime @db.Date
+  km                 Decimal? @db.Decimal(14, 3)
+  velocidade_max_kmh Decimal? @db.Decimal(8, 2)
+  amostras           Int      @default(0)
+  criado_em          DateTime @default(now()) @db.Timestamptz(6)
+  atualizado_em      DateTime @updatedAt @db.Timestamptz(6)
+  tenants            tenants  @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  caminhoes          caminhoes @relation(fields: [caminhao_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([tenant_id, caminhao_id, dia])
+  @@index([tenant_id, dia])
 }

@@ -1,5 +1,6 @@
 import rateLimit from "express-rate-limit";
 import crypto from "node:crypto";
+import prisma from "../lib/prisma.js";
 import { config } from "../config/index.js";
 import { logger } from "../utils/logger.js";
 import { verifyAccessToken } from "../utils/jwt.js";
@@ -11,7 +12,7 @@ import {
   runWithRequestContext,
 } from "../utils/requestContext.js";
 
-const SENSITIVE_KEY = /pass|password|token|secret|authorization|smtp|certificado|senha|pfx|usertoken/i;
+const SENSITIVE_KEY = /pass|password|token|secret|authorization|smtp|certificado|senha|pfx|usertoken|credential|jwt|api_key|apikey/i;
 
 let cachedDefaultTenantId = null;
 
@@ -126,6 +127,76 @@ function applyAuthUser(req, user) {
   }
 }
 
+async function loadActiveSessionUser(jwtPayload) {
+  const tenantId = Number(jwtPayload.tenantId);
+  if (!Number.isInteger(tenantId) || tenantId <= 0) {
+    return {
+      ok: false,
+      statusCode: 401,
+      error: "Token sem tenant. Faça login novamente.",
+    };
+  }
+
+  const id = Number(jwtPayload.sub);
+  if (!Number.isInteger(id) || id <= 0) {
+    return {
+      ok: false,
+      statusCode: 401,
+      error: "Sessão inválida. Faça login novamente.",
+    };
+  }
+
+  let user;
+  try {
+    user = await prisma.users.findFirst({
+      where: { id },
+      select: {
+        id: true,
+        tenant_id: true,
+        ativo: true,
+        role: true,
+        email: true,
+        nome: true,
+        permissions: true,
+        tenants: { select: { ativo: true } },
+      },
+    });
+  } catch (err) {
+    logger.error("Falha ao revalidar sessão", { err: err?.message });
+    return {
+      ok: false,
+      statusCode: 503,
+      error: "Não foi possível validar a sessão.",
+    };
+  }
+
+  if (
+    !user ||
+    user.ativo !== true ||
+    user.tenants?.ativo === false ||
+    Number(user.tenant_id) !== tenantId
+  ) {
+    return {
+      ok: false,
+      statusCode: 401,
+      error: "Usuário inativo ou sessão revogada.",
+    };
+  }
+
+  const role = user.role || "operator";
+  return {
+    ok: true,
+    user: {
+      id: String(user.id),
+      role,
+      email: user.email,
+      nome: user.nome,
+      tenantId: Number(user.tenant_id),
+      permissions: resolvePermissions(role, user.permissions || []),
+    },
+  };
+}
+
 function applyJwtUser(req, jwtPayload) {
   const tenantId = Number(jwtPayload.tenantId);
   if (!Number.isInteger(tenantId) || tenantId <= 0) {
@@ -195,13 +266,14 @@ export const requireAuth = async (req, res, next) => {
 
     const jwtPayload = verifyAccessToken(token);
     if (jwtPayload?.sub) {
-      const applied = applyJwtUser(req, jwtPayload);
-      if (!applied.ok) {
-        return res.status(401).json({
+      const session = await loadActiveSessionUser(jwtPayload);
+      if (!session.ok) {
+        return res.status(session.statusCode).json({
           success: false,
-          error: applied.error,
+          error: session.error,
         });
       }
+      applyAuthUser(req, session.user);
       return next();
     }
 

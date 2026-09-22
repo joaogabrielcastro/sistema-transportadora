@@ -1,6 +1,12 @@
 import { Queue, Worker } from "bullmq";
 import { logger } from "../utils/logger.js";
-import { getBullMqConnection, isRedisConfigured } from "../lib/redis.js";
+import {
+  getBullMqConnection,
+  isRedisConfigured,
+  memoryQueueAllowed,
+  redisRequiredError,
+} from "../lib/redis.js";
+import { noteWorkerJob } from "../lib/workerHeartbeat.js";
 
 export const AVERBACAO_QUEUE_NAME = "averbacao-seguro";
 export const AVERBACAO_DLQ_NAME = "averbacao-seguro-dlq";
@@ -100,6 +106,14 @@ export async function startAverbacaoWorker() {
     concurrency: MAX_CONCURRENT,
   });
   worker.on("completed", (job) => {
+    noteWorkerJob({
+      queue: AVERBACAO_QUEUE_NAME,
+      ok: true,
+      durationMs:
+        job.finishedOn && job.processedOn
+          ? job.finishedOn - job.processedOn
+          : null,
+    });
     logger.info("Averbação job concluído", {
       jobId: job.id,
       averbacaoId: job.data?.averbacaoId,
@@ -154,12 +168,8 @@ export async function enqueueAverbacaoJob(averbacaoId, tenantId) {
   }
   const q = getQueue();
   if (!q) {
-    if (process.env.NODE_ENV === "production") {
-      const err = new Error(
-        "Redis indisponível — averbação não pode usar fila em memória em produção.",
-      );
-      err.statusCode = 503;
-      throw err;
+    if (!memoryQueueAllowed()) {
+      throw redisRequiredError();
     }
     enqueueMemory(id, tid);
     return { mode: "memory", averbacaoId: id };
@@ -203,4 +213,29 @@ export async function closeAverbacaoQueue() {
     dlq = null;
   }
   await Promise.allSettled(closing);
+}
+
+export async function getAverbacaoJobCounts() {
+  try {
+    const q = getQueue();
+    if (!q) return null;
+    const counts = await q.getJobCounts("waiting", "active", "failed", "delayed");
+    let deadLetter = null;
+    const dead = getDlq();
+    if (dead) {
+      deadLetter = await dead.getJobCounts("waiting", "delayed");
+    }
+    return {
+      ...counts,
+      deadLetter: deadLetter ? (deadLetter.waiting || 0) + (deadLetter.delayed || 0) : null,
+    };
+  } catch (err) {
+    logger.warn("Falha ao ler fila de averbação", {
+      err: String(err?.message || "unavailable").replace(
+        /rediss?:\/\/\S+/gi,
+        "redis://[redacted]",
+      ),
+    });
+    return null;
+  }
 }

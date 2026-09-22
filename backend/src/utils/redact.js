@@ -1,7 +1,7 @@
 import { getRequestId, getTenantIdFromContext } from "./requestContext.js";
 
 const SENSITIVE_KEY =
-  /pass|password|token|secret|authorization|smtp|certificado|senha|pfx|usertoken|base64certificate|base64xml|base64dacte|base64damdfe|bearer/i;
+  /pass|password|token|secret|authorization|smtp|certificado|senha|pfx|usertoken|base64certificate|base64xml|base64dacte|base64damdfe|bearer|credential|jwt|api_key|apikey/i;
 
 function isSensitiveKey(key) {
   return SENSITIVE_KEY.test(String(key || ""));

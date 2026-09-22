@@ -6,6 +6,7 @@ import {
   listBackupNames,
   msUntilNextHourUtc,
   backupNameTimestamp,
+  assertRestoreTargetAllowed,
 } from "../../src/utils/backupDb.js";
 
 test("backupFileName usa timestamp ISO gzip", () => {
@@ -45,5 +46,23 @@ test("backupNameTimestamp lê o nome do arquivo", () => {
   assert.equal(
     backupNameTimestamp("atrack-2026-09-02T06-00-00.sql.gz"),
     Date.parse("2026-09-02T06:00:00Z"),
+  );
+});
+
+test("restore recusa o mesmo banco da origem", () => {
+  const source = "postgresql://postgres:postgres@localhost:5434/transportadora_dev";
+  assert.throws(
+    () => assertRestoreTargetAllowed(source, source),
+    /mesmo banco/,
+  );
+  assert.throws(
+    () => assertRestoreTargetAllowed(source, ""),
+    /obrigatório/,
+  );
+  assert.doesNotThrow(() =>
+    assertRestoreTargetAllowed(
+      source,
+      "postgresql://postgres:postgres@localhost:5434/atrack_restore",
+    ),
   );
 });

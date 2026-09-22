@@ -261,6 +261,18 @@ export async function createCaminhaoViaApi(app, authHeader, overrides = {}) {
 
 export async function cleanupCaminhao(caminhaoId) {
   if (!caminhaoId) return;
+  await prisma.telemetry_events
+    .deleteMany({ where: { caminhao_id: caminhaoId } })
+    .catch(() => {});
+  await prisma.telemetry_current_state
+    .deleteMany({ where: { caminhao_id: caminhaoId } })
+    .catch(() => {});
+  await prisma.telemetry_daily
+    .deleteMany({ where: { caminhao_id: caminhaoId } })
+    .catch(() => {});
+  await prisma.telemetry_device_assignments
+    .deleteMany({ where: { caminhao_id: caminhaoId } })
+    .catch(() => {});
   await prisma.estoque_movimentos
     .deleteMany({ where: { caminhao_id: caminhaoId } })
     .catch(() => {});
@@ -283,6 +295,12 @@ export async function cleanupCaminhao(caminhaoId) {
 
 export async function cleanupTenant(tenantId) {
   if (!tenantId) return;
+  await prisma.telemetry_events.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
+  await prisma.telemetry_current_state.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
+  await prisma.telemetry_daily.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
+  await prisma.telemetry_device_assignments.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
+  await prisma.telemetry_devices.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
+  await prisma.fiscal_averbacoes.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.audit_logs.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.auth_tokens.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.estoque_movimentos.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});

@@ -75,3 +75,23 @@ test("buildHealthPayload ignora redis quando não configurado", () => {
   assert.equal(payload.redis.ok, null);
   assert.equal(payload.redis.queueMode, "memory");
 });
+
+test("buildHealthPayload marca worker ausente quando ele é obrigatório no processo", () => {
+  const payload = buildHealthPayload({
+    dbOk: true,
+    pdfReady: true,
+    uploadsWritable: true,
+    uploadsDetail: { writable: true },
+    redisOk: true,
+    redisConfigured: true,
+    queueMode: "redis",
+    uptime: 10,
+    isProd: true,
+    workerOk: false,
+    workerRequired: true,
+  });
+
+  assert.equal(payload.status, "degraded");
+  assert.ok(payload.issues.includes("worker"));
+  assert.equal(payload.telemetry.ingestionImplemented, true);
+});

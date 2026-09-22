@@ -47,7 +47,7 @@ test(
       assert.equal(getRes.status, 200, getRes.body?.error);
       assert.equal(getRes.body.data.nome, "Empresa Original");
       assert.equal(getRes.body.data.canClose, true);
-      assert.equal(getRes.body.data.quota?.vehicles?.limit, 15);
+      assert.equal(getRes.body.data.quota?.vehicles?.limit, 8);
 
       const patchRes = await request(app)
         .patch("/api/tenant")

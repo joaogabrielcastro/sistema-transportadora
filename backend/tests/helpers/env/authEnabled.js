@@ -1,3 +1,5 @@
+import "./ignoreLocalDefaultTenant.js";
+
 process.env.NODE_ENV = "test";
 process.env.AUTH_ENABLED = "true";
 process.env.API_TOKEN = "integration-test-token-ok";

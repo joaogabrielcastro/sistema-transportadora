@@ -57,7 +57,7 @@ services:
       DB_SSL_MODE: disable
       PRISMA_CLIENT_ENGINE_TYPE: library
       REDIS_URL: redis://redis:6379/0
-      RUN_ORDEM_WORKER_IN_API: "true"
+      RUN_ORDEM_WORKER_IN_API: "false"
       AUTH_ENABLED: "true"
       JWT_SECRET: local-dev-jwt-secret-atrack
       CORS_ORIGINS: http://localhost:8080,http://localhost:5173,http://localhost:5174
@@ -75,6 +75,43 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: transportadora_worker_dev
+    restart: unless-stopped
+    command: ["node", "scripts/worker.mjs"]
+    ports:
+      - "3021:3021"
+    environment:
+      NODE_ENV: production
+      WORKER_HEALTH_PORT: "3021"
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/transportadora_dev
+      DB_SSL_MODE: disable
+      PRISMA_CLIENT_ENGINE_TYPE: library
+      REDIS_URL: redis://redis:6379/0
+      UPLOADS_DIR: /app/uploads
+    volumes:
+      - transportadora_uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3021/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
 
   frontend:
     build:

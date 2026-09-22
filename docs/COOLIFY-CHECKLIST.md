@@ -207,7 +207,7 @@ BACKUP_RETENTION_DAYS=7
 BACKUP_HOUR_UTC=6
 ```
 
-Monte um volume em `/app/backups`. A imagem já inclui `pg_dump`. Dumps com mais de 7 dias são apagados. Se S3/R2 estiver configurado, o arquivo também sobe para `BACKUP_S3_PREFIX` (padrão `backups/`).
+Monte um volume em `/app/backups`. A imagem já inclui `pg_dump` e `psql`. Dumps com mais de 7 dias são apagados. Se S3/R2 estiver configurado, o arquivo também sobe para `BACKUP_S3_PREFIX` (padrão `backups/`). O arquivo `.last-backup.json` no mesmo diretório guarda duração, tamanho e erro, sem URL de conexão. O `/health` lê esse status. Dump concluído não prova restore: use `npm run db:restore -- --file <dump.sql.gz> --target <URL de um banco vazio diferente>`. O script recusa se o destino for o mesmo host e o mesmo database de `DATABASE_URL`.
 
 Não combine isso com um cron do mesmo comando no mesmo container — geraria dump duplicado.
 
@@ -221,18 +221,20 @@ cd /app && npm run db:backup -- --out=/app/backups
 
 ---
 
-## Worker PDF / e-mail (ordem de coleta) e digest
+## Worker PDF / e-mail e averbação
 
-Em produção, o worker roda **dentro da API por padrão**. Só desligue se tiver um serviço separado:
+A API enfileira. O processamento pesado pode rodar em outro processo, no mesmo repositório.
 
-`RUN_ORDEM_WORKER_IN_API=false` + comando `npm run worker:ordem-coleta`.
+Modo compatível (um serviço só): deixe `RUN_ORDEM_WORKER_IN_API` ausente ou `true`. O worker sobe dentro da API e grava heartbeat no Redis.
 
-### Serviço worker (Coolify) — opcional / escala
+Modo separado (recomendado antes de telemetria):
 
-1. Novo serviço a partir do mesmo `backend/Dockerfile`.
-2. Command / start: `npm run worker:ordem-coleta`
-3. Mesmas env da API: `DATABASE_URL`, `REDIS_URL`, SMTP, `NODE_ENV=production`, e `RUN_ORDEM_WORKER_IN_API=false` na API.
-4. Sem porta HTTP pública.
+1. Na API: `RUN_ORDEM_WORKER_IN_API=false`
+2. Novo serviço, mesmo `backend/Dockerfile`, comando `npm run worker`
+3. Mesmas `DATABASE_URL` e `REDIS_URL`. Sem porta pública. Health interno em `WORKER_HEALTH_PORT` (padrão 3021), `GET /health`
+4. Sem Redis a API de produção não inicia e a fila em memória é recusada.
+
+`npm run worker:ordem-coleta` e `npm run worker:averbacao` continuam válidos para um processo por fila.
 
 ### Digest semanal
 

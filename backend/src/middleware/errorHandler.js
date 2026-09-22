@@ -209,6 +209,7 @@ export const errorHandler = (err, req, res, _next) => {
     return res.status(401).json({
       success: false,
       error: err.message || "Não autorizado",
+      ...(err.code ? { code: err.code } : {}),
     });
   }
 
@@ -223,6 +224,7 @@ export const errorHandler = (err, req, res, _next) => {
     return res.status(409).json({
       success: false,
       error: err.message || "Conflito",
+      ...(err.code ? { code: err.code } : {}),
     });
   }
 

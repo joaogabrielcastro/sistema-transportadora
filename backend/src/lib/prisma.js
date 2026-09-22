@@ -40,6 +40,19 @@ function resolvePgSsl() {
 
 const ssl = resolvePgSsl();
 
+function positiveInt(name, fallback) {
+  const n = Number(process.env[name]);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
+}
+
+/**
+ * max 10 é o default do node-pg, agora explícito.
+ * API + worker = até 20 conexões, abaixo do max_connections padrão do Postgres (100).
+ * connectionTimeoutMillis 5s troca o default 0 (espera infinita) para falhar se o banco não responde.
+ * Capacidade do VPS não foi medida; estes números não são um tuning de produção.
+ */
+const poolMax = positiveInt("DB_POOL_MAX", 10);
+
 let cleanDatabaseUrl = databaseUrl;
 if (!ssl) {
   try {
@@ -61,6 +74,9 @@ const prisma =
       new Pool({
         connectionString: cleanDatabaseUrl,
         ssl,
+        max: poolMax,
+        connectionTimeoutMillis: positiveInt("DB_POOL_CONNECTION_TIMEOUT_MS", 5000),
+        idleTimeoutMillis: positiveInt("DB_POOL_IDLE_TIMEOUT_MS", 10000),
       }),
     ),
     log:

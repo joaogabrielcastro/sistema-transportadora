@@ -1,14 +1,29 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+const ENV_KEYS = ["AUTH_ENABLED", "DEFAULT_TENANT_ID", "JWT_SECRET"];
+
+function snapshotEnv() {
+  return Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
+}
+
+function restoreEnv(snapshot) {
+  for (const key of ENV_KEYS) {
+    if (snapshot[key] === undefined) delete process.env[key];
+    else process.env[key] = snapshot[key];
+  }
+}
+
 const importSecurity = async () => {
   const mod = await import(`../../src/middleware/security.js?ts=${Date.now()}`);
   return mod;
 };
 
 test("requireAuth allows request when AUTH_ENABLED is false", async () => {
+  const snapshot = snapshotEnv();
   process.env.AUTH_ENABLED = "false";
   process.env.DEFAULT_TENANT_ID = "1";
+  try {
   const { requireAuth } = await importSecurity();
 
   let nextCalled = false;
@@ -25,12 +40,17 @@ test("requireAuth allows request when AUTH_ENABLED is false", async () => {
 
   assert.equal(nextCalled, true);
   assert.equal(req.context.user.tenantId, 1);
+  } finally {
+    restoreEnv(snapshot);
+  }
 });
 
 test("requireAuth com AUTH off respeita JWT do tenant (anti-vazamento)", async () => {
+  const snapshot = snapshotEnv();
   process.env.AUTH_ENABLED = "false";
   process.env.JWT_SECRET = "integration-test-jwt-secret-ok";
   process.env.DEFAULT_TENANT_ID = "1";
+  try {
 
   const jwt = await import("jsonwebtoken");
   const { requireAuth } = await importSecurity();
@@ -64,12 +84,17 @@ test("requireAuth com AUTH off respeita JWT do tenant (anti-vazamento)", async (
   assert.equal(nextCalled, true);
   assert.equal(req.context.user.tenantId, 42);
   assert.equal(req.context.user.id, "55");
+  } finally {
+    restoreEnv(snapshot);
+  }
 });
 
 test("requireAuth rejeita JWT sem tenantId", async () => {
+  const snapshot = snapshotEnv();
   process.env.AUTH_ENABLED = "true";
   process.env.JWT_SECRET = "integration-test-jwt-secret-ok";
   process.env.DEFAULT_TENANT_ID = "1";
+  try {
 
   const jwt = await import("jsonwebtoken");
   const { requireAuth } = await importSecurity();
@@ -108,6 +133,9 @@ test("requireAuth rejeita JWT sem tenantId", async () => {
   assert.equal(nextCalled, false);
   assert.equal(res.statusCode, 401);
   assert.match(String(res.body?.error || ""), /tenant/i);
+  } finally {
+    restoreEnv(snapshot);
+  }
 });
 
 test("attachRequestContext enriches request and sets x-request-id", async () => {
@@ -189,8 +217,10 @@ test("requireRole permite role autorizada", async () => {
 });
 
 test("requireAuth rejeita request sem token", async () => {
+  const snapshot = snapshotEnv();
   process.env.AUTH_ENABLED = "true";
   process.env.JWT_SECRET = "integration-test-jwt-secret-ok";
+  try {
   const { requireAuth } = await importSecurity();
 
   let nextCalled = false;
@@ -217,11 +247,16 @@ test("requireAuth rejeita request sem token", async () => {
 
   assert.equal(nextCalled, false);
   assert.equal(res.statusCode, 401);
+  } finally {
+    restoreEnv(snapshot);
+  }
 });
 
-test("requireAuth aceita JWT com tenantId", async () => {
+test("requireAuth recusa JWT sem usuário ativo no banco", async () => {
+  const snapshot = snapshotEnv();
   process.env.AUTH_ENABLED = "true";
   process.env.JWT_SECRET = "integration-test-jwt-secret-ok";
+  try {
   const jwt = await import("jsonwebtoken");
   const { requireAuth } = await importSecurity();
   const token = jwt.default.sign(
@@ -242,8 +277,14 @@ test("requireAuth aceita JWT com tenantId", async () => {
     context: { user: { id: "anonymous", role: "viewer" } },
   };
   const res = {
-    status() {
-      throw new Error("should not status");
+    statusCode: null,
+    body: null,
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(payload) {
+      this.body = payload;
     },
   };
 
@@ -251,9 +292,11 @@ test("requireAuth aceita JWT com tenantId", async () => {
     nextCalled = true;
   });
 
-  assert.equal(nextCalled, true);
-  assert.equal(req.context.user.tenantId, 9);
-  assert.equal(req.context.user.id, "3");
+  assert.equal(nextCalled, false);
+  assert.ok(res.statusCode === 401 || res.statusCode === 503);
+  } finally {
+    restoreEnv(snapshot);
+  }
 });
 
 test("auditLog só audita métodos mutáveis", async () => {

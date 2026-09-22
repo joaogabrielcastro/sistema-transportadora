@@ -7,6 +7,25 @@ export function isRedisConfigured() {
   return Boolean(config.redis?.url);
 }
 
+/** Fila em memória só existe fora de produção, e o log deixa isso explícito. */
+export function memoryQueueAllowed() {
+  return (process.env.NODE_ENV || "development") !== "production";
+}
+
+export function redisRequiredError() {
+  const err = new Error("Redis é obrigatório em produção.");
+  err.statusCode = 503;
+  err.code = "REDIS_REQUIRED";
+  return err;
+}
+
+function safeRedisError(err) {
+  return String(err?.message || "falha de conexão").replace(
+    /rediss?:\/\/\S+/gi,
+    "redis://[redacted]",
+  );
+}
+
 export function getRedisConnectionOptions() {
   const url = config.redis?.url;
   if (!url) {
@@ -31,7 +50,7 @@ export function getBullMqConnection() {
     if (!warnedMissing) {
       warnedMissing = true;
       logger.warn(
-        "REDIS_URL não definido — fila de ordem de coleta usa memória (não durable).",
+        "REDIS_URL não definido — fila em memória apenas fora de produção (não durable).",
       );
     }
     return null;
@@ -62,7 +81,49 @@ export async function pingRedis() {
     return {
       ok: false,
       configured: true,
-      error: err?.message || String(err),
+      error: safeRedisError(err),
     };
+  }
+}
+
+/**
+ * Produção não sobe sem Redis alcançável. Não imprime a URL.
+ */
+export async function assertRedisReachableInProduction() {
+  if ((process.env.NODE_ENV || "development") !== "production") return;
+
+  if (!isRedisConfigured()) {
+    console.error("Redis é obrigatório em produção.");
+    process.exit(1);
+  }
+
+  const ping = await pingRedis();
+  if (!ping.ok) {
+    console.error(
+      "Redis é obrigatório em produção. Não foi possível conectar.",
+    );
+    process.exit(1);
+  }
+}
+
+/** Processo de worker não tem fallback em memória. */
+export async function assertRedisForWorker() {
+  const production = (process.env.NODE_ENV || "development") === "production";
+  if (!isRedisConfigured()) {
+    console.error(
+      production
+        ? "Redis é obrigatório em produção."
+        : "REDIS_URL é obrigatório para o worker.",
+    );
+    process.exit(1);
+  }
+  const ping = await pingRedis();
+  if (!ping.ok) {
+    console.error(
+      production
+        ? "Redis é obrigatório em produção. Não foi possível conectar."
+        : "Não foi possível conectar ao Redis do worker.",
+    );
+    process.exit(1);
   }
 }

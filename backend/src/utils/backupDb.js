@@ -3,8 +3,11 @@ import {
   createWriteStream,
   existsSync,
   mkdirSync,
+  readFileSync,
   readdirSync,
+  statSync,
   unlinkSync,
+  writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
@@ -62,6 +65,98 @@ export function msUntilNextHourUtc(hour, now = new Date()) {
   );
   const ts = next <= now.getTime() ? next + 24 * 60 * 60 * 1000 : next;
   return ts - now.getTime();
+}
+
+function redactConnectionText(text) {
+  return String(text || "").replace(
+    /postgres(?:ql)?:\/\/\S+/gi,
+    "postgresql://[redacted]",
+  );
+}
+
+export function databaseNameFromUrl(url) {
+  const parsed = new URL(url);
+  return decodeURIComponent(parsed.pathname.replace(/^\//, "").split("/")[0] || "");
+}
+
+/**
+ * Restore nunca aponta para o mesmo banco da origem.
+ * Host + nome do database precisam diferir.
+ */
+export function assertRestoreTargetAllowed(sourceUrl, targetUrl) {
+  if (!targetUrl) {
+    const err = new Error(
+      "RESTORE_TARGET_URL é obrigatório. Restore no banco de origem é recusado.",
+    );
+    err.code = "RESTORE_TARGET_REQUIRED";
+    throw err;
+  }
+  let source;
+  let target;
+  try {
+    source = new URL(sourceUrl);
+    target = new URL(targetUrl);
+  } catch {
+    const err = new Error("URL de backup inválida.");
+    err.code = "RESTORE_URL_INVALID";
+    throw err;
+  }
+  const sameHost = source.host === target.host;
+  const sameName = databaseNameFromUrl(sourceUrl) === databaseNameFromUrl(targetUrl);
+  if (sameHost && sameName) {
+    const err = new Error(
+      "Restore recusado: o destino é o mesmo banco da origem. Use um banco vazio separado.",
+    );
+    err.code = "RESTORE_TARGET_IS_SOURCE";
+    throw err;
+  }
+}
+
+function backupStatusPath(dir) {
+  return join(dir, ".last-backup.json");
+}
+
+export function writeBackupStatus(dir, status) {
+  try {
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      backupStatusPath(dir),
+      JSON.stringify({
+        ok: Boolean(status.ok),
+        finishedAt: status.finishedAt || new Date().toISOString(),
+        durationMs: Number.isFinite(status.durationMs) ? status.durationMs : null,
+        bytes: Number.isFinite(status.bytes) ? status.bytes : null,
+        fileName: status.fileName || null,
+        error: status.error ? redactConnectionText(status.error).slice(0, 300) : null,
+      }),
+    );
+  } catch (err) {
+    logger.warn("Não foi possível gravar status do backup", {
+      err: err?.message,
+    });
+  }
+}
+
+export function readBackupStatus() {
+  const enabled = isBackupEnabled();
+  try {
+    const file = backupStatusPath(resolveBackupDir());
+    if (!existsSync(file)) return { enabled, last: null };
+    const parsed = JSON.parse(readFileSync(file, "utf8"));
+    return {
+      enabled,
+      last: {
+        ok: Boolean(parsed.ok),
+        finishedAt: parsed.finishedAt || null,
+        durationMs: parsed.durationMs ?? null,
+        bytes: parsed.bytes ?? null,
+        fileName: parsed.fileName || null,
+        error: parsed.error || null,
+      },
+    };
+  } catch {
+    return { enabled, last: null };
+  }
 }
 
 export function resolveBackupDir(explicitDir) {
@@ -133,14 +228,19 @@ function rotateLocalBackups(dir) {
  * Gera dump gzipado. Requer `pg_dump` no PATH e DATABASE_URL.
  */
 export async function runDatabaseBackup({ outDir, databaseUrl } = {}) {
+  const started = Date.now();
   const url = databaseUrl || process.env.DATABASE_URL;
+  const dir = resolveBackupDir(outDir);
   if (!url) {
     const err = new Error("DATABASE_URL não definido.");
     err.code = "BACKUP_NO_DATABASE_URL";
+    writeBackupStatus(dir, {
+      ok: false,
+      durationMs: Date.now() - started,
+      error: err.message,
+    });
     throw err;
   }
-
-  const dir = resolveBackupDir(outDir);
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
@@ -148,7 +248,8 @@ export async function runDatabaseBackup({ outDir, databaseUrl } = {}) {
   const fileName = backupFileName();
   const filePath = join(dir, fileName);
 
-  await new Promise((resolve, reject) => {
+  try {
+    await new Promise((resolve, reject) => {
     let settled = false;
     const fail = (err) => {
       if (settled) return;
@@ -205,6 +306,15 @@ export async function runDatabaseBackup({ outDir, databaseUrl } = {}) {
       })
       .catch(fail);
   });
+  } catch (err) {
+    writeBackupStatus(dir, {
+      ok: false,
+      durationMs: Date.now() - started,
+      fileName,
+      error: err?.message,
+    });
+    throw err;
+  }
 
   let uploaded = null;
   try {
@@ -216,8 +326,21 @@ export async function runDatabaseBackup({ outDir, databaseUrl } = {}) {
   }
 
   const removed = rotateLocalBackups(dir);
+  let bytes = null;
+  try {
+    bytes = statSync(filePath).size;
+  } catch {
+    bytes = null;
+  }
+  const durationMs = Date.now() - started;
+  writeBackupStatus(dir, {
+    ok: true,
+    durationMs,
+    bytes,
+    fileName,
+  });
 
-  return { file: filePath, uploaded, removed };
+  return { file: filePath, uploaded, removed, durationMs, bytes };
 }
 
 let schedulerTimer = null;

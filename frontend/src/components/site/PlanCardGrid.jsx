@@ -41,7 +41,7 @@ export default function PlanCardGrid({
           registerEnabled,
         });
         const accent = plan.popular
-          ? "border-t-4 border-t-secondary ring-1 ring-secondary/20"
+          ? "border-secondary/40 ring-2 ring-secondary/30 shadow-soft lg:-mt-1 lg:mb-1 lg:scale-[1.02]"
           : plan.bestValue
             ? "border-t-4 border-t-primary"
             : "border-t-4 border-t-border";
@@ -49,18 +49,18 @@ export default function PlanCardGrid({
         return (
           <article
             key={lid}
-            className={`flex h-full flex-col rounded-2xl border border-border bg-white p-5 shadow-card sm:p-6 ${accent}`}
+            className={`relative flex h-full flex-col rounded-2xl border border-border bg-white p-5 shadow-card sm:p-6 ${accent}`}
           >
+            {plan.popular ? (
+              <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-secondary px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white shadow-soft">
+                Mais escolhido
+              </span>
+            ) : null}
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <h3 className="text-lg font-bold">{plan.name}</h3>
-              {plan.popular ? (
-                <span className="rounded-full bg-secondary/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-secondary">
-                  Popular
-                </span>
-              ) : null}
               {plan.bestValue ? (
                 <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
-                  Completo
+                  Melhor valor
                 </span>
               ) : null}
             </div>

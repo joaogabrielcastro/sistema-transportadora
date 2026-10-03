@@ -73,6 +73,7 @@ function parseMoney(value) {
 export default function NotaManualForm({
   caminhoes = [],
   produtos = [],
+  onSearchProdutos,
   submitting = false,
   onSubmit,
   onCancel,
@@ -354,6 +355,7 @@ export default function NotaManualForm({
                     <SearchableSelect
                       value=""
                       onChange={(value) => fillFromProduto(idx, value)}
+                      onQueryChange={onSearchProdutos}
                       options={produtoOptions}
                       placeholder="Buscar no estoque…"
                       allowEmpty

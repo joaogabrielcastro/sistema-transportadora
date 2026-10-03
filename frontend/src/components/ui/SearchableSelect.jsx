@@ -17,6 +17,7 @@ const SearchableSelect = ({
   allowEmpty = false,
   emptyLabel = "Nenhum / limpar seleção",
   allowCustom = false,
+  onQueryChange,
 }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -163,6 +164,7 @@ const SearchableSelect = ({
             const next = event.target.value;
             setQuery(next);
             setOpen(true);
+            onQueryChange?.(next);
             if (allowCustom) {
               onChange(next);
             }
@@ -265,6 +267,7 @@ SearchableSelect.propTypes = {
   emptyLabel: PropTypes.string,
   /** Permite valor digitado que não está na lista (ex.: serviço novo). */
   allowCustom: PropTypes.bool,
+  onQueryChange: PropTypes.func,
 };
 
 export default SearchableSelect;

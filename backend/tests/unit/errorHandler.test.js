@@ -103,6 +103,18 @@ test("errorHandler Prisma P2002/P2025", () => {
   errorHandler(p2002, req, resDup, () => {});
   assert.equal(resDup.statusCode, 400);
   assert.match(resDup.body.error, /duplicado|placa/i);
+  assert.match(resDup.body.error, /caminhão/i);
+
+  const resNota = mockRes();
+  const p2002Nota = new Prisma.PrismaClientKnownRequestError("Unique", {
+    code: "P2002",
+    clientVersion: "0",
+    meta: { target: ["notas_fiscais_tenant_chave_uidx"] },
+  });
+  errorHandler(p2002Nota, req, resNota, () => {});
+  assert.equal(resNota.statusCode, 400);
+  assert.match(resNota.body.error, /chave de acesso/i);
+  assert.doesNotMatch(resNota.body.error, /caminhão/i);
 
   const res404 = mockRes();
   const p2025 = new Prisma.PrismaClientKnownRequestError("Not found", {

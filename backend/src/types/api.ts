@@ -11,6 +11,8 @@ export interface ApiErrorResponse {
   success: false;
   error: string;
   details?: string[] | Array<{ field?: string; message?: string }>;
+  nota_id?: number;
+  nota_numero?: string;
 }
 
 export type ApiResponse<T = unknown> = ApiSuccessResponse<T> | ApiErrorResponse;
@@ -44,4 +46,6 @@ export interface ApiFetchConfig {
 export interface ParsedApiError extends Error {
   status: number | null;
   fieldErrors: Record<string, string> | null;
+  notaId: number | null;
+  notaNumero: string | null;
 }

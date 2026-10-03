@@ -32,6 +32,11 @@ const itemManualSchema = z.object({
   valor_ipi: moneyOptionalSchema,
 });
 
+const placaOpcionalSchema = z.preprocess(
+  emptyToNull,
+  z.string().trim().max(12).optional().nullable(),
+);
+
 export const notaManualSchema = z.object({
   numero: requiredString(FIELD_LIMITS.NOTA_NUMERO),
   serie: z.preprocess(
@@ -72,6 +77,19 @@ export const notaManualSchema = z.object({
   valor_frete: moneyOptionalSchema,
   valor_ipi: moneyOptionalSchema,
   itens: z.array(itemManualSchema).min(1, "Inclua ao menos um item"),
+  placa_sugerida: placaOpcionalSchema,
+  placas_sugeridas: z.preprocess(
+    (v) => (v == null ? undefined : v),
+    z.array(z.string().trim().max(12)).max(30).optional(),
+  ),
 });
 
 export const notaAtualizarSchema = notaManualSchema;
+
+/** XML revisado na tela: emitente pode vir vazio em NF-e incompleta. */
+export const notaImportSchema = notaManualSchema.extend({
+  emitente: z.preprocess(
+    emptyToNull,
+    z.string().trim().max(FIELD_LIMITS.EMITENTE).optional().nullable(),
+  ),
+});

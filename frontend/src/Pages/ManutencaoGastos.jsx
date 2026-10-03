@@ -114,6 +114,7 @@ const RegistroForm = ({
   tiposGastos,
   itensChecklist = [],
   produtosEstoque = [],
+  onSearchProdutos,
   motoristas = [],
   showEstoque = false,
   onChange,
@@ -183,6 +184,7 @@ const RegistroForm = ({
         value={form.produto_id || ""}
         onChange={onChange}
         options={produtoOptions}
+        onQueryChange={onSearchProdutos}
         allowEmpty
         emptyLabel="Não usar estoque"
         placeholder={
@@ -849,20 +851,33 @@ const ManutencaoGastos = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [produtosEstoque, setProdutosEstoque] = useState([]);
+  const [buscaProdutoEstoque, setBuscaProdutoEstoque] = useState("");
+  const debouncedBuscaProduto = useDebouncedValue(buscaProdutoEstoque, 300);
   const showEstoque = featureEnabled(user, "notas_estoque");
 
   useEffect(() => {
     if (!showEstoque) return undefined;
     let cancelled = false;
-    const cid = form.caminhao_id
-      ? `&caminhao_id=${encodeURIComponent(form.caminhao_id)}`
-      : "";
+    const params = new URLSearchParams({ limit: "40", page: "1" });
+    if (form.caminhao_id) params.set("caminhao_id", form.caminhao_id);
+    const termo = debouncedBuscaProduto.trim();
+    if (termo) params.set("termo", termo);
     (async () => {
       try {
         const res = await apiFetch({
-          url: `/notas-fiscais/produtos?limit=200${cid}`,
+          url: `/notas-fiscais/produtos?${params}`,
         });
-        if (!cancelled) setProdutosEstoque(extractApiArray(res));
+        if (cancelled) return;
+        const lista = extractApiArray(res);
+        setProdutosEstoque((prev) => {
+          const selected = prev.find(
+            (p) => String(p.id) === String(form.produto_id),
+          );
+          if (selected && !lista.some((p) => p.id === selected.id)) {
+            return [selected, ...lista];
+          }
+          return lista;
+        });
       } catch {
         if (!cancelled) setProdutosEstoque([]);
       }
@@ -870,7 +885,7 @@ const ManutencaoGastos = () => {
     return () => {
       cancelled = true;
     };
-  }, [showEstoque, form.caminhao_id]);
+  }, [showEstoque, form.caminhao_id, form.produto_id, debouncedBuscaProduto]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -1077,9 +1092,10 @@ const ManutencaoGastos = () => {
       if (showEstoque) {
         try {
           const res = await apiFetch({
-            url: "/notas-fiscais/produtos?limit=200",
+            url: "/notas-fiscais/produtos?limit=40",
           });
           setProdutosEstoque(extractApiArray(res));
+          setBuscaProdutoEstoque("");
         } catch {
           /* ignore */
         }
@@ -1164,6 +1180,7 @@ const ManutencaoGastos = () => {
           tiposGastos={tiposGastos}
           itensChecklist={itensChecklist}
           produtosEstoque={produtosEstoque}
+          onSearchProdutos={setBuscaProdutoEstoque}
           motoristas={motoristas}
           showEstoque={showEstoque}
           onChange={handleChange}

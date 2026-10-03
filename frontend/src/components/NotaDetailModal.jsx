@@ -38,6 +38,7 @@ export default function NotaDetailModal({
   savingEdit = false,
   caminhoes = [],
   produtos = [],
+  onSearchProdutos,
 }) {
   const caminhao = nota?.caminhoes;
   const placaLabel = caminhao
@@ -68,6 +69,7 @@ export default function NotaDetailModal({
           initialNota={nota}
           caminhoes={caminhoes}
           produtos={produtos}
+          onSearchProdutos={onSearchProdutos}
           submitting={savingEdit}
           onCancel={onCancelEdit}
           onSubmit={onSaveEdit}

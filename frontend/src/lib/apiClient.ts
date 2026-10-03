@@ -215,6 +215,8 @@ export async function parseApiError(err: unknown): Promise<ParsedApiError> {
 
   let errorMessage = axiosErr.message || "Erro desconhecido";
   let fieldErrors: Record<string, string> | null = null;
+  let notaId: number | null = null;
+  let notaNumero: string | null = null;
   const status = axiosErr.response?.status ?? null;
 
   if (axiosErr.response?.data) {
@@ -232,6 +234,8 @@ export async function parseApiError(err: unknown): Promise<ParsedApiError> {
     const body = payload as {
       error?: string;
       message?: string;
+      nota_id?: number | string;
+      nota_numero?: string;
       details?: string[] | Array<{ field?: string; message?: string }>;
     };
 
@@ -239,6 +243,14 @@ export async function parseApiError(err: unknown): Promise<ParsedApiError> {
       errorMessage = body.error;
     } else if (body?.message) {
       errorMessage = body.message;
+    }
+
+    const parsedNotaId = Number(body?.nota_id);
+    if (Number.isFinite(parsedNotaId) && parsedNotaId > 0) {
+      notaId = parsedNotaId;
+    }
+    if (typeof body?.nota_numero === "string" && body.nota_numero.trim()) {
+      notaNumero = body.nota_numero.trim();
     }
 
     if (body?.details && Array.isArray(body.details)) {
@@ -271,5 +283,7 @@ export async function parseApiError(err: unknown): Promise<ParsedApiError> {
   const e = new Error(errorMessage) as ParsedApiError;
   e.status = status;
   e.fieldErrors = fieldErrors;
+  e.notaId = notaId;
+  e.notaNumero = notaNumero;
   return e;
 }

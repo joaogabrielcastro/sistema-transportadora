@@ -76,9 +76,7 @@ export class GastoService {
           produto_id,
           quantidade: qtd,
           caminhao_id: caminhaoId,
-          motivo: `Gasto #${gastoCriado.id}${
-            rest.descricao ? ` — ${String(rest.descricao).slice(0, 120)}` : ""
-          }`,
+          motivo: `Gasto #${gastoCriado.id}`,
         });
       }
 
@@ -147,6 +145,7 @@ export class GastoService {
       if (existing.produto_id) {
         await EstoqueService.estornarBaixaPorMotivoComTx(tx, tenantId, {
           motivo: `Gasto #${id}`,
+          prefixo: `Gasto #${id} —`,
         });
       }
       await tx.gastos.deleteMany({

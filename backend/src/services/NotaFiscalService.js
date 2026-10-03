@@ -3,7 +3,8 @@ import path from "node:path";
 import prisma from "../lib/prisma.js";
 import { serializePrisma } from "../utils/prismaSerialization.js";
 import { parseNfeXml, normalizePlaca } from "../utils/parseNfeXml.js";
-import { NOTAS_ROOT, notaDocsDir } from "../utils/uploadPaths.js";
+import { notaDocsDir } from "../utils/uploadPaths.js";
+import { buildNotaListWhere, labelNota } from "../utils/notaFiscalSearch.js";
 
 const withTenant = (tenantId, where = {}) => ({
   ...where,
@@ -19,16 +20,23 @@ async function resolveCaminhaoId(tx, tenantId, parsed) {
     if (byId) return byId.id;
   }
   const placas = [
-    parsed.placa_sugerida,
-    ...(Array.isArray(parsed.placas_sugeridas) ? parsed.placas_sugeridas : []),
-  ]
-    .map(normalizePlaca)
-    .filter(Boolean);
-  for (const placa of [...new Set(placas)]) {
-    const all = await tx.caminhoes.findMany({
-      where: { tenant_id: Number(tenantId) },
-      select: { id: true, placa: true },
-    });
+    ...new Set(
+      [
+        parsed.placa_sugerida,
+        ...(Array.isArray(parsed.placas_sugeridas)
+          ? parsed.placas_sugeridas
+          : []),
+      ]
+        .map(normalizePlaca)
+        .filter(Boolean),
+    ),
+  ];
+  if (!placas.length) return null;
+  const all = await tx.caminhoes.findMany({
+    where: { tenant_id: Number(tenantId) },
+    select: { id: true, placa: true },
+  });
+  for (const placa of placas) {
     const hit = all.find((c) => normalizePlaca(c.placa) === placa);
     if (hit) return hit.id;
   }
@@ -49,9 +57,9 @@ async function findOrCreateProduto(tx, tenantId, item) {
     produto = await tx.produtos.findFirst({
       where: withTenant(tenantId, { codigo }),
     });
-  }
-
-  if (!produto) {
+  } else {
+    // Sem código, a descrição é a única identidade. Com código novo, não
+    // funde com outra peça só porque o texto da NF-e coincidiu.
     produto = await tx.produtos.findFirst({
       where: withTenant(tenantId, {
         descricao: { equals: item.descricao, mode: "insensitive" },
@@ -76,14 +84,58 @@ async function findOrCreateProduto(tx, tenantId, item) {
   return { produto, precoCusto };
 }
 
+function notaDuplicadaError(dup) {
+  const err = new Error(
+    `A nota ${labelNota(dup)} já está cadastrada neste sistema.`,
+  );
+  err.statusCode = 409;
+  err.notaId = dup.id;
+  err.notaNumero = labelNota(dup);
+  return err;
+}
+
+async function buscarNotaDuplicada(db, tenantId, parsed, ignoreId) {
+  const notId = ignoreId ? { id: { not: Number(ignoreId) } } : {};
+  if (parsed.chave_acesso) {
+    const byChave = await db.notas_fiscais.findFirst({
+      where: withTenant(tenantId, {
+        chave_acesso: parsed.chave_acesso,
+        ...notId,
+      }),
+    });
+    if (byChave) return byChave;
+  }
+  if (parsed.numero) {
+    const byNumero = await db.notas_fiscais.findFirst({
+      where: withTenant(tenantId, {
+        numero: String(parsed.numero),
+        serie: parsed.serie || null,
+        cnpj_emitente: parsed.cnpj_emitente || null,
+        ...notId,
+      }),
+    });
+    if (byNumero) return byNumero;
+  }
+  return null;
+}
+
+function nomeArquivoSeguro(nome, fallback) {
+  const base = path
+    .basename(String(nome || fallback))
+    .replace(/[^A-Za-z0-9._-]/g, "_")
+    .replace(/^\.+/, "");
+  if (!base || base === "_" ) return fallback;
+  return base.slice(0, 120);
+}
+
 export class NotaFiscalService {
   static async previewFromXml(xmlContent) {
     return parseNfeXml(xmlContent);
   }
 
-  static async listar(tenantId, { page = 1, limit = 20 } = {}) {
+  static async listar(tenantId, { page = 1, limit = 20, termo } = {}) {
     const skip = (page - 1) * limit;
-    const where = withTenant(tenantId);
+    const where = buildNotaListWhere(tenantId, termo);
     const [data, count] = await prisma.$transaction([
       prisma.notas_fiscais.findMany({
         where,
@@ -146,35 +198,8 @@ export class NotaFiscalService {
    * @param {{ xmlPath?: string, pdfPath?: string }} files
    */
   static async confirmarImportacao(tenantId, parsed, files = {}) {
-    if (parsed.chave_acesso) {
-      const dup = await prisma.notas_fiscais.findFirst({
-        where: withTenant(tenantId, { chave_acesso: parsed.chave_acesso }),
-      });
-      if (dup) {
-        const err = new Error(
-          `NF-e já importada (chave ${parsed.chave_acesso})`,
-        );
-        err.statusCode = 409;
-        throw err;
-      }
-    } else if (parsed.numero) {
-      const dup = await prisma.notas_fiscais.findFirst({
-        where: withTenant(tenantId, {
-          numero: String(parsed.numero),
-          serie: parsed.serie || null,
-          ...(parsed.cnpj_emitente
-            ? { cnpj_emitente: String(parsed.cnpj_emitente).replace(/\D/g, "") }
-            : {}),
-        }),
-      });
-      if (dup) {
-        const err = new Error(
-          `Nota ${parsed.numero}${parsed.serie ? `/${parsed.serie}` : ""} já cadastrada`,
-        );
-        err.statusCode = 409;
-        throw err;
-      }
-    }
+    const dup = await buscarNotaDuplicada(prisma, tenantId, parsed);
+    if (dup) throw notaDuplicadaError(dup);
 
     const itens = Array.isArray(parsed.itens) ? parsed.itens : [];
     if (!itens.length) {
@@ -183,7 +208,12 @@ export class NotaFiscalService {
       throw err;
     }
 
-    const nota = await prisma.$transaction(async (tx) => {
+    let nota;
+    try {
+      nota = await prisma.$transaction(async (tx) => {
+      const dupTx = await buscarNotaDuplicada(tx, tenantId, parsed);
+      if (dupTx) throw notaDuplicadaError(dupTx);
+
       const caminhaoId = await resolveCaminhaoId(tx, tenantId, parsed);
 
       const created = await tx.notas_fiscais.create({
@@ -268,6 +298,13 @@ export class NotaFiscalService {
         include: { itens: true },
       });
     });
+    } catch (err) {
+      if (err?.code === "P2002") {
+        const dupDepois = await buscarNotaDuplicada(prisma, tenantId, parsed);
+        if (dupDepois) throw notaDuplicadaError(dupDepois);
+      }
+      throw err;
+    }
 
     return serializePrisma(nota);
   }
@@ -284,6 +321,7 @@ export class NotaFiscalService {
       throw err;
     }
 
+    try {
     await prisma.$transaction(async (tx) => {
       const existente = await tx.notas_fiscais.findFirst({
         where: withTenant(tenantId, { id }),
@@ -294,6 +332,9 @@ export class NotaFiscalService {
         err.statusCode = 404;
         throw err;
       }
+
+      const dup = await buscarNotaDuplicada(tx, tenantId, parsed, id);
+      if (dup) throw notaDuplicadaError(dup);
 
       const caminhaoId = await resolveCaminhaoId(tx, tenantId, {
         ...parsed,
@@ -317,17 +358,21 @@ export class NotaFiscalService {
         });
         if (!produto) continue;
         const qtd = Number(mov.quantidade);
-        if (Number(produto.saldo) < qtd) {
+        const reverted = await tx.produtos.updateMany({
+          where: {
+            id: produto.id,
+            tenant_id: Number(tenantId),
+            saldo: { gte: qtd },
+          },
+          data: { saldo: { decrement: qtd } },
+        });
+        if (reverted.count === 0) {
           const err = new Error(
             `Não é possível editar: o item "${produto.descricao}" já foi usado no estoque (saldo ${produto.saldo}, entrada da nota ${qtd}). Dê entrada manual ou ajuste as baixas antes.`,
           );
           err.statusCode = 400;
           throw err;
         }
-        await tx.produtos.update({
-          where: { id: produto.id },
-          data: { saldo: { decrement: qtd } },
-        });
       }
       await tx.estoque_movimentos.deleteMany({
         where: {
@@ -442,6 +487,13 @@ export class NotaFiscalService {
         });
       }
     });
+    } catch (err) {
+      if (err?.code === "P2002") {
+        const dupDepois = await buscarNotaDuplicada(prisma, tenantId, parsed, id);
+        if (dupDepois) throw notaDuplicadaError(dupDepois);
+      }
+      throw err;
+    }
 
     return NotaFiscalService.getById(tenantId, id);
   }
@@ -451,26 +503,36 @@ export class NotaFiscalService {
     await fs.mkdir(dir, { recursive: true });
     const updates = {};
 
-    if (xmlBuffer) {
-      const rel = path
-        .join(String(tenantId), String(notaId), xmlName || "nfe.xml")
+    const gravar = async (buffer, nome, fallback, campo) => {
+      if (!buffer) return;
+      const arquivo = nomeArquivoSeguro(nome, fallback);
+      const destino = path.join(dir, arquivo);
+      const raiz = path.resolve(dir);
+      const abs = path.resolve(destino);
+      if (abs !== raiz && !abs.startsWith(raiz + path.sep)) {
+        const err = new Error("Nome de arquivo inválido");
+        err.statusCode = 400;
+        throw err;
+      }
+      await fs.writeFile(abs, buffer);
+      updates[campo] = path
+        .join(String(tenantId), String(notaId), arquivo)
         .replace(/\\/g, "/");
-      await fs.writeFile(path.join(NOTAS_ROOT, rel), xmlBuffer);
-      updates.xml_path = rel;
-    }
-    if (pdfBuffer) {
-      const rel = path
-        .join(String(tenantId), String(notaId), pdfName || "danfe.pdf")
-        .replace(/\\/g, "/");
-      await fs.writeFile(path.join(NOTAS_ROOT, rel), pdfBuffer);
-      updates.pdf_path = rel;
-    }
+    };
+
+    await gravar(xmlBuffer, xmlName, "nfe.xml", "xml_path");
+    await gravar(pdfBuffer, pdfName, "danfe.pdf", "pdf_path");
 
     if (Object.keys(updates).length) {
-      await prisma.notas_fiscais.update({
-        where: { id: Number(notaId) },
+      const updated = await prisma.notas_fiscais.updateMany({
+        where: { id: Number(notaId), tenant_id: Number(tenantId) },
         data: updates,
       });
+      if (updated.count === 0) {
+        const err = new Error("Nota não encontrada");
+        err.statusCode = 404;
+        throw err;
+      }
     }
 
     return updates;
@@ -481,6 +543,23 @@ function signMovimento(tipo) {
   if (tipo === "entrada") return 1;
   if (tipo === "baixa") return -1;
   return 0;
+}
+
+async function idsComSaldoNoCaminhao(tenantId, caminhaoId) {
+  const grouped = await prisma.estoque_movimentos.groupBy({
+    by: ["produto_id", "tipo"],
+    where: {
+      tenant_id: Number(tenantId),
+      caminhao_id: Number(caminhaoId),
+    },
+    _sum: { quantidade: true },
+  });
+  const nets = new Map();
+  for (const row of grouped) {
+    const qtd = Number(row._sum?.quantidade || 0) * signMovimento(row.tipo);
+    nets.set(row.produto_id, (nets.get(row.produto_id) || 0) + qtd);
+  }
+  return [...nets.entries()].filter(([, saldo]) => saldo > 0).map(([id]) => id);
 }
 
 export class EstoqueService {
@@ -515,6 +594,20 @@ export class EstoqueService {
       throw err;
     }
 
+    let caminhaoId = null;
+    if (caminhao_id) {
+      const caminhao = await tx.caminhoes.findFirst({
+        where: withTenant(tenantId, { id: Number(caminhao_id) }),
+        select: { id: true },
+      });
+      if (!caminhao) {
+        const err = new Error("Caminhão não encontrado");
+        err.statusCode = 400;
+        throw err;
+      }
+      caminhaoId = caminhao.id;
+    }
+
     const decremented = await tx.produtos.updateMany({
       where: {
         id: produto.id,
@@ -535,7 +628,7 @@ export class EstoqueService {
         produto_id: produto.id,
         tipo: "baixa",
         quantidade: qtd,
-        caminhao_id: caminhao_id ? Number(caminhao_id) : null,
+        caminhao_id: caminhaoId,
         motivo: motivo || "Baixa de estoque",
       },
     });
@@ -546,16 +639,20 @@ export class EstoqueService {
   /**
    * Estorna baixas de estoque vinculadas a um gasto/manutenção (motivo exato).
    */
-  static async estornarBaixaPorMotivoComTx(tx, tenantId, { motivo }) {
-    if (!motivo) return;
+  static async estornarBaixaPorMotivoComTx(tx, tenantId, { motivo, prefixo }) {
+    if (!motivo && !prefixo) return;
 
-    const baixas = await tx.estoque_movimentos.findMany({
-      where: {
-        tenant_id: Number(tenantId),
-        tipo: "baixa",
-        motivo,
-      },
-    });
+    const where = {
+      tenant_id: Number(tenantId),
+      tipo: "baixa",
+    };
+    if (prefixo) {
+      where.OR = [{ motivo }, { motivo: { startsWith: prefixo } }];
+    } else {
+      where.motivo = motivo;
+    }
+
+    const baixas = await tx.estoque_movimentos.findMany({ where });
 
     for (const mov of baixas) {
       const qtd = Number(mov.quantidade);
@@ -581,25 +678,60 @@ export class EstoqueService {
 
   static async listarProdutos(
     tenantId,
-    { page = 1, limit = 50, termo, caminhao_id } = {},
+    {
+      page = 1,
+      limit = 50,
+      termo,
+      caminhao_id,
+      somente_caminhao = false,
+    } = {},
   ) {
     const where = withTenant(tenantId);
     if (termo?.trim()) {
+      const q = termo.trim();
       where.OR = [
-        { descricao: { contains: termo.trim(), mode: "insensitive" } },
-        { codigo: { contains: termo.trim(), mode: "insensitive" } },
+        { descricao: { contains: q, mode: "insensitive" } },
+        { codigo: { contains: q, mode: "insensitive" } },
       ];
     }
 
-    const [data, count] = await prisma.$transaction([
-      prisma.produtos.findMany({
-        where,
-        orderBy: { descricao: "asc" },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      prisma.produtos.count({ where }),
-    ]);
+    const cid = Number(caminhao_id);
+    const cidOk = Number.isFinite(cid) && cid > 0 ? cid : null;
+    const preferIds = cidOk
+      ? await idsComSaldoNoCaminhao(tenantId, cidOk)
+      : [];
+    if (somente_caminhao && cidOk) {
+      where.id = { in: preferIds.length ? preferIds : [-1] };
+    }
+
+    const catalogo = await prisma.produtos.findMany({
+      where,
+      select: { id: true, descricao: true },
+    });
+    const prefer = new Set(preferIds);
+    catalogo.sort((a, b) => {
+      if (cidOk && !somente_caminhao) {
+        const pa = prefer.has(a.id) ? 0 : 1;
+        const pb = prefer.has(b.id) ? 0 : 1;
+        if (pa !== pb) return pa - pb;
+      }
+      return String(a.descricao || "").localeCompare(
+        String(b.descricao || ""),
+        "pt-BR",
+      );
+    });
+
+    const count = catalogo.length;
+    const pageIds = catalogo
+      .slice((page - 1) * limit, page * limit)
+      .map((p) => p.id);
+    const rows = pageIds.length
+      ? await prisma.produtos.findMany({
+          where: withTenant(tenantId, { id: { in: pageIds } }),
+        })
+      : [];
+    const byId = new Map(rows.map((p) => [p.id, p]));
+    const data = pageIds.map((id) => byId.get(id)).filter(Boolean);
 
     const serialized = serializePrisma(data);
     const produtoIds = serialized.map((p) => p.id);
@@ -644,7 +776,6 @@ export class EstoqueService {
       : [];
     const placaMap = new Map(placas.map((c) => [c.id, c.placa]));
 
-    const cid = caminhao_id ? Number(caminhao_id) : null;
     const enriched = serialized.map((p) => {
       const destMap = saldoPorDestino.get(p.id) || new Map();
       const destinos = [];
@@ -667,11 +798,11 @@ export class EstoqueService {
         }
       }
       destinos.sort((a, b) => Number(b.saldo) - Number(a.saldo));
-      const saldo_caminhao = cid ? Number(destMap.get(cid) || 0) : null;
+      const saldo_caminhao = cidOk ? Number(destMap.get(cidOk) || 0) : null;
       return { ...p, destinos, saldo_caminhao };
     });
 
-    if (cid) {
+    if (cidOk) {
       enriched.sort((a, b) => {
         const da = Number(a.saldo_caminhao) > 0 ? 0 : 1;
         const db = Number(b.saldo_caminhao) > 0 ? 0 : 1;

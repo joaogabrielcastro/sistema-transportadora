@@ -411,6 +411,8 @@ model notas_fiscais {
   @@index([tenant_id, numero])
   @@index([tenant_id, chave_acesso])
   @@index([caminhao_id])
+  // Várias notas sem chave (NULL) continuam válidas no PostgreSQL.
+  @@unique([tenant_id, chave_acesso], map: "notas_fiscais_tenant_chave_uidx")
 }
 
 model nota_itens {

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useId, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
 import {
@@ -11,7 +11,8 @@ import {
   Alert,
   SearchableSelect,
 } from "../components/ui";
-import { useApiMutation } from "../hooks";
+import { useApiMutation, useDebouncedValue } from "../hooks";
+import Pagination from "../components/Pagination.jsx";
 import { apiFetch, parseApiError } from "../lib/apiClient.js";
 import {
   extractApiArray,
@@ -135,6 +136,9 @@ function FileDropField({
   );
 }
 
+const NOTAS_PAGE_SIZE = 50;
+const PRODUTOS_PAGE_SIZE = 50;
+
 const NotasEstoque = () => {
   const { post, put } = useApiMutation();
   const [tab, setTab] = useState("importar");
@@ -144,7 +148,18 @@ const NotasEstoque = () => {
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [importing, setImporting] = useState(false);
   const [notas, setNotas] = useState([]);
+  const [notasPage, setNotasPage] = useState(1);
+  const [notasTotal, setNotasTotal] = useState(0);
+  const [notasCadastradas, setNotasCadastradas] = useState(0);
+  const [loadingNotas, setLoadingNotas] = useState(false);
+  const [notasTick, setNotasTick] = useState(0);
   const [produtos, setProdutos] = useState([]);
+  const [produtosPage, setProdutosPage] = useState(1);
+  const [produtosTotal, setProdutosTotal] = useState(0);
+  const [produtosTick, setProdutosTick] = useState(0);
+  const [buscaEstoque, setBuscaEstoque] = useState("");
+  const [produtosOpcoes, setProdutosOpcoes] = useState([]);
+  const [buscaProdutoOpcoes, setBuscaProdutoOpcoes] = useState("");
   const [loadingLists, setLoadingLists] = useState(false);
   const [baixa, setBaixa] = useState({
     produto_id: "",
@@ -158,6 +173,9 @@ const NotasEstoque = () => {
   const [previewCaminhaoId, setPreviewCaminhaoId] = useState("");
   const [filtroEstoqueCaminhao, setFiltroEstoqueCaminhao] = useState("");
   const [buscaNotas, setBuscaNotas] = useState("");
+  const debouncedBuscaNotas = useDebouncedValue(buscaNotas, 300);
+  const debouncedBuscaEstoque = useDebouncedValue(buscaEstoque, 300);
+  const debouncedBuscaProdutoOpcoes = useDebouncedValue(buscaProdutoOpcoes, 300);
   const [savingManual, setSavingManual] = useState(false);
   const [notaDetalhe, setNotaDetalhe] = useState(null);
   const [loadingNota, setLoadingNota] = useState(false);
@@ -165,27 +183,145 @@ const NotasEstoque = () => {
   const [savingEdit, setSavingEdit] = useState(false);
 
   const loadLists = useCallback(async () => {
-    setLoadingLists(true);
     try {
-      const [nRes, pRes, cRes] = await Promise.all([
-        apiFetch({ url: "/notas-fiscais?limit=200" }),
-        apiFetch({ url: "/notas-fiscais/produtos?limit=100" }),
-        apiFetch({ url: "/caminhoes?limit=500" }),
-      ]);
-      setNotas(extractApiArray(nRes));
-      setProdutos(extractApiArray(pRes));
+      const cRes = await apiFetch({ url: "/caminhoes?limit=500" });
       setCaminhoes(extractApiArray(cRes));
     } catch (e) {
       const parsed = await parseApiError(e);
       setErro(parsed.message || "Falha ao carregar listas");
-    } finally {
-      setLoadingLists(false);
     }
   }, []);
 
   useEffect(() => {
     loadLists();
   }, [loadLists]);
+
+  const buscaNotasRef = useRef(debouncedBuscaNotas);
+  const estoqueFiltroRef = useRef({
+    termo: debouncedBuscaEstoque,
+    caminhao: filtroEstoqueCaminhao,
+  });
+
+  useEffect(() => {
+    const buscaMudou = buscaNotasRef.current !== debouncedBuscaNotas;
+    if (buscaMudou) {
+      buscaNotasRef.current = debouncedBuscaNotas;
+      if (notasPage !== 1) {
+        setNotasPage(1);
+        return undefined;
+      }
+    }
+
+    let cancelled = false;
+    const termo = debouncedBuscaNotas.trim();
+
+    (async () => {
+      setLoadingNotas(true);
+      try {
+        const params = new URLSearchParams({
+          page: String(notasPage),
+          limit: String(NOTAS_PAGE_SIZE),
+        });
+        if (termo) params.set("termo", termo);
+        const res = await apiFetch({ url: `/notas-fiscais?${params}` });
+        if (cancelled) return;
+        const lista = extractApiArray(res);
+        const total = Number(res?.pagination?.totalItems);
+        const totalNotas = Number.isFinite(total) ? total : lista.length;
+        setNotas(lista);
+        setNotasTotal(totalNotas);
+        if (!termo) setNotasCadastradas(totalNotas);
+      } catch (e) {
+        if (cancelled) return;
+        const parsed = await parseApiError(e);
+        setErro(parsed.message || "Falha ao carregar notas");
+      } finally {
+        if (!cancelled) setLoadingNotas(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [notasPage, debouncedBuscaNotas, notasTick]);
+
+  useEffect(() => {
+    const anterior = estoqueFiltroRef.current;
+    const filtroMudou =
+      anterior.termo !== debouncedBuscaEstoque ||
+      anterior.caminhao !== filtroEstoqueCaminhao;
+    if (filtroMudou) {
+      estoqueFiltroRef.current = {
+        termo: debouncedBuscaEstoque,
+        caminhao: filtroEstoqueCaminhao,
+      };
+      if (produtosPage !== 1) {
+        setProdutosPage(1);
+        return undefined;
+      }
+    }
+
+    let cancelled = false;
+    (async () => {
+      setLoadingLists(true);
+      try {
+        const params = new URLSearchParams({
+          page: String(produtosPage),
+          limit: String(PRODUTOS_PAGE_SIZE),
+        });
+        const termo = debouncedBuscaEstoque.trim();
+        if (termo) params.set("termo", termo);
+        if (filtroEstoqueCaminhao) {
+          params.set("caminhao_id", filtroEstoqueCaminhao);
+          params.set("somente_caminhao", "1");
+        }
+        const res = await apiFetch({ url: `/notas-fiscais/produtos?${params}` });
+        if (cancelled) return;
+        const lista = extractApiArray(res);
+        const total = Number(res?.pagination?.totalItems);
+        setProdutos(lista);
+        setProdutosTotal(Number.isFinite(total) ? total : lista.length);
+      } catch (e) {
+        if (cancelled) return;
+        const parsed = await parseApiError(e);
+        setErro(parsed.message || "Falha ao carregar estoque");
+      } finally {
+        if (!cancelled) setLoadingLists(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [produtosPage, debouncedBuscaEstoque, filtroEstoqueCaminhao, produtosTick]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const params = new URLSearchParams({ limit: "40", page: "1" });
+        const termo = debouncedBuscaProdutoOpcoes.trim();
+        if (termo) params.set("termo", termo);
+        const res = await apiFetch({ url: `/notas-fiscais/produtos?${params}` });
+        if (cancelled) return;
+        const lista = extractApiArray(res);
+        setProdutosOpcoes((prev) => {
+          const selected = prev.find(
+            (p) => String(p.id) === String(baixa.produto_id),
+          );
+          if (selected && !lista.some((p) => p.id === selected.id)) {
+            return [selected, ...lista];
+          }
+          return lista;
+        });
+      } catch {
+        if (!cancelled) setProdutosOpcoes([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedBuscaProdutoOpcoes, baixa.produto_id, produtosTick]);
 
   const handlePreview = async () => {
     setErro("");
@@ -287,11 +423,18 @@ const NotasEstoque = () => {
       setPreviewCaminhaoId("");
       setXmlFile(null);
       setPdfFile(null);
+      setBuscaNotas("");
+      setNotasPage(1);
+      setNotasTick((n) => n + 1);
+      setProdutosTick((n) => n + 1);
       await loadLists();
       setTab("estoque");
     } catch (e) {
       const parsed = await parseApiError(e);
       setErro(parsed.message || "Falha na importação");
+      if (parsed.notaId) {
+        await abrirNotaJaCadastrada(parsed);
+      }
     } finally {
       setImporting(false);
     }
@@ -307,18 +450,37 @@ const NotasEstoque = () => {
         skipSuccessToast: true,
       });
       setMsg("Nota cadastrada e estoque atualizado.");
+      setBuscaNotas("");
+      setNotasPage(1);
+      setNotasTick((n) => n + 1);
+      setProdutosTick((n) => n + 1);
       await loadLists();
       setTab("notas");
     } catch (err) {
       const parsed = await parseApiError(err);
       setErro(parsed.message || "Falha no cadastro manual");
+      if (parsed.notaId) {
+        await abrirNotaJaCadastrada(parsed);
+      }
     } finally {
       setSavingManual(false);
     }
   };
 
-  const handleAbrirNota = async (notaId, { edit = false } = {}) => {
-    setErro("");
+  const abrirNotaJaCadastrada = async (parsed) => {
+    setTab("notas");
+    const numero = String(parsed?.notaNumero || "").split("/")[0].trim();
+    if (numero) {
+      setBuscaNotas(numero);
+      setNotasPage(1);
+    }
+    if (parsed?.notaId) {
+      await handleAbrirNota(parsed.notaId, { keepError: true });
+    }
+  };
+
+  const handleAbrirNota = async (notaId, { edit = false, keepError = false } = {}) => {
+    if (!keepError) setErro("");
     setLoadingNota(true);
     setNotaDetalhe(null);
     setEditingNota(false);
@@ -348,6 +510,8 @@ const NotasEstoque = () => {
       setNotaDetalhe(extractApiData(res) || notaDetalhe);
       setEditingNota(false);
       setMsg("Nota atualizada e estoque reconciliado.");
+      setNotasTick((n) => n + 1);
+      setProdutosTick((n) => n + 1);
       await loadLists();
     } catch (err) {
       const parsed = await parseApiError(err);
@@ -376,6 +540,7 @@ const NotasEstoque = () => {
       );
       setMsg("Baixa registrada.");
       setBaixa({ produto_id: "", quantidade: "", motivo: "", caminhao_id: "" });
+      setProdutosTick((n) => n + 1);
       await loadLists();
     } catch (err) {
       const parsed = await parseApiError(err);
@@ -383,7 +548,7 @@ const NotasEstoque = () => {
     }
   };
 
-  const produtoOptions = produtos.map((p) => ({
+  const produtoOptions = produtosOpcoes.map((p) => ({
     value: String(p.id),
     label: `${p.descricao} — saldo ${Number(p.saldo)} ${p.unidade || ""}${
       p.preco_custo != null ? ` · ${formatMoney(p.preco_custo)}` : ""
@@ -392,36 +557,6 @@ const NotasEstoque = () => {
   }));
 
   const caminhaoOptions = formatCaminhaoOptions(caminhoes);
-
-  const produtosFiltrados = useMemo(() => {
-    if (!filtroEstoqueCaminhao) return produtos;
-    return produtos.filter((p) =>
-      (p.destinos || []).some(
-        (d) => String(d.caminhao_id) === String(filtroEstoqueCaminhao),
-      ),
-    );
-  }, [produtos, filtroEstoqueCaminhao]);
-
-  const notasFiltradas = useMemo(() => {
-    const q = buscaNotas.trim().toLowerCase();
-    if (!q) return notas;
-    return notas.filter((n) => {
-      const numero = [n.numero, n.serie].filter(Boolean).join("/");
-      const origem = n.origem === "manual" ? "manual" : "xml";
-      const haystack = [
-        numero,
-        n.emitente,
-        n.cnpj_emitente,
-        n.chave_acesso,
-        origem,
-        n.observacao,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return haystack.includes(q);
-    });
-  }, [notas, buscaNotas]);
 
   const formatDestinos = (destinos) => {
     if (!Array.isArray(destinos) || !destinos.length) return "—";
@@ -469,8 +604,8 @@ const NotasEstoque = () => {
         tabs={[
           { id: "importar", label: "Importar XML" },
           { id: "manual", label: "Cadastro manual" },
-          { id: "estoque", label: `Estoque (${produtos.length})` },
-          { id: "notas", label: `Notas (${notas.length})` },
+          { id: "estoque", label: `Estoque (${produtosTotal})` },
+          { id: "notas", label: `Notas (${notasCadastradas})` },
         ]}
         activeTab={tab}
         onChange={setTab}
@@ -706,7 +841,8 @@ const NotasEstoque = () => {
       {tab === "manual" && (
         <NotaManualForm
           caminhoes={caminhoes}
-          produtos={produtos}
+          produtos={produtosOpcoes}
+          onSearchProdutos={setBuscaProdutoOpcoes}
           submitting={savingManual}
           onSubmit={handleManual}
         />
@@ -733,6 +869,7 @@ const NotasEstoque = () => {
                 onChange={(value) =>
                   setBaixa((p) => ({ ...p, produto_id: value }))
                 }
+                onQueryChange={setBuscaProdutoOpcoes}
                 options={produtoOptions}
                 placeholder="Digite o produto..."
                 required
@@ -785,16 +922,25 @@ const NotasEstoque = () => {
                   (pela NF-e ou pela baixa).
                 </p>
               </div>
-              <SearchableSelect
-                label="Filtrar por caminhão"
-                value={filtroEstoqueCaminhao}
-                onChange={setFiltroEstoqueCaminhao}
-                options={caminhaoOptions}
-                placeholder="Todos os caminhões…"
-                allowEmpty
-                emptyLabel="Todos os caminhões"
-                className="mb-0 w-full max-w-xs"
-              />
+              <div className="flex w-full max-w-xl flex-col gap-3 sm:flex-row sm:items-end">
+                <FormField
+                  label="Buscar produto"
+                  value={buscaEstoque}
+                  onChange={(e) => setBuscaEstoque(e.target.value)}
+                  placeholder="Código ou descrição…"
+                  className="mb-0 w-full"
+                />
+                <SearchableSelect
+                  label="Filtrar por caminhão"
+                  value={filtroEstoqueCaminhao}
+                  onChange={setFiltroEstoqueCaminhao}
+                  options={caminhaoOptions}
+                  placeholder="Todos os caminhões…"
+                  allowEmpty
+                  emptyLabel="Todos os caminhões"
+                  className="mb-0 w-full"
+                />
+              </div>
             </div>
             {loadingLists ? (
               <LoadingSpinner />
@@ -812,7 +958,7 @@ const NotasEstoque = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {produtosFiltrados.map((p) => (
+                    {produtos.map((p) => (
                       <tr key={p.id} className="border-t border-border">
                         <td className="px-3 py-2.5">{p.codigo || "—"}</td>
                         <td className="px-3 py-2.5">{p.descricao}</td>
@@ -828,20 +974,35 @@ const NotasEstoque = () => {
                         </td>
                       </tr>
                     ))}
-                    {!produtosFiltrados.length && (
+                    {!produtos.length && (
                       <tr>
                         <td
                           colSpan={6}
                           className="px-3 py-8 text-center text-text-secondary"
                         >
-                          {filtroEstoqueCaminhao
-                            ? "Nenhuma peça ligada a este caminhão. Importe a NF-e com a placa selecionada."
+                          {debouncedBuscaEstoque.trim() || filtroEstoqueCaminhao
+                            ? "Nenhum produto encontrado com esse filtro."
                             : "Nenhum produto ainda. Importe uma NF-e na aba Importar."}
                         </td>
                       </tr>
                     )}
                   </tbody>
                 </table>
+              </div>
+            )}
+            {!loadingLists && (
+              <div className="mt-3 flex flex-col items-center gap-1">
+                <p className="text-sm text-text-secondary">
+                  {produtosTotal.toLocaleString("pt-BR")} produto(s)
+                </p>
+                <Pagination
+                  currentPage={produtosPage}
+                  totalPages={Math.max(
+                    1,
+                    Math.ceil(produtosTotal / PRODUTOS_PAGE_SIZE),
+                  )}
+                  onPageChange={setProdutosPage}
+                />
               </div>
             )}
           </Card>
@@ -856,7 +1017,7 @@ const NotasEstoque = () => {
                 Notas importadas
               </h3>
               <p className="text-sm text-text-secondary">
-                Clique em uma linha ou em Ver para abrir itens e dados completos.
+                A busca olha todas as notas cadastradas, não só as desta página.
               </p>
             </div>
             <FormField
@@ -867,7 +1028,7 @@ const NotasEstoque = () => {
               className="mb-0 w-full max-w-xs"
             />
           </div>
-          {loadingLists ? (
+          {loadingNotas ? (
             <LoadingSpinner />
           ) : (
             <div className="overflow-x-auto rounded-lg border border-border">
@@ -884,7 +1045,7 @@ const NotasEstoque = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {notasFiltradas.map((n) => (
+                  {notas.map((n) => (
                     <tr
                       key={n.id}
                       className="border-t border-border hover:bg-gray-50/80 cursor-pointer"
@@ -935,13 +1096,13 @@ const NotasEstoque = () => {
                       </td>
                     </tr>
                   ))}
-                  {!notasFiltradas.length && (
+                  {!notas.length && (
                     <tr>
                       <td
                         colSpan={7}
                         className="px-3 py-8 text-center text-text-secondary"
                       >
-                        {buscaNotas.trim()
+                        {debouncedBuscaNotas.trim()
                           ? "Nenhuma nota encontrada com esse filtro."
                           : "Nenhuma nota importada ainda."}
                       </td>
@@ -949,6 +1110,20 @@ const NotasEstoque = () => {
                   )}
                 </tbody>
               </table>
+            </div>
+          )}
+          {!loadingNotas && (
+            <div className="mt-3 flex flex-col items-center gap-1">
+              <p className="text-sm text-text-secondary">
+                {debouncedBuscaNotas.trim()
+                  ? `${notasTotal.toLocaleString("pt-BR")} encontrada(s) para “${debouncedBuscaNotas.trim()}” · ${notasCadastradas.toLocaleString("pt-BR")} cadastrada(s)`
+                  : `${notasCadastradas.toLocaleString("pt-BR")} nota(s) cadastrada(s)`}
+              </p>
+              <Pagination
+                currentPage={notasPage}
+                totalPages={Math.max(1, Math.ceil(notasTotal / NOTAS_PAGE_SIZE))}
+                onPageChange={setNotasPage}
+              />
             </div>
           )}
         </Card>
@@ -969,7 +1144,8 @@ const NotasEstoque = () => {
         onSaveEdit={handleSalvarEdicao}
         savingEdit={savingEdit}
         caminhoes={caminhoes}
-        produtos={produtos}
+        produtos={produtosOpcoes}
+        onSearchProdutos={setBuscaProdutoOpcoes}
       />
     </PageLayout>
   );

@@ -29,6 +29,23 @@ const formatP2002Message = (meta) => {
   const labels = fields.map(
     (f) => prismaUniqueFieldLabels[f] || String(f).replace(/_/g, " "),
   );
+  const blob = fields.join(" ");
+  if (/chave_acesso|tenant_chave/.test(blob)) {
+    return "Esta nota já está cadastrada (mesma chave de acesso).";
+  }
+  if (/tenant_numero/.test(blob)) {
+    return "Já existe uma nota com este número, série e CNPJ.";
+  }
+  const campoCaminhao = fields.some(
+    (f) =>
+      f === "placa" ||
+      f.startsWith("placa_") ||
+      f.startsWith("numero_c") ||
+      f === "numero_cavalo",
+  );
+  if (!campoCaminhao) {
+    return `Registro duplicado: já existe outro cadastro com o mesmo valor (${labels.join(", ")}).`;
+  }
   return (
     `Registro duplicado: o valor informado já existe em outro caminhão (${labels.join(", ")}). ` +
     `Abra a lista de caminhões, procure por essa placa ou número e ajuste o outro cadastro primeiro.`
@@ -225,6 +242,8 @@ export const errorHandler = (err, req, res, _next) => {
       success: false,
       error: err.message || "Conflito",
       ...(err.code ? { code: err.code } : {}),
+      ...(err.notaId != null ? { nota_id: err.notaId } : {}),
+      ...(err.notaNumero ? { nota_numero: err.notaNumero } : {}),
     });
   }
 

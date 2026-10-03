@@ -4,6 +4,7 @@ import { requireTenantId } from "../utils/tenant.js";
 import {
   notaManualSchema,
   notaAtualizarSchema,
+  notaImportSchema,
 } from "../schemas/notaFiscalSchema.js";
 import { normalizeDatesForDb } from "../utils/dates.js";
 
@@ -65,7 +66,12 @@ export const notasFiscaisController = {
     const tenantId = requireTenantId(req);
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
-    const resultado = await NotaFiscalService.listar(tenantId, { page, limit });
+    const termo = typeof req.query.termo === "string" ? req.query.termo : "";
+    const resultado = await NotaFiscalService.listar(tenantId, {
+      page,
+      limit,
+      termo,
+    });
     res.json({
       success: true,
       data: resultado.data,
@@ -101,14 +107,21 @@ export const notasFiscaisController = {
     const xmlFile = req.files?.xml?.[0];
     const pdfFile = req.files?.pdf?.[0];
 
-    let parsed;
+    let raw;
     if (req.body?.payload) {
-      parsed =
-        typeof req.body.payload === "string"
-          ? JSON.parse(req.body.payload)
-          : req.body.payload;
+      try {
+        raw =
+          typeof req.body.payload === "string"
+            ? JSON.parse(req.body.payload)
+            : req.body.payload;
+      } catch {
+        return res.status(400).json({
+          success: false,
+          error: "Payload da nota inválido",
+        });
+      }
     } else if (xmlFile?.buffer) {
-      parsed = await NotaFiscalService.previewFromXml(
+      raw = await NotaFiscalService.previewFromXml(
         xmlFile.buffer.toString("utf8"),
       );
     } else {
@@ -118,7 +131,16 @@ export const notasFiscaisController = {
       });
     }
 
-    const nota = await NotaFiscalService.confirmarImportacao(tenantId, parsed);
+    if (Array.isArray(raw?.itens)) {
+      raw = {
+        ...raw,
+        itens: raw.itens.filter((item) => Number(item?.quantidade) > 0),
+      };
+    }
+    const parsed = notaImportSchema.parse(raw || {});
+    const payload = buildNotaPayload(parsed, { origem: "xml" });
+
+    const nota = await NotaFiscalService.confirmarImportacao(tenantId, payload);
 
     if (xmlFile || pdfFile) {
       await NotaFiscalService.salvarArquivos(tenantId, nota.id, {
@@ -170,12 +192,15 @@ export const notasFiscaisController = {
   listarProdutos: catchAsync(async (req, res) => {
     const tenantId = requireTenantId(req);
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
+    const limit = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 50));
     const resultado = await EstoqueService.listarProdutos(tenantId, {
       page,
       limit,
       termo: req.query.termo,
       caminhao_id: req.query.caminhao_id,
+      somente_caminhao:
+        req.query.somente_caminhao === "1" ||
+        req.query.somente_caminhao === "true",
     });
     res.json({
       success: true,

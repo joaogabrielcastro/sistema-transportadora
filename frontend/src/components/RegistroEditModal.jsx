@@ -4,10 +4,8 @@ import { Button, FormField } from "./ui";
 import { useApiMutation } from "../hooks";
 import { apiFetch } from "../lib/apiClient.js";
 import { isCombustivelTipo, tiposGastosFinanceiros, classifyTipoGastoById } from "../utils/tipoGastoUtils.js";
-import { detalhesFromRaw } from "../utils/gastoDetalhes.js";
-import GastoDetalhesFields, {
-  payloadControleGasto,
-} from "./gasto/GastoDetalhesFields.jsx";
+import { detalhesFromRaw, payloadControleGasto } from "../utils/gastoDetalhes.js";
+import GastoDetalhesFields from "./gasto/GastoDetalhesFields.jsx";
 
 /** Converte DATE da API para yyyy-MM-dd sem deslocar fuso. */
 function toInputDate(value) {

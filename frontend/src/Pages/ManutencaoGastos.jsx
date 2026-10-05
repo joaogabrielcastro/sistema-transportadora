@@ -29,11 +29,10 @@ import { TableSkeleton } from "../components/Skeleton.jsx";
 import { isCombustivelTipo, tiposGastosFinanceiros, classifyTipoGastoById } from "../utils/tipoGastoUtils.js";
 import {
   defaultStatusForKind,
+  payloadControleGasto,
   STATUS_PAGAMENTO_LABEL,
 } from "../utils/gastoDetalhes.js";
-import GastoDetalhesFields, {
-  payloadControleGasto,
-} from "../components/gasto/GastoDetalhesFields.jsx";
+import GastoDetalhesFields from "../components/gasto/GastoDetalhesFields.jsx";
 import CombustivelXmlImport from "../components/gasto/CombustivelXmlImport.jsx";
 import { formatDate } from "../utils/formatters.js";
 import { useAuth } from "../context/AuthContext.jsx";

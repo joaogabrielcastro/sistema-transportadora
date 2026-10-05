@@ -216,4 +216,15 @@ export function defaultStatusForKind(kind) {
     : "pago";
 }
 
+/** Campos de controle (motorista, status, vencimento, detalhes) para create/update. */
+export function payloadControleGasto(form, kind) {
+  const status = form.status_pagamento || defaultStatusForKind(kind);
+  return {
+    motorista_id: form.motorista_id ? Number(form.motorista_id) : null,
+    status_pagamento: status || null,
+    data_vencimento: form.data_vencimento || null,
+    detalhes: compactDetalhes(form.detalhes),
+  };
+}
+
 export { classifyTipoGasto, classifyTipoGastoById };

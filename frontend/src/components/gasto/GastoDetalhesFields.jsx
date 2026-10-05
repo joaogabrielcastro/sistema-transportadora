@@ -3,7 +3,6 @@ import PropTypes from "prop-types";
 import { FormField } from "../ui";
 import {
   camposDetalheGasto,
-  compactDetalhes,
   defaultStatusForKind,
   STATUS_PAGAMENTO_OPTIONS,
   tituloDetalheGasto,
@@ -131,14 +130,3 @@ GastoDetalhesFields.propTypes = {
   onChange: PropTypes.func,
   className: PropTypes.string,
 };
-
-export function payloadControleGasto(form, kind) {
-  const status =
-    form.status_pagamento || defaultStatusForKind(kind);
-  return {
-    motorista_id: form.motorista_id ? Number(form.motorista_id) : null,
-    status_pagamento: status || null,
-    data_vencimento: form.data_vencimento || null,
-    detalhes: compactDetalhes(form.detalhes),
-  };
-}

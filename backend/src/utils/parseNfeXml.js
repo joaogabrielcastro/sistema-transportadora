@@ -250,13 +250,19 @@ export function parseNfeXml(xmlContent) {
   const placasUnicas = [...new Set(placas_sugeridas.filter(Boolean))];
   const itensLimpos = itens.map(({ _ped, ...rest }) => rest);
 
+  // Preferir o calendário do XML (dhEmi/dEmi), não o Date em UTC —
+  // evita shift de dia e mantém o formato esperado pelo schema (YYYY-MM-DD).
+  const ymd = String(dataRaw || "").match(/^(\d{4}-\d{2}-\d{2})/);
+  const data_emissao_ymd = ymd ? ymd[1] : null;
+  const dataAsDate = parseDate(dataRaw);
+
   const parsed = {
     chave_acesso: chave_acesso ? chave_acesso.slice(0, 44) : null,
     numero: String(numero).slice(0, 20),
     serie: serie ? String(serie).slice(0, 10) : null,
     emitente: emitente ? emitente.slice(0, 255) : null,
     cnpj_emitente: cnpj_emitente ? cnpj_emitente.slice(0, 18) : null,
-    data_emissao: parseDate(dataRaw),
+    data_emissao: data_emissao_ymd || (dataAsDate ? dataAsDate.toISOString().slice(0, 10) : null),
     valor_total,
     valor_desconto,
     valor_frete,
@@ -274,8 +280,7 @@ export function parseNfeXml(xmlContent) {
   parsed.produto_predominante = (itensLimpos[0]?.descricao || "").slice(0, 60) || null;
   parsed.quantidade_litros = litrosDoCombustivel(parsed);
   parsed.preco_litro = precoLitroDoCombustivel(parsed);
-  const ymd = String(dataRaw || "").match(/^(\d{4}-\d{2}-\d{2})/);
-  parsed.data_emissao_ymd = ymd ? ymd[1] : null;
+  parsed.data_emissao_ymd = data_emissao_ymd;
   return parsed;
 }
 

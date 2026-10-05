@@ -36,6 +36,27 @@ test("notaImportSchema aceita XML sem emitente", () => {
   assert.equal(parsed.emitente, null);
 });
 
+test("notaImportSchema aceita data_emissao ISO da NF-e (round-trip do preview)", () => {
+  const parsed = notaImportSchema.parse({
+    numero: "2467560",
+    serie: "3",
+    emitente: "FORNECEDOR NF-e",
+    data_emissao: "2026-10-05T10:30:00-03:00",
+    itens: [{ descricao: "PEÇA", quantidade: 1, valor_unitario: 100 }],
+  });
+  assert.equal(parsed.data_emissao, "2026-10-05");
+});
+
+test("notaImportSchema aceita data_emissao ISO UTC serializada de Date", () => {
+  const parsed = notaImportSchema.parse({
+    numero: "1",
+    emitente: "FORNECEDOR",
+    data_emissao: "2026-08-05T13:00:00.000Z",
+    itens: [{ descricao: "FILTRO", quantidade: 1 }],
+  });
+  assert.equal(parsed.data_emissao, "2026-08-05");
+});
+
 test("notaImportSchema rejeita chave incompleta", () => {
   assert.throws(
     () =>

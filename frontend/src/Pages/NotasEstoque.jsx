@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
 import {
@@ -141,23 +142,32 @@ const PRODUTOS_PAGE_SIZE = 50;
 
 const NotasEstoque = () => {
   const { post, put } = useApiMutation();
-  const [tab, setTab] = useState("importar");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const validTabs = ["importar", "manual", "estoque", "notas"];
+  const initialTab = validTabs.includes(searchParams.get("aba"))
+    ? searchParams.get("aba")
+    : "importar";
+  const [tab, setTab] = useState(initialTab);
   const [xmlFile, setXmlFile] = useState(null);
   const [pdfFile, setPdfFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [importing, setImporting] = useState(false);
   const [notas, setNotas] = useState([]);
-  const [notasPage, setNotasPage] = useState(1);
+  const [notasPage, setNotasPage] = useState(
+    Math.max(1, Number(searchParams.get("pagina_notas")) || 1),
+  );
   const [notasTotal, setNotasTotal] = useState(0);
   const [notasCadastradas, setNotasCadastradas] = useState(0);
   const [loadingNotas, setLoadingNotas] = useState(false);
   const [notasTick, setNotasTick] = useState(0);
   const [produtos, setProdutos] = useState([]);
-  const [produtosPage, setProdutosPage] = useState(1);
+  const [produtosPage, setProdutosPage] = useState(
+    Math.max(1, Number(searchParams.get("pagina_estoque")) || 1),
+  );
   const [produtosTotal, setProdutosTotal] = useState(0);
   const [produtosTick, setProdutosTick] = useState(0);
-  const [buscaEstoque, setBuscaEstoque] = useState("");
+  const [buscaEstoque, setBuscaEstoque] = useState(searchParams.get("produto") || "");
   const [produtosOpcoes, setProdutosOpcoes] = useState([]);
   const [buscaProdutoOpcoes, setBuscaProdutoOpcoes] = useState("");
   const [loadingLists, setLoadingLists] = useState(false);
@@ -171,8 +181,8 @@ const NotasEstoque = () => {
   const [erro, setErro] = useState("");
   const [caminhoes, setCaminhoes] = useState([]);
   const [previewCaminhaoId, setPreviewCaminhaoId] = useState("");
-  const [filtroEstoqueCaminhao, setFiltroEstoqueCaminhao] = useState("");
-  const [buscaNotas, setBuscaNotas] = useState("");
+  const [filtroEstoqueCaminhao, setFiltroEstoqueCaminhao] = useState(searchParams.get("caminhao") || "");
+  const [buscaNotas, setBuscaNotas] = useState(searchParams.get("nota") || "");
   const debouncedBuscaNotas = useDebouncedValue(buscaNotas, 300);
   const debouncedBuscaEstoque = useDebouncedValue(buscaEstoque, 300);
   const debouncedBuscaProdutoOpcoes = useDebouncedValue(buscaProdutoOpcoes, 300);
@@ -181,6 +191,26 @@ const NotasEstoque = () => {
   const [loadingNota, setLoadingNota] = useState(false);
   const [editingNota, setEditingNota] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    if (tab !== "importar") next.set("aba", tab);
+    else next.delete("aba");
+    const values = {
+      nota: debouncedBuscaNotas.trim(),
+      produto: debouncedBuscaEstoque.trim(),
+      caminhao: filtroEstoqueCaminhao,
+      pagina_notas: notasPage > 1 ? String(notasPage) : "",
+      pagina_estoque: produtosPage > 1 ? String(produtosPage) : "",
+    };
+    Object.entries(values).forEach(([key, value]) => {
+      if (value) next.set(key, value);
+      else next.delete(key);
+    });
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [debouncedBuscaEstoque, debouncedBuscaNotas, filtroEstoqueCaminhao, notasPage, produtosPage, searchParams, setSearchParams, tab]);
 
   const loadLists = useCallback(async () => {
     try {
@@ -613,7 +643,7 @@ const NotasEstoque = () => {
 
       {tab === "importar" && (
         <div className="space-y-6">
-          <Card className="p-6 space-y-5">
+          <Card bodyClassName="space-y-5">
             <div>
               <h3 className="text-base font-semibold text-text-primary">
                 Arquivos da nota
@@ -671,7 +701,7 @@ const NotasEstoque = () => {
           </Card>
 
           {preview && (
-            <Card className="p-6 space-y-5">
+            <Card bodyClassName="space-y-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h3 className="text-base font-semibold text-text-primary">
@@ -850,7 +880,7 @@ const NotasEstoque = () => {
 
       {tab === "estoque" && (
         <div className="space-y-6">
-          <Card className="p-6 space-y-4">
+          <Card bodyClassName="space-y-4">
             <div>
               <h3 className="text-base font-semibold text-text-primary">
                 Baixa de estoque
@@ -911,7 +941,7 @@ const NotasEstoque = () => {
             </form>
           </Card>
 
-          <Card className="p-6">
+          <Card>
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
               <div>
                 <h3 className="text-base font-semibold text-text-primary">
@@ -1010,7 +1040,7 @@ const NotasEstoque = () => {
       )}
 
       {tab === "notas" && (
-        <Card className="p-6">
+        <Card>
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
               <h3 className="text-base font-semibold text-text-primary">

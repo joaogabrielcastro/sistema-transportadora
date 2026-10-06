@@ -4,8 +4,17 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    @apply bg-background;
+  }
+
   body {
-    @apply bg-background text-text-primary font-sans antialiased;
+    @apply m-0 min-w-[320px] bg-background text-text-primary font-sans antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
   h1,
@@ -20,6 +29,25 @@
 
 @layer components {
   .card {
-    @apply bg-white rounded-xl border border-border shadow-card;
+    @apply rounded-xl border border-border bg-white shadow-card;
+  }
+
+  .control {
+    @apply h-10 rounded-lg border border-border bg-white px-3 text-sm text-text-primary outline-none transition-colors placeholder:text-text-light focus:border-secondary focus:ring-2 focus:ring-cyan-100;
+  }
+
+  .section-label {
+    @apply text-xs font-semibold uppercase tracking-[0.08em] text-text-secondary;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

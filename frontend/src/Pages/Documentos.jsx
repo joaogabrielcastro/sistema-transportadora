@@ -1,9 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import PageLayout from "../components/layout/PageLayout.jsx";
-import { Alert, Button, Card, PageHeader, StatCard } from "../components/ui";
+import {
+  Alert, Button, Card, DataTable, DataTableBody, DataTableHead,
+  DataTableRow, DataTableTd, DataTableTh, PageHeader, StatCard, StatusBadge,
+} from "../components/ui";
 import EmptyState from "../components/EmptyState.jsx";
+import { TableSkeleton } from "../components/Skeleton.jsx";
 import { apiFetch, parseApiError } from "../lib/apiClient.js";
+import { formatDate } from "../utils/formatters.js";
 
 const STATUS_LABEL = {
   vencido: "Vencido",
@@ -79,13 +84,14 @@ export default function Documentos() {
           </div>
         )}
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" aria-label="Filtrar documentos">
           {FILTERS.map((f) => (
             <button
               key={f.id}
               type="button"
               onClick={() => setFilter(f.id)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+              aria-pressed={filter === f.id}
+              className={`min-h-10 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
                 filter === f.id
                   ? "bg-secondary text-white border-secondary"
                   : "bg-white text-slate-700 border-border hover:border-secondary/40"
@@ -97,7 +103,7 @@ export default function Documentos() {
         </div>
 
         {loading ? (
-          <p className="text-sm text-slate-500">Carregando…</p>
+          <TableSkeleton rows={5} columns={5} />
         ) : error ? null : items.length === 0 ? (
           <EmptyState
             title={
@@ -117,57 +123,62 @@ export default function Documentos() {
             }
           />
         ) : (
-          <Card>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="text-left text-slate-600 border-b">
-                  <tr>
-                    <th className="py-2 pr-3">Placa</th>
-                    <th className="py-2 pr-3">Documento</th>
-                    <th className="py-2 pr-3">Tipo</th>
-                    <th className="py-2 pr-3">Validade</th>
-                    <th className="py-2">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
+          <Card noPadding>
+            <div className="divide-y divide-border sm:hidden">
+              {items.map((doc) => (
+                <div key={doc.id} className="space-y-3 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="break-words font-semibold text-text-primary">{doc.nome_original}</p>
+                      <p className="mt-1 text-sm text-text-light">{doc.tipo_documento || "—"}</p>
+                    </div>
+                    <StatusBadge status={STATUS_LABEL[doc.status] || doc.status} />
+                  </div>
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    {doc.placa ? (
+                      <Link to={`/caminhao/${doc.placa}`} className="font-mono font-semibold tracking-wide text-secondary">
+                        {doc.placa}
+                      </Link>
+                    ) : <span>—</span>}
+                    <span className="whitespace-nowrap text-text-light">Validade: {formatDate(doc.validade_em) || "—"}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden sm:block">
+            <DataTable fixed={false}>
+                <DataTableHead>
+                  <DataTableRow>
+                    <DataTableTh>Placa</DataTableTh>
+                    <DataTableTh>Documento</DataTableTh>
+                    <DataTableTh>Tipo</DataTableTh>
+                    <DataTableTh>Validade</DataTableTh>
+                    <DataTableTh>Status</DataTableTh>
+                  </DataTableRow>
+                </DataTableHead>
+                <DataTableBody>
                   {items.map((doc) => (
-                    <tr key={doc.id} className="border-t border-border">
-                      <td className="py-2.5 pr-3">
+                    <DataTableRow key={doc.id}>
+                      <DataTableTd>
                         {doc.placa ? (
                           <Link
                             to={`/caminhao/${doc.placa}`}
-                            className="text-secondary font-medium"
+                            className="font-mono font-semibold tracking-wide text-secondary hover:underline"
                           >
                             {doc.placa}
                           </Link>
                         ) : (
                           "—"
                         )}
-                      </td>
-                      <td className="py-2.5 pr-3">{doc.nome_original}</td>
-                      <td className="py-2.5 pr-3">{doc.tipo_documento || "—"}</td>
-                      <td className="py-2.5 pr-3">
-                        {doc.validade_em
-                          ? String(doc.validade_em).slice(0, 10)
-                          : "—"}
-                      </td>
-                      <td className="py-2.5">
-                        <span
-                          className={`inline-flex px-2 py-0.5 rounded text-xs font-semibold ${
-                            doc.status === "vencido" || doc.status === "critico"
-                              ? "bg-red-50 text-red-700"
-                              : doc.status === "atencao"
-                                ? "bg-amber-50 text-amber-800"
-                                : "bg-slate-100 text-slate-700"
-                          }`}
-                        >
-                          {STATUS_LABEL[doc.status] || doc.status}
-                        </span>
-                      </td>
-                    </tr>
+                      </DataTableTd>
+                      <DataTableTd className="font-medium">{doc.nome_original}</DataTableTd>
+                      <DataTableTd>{doc.tipo_documento || "—"}</DataTableTd>
+                      <DataTableTd className="whitespace-nowrap">{formatDate(doc.validade_em) || "—"}</DataTableTd>
+                      <DataTableTd><StatusBadge status={STATUS_LABEL[doc.status] || doc.status} /></DataTableTd>
+                    </DataTableRow>
                   ))}
-                </tbody>
-              </table>
+                </DataTableBody>
+            </DataTable>
             </div>
           </Card>
         )}

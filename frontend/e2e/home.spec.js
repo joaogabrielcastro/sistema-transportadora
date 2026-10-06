@@ -203,4 +203,29 @@ test.describe("Home — busca de caminhões", () => {
     await expect(page.getByRole("heading", { name: "Frota recente" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 3, name: "XYZ9Z99" })).toBeVisible();
   });
+
+  test("preserva busca e filtro na URL", async ({ page }) => {
+    await page.goto("/");
+    await page.getByPlaceholder("Buscar por placa, motorista ou modelo...").fill("ABC1");
+    await page.waitForRequest((req) => req.url().includes("/api/caminhoes/search"));
+    await page.getByRole("button", { name: "Trucks" }).click();
+
+    await expect(page).toHaveURL(/busca=ABC1/);
+    await expect(page).toHaveURL(/tipo=truck/);
+  });
+
+  test("menu móvel abre e fecha sem rolagem horizontal", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+
+    await page.getByRole("button", { name: "Abrir menu" }).click();
+    await expect(page.getByRole("navigation", { name: "Menu principal" })).toBeVisible();
+    await page.getByRole("button", { name: "Fechar menu" }).first().click();
+    await expect(page.getByRole("button", { name: "Abrir menu" })).toBeVisible();
+
+    const hasHorizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    );
+    expect(hasHorizontalOverflow).toBe(false);
+  });
 });

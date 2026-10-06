@@ -3,7 +3,8 @@ import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { PERMISSIONS, userHasPermission } from "../utils/permissions.js";
 import PageLayout from "../components/layout/PageLayout.jsx";
-import { Alert, Button, FormField, PageHeader } from "../components/ui";
+import { Alert, Button, Card, FormField, PageHeader } from "../components/ui";
+import { CardSkeleton } from "../components/Skeleton.jsx";
 import { apiFetch, parseApiError } from "../lib/apiClient.js";
 import {
   formatQuotaUsage,
@@ -131,13 +132,10 @@ export default function Empresa() {
       {success && <Alert type="success" message={success} />}
 
       {loading ? (
-        <p className="text-sm text-text-secondary">Carregando…</p>
+        <CardSkeleton lines={5} />
       ) : (
         <>
-          <section className="bg-white border border-border rounded-2xl shadow-card p-5 sm:p-6">
-            <h2 className="text-lg font-semibold text-text-primary mb-1">
-              Dados da empresa
-            </h2>
+          <Card title="Dados da empresa">
             <p className="text-sm text-text-secondary mb-4">
               Identificador: <code className="text-xs">{settings?.slug}</code>
               {settings?.criadoEm
@@ -169,10 +167,10 @@ export default function Empresa() {
                 placeholder="5548999999999"
                 helperText="Número com DDI, só dígitos. Usado em resumo e ordem de coleta, se o WhatsApp estiver configurado."
               />
-              <label className="flex items-start gap-2 text-sm text-text-secondary cursor-pointer">
+              <label className="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg border border-border bg-slate-50 px-3 text-sm text-text-secondary">
                 <input
                   type="checkbox"
-                  className="mt-0.5 rounded border-border"
+                  className="h-4 w-4 rounded border-border text-secondary focus:ring-secondary"
                   checked={weeklyDigestEnabled}
                   onChange={(e) => setWeeklyDigestEnabled(e.target.checked)}
                 />
@@ -182,12 +180,9 @@ export default function Empresa() {
                 Salvar
               </Button>
             </form>
-          </section>
+          </Card>
 
-          <section className="bg-white border border-border rounded-2xl shadow-card p-5 sm:p-6">
-            <h2 className="text-lg font-semibold text-text-primary mb-1">
-              Plano e uso
-            </h2>
+          <Card title="Plano e uso">
             <p className="text-sm text-text-secondary mb-3">
               {settings?.billingExempt
                 ? "Esta empresa está isenta de cobrança."
@@ -235,7 +230,7 @@ export default function Empresa() {
               {legalContactLabel()}. Encerrar a conta abaixo desativa o acesso;
               não apaga automaticamente o histórico da frota.
             </p>
-          </section>
+          </Card>
 
           {settings?.canClose ? (
             <section className="bg-white border border-red-200 rounded-2xl shadow-card p-5 sm:p-6">

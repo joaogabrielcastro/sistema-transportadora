@@ -1,12 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import PageLayout from "../components/layout/PageLayout.jsx";
-import { Alert, Button, Card, FormField, PageHeader } from "../components/ui";
+import {
+  Alert, Button, Card, DataTable, DataTableBody, DataTableHead, DataTableRow,
+  DataTableTd, DataTableTh, FormField, PageHeader, TableRowActions,
+} from "../components/ui";
 import EmptyState from "../components/EmptyState.jsx";
+import { TableSkeleton } from "../components/Skeleton.jsx";
 import { apiFetch, parseApiError } from "../lib/apiClient.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { PERMISSIONS, userHasPermission } from "../utils/permissions.js";
 import { FIELD_LIMITS } from "../utils/fieldLimits.js";
+import { formatDate } from "../utils/formatters.js";
 
 const emptyForm = {
   nome: "",
@@ -117,7 +122,10 @@ export default function Motoristas() {
         {success && <Alert type="success">{success}</Alert>}
 
         {canWrite ? (
-        <Card>
+        <Card
+          title={editingId ? "Editar motorista" : "Novo motorista"}
+          subtitle="Dados cadastrais e habilitação do profissional."
+        >
           <form
             onSubmit={onSubmit}
             className="grid gap-3 md:grid-cols-2 xl:grid-cols-3"
@@ -195,7 +203,7 @@ export default function Motoristas() {
               maxLength={FIELD_LIMITS.OBSERVACAO}
               className="md:col-span-2 xl:col-span-3"
             />
-            <div className="md:col-span-2 xl:col-span-3 flex gap-2">
+            <div className="flex flex-wrap gap-2 md:col-span-2 xl:col-span-3">
               <Button type="submit" loading={saving}>
                 {editingId ? "Salvar alterações" : "Cadastrar motorista"}
               </Button>
@@ -222,7 +230,7 @@ export default function Motoristas() {
         )}
 
         {loading ? (
-          <p className="text-sm text-slate-500">Carregando…</p>
+          <TableSkeleton rows={5} columns={5} />
         ) : items.length === 0 ? (
           <EmptyState
             title="Você ainda não possui motoristas cadastrados."
@@ -234,56 +242,56 @@ export default function Motoristas() {
             dashed
           />
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-border bg-white">
-            <table className="min-w-full text-sm">
-              <thead className="bg-slate-50 text-left text-slate-600">
-                <tr>
-                  <th className="px-4 py-3">Nome</th>
-                  <th className="px-4 py-3">CNH</th>
-                  <th className="px-4 py-3">Validade</th>
-                  <th className="px-4 py-3">Veículos</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
+          <Card noPadding>
+            <div className="divide-y divide-border sm:hidden">
+              {items.map((m) => (
+                <div key={m.id} className="space-y-3 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-text-primary">{m.nome}</p>
+                      <p className="mt-1 text-sm text-text-light">CNH {m.cnh || "—"}{m.cnh_categoria ? ` (${m.cnh_categoria})` : ""}</p>
+                    </div>
+                    {canWrite && <TableRowActions onEdit={() => startEdit(m)} onDelete={() => remove(m.id)} />}
+                  </div>
+                  <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-text-light">
+                    <span>Validade: {formatDate(m.cnh_validade) || "—"}</span>
+                    <span>{m._count?.caminhoes ?? 0} veículo(s)</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden sm:block">
+            <DataTable fixed={false}>
+              <DataTableHead>
+                <DataTableRow>
+                  <DataTableTh>Nome</DataTableTh>
+                  <DataTableTh>CNH</DataTableTh>
+                  <DataTableTh>Validade</DataTableTh>
+                  <DataTableTh align="center">Veículos</DataTableTh>
+                  <DataTableTh align="right">Ações</DataTableTh>
+                </DataTableRow>
+              </DataTableHead>
+              <DataTableBody>
                 {items.map((m) => (
-                  <tr key={m.id} className="border-t border-border">
-                    <td className="px-4 py-3 font-medium">{m.nome}</td>
-                    <td className="px-4 py-3">
+                  <DataTableRow key={m.id}>
+                    <DataTableTd className="font-semibold">{m.nome}</DataTableTd>
+                    <DataTableTd>
                       {m.cnh || "—"}
                       {m.cnh_categoria ? ` (${m.cnh_categoria})` : ""}
-                    </td>
-                    <td className="px-4 py-3">
-                      {m.cnh_validade
-                        ? String(m.cnh_validade).slice(0, 10)
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-3">{m._count?.caminhoes ?? 0}</td>
-                    <td className="px-4 py-3 text-right space-x-2">
+                    </DataTableTd>
+                    <DataTableTd className="whitespace-nowrap">{formatDate(m.cnh_validade) || "—"}</DataTableTd>
+                    <DataTableTd align="center" className="tabular-nums">{m._count?.caminhoes ?? 0}</DataTableTd>
+                    <DataTableTd align="right">
                       {canWrite && (
-                        <>
-                          <button
-                            type="button"
-                            className="text-secondary font-medium"
-                            onClick={() => startEdit(m)}
-                          >
-                            Editar
-                          </button>
-                          <button
-                            type="button"
-                            className="text-danger font-medium"
-                            onClick={() => remove(m.id)}
-                          >
-                            Excluir
-                          </button>
-                        </>
+                        <TableRowActions onEdit={() => startEdit(m)} onDelete={() => remove(m.id)} />
                       )}
-                    </td>
-                  </tr>
+                    </DataTableTd>
+                  </DataTableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </DataTableBody>
+            </DataTable>
+            </div>
+          </Card>
         )}
 
         <p className="text-sm text-slate-500">

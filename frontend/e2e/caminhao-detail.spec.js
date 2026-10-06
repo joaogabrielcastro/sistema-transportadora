@@ -180,6 +180,24 @@ test.describe("Detalhe do caminhão", () => {
     await expect(page.getByText("Combustível")).toBeVisible();
     await expect(page.getByText("Óleo do motor")).toBeVisible();
     await expect(page.getByText("Bridgestone")).toBeVisible();
+    await expect(page).toHaveURL(/aba=registros/);
+
+    await page.reload();
+    await expect(page.getByRole("tab", { name: "Registros" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  test("detalhe permanece legível no celular", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/caminhao/${PLACA}`);
+
+    await expect(page.getByText("KM Atual")).toBeVisible();
+    const hasHorizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    );
+    expect(hasHorizontalOverflow).toBe(false);
   });
 
   test("modal Novo Pneu cadastra pneu no veículo", async ({ page }) => {

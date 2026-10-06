@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
 import { Alert, Card, PageHeader, Tabs } from "../components/ui";
@@ -33,7 +34,10 @@ function textoErroProvedor(parsed, raw) {
 
 export default function FiscalCiot() {
   const { post } = useApiMutation();
-  const [tab, setTab] = useState("contrato");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [tab, setTab] = useState(
+    searchParams.get("aba") === "lista" ? "lista" : "contrato",
+  );
   const [msg, setMsg] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [simulando, setSimulando] = useState(false);
@@ -69,6 +73,15 @@ export default function FiscalCiot() {
   const [cancelar, setCancelar] = useState({ open: false, row: null });
   const [cancelando, setCancelando] = useState(false);
   const [encerrando, setEncerrando] = useState(false);
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    if (tab === "lista") next.set("aba", tab);
+    else next.delete("aba");
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams, tab]);
 
   useEffect(() => {
     let ativo = true;
@@ -286,7 +299,7 @@ export default function FiscalCiot() {
       )}
 
       {tab === "lista" && (
-        <Card className="p-6">
+        <Card>
           <CiotList
             items={contratos}
             caminhoes={caminhoes}

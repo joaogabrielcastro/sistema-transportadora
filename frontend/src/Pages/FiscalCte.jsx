@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
 import { Alert, Card, FormField, PageHeader, Tabs } from "../components/ui";
@@ -39,7 +40,10 @@ function textoErroProvedor(parsed, raw) {
 
 export default function FiscalCte() {
   const { post } = useApiMutation();
-  const [tab, setTab] = useState("emitir");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [tab, setTab] = useState(
+    searchParams.get("aba") === "documentos" ? "documentos" : "emitir",
+  );
   const [msg, setMsg] = useState("");
   const [emitindo, setEmitindo] = useState(false);
   const [simulando, setSimulando] = useState(false);
@@ -52,7 +56,18 @@ export default function FiscalCte() {
   const [savingDraft, setSavingDraft] = useState(false);
   const [draftId, setDraftId] = useState(null);
   const [draftPayload, setDraftPayload] = useState(null);
-  const [filtroStatus, setFiltroStatus] = useState("");
+  const [filtroStatus, setFiltroStatus] = useState(searchParams.get("status") || "");
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    if (tab === "documentos") next.set("aba", tab);
+    else next.delete("aba");
+    if (filtroStatus) next.set("status", filtroStatus);
+    else next.delete("status");
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [filtroStatus, searchParams, setSearchParams, tab]);
 
   const [caminhoes, setCaminhoes] = useState([]);
 
@@ -441,7 +456,7 @@ export default function FiscalCte() {
       )}
 
       {tab === "documentos" && (
-        <Card className="p-6 space-y-4">
+        <Card bodyClassName="space-y-4">
           <FormField
             label="Filtrar por status"
             type="select"

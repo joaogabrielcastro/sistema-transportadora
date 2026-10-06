@@ -3,15 +3,15 @@ import PropTypes from "prop-types";
 
 /** Container de página com largura útil maior em telas wide. */
 const PageLayout = ({ children, className = "", wide = true, narrow = false }) => (
-  <div className="bg-background pt-6 sm:pt-8 pb-12 px-3 sm:px-6 lg:px-8">
+  <main className="min-h-full bg-background px-4 pb-12 pt-5 sm:px-6 sm:pt-6 xl:px-8">
     <div
-      className={`mx-auto w-full animate-fade-in ${
+      className={`mx-auto w-full ${
         narrow ? "max-w-2xl" : wide ? "max-w-[1600px]" : "max-w-7xl"
       } ${className}`}
     >
       {children}
     </div>
-  </div>
+  </main>
 );
 
 PageLayout.propTypes = {

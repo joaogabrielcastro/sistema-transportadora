@@ -66,6 +66,7 @@ function PlanCard({
 
   return (
     <Card
+      noPadding
       className={`relative flex h-full min-w-0 flex-col shadow-card transition-shadow hover:shadow-soft ${accent}`}
     >
       <div className="flex h-full flex-col p-5 sm:p-6">

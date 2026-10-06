@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Link } from "react-router-dom";
 import PageLayout from "../components/layout/PageLayout.jsx";
-import { Alert, Button, FormField, PageHeader } from "../components/ui";
+import { Alert, Button, Card, FormField, PageHeader } from "../components/ui";
 import { apiFetch, parseApiError } from "../lib/apiClient.js";
 import { PERMISSIONS, userHasPermission } from "../utils/permissions.js";
 
@@ -50,7 +50,7 @@ export default function Conta() {
         subtitle="Altere a senha do seu acesso. Isso não desconecta outras sessões já abertas."
       />
 
-      <section className="bg-white border border-border rounded-2xl shadow-card p-5 sm:p-6 max-w-lg">
+      <Card className="max-w-lg" title="Segurança do acesso">
         <p className="text-sm text-text-secondary mb-5">
           Conectado como <strong>{user?.nome}</strong> ({user?.email}).
         </p>
@@ -108,7 +108,7 @@ export default function Conta() {
             Política de privacidade
           </Link>
         </p>
-      </section>
+      </Card>
     </PageLayout>
   );
 }

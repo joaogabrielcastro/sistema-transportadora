@@ -9,6 +9,13 @@ import {
   LoadingSpinner,
   PageHeader,
   StatusBadge,
+  DataTable,
+  DataTableBody,
+  DataTableHead,
+  DataTableRow,
+  DataTableTd,
+  DataTableTh,
+  TableRowActions,
 } from "../components/ui";
 import EmptyState from "../components/EmptyState.jsx";
 import ConfirmModal from "../components/ConfirmModal.jsx";
@@ -245,85 +252,63 @@ export default function FiscalEmpresas() {
         <Alert type="error" message="Falha ao carregar as empresas fiscais." />
       )}
 
-      <Card className="p-6">
-        <h2 className="mb-4 text-base font-semibold text-text-primary">
-          Empresas cadastradas
-        </h2>
+      <Card title="Empresas cadastradas" noPadding>
         {empresasQuery.isLoading ? (
-          <LoadingSpinner />
+          <div className="p-6"><LoadingSpinner /></div>
         ) : empresas.length === 0 ? (
-          <EmptyState
-            title="Nenhuma empresa fiscal"
-            description="Cadastre o CNPJ emissor, o Token da Brasil NFe e o certificado A1 antes de emitir CT-e, MDF-e ou criar o contrato de frete."
-            dashed
-          />
+          <div className="p-5"><EmptyState
+              title="Nenhuma empresa fiscal"
+              description="Cadastre o CNPJ emissor, o Token da Brasil NFe e o certificado A1 antes de emitir CT-e, MDF-e ou criar o contrato de frete."
+              dashed
+            /></div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 text-left text-text-secondary">
-                <tr>
-                  <th className="px-3 py-2.5 font-medium">Razão social</th>
-                  <th className="px-3 py-2.5 font-medium">CNPJ</th>
-                  <th className="px-3 py-2.5 font-medium">CRT</th>
-                  <th className="px-3 py-2.5 font-medium">Token</th>
-                  <th className="px-3 py-2.5 font-medium">UserToken</th>
-                  <th className="px-3 py-2.5 font-medium">Certificado</th>
-                  <th className="px-3 py-2.5 font-medium">Ativo</th>
-                  <th className="px-3 py-2.5 font-medium text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
+          <DataTable fixed={false}>
+              <DataTableHead>
+                <DataTableRow>
+                  <DataTableTh>Razão social</DataTableTh>
+                  <DataTableTh>CNPJ</DataTableTh>
+                  <DataTableTh>CRT</DataTableTh>
+                  <DataTableTh>Token</DataTableTh>
+                  <DataTableTh>UserToken</DataTableTh>
+                  <DataTableTh>Certificado</DataTableTh>
+                  <DataTableTh>Ativo</DataTableTh>
+                  <DataTableTh align="right">Ações</DataTableTh>
+                </DataTableRow>
+              </DataTableHead>
+              <DataTableBody>
                 {empresas.map((row) => (
-                  <tr key={row.id} className="border-t border-border">
-                    <td className="px-3 py-2.5 font-medium">
+                  <DataTableRow key={row.id}>
+                    <DataTableTd className="font-semibold">
                       {row.razao_social}
-                    </td>
-                    <td className="px-3 py-2.5">{row.cnpj}</td>
-                    <td className="px-3 py-2.5">{row.crt ?? "—"}</td>
-                    <td className="px-3 py-2.5">
+                    </DataTableTd>
+                    <DataTableTd className="whitespace-nowrap font-mono">{row.cnpj}</DataTableTd>
+                    <DataTableTd>{row.crt ?? "—"}</DataTableTd>
+                    <DataTableTd>
                       {row.cte_mdfe_provider_token_set ? "cadastrado" : "ausente"}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      {row.brasil_nfe_user_token_set ? "cadastrado" : "env"}
-                    </td>
-                    <td className="px-3 py-2.5">
+                    </DataTableTd>
+                    <DataTableTd>
+                      {row.brasil_nfe_user_token_set ? "cadastrado" : "ausente"}
+                    </DataTableTd>
+                    <DataTableTd>
                       {row.certificado_senha_set ? "vinculado" : "—"}
-                    </td>
-                    <td className="px-3 py-2.5">
+                    </DataTableTd>
+                    <DataTableTd>
                       <StatusBadge
                         status={row.ativo !== false ? "ativo" : "inativo"}
                         type="vehicle"
                       />
-                    </td>
-                    <td className="px-3 py-2.5 text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => startEdit(row)}
-                        >
-                          Editar
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDeleteTarget(row)}
-                        >
-                          Excluir
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
+                    </DataTableTd>
+                    <DataTableTd align="right">
+                      <TableRowActions onEdit={() => startEdit(row)} onDelete={() => setDeleteTarget(row)} />
+                    </DataTableTd>
+                  </DataTableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </DataTableBody>
+          </DataTable>
         )}
       </Card>
 
-      <Card className="p-6">
+      <Card>
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-base font-semibold text-text-primary">
             {editingId ? "Editar empresa fiscal" : "Nova empresa fiscal"}
@@ -415,7 +400,7 @@ export default function FiscalEmpresas() {
         </form>
       </Card>
 
-      <Card className="p-6">
+      <Card>
         <h2 className="mb-4 text-base font-semibold text-text-primary">
           Certificado digital A1
         </h2>

@@ -1,7 +1,12 @@
 import React, { useCallback, useEffect, useState } from "react";
 import PageLayout from "../components/layout/PageLayout.jsx";
-import { Alert, Card, PageHeader } from "../components/ui";
+import {
+  Alert, Button, Card, DataTable, DataTableBody, DataTableHead, DataTableRow,
+  DataTableTd, DataTableTh, FormField, PageHeader, StatusBadge,
+} from "../components/ui";
 import EmptyState from "../components/EmptyState.jsx";
+import Pagination from "../components/Pagination.jsx";
+import { TableSkeleton } from "../components/Skeleton.jsx";
 import { apiFetch, parseApiError } from "../lib/apiClient.js";
 import { formatDateTime } from "../utils/formatters.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -82,49 +87,42 @@ export default function Auditoria() {
               void load(0);
             }}
           >
-            <label className="block text-sm">
-              <span className="font-medium text-slate-700">E-mail</span>
-              <input
+            <FormField
+                label="E-mail"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm"
                 placeholder="usuario@…"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="font-medium text-slate-700">Ação</span>
-              <select
+                className="mb-0"
+            />
+            <FormField
+                label="Ação"
+                type="select"
                 value={action}
                 onChange={(e) => setAction(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm"
-              >
-                <option value="">Todas</option>
-                <option value="POST">Criar</option>
-                <option value="PUT">Atualizar</option>
-                <option value="PATCH">Atualizar (parcial)</option>
-                <option value="DELETE">Excluir</option>
-              </select>
-            </label>
-            <label className="block text-sm sm:col-span-2 lg:col-span-1">
-              <span className="font-medium text-slate-700">Onde</span>
-              <input
+                options={[
+                  { value: "", label: "Todas" },
+                  { value: "POST", label: "Criar" },
+                  { value: "PUT", label: "Atualizar" },
+                  { value: "PATCH", label: "Atualizar (parcial)" },
+                  { value: "DELETE", label: "Excluir" },
+                ]}
+                className="mb-0"
+            />
+            <FormField
+                label="Onde"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm"
                 placeholder="placa, usuário, registro…"
-              />
-            </label>
-            <button
-              type="submit"
-              className="rounded-lg bg-secondary text-white text-sm font-semibold px-4 py-2.5 hover:bg-secondary-dark"
-            >
+                className="mb-0 sm:col-span-2 lg:col-span-1"
+            />
+            <Button type="submit" loading={loading}>
               Filtrar
-            </button>
+            </Button>
           </form>
         </Card>
 
         {loading ? (
-          <p className="text-sm text-slate-500">Carregando…</p>
+          <TableSkeleton rows={7} columns={5} />
         ) : items.length === 0 ? (
           <EmptyState
             title="Nenhum registro"
@@ -133,74 +131,50 @@ export default function Auditoria() {
           />
         ) : (
           <>
-            <div className="overflow-x-auto border border-border rounded-xl bg-white">
-              <table className="min-w-full text-sm">
-                <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                  <tr>
-                    <th className="px-3 py-2.5 font-semibold">Quando</th>
-                    <th className="px-3 py-2.5 font-semibold">Usuário</th>
-                    <th className="px-3 py-2.5 font-semibold">Ação</th>
-                    <th className="px-3 py-2.5 font-semibold">Registro</th>
-                    <th className="px-3 py-2.5 font-semibold">Detalhe</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
+            <Card noPadding>
+              <DataTable fixed={false}>
+                <DataTableHead>
+                  <DataTableRow>
+                    <DataTableTh>Quando</DataTableTh>
+                    <DataTableTh>Usuário</DataTableTh>
+                    <DataTableTh>Ação</DataTableTh>
+                    <DataTableTh>Registro</DataTableTh>
+                    <DataTableTh>Detalhe</DataTableTh>
+                  </DataTableRow>
+                </DataTableHead>
+                <DataTableBody>
                   {items.map((row) => (
-                    <tr key={row.id} className="hover:bg-slate-50/80">
-                      <td className="px-3 py-2.5 whitespace-nowrap text-slate-600">
+                    <DataTableRow key={row.id}>
+                      <DataTableTd className="whitespace-nowrap text-text-secondary">
                         {formatDateTime(row.criado_em) || "—"}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <span className="font-medium text-slate-900">
+                      </DataTableTd>
+                      <DataTableTd>
+                        <span className="font-medium text-text-primary">
                           {row.user_email || "—"}
                         </span>
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
-                          {ACTION_LABEL[row.action] ||
+                      </DataTableTd>
+                      <DataTableTd>
+                        <StatusBadge status={ACTION_LABEL[row.action] ||
                             ACTION_LABEL[row.method] ||
                             row.action ||
-                            row.method}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2.5 text-slate-600">
+                            row.method} />
+                      </DataTableTd>
+                      <DataTableTd className="text-text-secondary">
                         {row.entity || "—"}
                         {row.entity_id ? (
                           <span className="text-slate-400"> #{row.entity_id}</span>
                         ) : null}
-                      </td>
-                      <td className="px-3 py-2.5 text-slate-500 max-w-xs truncate font-mono text-xs">
+                      </DataTableTd>
+                      <DataTableTd className="max-w-xs truncate font-mono text-xs text-text-secondary" title={row.path}>
                         {row.path}
-                      </td>
-                    </tr>
+                      </DataTableTd>
+                    </DataTableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex items-center justify-between gap-3 text-sm text-slate-600">
-              <span>
-                {total} registro{total === 1 ? "" : "s"} · Página {page} de{" "}
-                {pages}
-              </span>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  disabled={offset <= 0 || loading}
-                  onClick={() => void load(Math.max(0, offset - PAGE_SIZE))}
-                  className="rounded-lg border border-border px-3 py-1.5 disabled:opacity-40"
-                >
-                  Anterior
-                </button>
-                <button
-                  type="button"
-                  disabled={offset + PAGE_SIZE >= total || loading}
-                  onClick={() => void load(offset + PAGE_SIZE)}
-                  className="rounded-lg border border-border px-3 py-1.5 disabled:opacity-40"
-                >
-                  Próxima
-                </button>
-              </div>
-            </div>
+                </DataTableBody>
+              </DataTable>
+            </Card>
+            <p className="text-sm text-text-secondary">{total} registro{total === 1 ? "" : "s"}</p>
+            <Pagination currentPage={page} totalPages={pages} onPageChange={(nextPage) => void load((nextPage - 1) * PAGE_SIZE)} />
           </>
         )}
       </div>

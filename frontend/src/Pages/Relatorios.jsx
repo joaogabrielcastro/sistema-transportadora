@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   useCaminhoesListQuery,
   useCostPerKmReportQuery,
@@ -19,6 +20,7 @@ import {
   DataTableTh,
   DataTableTd,
   FilterChips,
+  StatCard,
 } from "../components/ui";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
@@ -42,14 +44,28 @@ const CostPerKmTrendChart = lazy(
 
 const Relatorios = () => {
   const toast = useToast();
-  const [selectedCaminhao, setSelectedCaminhao] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const defaultStart = new Date(new Date().setMonth(new Date().getMonth() - 1))
+    .toISOString()
+    .split("T")[0];
+  const defaultEnd = new Date().toISOString().split("T")[0];
+  const initialTruck = searchParams.get("caminhao") || "";
+  const initialStart = searchParams.get("inicio") || defaultStart;
+  const initialEnd = searchParams.get("fim") || defaultEnd;
+  const [selectedCaminhao, setSelectedCaminhao] = useState(initialTruck);
   const [dateRange, setDateRange] = useState({
-    start: new Date(new Date().setMonth(new Date().getMonth() - 1))
-      .toISOString()
-      .split("T")[0],
-    end: new Date().toISOString().split("T")[0],
+    start: initialStart,
+    end: initialEnd,
   });
-  const [submittedParams, setSubmittedParams] = useState(null);
+  const [submittedParams, setSubmittedParams] = useState(() =>
+    searchParams.get("inicio") || searchParams.get("fim") || initialTruck
+      ? {
+          startDate: initialStart,
+          endDate: initialEnd,
+          caminhaoId: initialTruck ? Number(initialTruck) : undefined,
+        }
+      : null,
+  );
   const [exporting, setExporting] = useState(null);
 
   const {
@@ -116,13 +132,19 @@ const Relatorios = () => {
   };
 
   const generateReport = () => {
-    setSubmittedParams({
+    const params = {
       startDate: dateRange.start,
       endDate: dateRange.end,
       caminhaoId: selectedCaminhao
         ? parseInt(selectedCaminhao, 10)
         : undefined,
-    });
+    };
+    setSubmittedParams(params);
+    const next = new URLSearchParams();
+    if (params.startDate) next.set("inicio", params.startDate);
+    if (params.endDate) next.set("fim", params.endDate);
+    if (params.caminhaoId) next.set("caminhao", String(params.caminhaoId));
+    setSearchParams(next, { replace: true });
   };
 
   const activeFilterChips = useMemo(() => {
@@ -168,10 +190,14 @@ const Relatorios = () => {
     if (key === "caminhao") {
       setSelectedCaminhao("");
       if (submittedParams) {
-        setSubmittedParams({
+        const nextParams = {
           ...submittedParams,
           caminhaoId: undefined,
-        });
+        };
+        setSubmittedParams(nextParams);
+        const next = new URLSearchParams(searchParams);
+        next.delete("caminhao");
+        setSearchParams(next, { replace: true });
       }
     }
   };
@@ -328,31 +354,10 @@ const Relatorios = () => {
 
         {hasReport && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="bg-blue-50 border-blue-100">
-                <div className="text-blue-600 font-medium mb-1">
-                  Custo Total
-                </div>
-                <div className="text-2xl font-bold text-blue-800">
-                  {formatCurrency(stats.grandTotal)}
-                </div>
-              </Card>
-              <Card className="bg-green-50 border-green-100">
-                <div className="text-green-600 font-medium mb-1">
-                  KM Total (Est.)
-                </div>
-                <div className="text-2xl font-bold text-green-800">
-                  {formatNumber(stats.totalKm)} km
-                </div>
-              </Card>
-              <Card className="bg-purple-50 border-purple-100">
-                <div className="text-purple-600 font-medium mb-1">
-                  Custo Médio / KM
-                </div>
-                <div className="text-2xl font-bold text-purple-800">
-                  {formatCurrency(stats.avgCostPerKm)}
-                </div>
-              </Card>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <StatCard title="Custo total" value={formatCurrency(stats.grandTotal)} />
+              <StatCard title="KM total (estimado)" value={`${formatNumber(stats.totalKm)} km`} color="green" />
+              <StatCard title="Custo médio / KM" value={formatCurrency(stats.avgCostPerKm)} color="purple" />
             </div>
 
             <div className="flex gap-4 justify-end">

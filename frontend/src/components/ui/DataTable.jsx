@@ -5,7 +5,7 @@ const cellBase =
   "px-3 py-2.5 text-sm text-text-primary align-middle first:pl-4 last:pr-4 md:first:pl-5 md:last:pr-5";
 
 export const DataTable = ({ children, fixed = true, className = "" }) => (
-  <div className={`w-full overflow-x-auto ${className}`}>
+  <div className={`w-full overflow-x-auto overscroll-x-contain ${className}`} tabIndex="0">
     <table
       className={`w-full divide-y divide-border text-sm ${
         fixed ? "md:table-fixed" : "table-auto"
@@ -23,7 +23,7 @@ DataTable.propTypes = {
 };
 
 export const DataTableHead = ({ children }) => (
-  <thead className="bg-slate-50/95 sticky top-0 z-10 backdrop-blur-sm">
+  <thead className="sticky top-0 z-10 bg-slate-50">
     {children}
   </thead>
 );
@@ -38,7 +38,7 @@ DataTableBody.propTypes = { children: PropTypes.node };
 
 export const DataTableRow = ({ children, className = "", onClick }) => (
   <tr
-    className={`hover:bg-slate-50/80 transition-colors ${onClick ? "cursor-pointer" : ""} ${className}`}
+    className={`hover:bg-cyan-50/40 transition-colors ${onClick ? "cursor-pointer focus-within:bg-cyan-50/40" : ""} ${className}`}
     onClick={onClick}
   >
     {children}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { z } from "zod";
 import { useApiMutation, usePneusEstoqueQuery, useStatusPneusQuery } from "../hooks";
 import ConfirmModal from "../components/ConfirmModal";
@@ -13,18 +13,35 @@ import {
   FormField,
   PageHeader,
   StatusBadge,
+  Alert,
 } from "../components/ui";
 import EmptyState from "../components/EmptyState.jsx";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx";
+import { PERMISSIONS, userHasPermission } from "../utils/permissions.js";
 
 const ESTOQUE_PAGE_SIZE = 20;
 
 const PneusEstoque = () => {
   const { post, delete: del } = useApiMutation();
   const toast = useToast();
+  const { user } = useAuth();
+  const canWrite = userHasPermission(user, PERMISSIONS.PNEUS_WRITE);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [deletingId, setDeletingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(
+    Math.max(1, Number(searchParams.get("pagina")) || 1),
+  );
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    if (currentPage > 1) next.set("pagina", String(currentPage));
+    else next.delete("pagina");
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [currentPage, searchParams, setSearchParams]);
 
   const {
     data: estoquePage,
@@ -128,7 +145,7 @@ const PneusEstoque = () => {
   };
 
   return (
-    <PageLayout wide={false} className="space-y-6">
+    <PageLayout className="space-y-6">
       <Breadcrumbs
         items={[
           { label: "Início", to: "/" },
@@ -140,12 +157,15 @@ const PneusEstoque = () => {
         title="Estoque de Pneus"
         subtitle="Cadastre pneus em lote e gerencie o estoque disponível"
         actions={
-          <Link to="/pneus/atribuir">
-            <Button variant="outline">Instalar pneu</Button>
-          </Link>
+          canWrite ? (
+            <Link to="/pneus/atribuir">
+              <Button variant="outline">Instalar pneu</Button>
+            </Link>
+          ) : null
         }
       />
 
+        {canWrite ? (
         <Card title="Cadastro em Lote (estoque)">
           <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
             <p className="text-sm text-blue-800">
@@ -345,7 +365,7 @@ const PneusEstoque = () => {
               ))}
             </div>
 
-            <div className="flex items-center gap-3 mt-4">
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
               <Button
                 type="button"
                 variant="outline"
@@ -372,6 +392,9 @@ const PneusEstoque = () => {
             </div>
           </form>
         </Card>
+        ) : (
+          <Alert type="info" message="Você tem acesso somente leitura ao estoque de pneus." />
+        )}
 
         <Card title="Pneus em Estoque">
           <div className="mb-4">
@@ -433,7 +456,7 @@ const PneusEstoque = () => {
                 pneus.map((p) => (
                   <div
                     key={p.id}
-                    className="flex items-center justify-between border rounded p-3"
+                    className="flex flex-col gap-3 rounded-xl border border-border bg-white p-4 transition-colors hover:border-cyan-200 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div>
                       <div className="font-medium">
@@ -443,21 +466,21 @@ const PneusEstoque = () => {
                         status={p.status_pneus?.nome_status || "N/A"}
                       />
                     </div>
-                    <div className="flex items-center gap-3">
+                    {canWrite && <div className="flex items-center gap-2 border-t border-border pt-3 sm:border-0 sm:pt-0">
                       <Link
                         to={`/pneus/atribuir?pneu_id=${p.id}`}
-                        className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                        className="inline-flex min-h-10 items-center rounded-lg px-3 text-sm font-semibold text-secondary hover:bg-cyan-50"
                       >
                         Instalar
                       </Link>
                       <button
                         onClick={() => handleDeleteClick(p.id)}
                         disabled={deletingId === p.id}
-                        className="text-sm text-red-600 hover:text-red-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex min-h-10 items-center rounded-lg px-3 text-sm font-semibold text-danger hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {deletingId === p.id ? "Excluindo..." : "Excluir"}
                       </button>
-                    </div>
+                    </div>}
                   </div>
                 ))
               )}

@@ -97,7 +97,7 @@ export default function FiscalVeiculoDadosForm({ caminhaoId }) {
   };
 
   return (
-    <Card className="shadow-lg">
+    <Card>
       <div className="space-y-1">
         <h2 className="text-lg font-semibold text-text-primary">
           Dados fiscais do veículo (MDF-e)

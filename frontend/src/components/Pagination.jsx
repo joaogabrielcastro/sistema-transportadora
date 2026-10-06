@@ -35,7 +35,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 
   return (
     <nav
-      className="flex flex-wrap justify-center items-center gap-1.5 mt-8"
+      className="relative mt-5 flex items-center justify-between gap-2 border-t border-border pt-4 sm:justify-center"
       aria-label="Paginação"
     >
       <Button
@@ -50,6 +50,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
       {startPage > 1 && (
         <>
           <Button
+            className="hidden min-w-10 sm:inline-flex"
             variant="outline"
             size="sm"
             onClick={() => onPageChange(1)}
@@ -58,7 +59,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
             1
           </Button>
           {startPage > 2 && (
-            <span className="px-2 text-text-light" aria-hidden="true">
+            <span className="hidden px-2 text-text-light sm:inline" aria-hidden="true">
               …
             </span>
           )}
@@ -68,6 +69,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
       {pageNumbers.map((number) => (
         <Button
           key={number}
+          className="hidden min-w-10 sm:inline-flex"
           variant={currentPage === number ? "primary" : "outline"}
           size="sm"
           onClick={() => onPageChange(number)}
@@ -80,11 +82,12 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
       {endPage < totalPages && (
         <>
           {endPage < totalPages - 1 && (
-            <span className="px-2 text-text-light" aria-hidden="true">
+            <span className="hidden px-2 text-text-light sm:inline" aria-hidden="true">
               …
             </span>
           )}
           <Button
+            className="hidden min-w-10 sm:inline-flex"
             variant="outline"
             size="sm"
             onClick={() => onPageChange(totalPages)}
@@ -103,6 +106,9 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
       >
         Próxima
       </Button>
+      <span className="absolute left-1/2 -translate-x-1/2 text-xs font-medium text-text-secondary sm:hidden">
+        Página {currentPage} de {totalPages}
+      </span>
     </nav>
   );
 };

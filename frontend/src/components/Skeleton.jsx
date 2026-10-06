@@ -1,7 +1,7 @@
 import React from "react";
 
 export const Skeleton = ({ className = "", variant = "rectangular" }) => {
-  const baseClasses = "animate-pulse bg-gray-200";
+  const baseClasses = "animate-pulse bg-slate-200";
   const variantClasses = {
     rectangular: "rounded",
     circular: "rounded-full",
@@ -16,7 +16,7 @@ export const Skeleton = ({ className = "", variant = "rectangular" }) => {
 export const CardSkeleton = ({ lines = 2 }) => {
   const lineCount = Math.max(1, Number(lines) || 2);
   return (
-    <div className="bg-white rounded-lg shadow p-6 space-y-4">
+    <div className="space-y-4 rounded-xl border border-border bg-white p-5 shadow-card">
       <Skeleton className="h-6 w-3/4" />
       {Array.from({ length: lineCount }).map((_, i) => (
         <Skeleton
@@ -33,7 +33,7 @@ export const CardSkeleton = ({ lines = 2 }) => {
 };
 
 export const TableSkeleton = ({ rows = 5, columns = 4 }) => (
-  <div className="space-y-2">
+  <div className="space-y-2 overflow-hidden rounded-xl border border-border bg-white p-4">
     <div className="flex gap-4 pb-2 border-b">
       {Array.from({ length: columns }).map((_, i) => (
         <Skeleton key={i} className="h-6 flex-1" />

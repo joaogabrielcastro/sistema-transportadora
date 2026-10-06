@@ -11,9 +11,9 @@ module.exports = {
           dark: "#020617", // Slate 950
         },
         secondary: {
-          DEFAULT: "#3B82F6", // Blue 500 - Vibrant Blue
-          light: "#60A5FA", // Blue 400
-          dark: "#2563EB", // Blue 600
+          DEFAULT: "#0891B2", // Cyan 600 - operational accent
+          light: "#22D3EE", // Cyan 400
+          dark: "#0E7490", // Cyan 700
         },
         success: {
           DEFAULT: "#10B981", // Emerald 500
@@ -31,7 +31,7 @@ module.exports = {
           dark: "#D97706",
         },
         background: {
-          DEFAULT: "#F8FAFC", // Slate 50
+          DEFAULT: "#F4F7FA",
           paper: "#FFFFFF",
           dark: "#1E293B", // Slate 800
         },
@@ -41,14 +41,14 @@ module.exports = {
           light: "#94A3B8", // Slate 400
           inverted: "#FFFFFF",
         },
-        border: "#E2E8F0", // Slate 200
+        border: "#DDE5ED",
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
       },
       boxShadow: {
         soft: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)",
-        card: "0 0 0 1px rgba(0, 0, 0, 0.03), 0 2px 8px rgba(0, 0, 0, 0.04)",
+        card: "0 1px 2px rgba(15, 23, 42, 0.04)",
         glow: "0 0 15px rgba(59, 130, 246, 0.5)",
       },
       animation: {

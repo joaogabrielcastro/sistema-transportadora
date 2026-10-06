@@ -42,6 +42,8 @@ const FormField = ({
 }) => {
   const generatedId = useId();
   const fieldId = name || generatedId;
+  const helperId = `${fieldId}-help`;
+  const describedBy = helperText || error ? helperId : undefined;
 
   const maxDecimals = useMemo(() => {
     if (typeof decimals === "number") return decimals;
@@ -75,16 +77,16 @@ const FormField = ({
   };
 
   const baseInputClasses = `
-    block w-full rounded-lg border 
+    block min-h-10 w-full rounded-lg border
     ${
       error
         ? "border-danger focus:ring-danger"
         : "border-border focus:ring-secondary"
     } 
-    bg-white px-4 py-2.5 text-text-primary placeholder-text-light 
-    focus:border-transparent focus:outline-none focus:ring-2 
+    bg-white px-3 py-2 text-sm text-text-primary placeholder-text-light
+    focus:border-secondary focus:outline-none focus:ring-2 focus:ring-cyan-100
     disabled:bg-gray-50 disabled:text-text-light disabled:cursor-not-allowed
-    transition-all duration-200
+    transition-colors
   `;
 
   if (type === "typeahead" || type === "searchable") {
@@ -125,6 +127,8 @@ const FormField = ({
             value={value === null || value === undefined ? "" : String(value)}
             onChange={onChange}
             disabled={disabled}
+            aria-invalid={Boolean(error)}
+            aria-describedby={describedBy}
             className={`${baseInputClasses} appearance-none ${
               icon ? "pl-10" : ""
             }`}
@@ -176,6 +180,8 @@ const FormField = ({
           onChange={mask || effectiveMaxLength ? handleMaskedTextChange : onChange}
           placeholder={placeholder}
           disabled={disabled}
+          aria-invalid={Boolean(error)}
+          aria-describedby={describedBy}
           rows={rows}
           maxLength={effectiveMaxLength}
           className={`${baseInputClasses} ${icon ? "pl-10" : ""}`}
@@ -193,6 +199,8 @@ const FormField = ({
             name={name}
             onChange={onChange}
             disabled={disabled}
+            aria-invalid={Boolean(error)}
+            aria-describedby={describedBy}
             className={`${baseInputClasses} ${icon ? "pl-10" : ""} file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium`}
             {...props}
           />
@@ -253,6 +261,8 @@ const FormField = ({
             onBlur={handleBlur}
             placeholder={placeholder}
             disabled={disabled}
+            aria-invalid={Boolean(error)}
+            aria-describedby={describedBy}
             autoComplete="off"
             className={`${baseInputClasses} ${icon ? "pl-10" : ""}`}
             aria-valuemin={min != null && min !== "" ? Number(min) : undefined}
@@ -278,6 +288,8 @@ const FormField = ({
           onChange={mask ? handleMaskedTextChange : onChange}
           placeholder={placeholder}
           disabled={disabled}
+          aria-invalid={Boolean(error)}
+          aria-describedby={describedBy}
           className={`${baseInputClasses} ${icon ? "pl-10" : ""}`}
           min={min}
           max={max}
@@ -309,10 +321,10 @@ const FormField = ({
       )}
       {renderInput()}
       {helperText && !error && (
-        <p className="mt-1 text-xs text-text-light">{helperText}</p>
+        <p id={helperId} className="mt-1.5 text-xs leading-5 text-text-secondary">{helperText}</p>
       )}
       {error && (
-        <p className="mt-1 text-xs font-medium text-danger animate-fade-in flex items-center">
+        <p id={helperId} role="alert" className="mt-1.5 flex items-center text-xs font-medium text-danger">
           <svg
             className="w-3 h-3 mr-1"
             fill="none"

@@ -16,13 +16,13 @@ const Button = ({
   ...props
 }) => {
   const baseClasses =
-    "inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95";
+    "inline-flex min-h-10 items-center justify-center rounded-lg font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
 
   const variants = {
     primary:
-      "bg-primary hover:bg-primary-light text-white focus:ring-primary shadow-sm hover:shadow-md",
+      "bg-primary hover:bg-primary-light text-white",
     secondary:
-      "bg-secondary hover:bg-secondary-dark text-white focus:ring-secondary shadow-sm hover:shadow-md",
+      "bg-secondary hover:bg-secondary-dark text-white",
     danger:
       "bg-danger hover:bg-danger-dark text-white focus:ring-danger shadow-sm",
     success:

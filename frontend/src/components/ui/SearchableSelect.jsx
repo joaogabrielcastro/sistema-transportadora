@@ -26,6 +26,7 @@ const SearchableSelect = ({
   const inputRef = useRef(null);
   const listId = useId();
   const fieldId = name || listId;
+  const helperId = `${fieldId}-helper`;
 
   const selectedOption = useMemo(
     () => options.find((option) => String(option.value) === String(value)),
@@ -108,15 +109,14 @@ const SearchableSelect = ({
   };
 
   const inputClasses = `
-    block w-full rounded-lg border bg-white px-4 py-2.5 pr-10
-    text-text-primary placeholder-text-light
-    focus:border-transparent focus:outline-none focus:ring-2
+    block min-h-10 w-full rounded-lg border bg-white px-3 py-2 pr-10 text-sm
+    text-text-primary placeholder-text-light focus:outline-none focus:ring-2
     disabled:bg-gray-50 disabled:text-text-light disabled:cursor-not-allowed
-    transition-all duration-200
+    transition-colors
     ${
       error
-        ? "border-danger focus:ring-danger"
-        : "border-border focus:ring-secondary"
+        ? "border-danger focus:border-danger focus:ring-danger/20"
+        : "border-border focus:border-secondary focus:ring-secondary/20"
     }
   `;
 
@@ -143,6 +143,8 @@ const SearchableSelect = ({
           aria-controls={listId}
           aria-autocomplete="list"
           aria-required={required || undefined}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error || helperText ? helperId : undefined}
           disabled={disabled}
           value={
             open
@@ -195,7 +197,7 @@ const SearchableSelect = ({
           <ul
             id={listId}
             role="listbox"
-            className="absolute z-[60] mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border bg-white py-1 shadow-card"
+            className="absolute z-[60] mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border bg-white py-1 shadow-lg"
           >
             {filteredOptions.length > 0 ? (
               filteredOptions.map((option, index) => {
@@ -232,10 +234,10 @@ const SearchableSelect = ({
       </div>
 
       {helperText && !error && (
-        <p className="mt-1 text-xs text-text-light">{helperText}</p>
+        <p id={helperId} className="mt-1 text-xs text-text-light">{helperText}</p>
       )}
       {error && (
-        <p className="mt-1 text-xs font-medium text-danger flex items-center">
+        <p id={helperId} role="alert" className="mt-1 flex items-center text-xs font-medium text-danger">
           {error}
         </p>
       )}

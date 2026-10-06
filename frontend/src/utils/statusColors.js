@@ -50,6 +50,11 @@ export const getStatusConfig = (statusName, type = "status") => {
       alto: "bg-orange-100 text-orange-800 border-orange-200",
       médio: "bg-yellow-100 text-yellow-800 border-yellow-200",
       medio: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      vencido: "bg-red-100 text-red-800 border-red-200",
+      "≤ 7 dias": "bg-red-100 text-red-800 border-red-200",
+      "≤ 30 dias": "bg-yellow-100 text-yellow-800 border-yellow-200",
+      "em dia": "bg-green-100 text-green-800 border-green-200",
+      "sem validade": "bg-slate-100 text-slate-700 border-slate-200",
 
       // Averbação de seguro
       pending: "bg-slate-100 text-slate-800 border-slate-200",

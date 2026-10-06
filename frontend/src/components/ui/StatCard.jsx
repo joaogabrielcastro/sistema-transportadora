@@ -1,5 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
+import { Link } from "react-router-dom";
 
 const colorStyles = {
   blue: {
@@ -36,6 +37,7 @@ const StatCard = ({
   color = "blue",
   layout = "dashboard",
   hint,
+  to,
   className = "",
 }) => {
   const styles = colorStyles[color] || colorStyles.blue;
@@ -43,13 +45,13 @@ const StatCard = ({
   if (layout === "compact") {
     return (
       <div
-        className={`p-6 rounded-xl border transition-all duration-200 hover:shadow-md ${styles.compact} ${className}`}
+        className={`rounded-xl border bg-white p-4 shadow-card ${className}`}
       >
-        <div className="flex items-center gap-4">
-          <div className="p-3 rounded-lg bg-white shadow-sm">{icon}</div>
-          <div>
-            <h3 className="text-2xl font-bold text-text-primary">{value}</h3>
-            <p className="text-sm font-medium opacity-80">{title}</p>
+        <div className="flex items-center gap-3">
+          <div className={`rounded-lg p-2.5 ${styles.icon}`}>{icon}</div>
+          <div className="min-w-0">
+            <div className="truncate text-xl font-bold tabular-nums text-text-primary">{value}</div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">{title}</p>
             {hint ? (
               <p className="mt-0.5 text-xs opacity-70">{hint}</p>
             ) : null}
@@ -59,14 +61,12 @@ const StatCard = ({
     );
   }
 
-  return (
-    <div
-      className={`bg-white rounded-xl p-6 shadow-card border transition-all duration-300 group ${styles.card} ${className}`}
-    >
+  const content = (
+    <>
       <div className="flex justify-between items-start">
         <div>
           <p className="text-sm font-medium text-text-secondary mb-1">{title}</p>
-          <h3 className="text-2xl font-bold text-text-primary">{value}</h3>
+          <div className="text-2xl font-bold tabular-nums text-text-primary">{value}</div>
           {hint ? (
             <p className="mt-1 text-xs text-text-secondary">{hint}</p>
           ) : null}
@@ -77,8 +77,19 @@ const StatCard = ({
           {icon}
         </div>
       </div>
-    </div>
+      {to ? (
+        <span className="mt-4 inline-flex items-center text-xs font-semibold text-secondary">
+          Ver detalhes <span aria-hidden className="ml-1">→</span>
+        </span>
+      ) : null}
+    </>
   );
+
+  const classes = `group block rounded-xl border bg-white p-5 shadow-card transition-colors ${styles.card} ${
+    to ? "hover:border-cyan-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary" : ""
+  } ${className}`;
+
+  return to ? <Link to={to} className={classes}>{content}</Link> : <div className={classes}>{content}</div>;
 };
 
 StatCard.propTypes = {
@@ -88,6 +99,7 @@ StatCard.propTypes = {
   color: PropTypes.oneOf(["blue", "green", "purple", "orange", "amber"]),
   layout: PropTypes.oneOf(["dashboard", "compact"]),
   hint: PropTypes.node,
+  to: PropTypes.string,
   className: PropTypes.string,
 };
 

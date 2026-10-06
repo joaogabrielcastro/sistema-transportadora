@@ -1,6 +1,6 @@
 // src/pages/Pneus.jsx
-import React, { useState, useEffect, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   useApiMutation,
   useCaminhoesListQuery,
@@ -194,11 +194,13 @@ const PneusTable = ({
               }
             />
           </div>
-          <Link to="/pneus/atribuir" className="w-full sm:w-auto">
-            <Button variant="primary" className="w-full sm:w-auto">
-              Instalar pneus
-            </Button>
-          </Link>
+          {canWrite && (
+            <Link to="/pneus/atribuir" className="w-full sm:w-auto">
+              <Button variant="primary" className="w-full sm:w-auto">
+                Instalar pneus
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -305,12 +307,15 @@ const Pneus = () => {
   const { delete: del } = useApiMutation();
   const { user } = useAuth();
   const canWrite = userHasPermission(user, PERMISSIONS.PNEUS_WRITE);
-  const [filtroPlaca, setFiltroPlaca] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialPage = Math.max(1, Number(searchParams.get("pagina")) || 1);
+  const [filtroPlaca, setFiltroPlaca] = useState(searchParams.get("placa") || "");
   const placaDebounced = useDebouncedValue(filtroPlaca.trim(), 400);
+  const previousPlaca = useRef(placaDebounced);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(initialPage);
   const [novoPneuOpen, setNovoPneuOpen] = useState(false);
 
   const modalData = usePneuAtribuirQueries({ enabled: novoPneuOpen });
@@ -335,8 +340,22 @@ const Pneus = () => {
   const pagination = pneusPage?.pagination ?? null;
 
   useEffect(() => {
-    setCurrentPage(1);
+    if (previousPlaca.current !== placaDebounced) {
+      previousPlaca.current = placaDebounced;
+      setCurrentPage(1);
+    }
   }, [placaDebounced]);
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    if (placaDebounced) next.set("placa", placaDebounced);
+    else next.delete("placa");
+    if (currentPage > 1) next.set("pagina", String(currentPage));
+    else next.delete("pagina");
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [currentPage, placaDebounced, searchParams, setSearchParams]);
   const handleDeleteClick = (id) => {
     const pneu = pneus.find((p) => p.id === id);
     setDeleteTarget({

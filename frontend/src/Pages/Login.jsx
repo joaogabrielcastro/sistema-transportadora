@@ -16,7 +16,7 @@ import {
 import LegalLinks from "../components/LegalLinks.jsx";
 
 const MailIcon = () => (
-  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -27,7 +27,7 @@ const MailIcon = () => (
 );
 
 const LockIcon = () => (
-  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -212,14 +212,15 @@ export default function Login() {
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <Link
                     to="/forgot-password"
-                    className="text-xs font-medium text-secondary hover:text-secondary-dark transition-colors"
+                    className="inline-flex min-h-10 items-center text-xs font-medium text-secondary transition-colors hover:text-secondary-dark"
                   >
                     Esqueci a senha
                   </Link>
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
-                    className="text-xs font-medium text-secondary hover:text-secondary-dark transition-colors"
+                    aria-pressed={showPassword}
+                    className="inline-flex min-h-10 items-center text-xs font-medium text-secondary transition-colors hover:text-secondary-dark"
                   >
                     {showPassword ? "Ocultar senha" : "Mostrar senha"}
                   </button>

@@ -128,7 +128,8 @@ const Alert = ({
 
   return (
     <div
-      className={`relative w-full rounded-lg border border-l-4 p-4 shadow-sm animate-fade-in ${variant.container} ${variant.border} ${className}`}
+      role={type === "error" ? "alert" : "status"}
+      className={`relative w-full rounded-lg border border-l-4 p-4 ${variant.container} ${variant.border} ${className}`}
     >
       <div className="flex items-start">
         <div className={`flex-shrink-0 ${variant.icon}`}>{icons[type]}</div>
@@ -151,7 +152,7 @@ const Alert = ({
               <button
                 onClick={handleClose}
                 type="button"
-                className={`inline-flex rounded-md p-1.5 focus:outline-none focus:ring-2 focus:ring-offset-2 ${variant.text} hover:bg-white hover:bg-opacity-20`}
+                className={`inline-flex min-h-10 min-w-10 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 ${variant.text} hover:bg-white/40`}
               >
                 <span className="sr-only">Fechar</span>
                 <svg

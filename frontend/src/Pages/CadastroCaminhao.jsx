@@ -213,8 +213,12 @@ const CadastroCaminhao = () => {
 
       <PlanQuotaBanner user={user} resource="vehicles" />
 
-      <Card className="shadow-lg">
+      <Card>
         <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <p className="section-label">Classificação</p>
+            <h2 className="text-base font-semibold text-text-primary">Tipo e identificação</h2>
+          </div>
           <FormField
             label="Tipo do veículo"
             name="tipo_veiculo"
@@ -243,7 +247,7 @@ const CadastroCaminhao = () => {
             />
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <FormField
               label="Placa"
               name="placa"
@@ -276,6 +280,10 @@ const CadastroCaminhao = () => {
 
           {!isCarreta && (
             <div className="space-y-3">
+              <div>
+                <p className="section-label">Operação</p>
+                <h2 className="text-base font-semibold text-text-primary">Motorista responsável</h2>
+              </div>
               <SearchableSelect
                 label="Motorista"
                 name="motorista_id"
@@ -326,7 +334,12 @@ const CadastroCaminhao = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="border-t border-border pt-5">
+            <p className="section-label">Dados do veículo</p>
+            <h2 className="text-base font-semibold text-text-primary">Características e frota</h2>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <FormField
               label="Marca"
               name="marca"
@@ -355,7 +368,7 @@ const CadastroCaminhao = () => {
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <FormField
               label="Config. eixos"
               name="config_eixos"
@@ -388,9 +401,10 @@ const CadastroCaminhao = () => {
             />
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-text-primary">
+          <label className="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg border border-border bg-slate-50 px-3 text-sm font-medium text-text-primary">
             <input
               type="checkbox"
+              className="h-4 w-4 rounded border-border text-secondary focus:ring-secondary"
               checked={form.com_4_eixo}
               onChange={(e) =>
                 setForm((prev) => ({
@@ -402,7 +416,7 @@ const CadastroCaminhao = () => {
             Possui 4º eixo
           </label>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <FormField
               label="Quantidade de Pneus"
               name="qtd_pneus"
@@ -430,7 +444,7 @@ const CadastroCaminhao = () => {
             />
           </div>
 
-          <div className="flex gap-4 pt-4">
+          <div className="sticky bottom-0 -mx-4 flex gap-3 border-t border-border bg-white/95 px-4 py-4 backdrop-blur sm:-mx-5 sm:px-5">
             <Button
               type="button"
               variant="outline"

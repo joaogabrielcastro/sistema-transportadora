@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useApiMutation, useManutencaoGastosQueries } from "../hooks";
 import { useToast } from "../components/ui/useToast.js";
 import ConfirmModal from "../components/ConfirmModal";
@@ -29,11 +30,10 @@ import { TableSkeleton } from "../components/Skeleton.jsx";
 import { isCombustivelTipo, tiposGastosFinanceiros, classifyTipoGastoById } from "../utils/tipoGastoUtils.js";
 import {
   defaultStatusForKind,
+  payloadControleGasto,
   STATUS_PAGAMENTO_LABEL,
 } from "../utils/gastoDetalhes.js";
-import GastoDetalhesFields, {
-  payloadControleGasto,
-} from "../components/gasto/GastoDetalhesFields.jsx";
+import GastoDetalhesFields from "../components/gasto/GastoDetalhesFields.jsx";
 import CombustivelXmlImport from "../components/gasto/CombustivelXmlImport.jsx";
 import { formatDate } from "../utils/formatters.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -481,7 +481,7 @@ const RegistroForm = ({
             {campoEstoque}
 
             <FormSection
-              step={showEstoque ? 5 : form.tipo_id ? 4 : 3}
+              step={showEstoque ? (form.tipo_id ? 5 : 4) : form.tipo_id ? 4 : 3}
               title="Observações"
             >
               <FormField
@@ -794,17 +794,45 @@ const ManutencaoGastos = () => {
   const toast = useToast();
   const { user } = useAuth();
   const canWrite = userHasPermission(user, PERMISSIONS.GASTOS_WRITE);
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [filtroPlaca, setFiltroPlaca] = useState("");
+  const [currentPage, setCurrentPage] = useState(
+    Math.max(1, Number(searchParams.get("pagina")) || 1),
+  );
+  const [filtroPlaca, setFiltroPlaca] = useState(searchParams.get("placa") || "");
   const debouncedPlaca = useDebouncedValue(filtroPlaca, 350);
-  const [filtroDataInicio, setFiltroDataInicio] = useState("");
-  const [filtroDataFim, setFiltroDataFim] = useState("");
-  const [filtroTipo, setFiltroTipo] = useState("todos");
+  const [filtroDataInicio, setFiltroDataInicio] = useState(searchParams.get("inicio") || "");
+  const [filtroDataFim, setFiltroDataFim] = useState(searchParams.get("fim") || "");
+  const [filtroTipo, setFiltroTipo] = useState(searchParams.get("tipo") || "todos");
+  const previousFilters = useRef(
+    `${debouncedPlaca}|${filtroDataInicio}|${filtroDataFim}|${filtroTipo}`,
+  );
 
   useEffect(() => {
-    setCurrentPage(1);
+    const signature = `${debouncedPlaca}|${filtroDataInicio}|${filtroDataFim}|${filtroTipo}`;
+    if (previousFilters.current !== signature) {
+      previousFilters.current = signature;
+      setCurrentPage(1);
+    }
   }, [debouncedPlaca, filtroDataInicio, filtroDataFim, filtroTipo]);
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    const values = {
+      placa: debouncedPlaca.trim(),
+      inicio: filtroDataInicio,
+      fim: filtroDataFim,
+      tipo: filtroTipo === "todos" ? "" : filtroTipo,
+      pagina: currentPage > 1 ? String(currentPage) : "",
+    };
+    Object.entries(values).forEach(([key, value]) => {
+      if (value) next.set(key, value);
+      else next.delete(key);
+    });
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [currentPage, debouncedPlaca, filtroDataFim, filtroDataInicio, filtroTipo, searchParams, setSearchParams]);
 
   const {
     caminhoes,

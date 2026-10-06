@@ -92,11 +92,38 @@ const isActivePath = (pathname, path, exact = false) => {
 };
 
 const sideLinkClass = (active) =>
-  `flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+  `group flex min-h-10 w-full items-center gap-3 rounded-lg border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
     active
-      ? "bg-white/10 text-white"
-      : "text-gray-300 hover:bg-white/5 hover:text-white"
+      ? "border-cyan-400/20 bg-cyan-400/10 text-cyan-50"
+      : "border-transparent text-slate-300 hover:bg-white/5 hover:text-white"
   }`;
+
+const PAGE_TITLES = [
+  ["/caminhao/editar/", "Editar veículo"],
+  ["/caminhao/", "Detalhes do veículo"],
+  ["/cadastro-caminhao", "Novo veículo"],
+  ["/manutencao-gastos", "Manutenção e gastos"],
+  ["/pneus/estoque", "Estoque de pneus"],
+  ["/pneus", "Pneus"],
+  ["/motoristas", "Motoristas"],
+  ["/documentos", "Documentos"],
+  ["/alertas", "Alertas"],
+  ["/relatorios", "Relatórios"],
+  ["/notas-estoque", "Notas e estoque"],
+  ["/fiscal", "Fiscal"],
+  ["/usuarios", "Usuários"],
+  ["/empresa", "Configurações"],
+  ["/auditoria", "Auditoria"],
+  ["/conta", "Minha conta"],
+  ["/assinatura", "Assinatura"],
+  ["/", "Visão geral"],
+];
+
+function currentPageTitle(pathname) {
+  return PAGE_TITLES.find(([path]) =>
+    path === "/" ? pathname === "/" : pathname.startsWith(path),
+  )?.[1] || "ATrack";
+}
 
 function linkIcon(path) {
   const d =
@@ -157,7 +184,7 @@ function NavLink({ link, pathname }) {
 
 function GroupLabel({ children }) {
   return (
-    <p className="px-3 pb-1.5 pt-3 text-[10px] font-semibold uppercase tracking-wider text-gray-500 first:pt-0">
+    <p className="px-3 pb-1.5 pt-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 first:pt-0">
       {children}
     </p>
   );
@@ -189,11 +216,11 @@ function SidebarNav({
 
   return (
     <nav className="flex min-h-0 flex-1 flex-col" aria-label="Menu principal">
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
         {canWriteFrota && !vehicleQuotaReached && (
           <Link
             to="/cadastro-caminhao"
-            className="mb-3 flex h-10 items-center justify-center rounded-lg bg-secondary text-sm font-semibold text-white hover:bg-secondary-dark"
+            className="mb-4 flex h-10 items-center justify-center rounded-lg bg-secondary text-sm font-semibold text-white transition-colors hover:bg-secondary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
           >
             + Caminhão
           </Link>
@@ -471,8 +498,8 @@ const Navbar = ({ children }) => {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-primary shadow-md lg:flex">
-        <div className="shrink-0 border-b border-white/10 px-4 py-4">{brand}</div>
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-slate-800 bg-primary lg:flex xl:w-72">
+        <div className="shrink-0 border-b border-white/10 px-5 py-5">{brand}</div>
         <SidebarNav {...navProps} />
       </aside>
 
@@ -540,6 +567,35 @@ const Navbar = ({ children }) => {
             </aside>
           </>
         )}
+
+        <header className="sticky top-0 z-30 hidden h-16 items-center justify-between border-b border-border bg-white/95 px-6 backdrop-blur lg:flex xl:px-8">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-secondary">
+              Central operacional
+            </p>
+            <p className="truncate text-sm font-semibold text-text-primary">
+              {currentPageTitle(location.pathname)}
+            </p>
+          </div>
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="hidden text-right xl:block">
+              <p className="max-w-56 truncate text-sm font-medium text-text-primary">
+                {user?.nome || "Usuário"}
+              </p>
+              <p className="max-w-56 truncate text-xs text-text-secondary">
+                {user?.tenantNome || user?.email}
+              </p>
+            </div>
+            <Link
+              to="/conta"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2"
+              aria-label="Abrir minha conta"
+              title="Minha conta"
+            >
+              {(user?.nome || user?.email || "U").trim().charAt(0).toUpperCase()}
+            </Link>
+          </div>
+        </header>
 
         <div className="min-w-0 flex-1">{children}</div>
       </div>

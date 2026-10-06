@@ -9,6 +9,7 @@ import { apiFetch, parseApiError } from "../lib/apiClient.js";
 import { extractApiArray } from "../utils/extractApiArray.js";
 import { isUserQuotaReached } from "../utils/billing.js";
 import PlanQuotaBanner from "../components/PlanQuotaBanner.jsx";
+import EmptyState from "../components/EmptyState.jsx";
 
 const ROLE_LABEL = {
   admin: "Administrador",
@@ -124,13 +125,13 @@ export default function Usuarios() {
   };
 
   return (
-    <PageLayout wide={false}>
+    <PageLayout wide={false} className="space-y-6">
       <PageHeader
         title="Usuários"
         subtitle="Gerencie quem acessa a empresa e o perfil de cada um."
       />
 
-      <div className="mt-6">
+      <div>
       {error && <Alert type="error" message={error} className="mb-4" />}
       {success && <Alert type="success" message={success} className="mb-4" />}
       <div className="mb-4">
@@ -223,9 +224,10 @@ export default function Usuarios() {
 
         <section className="bg-white border border-border rounded-2xl shadow-card overflow-hidden">
           <div className="px-5 py-4 border-b border-border">
-            <h2 className="text-lg font-semibold text-text-primary">
-              Equipe da empresa
-            </h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-text-primary">Equipe da empresa</h2>
+              {!loading && <span className="text-sm tabular-nums text-text-secondary">{users.length} {users.length === 1 ? "usuário" : "usuários"}</span>}
+            </div>
           </div>
 
           {loading ? (
@@ -233,9 +235,12 @@ export default function Usuarios() {
               <CardSkeleton lines={4} />
             </div>
           ) : users.length === 0 ? (
-            <p className="p-6 text-sm text-text-secondary">
-              Nenhum usuário encontrado.
-            </p>
+            <div className="p-5">
+              <EmptyState
+                title="Nenhum usuário encontrado"
+                description="Convide a primeira pessoa para começar a formar a equipe da empresa."
+              />
+            </div>
           ) : (
             <ul className="divide-y divide-border">
               {users.map((u) => {
@@ -283,7 +288,7 @@ export default function Usuarios() {
 
                     <div className="flex flex-wrap gap-2 shrink-0">
                       <select
-                        className="rounded-lg border border-border bg-white px-3 py-2 text-sm"
+                        className="control min-h-10"
                         value={u.role}
                         disabled={isSelf}
                         onChange={(e) =>

@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { saveAs } from "file-saver";
 import {
   useApi,
@@ -73,6 +74,7 @@ const OrdensColeta = () => {
   const { get, request } = useApi();
   const { post, delete: del } = useApiMutation();
   const toast = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const {
     data: caminhoesPage,
@@ -85,13 +87,17 @@ const OrdensColeta = () => {
     [caminhoesPage?.data],
   );
 
-  const [tipo, setTipo] = useState("PADRAO");
+  const [tipo, setTipo] = useState(
+    searchParams.get("tipo") === "CANOINHAS" ? "CANOINHAS" : "PADRAO",
+  );
   const [placa, setPlaca] = useState("");
   const [dadosVariaveis, setDadosVariaveis] = useState(buildEmptyDadosVariaveis);
   const [emailDestinatario, setEmailDestinatario] = useState("");
   const [assunto, setAssunto] = useState("");
   const [previewHtml, setPreviewHtml] = useState("");
-  const [historicoPage, setHistoricoPage] = useState(1);
+  const [historicoPage, setHistoricoPage] = useState(
+    Math.max(1, Number(searchParams.get("pagina")) || 1),
+  );
   const [actionLoading, setActionLoading] = useState(null);
   const [sendProgress, setSendProgress] = useState("");
   const [localError, setLocalError] = useState("");
@@ -108,6 +114,17 @@ const OrdensColeta = () => {
   const historico = historicoData?.rows ?? [];
   const pagination = historicoData?.pagination ?? null;
   const totalFalhas = historicoData?.totalFalhas ?? 0;
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    if (tipo !== "PADRAO") next.set("tipo", tipo);
+    else next.delete("tipo");
+    if (historicoPage > 1) next.set("pagina", String(historicoPage));
+    else next.delete("pagina");
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [historicoPage, searchParams, setSearchParams, tipo]);
 
   const handleClearFalhas = async () => {
     setClearingFalhas(true);
@@ -354,6 +371,10 @@ const OrdensColeta = () => {
         )}
 
         <Card>
+          <div className="mb-4">
+            <p className="section-label">Modelo do documento</p>
+            <h2 className="text-base font-semibold text-text-primary">Dados para geração e envio</h2>
+          </div>
           <div className="flex flex-wrap gap-2 border-b border-border pb-4 mb-4">
             {tipos.map((t) => (
               <button
@@ -361,10 +382,10 @@ const OrdensColeta = () => {
                 type="button"
                 aria-pressed={tipo === t.id}
                 onClick={() => handleTipoChange(t.id)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`min-h-10 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ${
                   tipo === t.id
-                    ? "bg-secondary text-white shadow"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    ? "border-secondary bg-secondary text-white"
+                    : "border-border bg-white text-text-secondary hover:border-cyan-300 hover:bg-cyan-50"
                 }`}
               >
                 {t.label}
@@ -434,10 +455,11 @@ const OrdensColeta = () => {
             ))}
           </div>
 
-          <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t border-border">
+          <div className="sticky bottom-0 -mx-4 mt-6 flex flex-col gap-2 border-t border-border bg-white/95 px-4 py-4 backdrop-blur sm:-mx-5 sm:flex-row sm:flex-wrap sm:px-5">
             <Button
               type="button"
               variant="secondary"
+              className="w-full sm:w-auto"
               onClick={handlePreview}
               loading={actionLoading === "preview"}
               disabled={Boolean(actionLoading)}
@@ -446,6 +468,7 @@ const OrdensColeta = () => {
             </Button>
             <Button
               type="button"
+              className="w-full sm:w-auto"
               onClick={handlePdf}
               loading={actionLoading === "pdf"}
               disabled={Boolean(actionLoading)}
@@ -454,6 +477,7 @@ const OrdensColeta = () => {
             </Button>
             <Button
               type="button"
+              className="w-full sm:w-auto"
               onClick={handleEnviar}
               loading={actionLoading === "enviar"}
               disabled={Boolean(actionLoading)}

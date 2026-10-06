@@ -1,5 +1,5 @@
 import React, { useState, useMemo, lazy, Suspense } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useApi,
@@ -45,8 +45,15 @@ const TIPO_LABEL = {
 };
 
 const Home = () => {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [tipoFiltro, setTipoFiltro] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [currentPage, setCurrentPage] = useState(() =>
+    Math.max(1, Number(searchParams.get("pagina")) || 1),
+  );
+  const [tipoFiltro, setTipoFiltro] = useState(() =>
+    TIPO_FILTROS.some((item) => item.id === searchParams.get("tipo"))
+      ? searchParams.get("tipo") || ""
+      : "",
+  );
   const toast = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -74,7 +81,11 @@ const Home = () => {
   const caminhoes = caminhoesPage?.data ?? [];
   const pagination = caminhoesPage?.pagination;
 
-  const { data: overview } = useReportsOverviewQuery();
+  const {
+    data: overview,
+    isLoading: overviewLoading,
+    error: overviewError,
+  } = useReportsOverviewQuery();
   const dashboardRange = useMemo(() => lastMonthsIsoRange(6), []);
   const costParams = useMemo(
     () => ({ ...dashboardRange, entriesLimit: 1 }),
@@ -98,19 +109,19 @@ const Home = () => {
   const stats = useMemo(
     () => ({
       totalCaminhoes:
-        overview?.totalCaminhoes ||
-        pagination?.totalItems ||
-        caminhoes?.length ||
+        overview?.totalCaminhoes ??
+        pagination?.totalItems ??
+        caminhoes?.length ??
         0,
-      totalGastos: overview?.totalGastos || 0,
-      totalManutencoes: overview?.totalManutencoes || 0,
-      mediaGastos: overview?.mediaPorLancamento || overview?.mediaGastos || 0,
-      alertas: alertsQuery.data?.counts?.total || 0,
+      totalGastos: overview?.totalGastos ?? 0,
+      totalManutencoes: overview?.totalManutencoes ?? 0,
+      mediaGastos: overview?.mediaPorLancamento ?? overview?.mediaGastos ?? 0,
+      alertas: alertsQuery.data?.counts?.total ?? 0,
     }),
     [overview, pagination?.totalItems, caminhoes?.length, alertsQuery.data],
   );
 
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get("busca") || "");
   const debouncedSearch = useDebouncedValue(searchTerm, 350);
   const [errorMessage, setErrorMessage] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -150,6 +161,12 @@ const Home = () => {
   const handleTipoFiltro = (tipo) => {
     setTipoFiltro(tipo);
     setCurrentPage(1);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      tipo ? next.set("tipo", tipo) : next.delete("tipo");
+      next.delete("pagina");
+      return next;
+    }, { replace: true });
   };
 
   const handleOpenDeleteModal = async (caminhao) => {
@@ -218,13 +235,29 @@ const Home = () => {
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      page > 1 ? next.set("pagina", String(page)) : next.delete("pagina");
+      return next;
+    }, { replace: true });
+  };
+
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      value ? next.set("busca", value) : next.delete("busca");
+      next.delete("pagina");
+      return next;
+    }, { replace: true });
   };
 
   const tipoFiltroLabel =
     TIPO_FILTROS.find((t) => t.id === tipoFiltro)?.label || "Todos";
 
   return (
-    <PageLayout wide={false} className="space-y-8">
+    <PageLayout className="space-y-7">
         <OnboardingBanner />
         <PageHeader
           title="Dashboard"
@@ -246,12 +279,15 @@ const Home = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 animate-slide-up">
+        <section aria-labelledby="resumo-operacional" className="space-y-3">
+          <h2 id="resumo-operacional" className="section-label">Resumo operacional</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             title="Total de Caminhões"
-            value={formatNumber(stats.totalCaminhoes)}
+            value={loadingCaminhoes ? "…" : formatNumber(stats.totalCaminhoes)}
             hint="Veículos cadastrados"
             color="blue"
+            to="#frota"
             icon={
               <svg
                 className="w-6 h-6"
@@ -276,9 +312,10 @@ const Home = () => {
           />
           <StatCard
             title="Gastos Totais"
-            value={formatCurrency(stats.totalGastos)}
+            value={overviewLoading ? "…" : overviewError ? "Indisponível" : formatCurrency(stats.totalGastos)}
             hint="Gastos + manutenções"
             color="green"
+            to={canReadReports ? "/relatorios" : undefined}
             icon={
               <svg
                 className="w-6 h-6"
@@ -297,9 +334,10 @@ const Home = () => {
           />
           <StatCard
             title="Manutenções"
-            value={formatNumber(stats.totalManutencoes)}
+            value={overviewLoading ? "…" : overviewError ? "Indisponível" : formatNumber(stats.totalManutencoes)}
             hint="Registros de checklist"
             color="orange"
+            to="/manutencao-gastos"
             icon={
               <svg
                 className="w-6 h-6"
@@ -326,11 +364,20 @@ const Home = () => {
             title={canReadAlerts ? "Alertas" : "Média por lançamento"}
             value={
               canReadAlerts
-                ? formatNumber(stats.alertas)
-                : formatCurrency(stats.mediaGastos)
+                ? alertsQuery.isLoading
+                  ? "…"
+                  : alertsQuery.error
+                    ? "Indisponível"
+                    : formatNumber(stats.alertas)
+                : overviewLoading
+                  ? "…"
+                  : overviewError
+                    ? "Indisponível"
+                    : formatCurrency(stats.mediaGastos)
             }
             hint={canReadAlerts ? "Pendências da operação" : "Custo médio"}
             color="amber"
+            to={canReadAlerts ? "/alertas" : canReadReports ? "/relatorios" : undefined}
             icon={
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
@@ -343,6 +390,7 @@ const Home = () => {
             }
           />
         </div>
+        </section>
 
         {canReadReports ? (
           <Suspense
@@ -365,7 +413,13 @@ const Home = () => {
           </Suspense>
         ) : null}
 
-        <div className="max-w-2xl mx-auto w-full space-y-3">
+        <section id="frota" className="scroll-mt-24 space-y-5" aria-labelledby="frota-title">
+        <div className="rounded-xl border border-border bg-white p-4 sm:p-5">
+          <div className="mb-4">
+            <h2 id="frota-title" className="text-lg font-semibold text-text-primary">Frota</h2>
+            <p className="mt-1 text-sm text-text-secondary">Busque por placa, motorista ou modelo e acesse os registros do veículo.</p>
+          </div>
+        <div className="w-full space-y-3">
           <label htmlFor="home-search" className="sr-only">
             Buscar caminhão por placa, motorista ou modelo
           </label>
@@ -388,15 +442,15 @@ const Home = () => {
             <input
               id="home-search"
               type="search"
-              className="block w-full pl-11 pr-4 py-4 bg-white border border-border rounded-xl text-text-primary placeholder-text-light focus:ring-2 focus:ring-secondary focus:border-transparent shadow-sm transition-all"
+              className="control block w-full pl-11 pr-4"
               placeholder="Buscar por placa, motorista ou modelo..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
             />
           </div>
 
           <div
-            className="flex flex-wrap justify-center gap-2"
+            className="flex flex-wrap gap-2"
             role="group"
             aria-label="Filtrar por tipo de veículo"
           >
@@ -419,6 +473,7 @@ const Home = () => {
               );
             })}
           </div>
+        </div>
         </div>
 
         {listError ? (
@@ -474,7 +529,7 @@ const Home = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setSearchTerm("")}
+                    onClick={() => handleSearchChange("")}
                   >
                     Limpar busca
                   </Button>
@@ -516,7 +571,7 @@ const Home = () => {
               />
             ) : (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
                   {displayedCaminhoes.map((caminhao) => (
                     <TruckCard
                       key={caminhao.id}
@@ -537,6 +592,7 @@ const Home = () => {
             )}
           </div>
         )}
+        </section>
 
         <ConfirmModal
           isOpen={modalOpen}
@@ -563,8 +619,8 @@ const TruckCard = ({ caminhao, onDelete, canWrite = true }) => {
     (caminhao.tipo_veiculo ? String(caminhao.tipo_veiculo) : "Truck");
 
   return (
-  <div className="bg-white rounded-xl border border-border shadow-card hover:shadow-soft transition-all duration-300 overflow-hidden group flex flex-col">
-    <div className="p-5 flex-1">
+  <article className="group flex flex-col overflow-hidden rounded-xl border border-border bg-white shadow-card transition-colors hover:border-cyan-300">
+    <div className="flex-1 p-5">
       <div className="flex justify-between items-start mb-4">
         <div className="bg-secondary/10 p-2 rounded-lg">
           <svg
@@ -593,8 +649,10 @@ const TruckCard = ({ caminhao, onDelete, canWrite = true }) => {
         </div>
       </div>
 
-      <h3 className="text-lg font-bold text-text-primary mb-1">
-        {caminhao.placa}
+      <h3 className="mb-1 font-mono text-xl font-bold tracking-wide text-text-primary">
+        <Link to={`/caminhao/${caminhao.placa}`} className="rounded hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary">
+          {caminhao.placa}
+        </Link>
       </h3>
       <p className="text-sm text-text-secondary mb-4">
         {caminhao.modelo || "Modelo não informado"} •{" "}
@@ -637,10 +695,10 @@ const TruckCard = ({ caminhao, onDelete, canWrite = true }) => {
       </div>
     </div>
 
-    <div className="px-5 py-4 bg-slate-50 border-t border-border flex justify-between items-center">
+    <div className="flex items-center justify-between border-t border-border bg-slate-50/70 px-5 py-3">
       <Link
         to={`/caminhao/${caminhao.placa}`}
-        className="text-sm font-medium text-primary hover:text-primary-dark transition-colors"
+        className="rounded text-sm font-semibold text-secondary hover:text-secondary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
       >
         Ver detalhes
       </Link>
@@ -692,7 +750,7 @@ const TruckCard = ({ caminhao, onDelete, canWrite = true }) => {
         )}
       </div>
     </div>
-  </div>
+  </article>
   );
 };
 

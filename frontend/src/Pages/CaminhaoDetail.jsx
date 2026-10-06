@@ -1,5 +1,5 @@
 import React, { useMemo, useState, lazy, Suspense } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useCaminhaoDetailQuery, usePneuAtribuirQueries } from "../hooks";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../lib/queryKeys.js";
@@ -27,15 +27,30 @@ const DETAIL_TABS = [
   { id: "documentos", label: "Documentos" },
 ];
 
+const DETAIL_TAB_IDS = new Set(DETAIL_TABS.map((tab) => tab.id));
+
 const CaminhaoDetail = () => {
   const { placa } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [registroModal, setRegistroModal] = useState(null);
   const [novoPneuOpen, setNovoPneuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("resumo");
+  const [activeTab, setActiveTab] = useState(() => {
+    const requestedTab = searchParams.get("aba");
+    return DETAIL_TAB_IDS.has(requestedTab) ? requestedTab : "resumo";
+  });
   const { user } = useAuth();
   const canWriteFrota = userHasPermission(user, PERMISSIONS.FROTA_WRITE);
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      tabId === "resumo" ? next.delete("aba") : next.set("aba", tabId);
+      return next;
+    }, { replace: true });
+  };
 
   const { data, isLoading: loading, error } = useCaminhaoDetailQuery(placa);
   const {
@@ -129,7 +144,7 @@ const CaminhaoDetail = () => {
   }
 
   return (
-    <PageLayout wide={false} className="space-y-6">
+    <PageLayout className="space-y-6">
       <Breadcrumbs
         items={[
           { label: "Início", to: "/" },
@@ -172,7 +187,7 @@ const CaminhaoDetail = () => {
         }
       />
 
-      <Tabs tabs={DETAIL_TABS} activeTab={activeTab} onChange={setActiveTab} />
+      <Tabs tabs={DETAIL_TABS} activeTab={activeTab} onChange={handleTabChange} />
 
         {(listTruncation.gastos || listTruncation.checklists) && (
           <Alert
@@ -193,8 +208,10 @@ const CaminhaoDetail = () => {
         )}
 
         {activeTab === "resumo" && (
-        <div className="space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="space-y-6">
+        <section aria-labelledby="indicadores-veiculo" className="space-y-3">
+        <h2 id="indicadores-veiculo" className="section-label">Indicadores do veículo</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             layout="compact"
             icon={
@@ -293,10 +310,12 @@ const CaminhaoDetail = () => {
           />
         </div>
 
+        </section>
+
         {/* Info Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
           <Card title="Dados do Veículo" className="lg:col-span-2 h-full">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+            <dl className="grid grid-cols-1 gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
               {[
                 { label: "Placa", value: caminhao.placa },
                 {
@@ -348,22 +367,22 @@ const CaminhaoDetail = () => {
               ].map((item, idx) => (
                 <div
                   key={idx}
-                  className="p-4 bg-gray-50 rounded-lg border border-gray-100"
+                  className="border-b border-border py-3 last:border-b-0 sm:last:border-b"
                 >
-                  <p className="text-sm text-gray-500 mb-1">{item.label}</p>
-                  <p className="font-semibold text-gray-900 break-words">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-text-secondary">{item.label}</dt>
+                  <dd className={`mt-1 break-words font-semibold text-text-primary ${item.label === "Placa" ? "font-mono tracking-wide" : ""}`}>
                     {item.value}
-                  </p>
+                  </dd>
                 </div>
               ))}
-            </div>
+            </dl>
           </Card>
 
           <Card title="Eficiência" className="h-full">
             <div className="flex flex-col items-center justify-center h-full py-4">
               {consumoKmPorLitro ? (
                 <>
-                  <div className="text-5xl font-bold text-green-600 mb-2">
+                  <div className="mb-2 text-4xl font-bold tabular-nums text-emerald-600">
                     {consumoKmPorLitro}
                   </div>
                   <p className="text-lg font-medium text-gray-600">Km/L</p>

@@ -216,6 +216,7 @@ export function defaultStatusForKind(kind) {
     : "pago";
 }
 
+/** Campos de controle (motorista, status, vencimento, detalhes) para create/update. */
 export function payloadControleGasto(form, kind) {
   const status = form.status_pagamento || defaultStatusForKind(kind);
   return {

@@ -159,6 +159,7 @@ describe("parseNfeXml", () => {
     assert.equal(parsed.peso_bruto, 12.5);
     assert.equal(parsed.itens[0].cfop, "5102");
     assert.equal(parsed.data_emissao_ymd, "2026-08-05");
+    assert.equal(parsed.data_emissao, "2026-08-05");
   });
 
   it("classifica NF-e de diesel como combustível e soma litros", () => {

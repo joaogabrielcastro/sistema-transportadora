@@ -52,6 +52,36 @@ async function main() {
     ON "telemetry_device_assignments" ("caminhao_id") WHERE "fim_em" IS NULL
   `);
   console.log("Seed CI: índices parciais de telemetria ok.");
+
+  // Unicidade fiscal: UNIQUE ... WHERE — Prisma não modela no schema; db push
+  // pula a migration SQL. Espelha 20260908153000_fiscal_unicidade_emissao.
+  await prisma.$executeRawUnsafe(`
+    CREATE UNIQUE INDEX IF NOT EXISTS "fiscal_ctes_brasil_nfe_id_key"
+    ON "fiscal_ctes" ("brasil_nfe_id")
+    WHERE "brasil_nfe_id" IS NOT NULL
+  `);
+  await prisma.$executeRawUnsafe(`
+    CREATE UNIQUE INDEX IF NOT EXISTS "fiscal_mdfes_brasil_nfe_id_key"
+    ON "fiscal_mdfes" ("brasil_nfe_id")
+    WHERE "brasil_nfe_id" IS NOT NULL
+  `);
+  await prisma.$executeRawUnsafe(`
+    CREATE UNIQUE INDEX IF NOT EXISTS "fiscal_ctes_empresa_serie_numero_ambiente_key"
+    ON "fiscal_ctes" ("tenant_id", "fiscal_empresa_id", "ambiente", "serie", "numero")
+    WHERE "numero" IS NOT NULL
+      AND "serie" IS NOT NULL
+      AND "fiscal_empresa_id" IS NOT NULL
+      AND "ambiente" IS NOT NULL
+  `);
+  await prisma.$executeRawUnsafe(`
+    CREATE UNIQUE INDEX IF NOT EXISTS "fiscal_mdfes_empresa_serie_numero_ambiente_key"
+    ON "fiscal_mdfes" ("tenant_id", "fiscal_empresa_id", "ambiente", "serie", "numero")
+    WHERE "numero" IS NOT NULL
+      AND "serie" IS NOT NULL
+      AND "fiscal_empresa_id" IS NOT NULL
+      AND "ambiente" IS NOT NULL
+  `);
+  console.log("Seed CI: índices parciais de unicidade fiscal ok.");
 }
 
 main()

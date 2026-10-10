@@ -144,7 +144,7 @@ export const PLAN_COMPARE_SECTIONS = [
         complete: true,
       },
       {
-        label: "Contrato de frete e CIOT",
+        label: "Contrato de frete",
         starter: false,
         fiscal: true,
         complete: true,
@@ -204,7 +204,7 @@ export const PLAN_COMPARE_SECTIONS = [
         complete: true,
       },
       {
-        label: "Trial de 14 dias (Starter)",
+        label: "Teste de 15 dias (Starter)",
         starter: true,
         fiscal: false,
         complete: false,

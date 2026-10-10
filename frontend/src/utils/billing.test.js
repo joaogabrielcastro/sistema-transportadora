@@ -59,7 +59,7 @@ describe("billing utils", () => {
     assert.equal(PLAN_CARDS[0].id, "starter");
     assert.equal(PLAN_CARDS[0].lid, "starter");
     assert.equal(PLAN_CARDS[0].trialEligible, true);
-    assert.equal(BILLING_TRIAL_DAYS, 14);
+    assert.equal(BILLING_TRIAL_DAYS, 15);
     assert.match(PLAN_CARDS[0].highlights[0], /8 veículos/);
   });
 

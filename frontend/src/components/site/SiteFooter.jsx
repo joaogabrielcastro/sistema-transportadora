@@ -6,6 +6,8 @@ import {
   PRODUCT_TAGLINE,
 } from "../../brand.js";
 import { LEGAL_CONTACT_EMAIL } from "../../legal.js";
+import { SALES_CONTACT_ENABLED, SALES_CONTACT_URL } from "../../commercial.js";
+import { trackFunnel } from "../../utils/funnel.js";
 
 export default function SiteFooter() {
   const year = new Date().getFullYear();
@@ -38,6 +40,19 @@ export default function SiteFooter() {
             {PRODUCT_NAME}
           </p>
           <ul className="mt-3 space-y-2 text-sm">
+            {SALES_CONTACT_ENABLED ? (
+              <li>
+                <a
+                  href={SALES_CONTACT_URL}
+                  target={SALES_CONTACT_URL.startsWith("https://") ? "_blank" : undefined}
+                  rel={SALES_CONTACT_URL.startsWith("https://") ? "noreferrer" : undefined}
+                  className="hover:text-white"
+                  onClick={() => trackFunnel("cta_demo", { location: "footer" })}
+                >
+                  Agendar demonstração
+                </a>
+              </li>
+            ) : null}
             <li>
               <Link to="/" className="hover:text-white">
                 Sobre

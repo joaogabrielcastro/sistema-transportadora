@@ -23,7 +23,7 @@ export const PLAN_CATALOG = Object.freeze([
     tagline: "Frota pequena",
     description:
       "Cadastre veículos, lance gastos e manutenção. Para quem está saindo da planilha — não para operação de porte médio.",
-    priceMonthlyBrl: 199,
+    priceMonthlyBrl: 249,
     highlights: [
       "Até 8 veículos e 2 usuários",
       "Dashboard, frota, motoristas e documentos",
@@ -40,13 +40,13 @@ export const PLAN_CATALOG = Object.freeze([
     tagline: "NF-e, estoque e emissão fiscal",
     description:
       "Tudo do Starter, com teto maior, NF-e ligada à frota e emissão de CT-e, MDF-e e contrato de frete.",
-    priceMonthlyBrl: 499,
+    priceMonthlyBrl: 649,
     highlights: [
       "Até 40 veículos e 8 usuários",
       "Tudo do Starter",
       "Importação de XML da NF-e e estoque de peças",
       "Baixa de peças na manutenção",
-      "CT-e, MDF-e, averbação e contrato de frete (CIOT)",
+      "CT-e, MDF-e, averbação e contrato de frete",
     ],
     modules: ["notas_estoque", "transporte_fiscal"],
     popular: true,
@@ -57,11 +57,11 @@ export const PLAN_CATALOG = Object.freeze([
     tagline: "Operação maior",
     description:
       "Mesmos módulos do Fiscal, com mais veículos e usuários para operação que já cresceu.",
-    priceMonthlyBrl: 699,
+    priceMonthlyBrl: 999,
     highlights: [
       "Até 100 veículos e 20 usuários",
       "Tudo do Starter e do Fiscal",
-      "NF-e, estoque, CT-e, MDF-e e CIOT",
+      "NF-e, estoque, CT-e, MDF-e e contrato de frete",
       "Para frota e equipe que já passaram do porte médio",
     ],
     modules: ["notas_estoque", "transporte_fiscal"],

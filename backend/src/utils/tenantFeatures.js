@@ -245,7 +245,7 @@ export function buildBillingPublic(tenant) {
  * @param {number} trialDays
  * @param {Date} [now]
  */
-export function newTenantBillingDefaults(trialDays = 14, now = new Date()) {
+export function newTenantBillingDefaults(trialDays = 15, now = new Date()) {
   const trialEnds = new Date(now);
   trialEnds.setDate(trialEnds.getDate() + trialDays);
   return {

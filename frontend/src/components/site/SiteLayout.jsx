@@ -10,6 +10,7 @@ import {
   PUBLIC_REGISTER_ENABLED,
 } from "../../brand.js";
 import SiteFooter from "./SiteFooter.jsx";
+import SalesContactButton from "./SalesContactButton.jsx";
 
 const defaultSignup = PUBLIC_REGISTER_ENABLED
   ? "/register?lid=starter"
@@ -52,6 +53,13 @@ export default function SiteLayout({
             >
               Planos
             </Link>
+            <div className="hidden lg:block">
+              <SalesContactButton
+                location="header"
+                size="sm"
+                label="Agendar demonstração"
+              />
+            </div>
             <Link
               to="/login"
               className="text-sm font-medium text-text-secondary hover:text-text-primary"

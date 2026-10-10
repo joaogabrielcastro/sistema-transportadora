@@ -1,6 +1,6 @@
 # ATrack — Gestão de Frotas
 
-SaaS **multi-empresa** para transportadoras: frota, gastos, manutenção, pneus, documentos, relatórios e, nos planos Fiscal/Completo, NF-e, estoque e emissão de CT-e / MDF-e / CIOT.
+SaaS **multi-empresa** para transportadoras: frota, gastos, manutenção, pneus, documentos, relatórios e, nos planos Fiscal/Completo, NF-e, estoque, CT-e, MDF-e e contrato de frete. O registro de CIOT depende de provedor homologado.
 
 Site comercial → plano (LID) → cadastro → sistema. Tudo deve contar a mesma história.
 
@@ -23,7 +23,7 @@ Além do Starter:
 
 - Importação de XML da NF-e e cadastro manual de notas
 - Estoque de peças ligado à frota e baixa na manutenção
-- Empresa fiscal, certificado, CT-e, MDF-e, seguro/averbação e contrato de frete (CIOT)
+- Empresa fiscal, certificado, CT-e, MDF-e, seguro/averbação e contrato de frete
 
 A operação ainda precisa cadastrar empresa fiscal e certificado para emitir.
 
@@ -40,9 +40,9 @@ O frontend consome `GET /api/billing/plans`. Fallback local em `frontend/src/uti
 
 | LID | Nome | Preço | Frota / usuários | Trial | Módulos |
 |-----|------|-------|------------------|-------|---------|
-| `starter` | Starter | R$ 199/mês | 8 / 2 | 14 dias | frota operacional |
-| `fiscal` | Fiscal | R$ 499/mês | 40 / 8 | — | `notas_estoque` + `transporte_fiscal` |
-| `complete` | Completo | R$ 699/mês | 100 / 20 | — | mesmos do Fiscal |
+| `starter` | Starter | R$ 249/mês | 8 / 2 | 15 dias | frota operacional |
+| `fiscal` | Fiscal | R$ 649/mês | 40 / 8 | — | `notas_estoque` + `transporte_fiscal` |
+| `complete` | Completo | R$ 999/mês | 100 / 20 | — | mesmos do Fiscal |
 
 **LID** = id do catálogo (`starter` \| `fiscal` \| `complete`). O frontend **nunca** envia Stripe Price ID. O backend resolve LID → plano → Price ID.
 
@@ -56,7 +56,7 @@ Rotas públicas: `/`, `/planos`, `/planos/:lid`, `/login`, `/register`, `/termos
 - Cadastro público: `POST /api/auth/register` e `/register` (desligar com `ALLOW_PUBLIC_REGISTER=false` / `VITE_ALLOW_PUBLIC_REGISTER=false`).
 - Papéis: `admin` \| `operator` \| `viewer`. Admin gerencia a equipe em `/usuarios`.
 - Clientes atuais (pré-cobrança): `billing_exempt=true` — usam o sistema sem Stripe.
-- Novos tenants: trial de 14 dias no **Starter**, depois assinam em `/assinatura`.
+- Novos tenants: teste de 15 dias no **Starter**, depois assinam em `/assinatura`.
 - Novo tenant (CLI):
   `cd backend && npm run tenant:create -- --slug=empresa --nome="Empresa" --email=admin@empresa.com --password=SenhaSegura123`
 - Ativar cobrança em isento: `npm run tenant:billing -- --slug=empresa --exempt=false --plan=fiscal`
@@ -138,6 +138,8 @@ Lista completa: `backend/.env.example`.
 VITE_API_URL=http://localhost:3020
 VITE_AUTH_REQUIRED=true
 # VITE_ALLOW_PUBLIC_REGISTER=false
+# VITE_SALES_CONTACT_URL=https://calendly.com/sua-empresa/demonstracao
+# VITE_SALES_EMAIL=jwsoftware8@gmail.com
 ```
 
 Produção: `VITE_API_URL=https://api.seudominio.com.br` (sem `/api` no final).

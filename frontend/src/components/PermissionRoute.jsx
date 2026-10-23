@@ -22,15 +22,27 @@ export function PermissionRoute({ permission, anyPermission, children }) {
     return children;
   }
 
+  const roleLabel =
+    user?.role === "viewer"
+      ? "somente leitura"
+      : user?.role === "operator"
+        ? "operador"
+        : null;
+
   return (
     <PageLayout narrow className="space-y-6">
       <PageHeader
         title="Acesso restrito"
-        subtitle="Seu perfil não permite abrir esta página."
+        subtitle={
+          roleLabel
+            ? `Seu perfil (${roleLabel}) não permite abrir esta página.`
+            : "Seu perfil não permite abrir esta página."
+        }
       />
       <Alert
         type="warning"
-        message="Peça a um administrador para alterar seu perfil ou liberar a permissão necessária."
+        title="O que fazer agora"
+        message="Peça a um administrador da sua empresa para alterar seu perfil ou liberar a permissão. Enquanto isso, você pode continuar nas telas liberadas para o seu acesso."
       />
       <div className="flex flex-wrap gap-3">
         <Link to="/">

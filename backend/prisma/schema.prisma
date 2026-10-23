@@ -215,6 +215,8 @@ model users {
   permissions   Json     @default("[]") @db.JsonB
   ativo         Boolean  @default(true)
   criado_em     DateTime @default(now()) @db.Timestamptz(6)
+  /// Incrementado ao alterar senha; o JWT carrega `sv` e a sessão é rejeitada se divergir.
+  session_version Int     @default(0)
   legal_version     String?   @db.VarChar(16)
   legal_accepted_at DateTime? @db.Timestamptz(6)
   tenants       tenants       @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)

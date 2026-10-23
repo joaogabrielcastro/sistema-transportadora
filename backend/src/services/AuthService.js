@@ -85,6 +85,7 @@ function buildAuthPayload(user, tenant) {
     nome: user.nome,
     tenantId,
     permissions,
+    sv: Number(user.session_version ?? 0),
   });
 
   return {
@@ -477,7 +478,10 @@ export class AuthService {
     await prisma.$transaction([
       prisma.users.update({
         where: { id: user.id },
-        data: { password_hash: await hashPassword(password) },
+        data: {
+          password_hash: await hashPassword(password),
+          session_version: { increment: 1 },
+        },
       }),
       prisma.auth_tokens.update({
         where: { id: row.id },
@@ -614,11 +618,14 @@ export class AuthService {
 
     await prisma.users.update({
       where: { id },
-      data: { password_hash: await hashPassword(newPassword) },
+      data: {
+        password_hash: await hashPassword(newPassword),
+        session_version: { increment: 1 },
+      },
     });
 
     logger.info("Senha alterada pelo próprio usuário", { userId: id });
-    return { message: "Senha atualizada com sucesso" };
+    return { message: "Senha atualizada com sucesso. Faça login novamente." };
   }
 
   static async findUsableToken(rawToken, purpose) {

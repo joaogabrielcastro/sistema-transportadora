@@ -8,6 +8,7 @@ import { Button } from "./ui";
  */
 export default function OnboardingBanner({ onDismissed }) {
   const [status, setStatus] = useState(null);
+  const [loadError, setLoadError] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -15,15 +16,28 @@ export default function OnboardingBanner({ onDismissed }) {
     (async () => {
       try {
         const res = await apiFetch({ url: "/ops/onboarding" });
-        if (!cancelled) setStatus(res.data);
+        if (!cancelled) {
+          setStatus(res.data);
+          setLoadError(false);
+        }
       } catch {
-        /* silencioso */
+        if (!cancelled) setLoadError(true);
       }
     })();
     return () => {
       cancelled = true;
     };
   }, []);
+
+  if (loadError && !status) {
+    return (
+      <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        Não foi possível carregar os primeiros passos. Recarregue a página ou
+        continue pelo menu: cadastre um veículo, um motorista e um gasto para
+        começar.
+      </div>
+    );
+  }
 
   if (!status || status.dismissed) return null;
   if (status.progress?.completed === status.progress?.total) {

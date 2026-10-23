@@ -205,6 +205,7 @@ export class UserService {
     if (data.ativo != null) patch.ativo = Boolean(data.ativo);
     if (data.password) {
       patch.password_hash = await hashPassword(data.password);
+      patch.session_version = { increment: 1 };
     }
 
     const updated = await prisma.users.updateMany({

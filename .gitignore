@@ -23,3 +23,9 @@ pnpm-debug.log*
 # IDE specific
 .vscode/
 .idea/
+
+# Evidências locais de teste / restore smoke
+frontend/e2e-evidence/
+frontend/test-results/
+frontend/playwright-report/
+backend/backups-smoke/

@@ -406,10 +406,11 @@ export default function Assinatura() {
         )}
 
         {user?.role === "admin" && stripeMissingPrices && (
-          <p className="text-center text-xs text-text-light">
-            Admin: configure STRIPE_PRICE_STARTER, STRIPE_PRICE_FISCAL e
-            STRIPE_PRICE_COMPLETE no Coolify.
-          </p>
+          <Alert
+            type="warning"
+            title="Cobrança online temporariamente indisponível"
+            message="Não foi possível iniciar a assinatura neste momento. Entre em contato com o suporte para ativar ou renovar o plano."
+          />
         )}
       </div>
     </PageLayout>

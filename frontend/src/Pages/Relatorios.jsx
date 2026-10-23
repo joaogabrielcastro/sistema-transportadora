@@ -345,6 +345,14 @@ const Relatorios = () => {
           </div>
         </Card>
 
+        {!submittedParams && (
+          <Alert
+            type="info"
+            title="Escolha o período e gere o relatório"
+            message="O custo por quilômetro usa os gastos e a quilometragem já lançados. Sem lançamentos no período, o resultado fica vazio — cadastre veículos e despesas primeiro."
+          />
+        )}
+
         {submittedParams && (
           <FilterChips
             items={activeFilterChips}
@@ -592,7 +600,8 @@ const Relatorios = () => {
         {submittedParams && !loading && !hasReport && (
           <Alert
             type="info"
-            message="Nenhum dado encontrado para o período e filtros selecionados."
+            title="Nenhum dado neste período"
+            message="Não há gastos ou manutenções para os filtros escolhidos. Amplie as datas, remova o filtro de caminhão ou lance despesas em Manutenção e gastos."
           />
         )}
     </PageLayout>

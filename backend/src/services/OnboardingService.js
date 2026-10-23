@@ -49,7 +49,9 @@ export class OnboardingService {
         id: "doc",
         title: "Anexe um documento com validade",
         done: docs > 0,
-        href: caminhoes > 0 ? "/" : "/cadastro-caminhao",
+        // Documentos são anexados no detalhe do veículo; a lista em /documentos
+        // orienta o próximo passo (e aponta para a frota se ainda estiver vazia).
+        href: caminhoes > 0 ? "/documentos" : "/cadastro-caminhao",
       },
     ];
 

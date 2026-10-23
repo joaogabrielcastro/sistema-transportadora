@@ -1192,6 +1192,14 @@ const ManutencaoGastos = () => {
         subtitle="Multas, combustível, pedágio e demais despesas com vencimento e situação"
       />
 
+      {!canWrite && (
+        <Alert
+          type="info"
+          title="Acesso somente leitura"
+          message="Você pode consultar os lançamentos. Para cadastrar ou editar, peça a um administrador para alterar seu perfil."
+        />
+      )}
+
       {pagination && pagination.totalItems > 0 && (
         <p className="text-sm text-text-secondary">
           {pagination.totalItems.toLocaleString("pt-BR")} registros no total

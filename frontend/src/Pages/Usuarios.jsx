@@ -197,8 +197,9 @@ export default function Usuarios() {
                 onChange={(e) => setWithTempPassword(e.target.checked)}
               />
               <span>
-                Criar já com senha temporária (sem enviar e-mail — útil em
-                desenvolvimento)
+                Criar com senha temporária (sem enviar e-mail). Use quando o
+                usuário precisar entrar agora ou o e-mail de convite não estiver
+                disponível.
               </span>
             </label>
             <Button
@@ -211,11 +212,11 @@ export default function Usuarios() {
             </Button>
           </form>
           <p className="mt-4 text-xs text-text-secondary leading-relaxed">
-            <strong>Administrador:</strong> gerencia usuários e configurações
-            sensíveis.
+            <strong>Administrador:</strong> gerencia usuários, assinatura e
+            configurações da empresa.
             <br />
             <strong>Operador:</strong> usa o dia a dia (frota, gastos, pneus,
-            ordens).
+            documentos e motoristas).
             <br />
             <strong>Somente leitura:</strong> consulta frota, relatórios e
             documentos, sem alterar dados.

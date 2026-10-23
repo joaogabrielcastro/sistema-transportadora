@@ -158,6 +158,7 @@ async function loadActiveSessionUser(jwtPayload) {
         email: true,
         nome: true,
         permissions: true,
+        session_version: true,
         tenants: { select: { ativo: true } },
       },
     });
@@ -180,6 +181,20 @@ async function loadActiveSessionUser(jwtPayload) {
       ok: false,
       statusCode: 401,
       error: "Usuário inativo ou sessão revogada.",
+    };
+  }
+
+  // Senha alterada (reset, troca na conta ou admin): JWT antigo deixa de valer.
+  const tokenSessionVersion = Number(jwtPayload.sv ?? 0);
+  const currentSessionVersion = Number(user.session_version ?? 0);
+  if (
+    !Number.isFinite(tokenSessionVersion) ||
+    tokenSessionVersion !== currentSessionVersion
+  ) {
+    return {
+      ok: false,
+      statusCode: 401,
+      error: "Sessão encerrada após alteração de senha. Faça login novamente.",
     };
   }
 

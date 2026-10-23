@@ -15,6 +15,22 @@ Ao final da reunião, o prospect deve compreender:
 
 Não tente apresentar todos os menus. Escolha os fluxos relacionados às dores confirmadas na qualificação.
 
+## 1.1 Roteiro rápido de 5 minutos (Starter)
+
+Use quando o prospect pediu “só um overview” ou sobrou pouco tempo. Conta demonstrativa isolada, dados fictícios, plano Starter (sem fiscal).
+
+| Minuto | Tela | O que mostrar | Frase-chave |
+| --- | --- | --- | --- |
+| 0–1 | `/` dashboard | Frota, alertas e indicadores alimentados pelos lançamentos | “O painel resume o que a equipe registra — não é telemetria.” |
+| 1–2 | `/caminhao/:placa` | Um veículo com documento e histórico | “Tudo do caminhão fica no mesmo lugar.” |
+| 2–3 | `/manutencao-gastos` | Um lançamento rápido (ou o último gasto) | “A rotina diária é lançar e conferir.” |
+| 3–4 | `/documentos` + `/alertas` | Vencido ou perto do vencimento | “A validade vira alerta para a equipe agir.” |
+| 4–5 | `/relatorios` → Gerar | Custo/km do período | “O relatório só existe porque houve lançamento e km.” |
+
+Fechamento (30 s): confirmar porte (veículos/usuários), indicar Starter vs Fiscal, lembrar que implantação Essencial cobre a entrada, e combinar próximo passo (teste de 15 dias ou proposta).
+
+Não abrir CT-e/MDF-e, ordem de coleta, CIOT nem telemetria neste roteiro de 5 minutos.
+
 ## 2. Conta demonstrativa
 
 Mantenha uma empresa de demonstração separada de clientes reais.

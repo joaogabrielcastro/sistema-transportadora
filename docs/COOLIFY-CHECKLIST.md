@@ -96,7 +96,7 @@ Alternativa: Base Directory `.` e Dockerfile na raiz (copia `backend/`).
 |----------|----------------|
 | `DATABASE_URL` | PostgreSQL de produção |
 | `PORT` | `3020` (ou a porta que o Coolify mapeia) |
-| `NODE_ENV` | `production` |
+| `NODE_ENV` | `production` — **somente Runtime** (desmarque “Available at Buildtime”). No build, o Coolify avisa/falha se `NODE_ENV=production` pular `devDependencies` (Vite no front). |
 | `AUTH_ENABLED` | `true` |
 | `JWT_SECRET` | senha longa aleatória (≥ 16 caracteres) |
 | `API_TOKEN` | opcional — só para scripts/CI (não embutir no frontend) |

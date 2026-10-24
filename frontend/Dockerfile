@@ -10,8 +10,10 @@ ENV NPM_CONFIG_AUDIT=false
 ENV CI=true
 
 COPY package.json package-lock.json ./
+# Coolify pode injetar NODE_ENV=production no build; vite/tailwind ficam em
+# devDependencies — --include=dev garante o build mesmo assim.
 # --ignore-scripts: pula postinstall do Playwright e reduz RAM no servidor
-RUN npm ci --ignore-scripts --no-audit --no-fund
+RUN npm ci --ignore-scripts --no-audit --no-fund --include=dev
 
 COPY . .
 

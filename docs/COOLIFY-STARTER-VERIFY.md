@@ -4,6 +4,12 @@ Use no painel Coolify da API ATrack. Marque só o que **você** confirmar. Nesta
 
 ## Passos exatos
 
+### 0. Deploy falhou com aviso `NODE_ENV=production` no build
+1. Coolify → serviço que falhou (API e/ou Frontend) → **Environment**.
+2. Em `NODE_ENV=production`, desmarque **Available at Buildtime** / marque só **Runtime**.
+3. No **Frontend**, o build precisa de Vite (`devDependencies`). O `frontend/Dockerfile` já usa `npm ci --include=dev` para resistir a `NODE_ENV=production` injetado no build; ainda assim, prefira Runtime-only.
+4. Redeploy o commit. Se ainda falhar, role o log **além** do aviso amarelo — a causa real costuma aparecer depois de “Building docker image started”.
+
 ### 1. Auth
 1. Coolify → serviço **API** → Environment.
 2. Confirme presença (valores ocultos OK): `AUTH_ENABLED=true`, `JWT_SECRET` (≥16 chars), `CORS_ORIGINS` com o domínio do front, `FRONTEND_URL` com URL pública do app.

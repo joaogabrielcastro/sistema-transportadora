@@ -46,10 +46,10 @@ One-off no container (Terminal Coolify da API — shell Linux, use `curl` sem `.
 
 ```bash
 npm run db:backup -- --out=/app/backups
-pg_dump --version   # deve ser 16.x se o banco for Postgres 16
+pg_dump --version   # major >= versão do servidor (prod ATrack: Postgres 18 → client 18)
 ```
 
-Se aparecer `server version mismatch`, a imagem está com `pg_dump` antigo: redeploy da API com o `Dockerfile` que instala `postgresql-client-16`.
+Se aparecer `server version mismatch`, a imagem está com `pg_dump` antigo demais: redeploy da API com o `Dockerfile` que instala `postgresql-client-18` (PGDG) e coloca `/usr/lib/postgresql/18/bin` no `PATH`.
 
 Prova: arquivo `atrack-*.sql.gz` + `/health` → `backup.enabled=true` e `backup.last.ok=true`.
 

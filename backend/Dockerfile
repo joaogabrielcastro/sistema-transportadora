@@ -2,9 +2,9 @@
 # Não use apt install chromium (puxa GTK e estoura RAM no "exporting layers").
 FROM node:20-bookworm-slim
 
-# Bibliotecas mínimas para o Chrome (PDF) + pg_dump alinhado ao Postgres 16 do Coolify.
-# O metapacote debian `postgresql-client` traz v15 e falha com server 16.x
-# ("server version mismatch"). Usamos o client 16 do repositório PGDG.
+# Bibliotecas mínimas para o Chrome (PDF) + pg_dump alinhado ao Postgres do Coolify.
+# O metapacote debian `postgresql-client` traz v15 e falha com server mais novo
+# ("server version mismatch"). Produção ATrack usa Postgres 18.x → client 18 (PGDG).
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -41,14 +41,17 @@ RUN apt-get update \
   && echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" \
     > /etc/apt/sources.list.d/pgdg.list \
   && apt-get update \
-  && apt-get install -y --no-install-recommends postgresql-client-16 \
-  && rm -rf /var/lib/apt/lists/*
+  && apt-get install -y --no-install-recommends postgresql-client-18 \
+  && rm -rf /var/lib/apt/lists/* \
+  && /usr/lib/postgresql/18/bin/pg_dump --version \
+  && /usr/lib/postgresql/18/bin/pg_dump --version | grep -Eq 'pg_dump \(PostgreSQL\) 18\.'
 
 WORKDIR /app
 
 ENV NODE_ENV=production \
     PRISMA_CLIENT_ENGINE_TYPE=library \
-    PUPPETEER_CACHE_DIR=/app/.cache/puppeteer
+    PUPPETEER_CACHE_DIR=/app/.cache/puppeteer \
+    PATH="/usr/lib/postgresql/18/bin:${PATH}"
 
 COPY package.json package-lock.json prisma.config.ts ./
 COPY prisma ./prisma/

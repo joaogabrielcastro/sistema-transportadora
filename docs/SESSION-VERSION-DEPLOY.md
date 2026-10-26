@@ -1,4 +1,8 @@
-# Preparação: migration `session_version` (não aplicar em produção nesta etapa)
+# Preparação: migration `session_version`
+
+**Status 2026-10-26:** aplicada e verificada no Postgres **local** (`transportadora_dev`).
+**Não aplicada nesta sessão em produção** — falta backup de prod verificado + acesso ao
+container Coolify. Procedimento abaixo permanece válido.
 
 ## O que muda
 
@@ -57,8 +61,9 @@ ALTER TABLE "users"
 
 ## Checklist pré-produção
 
-- [ ] Migration aplicada em staging / local clone
-- [ ] Teste `passwordSession.integration.test.js` passou com `RUN_DB_TESTS=1`
-- [ ] Backup do Postgres de produção verificado (existência do dump)
+- [x] Migration aplicada em staging / local clone (2026-10-26)
+- [x] Teste `passwordSession.integration.test.js` passou com `RUN_DB_TESTS=1` (suite isolada)
+- [ ] Backup do Postgres de produção verificado (existência do dump) — **bloqueante** (`backup.enabled=false` no `/health` público)
+- [ ] `npx prisma migrate status` no container da API de produção
 - [ ] Janela curta acordada; rollback de imagem documentado
 - [ ] Comunicação: “trocar senha desconecta outros dispositivos” (já esperado)

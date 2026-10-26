@@ -29,3 +29,4 @@ frontend/e2e-evidence/
 frontend/test-results/
 frontend/playwright-report/
 backend/backups-smoke/
+backend/backups/

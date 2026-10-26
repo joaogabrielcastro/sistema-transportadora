@@ -1,50 +1,109 @@
 # Verificação operacional Coolify (Starter) — sem expor segredos
 
-Use no painel Coolify da API ATrack. Marque só o que **você** confirmar. Nesta sessão de preparação local: várias variáveis **não** estavam no `.env` local (SMTP/Stripe/Sentry/Backup ausentes no arquivo; Redis apontando para memória).
+Checklist executado em **2026-10-26**. Evidências públicas via `curl` nos hosts
+`abbroto.jwsoftware.com.br` e `api-abbroto.jwsoftware.com.br`. Itens que exigem
+painel Coolify / SSH / Dashboard Stripe / Sentry ficam **PENDENTE** até ação do
+proprietário — não inventamos confirmação de Environment Variables.
+
+Legenda: `APROVADO` | `REPROVADO` | `PENDENTE` | `NÃO APLICÁVEL`
 
 ## Passos exatos
 
 ### 0. Deploy falhou com aviso `NODE_ENV=production` no build
-1. Coolify → serviço que falhou (API e/ou Frontend) → **Environment**.
-2. Em `NODE_ENV=production`, desmarque **Available at Buildtime** / marque só **Runtime**.
-3. No **Frontend**, o build precisa de Vite (`devDependencies`). O `frontend/Dockerfile` já usa `npm ci --include=dev` para resistir a `NODE_ENV=production` injetado no build; ainda assim, prefira Runtime-only.
-4. Redeploy o commit. Se ainda falhar, role o log **além** do aviso amarelo — a causa real costuma aparecer depois de “Building docker image started”.
+
+| Status | Evidência |
+| --- | --- |
+| **PENDENTE** | Sem acesso ao painel Coolify nesta sessão. O `frontend/Dockerfile` já usa `npm ci --include=dev`. O site público responde **503** `no available server` (Traefik sem backend saudável) — ver item Frontend abaixo. |
+
+Ação do proprietário:
+
+1. Coolify → Frontend → Environment: `NODE_ENV=production` só em **Runtime**.
+2. Conferir container Running (não unhealthy/exited), Ports Exposes `80`, healthcheck `/health`.
+3. Redeploy com Clear build cache se necessário; logs além do aviso amarelo.
 
 ### 1. Auth
-1. Coolify → serviço **API** → Environment.
-2. Confirme presença (valores ocultos OK): `AUTH_ENABLED=true`, `JWT_SECRET` (≥16 chars), `CORS_ORIGINS` com o domínio do front, `FRONTEND_URL` com URL pública do app.
-3. Prova: abrir `/login`, autenticar, `/api/auth/me` 200. Com `AUTH_ENABLED=false` a API **não** deve subir em produção (`validateProduction`).
+
+| Status | Evidência |
+| --- | --- |
+| **APROVADO** (API auth path) | `POST /api/auth/login` com credenciais fictícias → **401** `Credenciais inválidas` (não 500). `GET /api/auth/me` sem token → **401**. `POST /api/auth/register` corpo vazio → **400**. |
+| **REPROVADO** (prova UI `/login`) | Frontend **503** — impossível abrir `/login` no domínio público. |
+| **PENDENTE** (env no Coolify) | Confirmar no painel: `AUTH_ENABLED=true`, `JWT_SECRET` (≥16), `CORS_ORIGINS`, `FRONTEND_URL`. |
+
+Comandos:
+
+```powershell
+curl.exe -s https://api-abbroto.jwsoftware.com.br/api/auth/me
+curl.exe -s -X POST https://api-abbroto.jwsoftware.com.br/api/auth/login -H "Content-Type: application/json" --data-binary "@login.json"
+```
 
 ### 2. Redis + worker
-1. Confirme `REDIS_URL` apontando para o Redis interno Coolify.
-2. Se worker separado: mesmo `REDIS_URL`/`DATABASE_URL`; health em `WORKER_HEALTH_PORT` (padrão 3021).
-3. Prova: `GET /health` → `redis.configured=true`, `redis.ok=true`, `queueMode` ≠ `memory`.
+
+| Status | Evidência |
+| --- | --- |
+| **APROVADO** | `GET https://api-abbroto.jwsoftware.com.br/health` (2026-10-26T18:10:38Z): `redis.configured=true`, `redis.ok=true`, `queueMode=redis`, `worker.ok=true`, `worker.ageMs≈2282`, filas `ordemColeta`/`averbacao`/`telemetry` com waiting/active/failed = 0. |
+
+Não depende do `.env` local (lá não há `REDIS_URL`). Produção real está em Redis.
 
 ### 3. SMTP
-1. Confirme `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`.
-2. Prova: criar convite com vaga livre e receber e-mail; ou “esqueci a senha” para caixa de teste. `/health` → `mail.configured=true`.
+
+| Status | Evidência |
+| --- | --- |
+| **APROVADO** (configuração detectada) | `/health` → `mail.configured=true`. |
+| **PENDENTE** (entrega observável) | Sem caixa de teste / painel: não foi criado convite nem “esqueci a senha” em produção. |
+
+Ação: após Frontend voltar, convite com vaga livre **ou** forgot-password para caixa controlada; confirmar inbox (não logar tokens).
 
 ### 4. Stripe (modo teste primeiro)
-1. Confirme `STRIPE_SECRET_KEY` (sk_test_…), `STRIPE_WEBHOOK_SECRET` (whsec_…), `STRIPE_PRICE_STARTER`, `STRIPE_PRICE_FISCAL`, `STRIPE_PRICE_COMPLETE`.
-2. Webhook no Dashboard Stripe → `https://SEU_API/api/billing/webhook` com eventos: `checkout.session.completed`, `customer.subscription.*`, `invoice.payment_failed`.
-3. Prova: checkout teste em `/assinatura`; no Dashboard, “Resend” do evento e conferir que o tenant não duplica assinatura (update idempotente).
+
+| Status | Evidência |
+| --- | --- |
+| **REPROVADO** (preços) | `GET /api/billing/plans` → todos os planos com `priceConfigured=false` (faltam `STRIPE_PRICE_STARTER` / `FISCAL` / `COMPLETE` no ambiente da API). |
+| **APROVADO** (endpoint webhook existe) | `POST /api/billing/webhook` sem assinatura → **400** `Assinatura Stripe ausente`. |
+| **PENDENTE** | Checkout com `sk_test_…`, eventos no Dashboard, Resend, prova de idempotência em tenant real de teste. Sem chaves de teste no `.env` local desta máquina. |
 
 ### 5. Monitoramento
-1. API: `SENTRY_DSN`. Front (build arg): `VITE_SENTRY_DSN`.
-2. Prova: `/health` → `sentry.configured=true`; forçar erro controlado em staging e ver evento no Sentry.
+
+| Status | Evidência |
+| --- | --- |
+| **REPROVADO** / gap | `/health` → `sentry.configured=false`. Sem DSN, 500s da API não vão para Sentry. |
+| **PENDENTE** | Criar projetos Sentry (API + Front), setar `SENTRY_DSN` e `VITE_SENTRY_DSN` (build arg), forçar erro controlado em staging. |
 
 ### 6. Backup
-1. `BACKUP_ENABLED=true`, `BACKUP_DIR=/app/uploads` volume **ou** `/app/backups`, retenção configurada.
-2. Prova: arquivo `.sql.gz` recente no volume; `/health` → `backup.enabled=true` e `backup.last` sem erro.
-3. Restore: **somente** em banco vazio diferente — ver script `npm run db:restore` (recusa mesmo host+database de `DATABASE_URL`).
 
-## O que esta preparação local já mostrou
+| Status | Evidência |
+| --- | --- |
+| **REPROVADO** (produção) | `/health` → `backup.enabled=false`, `backup.last=null`. Dump diário da API **não** está ativo. |
+| **APROVADO** (procedimento local) | Drill em Postgres local (Docker): dump gzip válido → restore em banco `atrack_restore` isolado → contagens tenants/users iguais à origem; origem intacta. Guard `assertRestoreTargetAllowed` recusa mesmo host+database. |
+| **PENDENTE** (uploads) | `/health` → `uploads.writable=true` (volume gravável ≠ backup). Sem S3/R2 confirmado via health. Backup do volume `/app/uploads` no Coolify não verificado. |
 
-| Item | Config encontrada (local) | Funcionamento comprovado |
+Variáveis a ativar na API (Coolify):
+
+```
+BACKUP_ENABLED=true
+BACKUP_DIR=/app/backups
+BACKUP_RETENTION_DAYS=7
+BACKUP_HOUR_UTC=6
+```
+
+Volume mount: `/app/backups`. Depois: `/health` deve mostrar `backup.enabled=true` e `backup.last.ok=true` após o horário agendado (ou `npm run db:backup` one-off no container).
+
+## Frontend público (extra — bloqueante)
+
+| Status | Evidência |
+| --- | --- |
+| **REPROVADO** | `curl.exe -sI https://abbroto.jwsoftware.com.br` → **503**, body `no available server`. Significa Traefik sem container saudável para o domínio (serviço parado, healthcheck falhando, porta errada ou proxy). API permanece **200** `healthy`. |
+
+Diagnóstico sugerido no servidor/Coolify: `docker ps` do serviço frontend; logs; Ports Exposes `80`; health `wget …/health`; Restart/Redeploy.
+
+## Resumo rápido
+
+| Item | Produção real | Local / teste |
 | --- | --- | --- |
-| Auth | `AUTH_ENABLED=true`, JWT set | Login/register/me OK |
-| Redis | sem `REDIS_URL` → memória | Fila em memória (não é prod) |
-| SMTP | injetado só no processo → Mailpit | Convite/reset (script dedicado) |
-| Stripe | ausente no `.env` | Checkout 503; CLI sem login |
-| Sentry | ausente | não configurado |
-| Backup | `backup.enabled=false` no `/health` | restore isolado (se executado nesta rodada) |
+| Auth API | parcial (401 paths OK; UI offline) | OK em testes |
+| Redis + worker | APROVADO | Redis local sobe via compose |
+| SMTP | configurado; entrega PENDENTE | Mailpit / ausente no `.env` |
+| Stripe prices | REPROVADO (`priceConfigured=false`) | ausente |
+| Sentry | REPROVADO | ausente |
+| Backup DB | REPROVADO (disabled) | restore drill APROVADO |
+| Uploads backup | PENDENTE | N/A |
+| Frontend | REPROVADO (503) | N/A nesta rodada |

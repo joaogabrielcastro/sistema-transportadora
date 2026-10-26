@@ -364,21 +364,18 @@ export class BillingService {
         ? session.subscription
         : session.subscription?.id;
 
+    // Checkout ATrack é sempre mode=subscription. Sem subscription no evento,
+    // não ativamos o plano (evita “pago” só com session.completed incompleto).
     if (!subscriptionId) {
-      const plan = isValidPlan(session.metadata?.plan)
-        ? session.metadata.plan
-        : PLANS.starter;
-      return prisma.tenants.update({
-        where: { id: tenantId },
-        data: {
-          stripe_customer_id:
-            typeof session.customer === "string" ? session.customer : undefined,
-          plan,
-          subscription_status: "active",
-          features: featuresForPlan(plan),
-          billing_exempt: false,
+      logger.warn(
+        "Checkout completed sem subscription_id — assinatura não ativada",
+        {
+          sessionId: session.id,
+          tenantId,
+          mode: session.mode || null,
         },
-      });
+      );
+      return null;
     }
 
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);

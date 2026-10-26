@@ -82,8 +82,33 @@ SELECT column_name FROM information_schema.columns
 ## 4. Backup de uploads (documentos)
 
 - Path padrão: `/app/uploads` (volume Coolify obrigatório).
-- Persistência ≠ backup. Agende snapshot/cópia do volume (Coolify backup, rsync, ou S3 se o módulo usar object storage).
-- Após restore de arquivos, conferir que caminhos no banco ainda resolvem (amostra de caminhão/documento **sem** expor PII em tickets).
+- Persistência ≠ backup. `uploads.writable=true` no `/health` **não** prova recuperação.
+
+### One-off (Terminal Coolify da API)
+
+```bash
+TS=$(date -u +%Y-%m-%dT%H-%M-%S)
+tar -czf "/app/backups/uploads-${TS}.tgz" -C /app uploads
+ls -la /app/backups/uploads-${TS}.tgz
+```
+
+### Agendar (Coolify → Scheduled Tasks)
+
+Exemplo diário:
+
+```bash
+tar -czf "/app/backups/uploads-$(date -u +%Y-%m-%dT%H-%M-%S).tgz" -C /app uploads
+find /app/backups -name 'uploads-*.tgz' -mtime +7 -delete
+```
+
+### Restore isolado
+
+```bash
+mkdir -p /tmp/uploads-restore
+tar -xzf /app/backups/uploads-YYYY.tgz -C /tmp/uploads-restore
+```
+
+Não publique listagens com nomes de arquivos de clientes. Médio prazo: copiar `.tgz` + `.sql.gz` para S3/R2 fora do host.
 
 ## 5. Redis / workers
 
@@ -130,9 +155,13 @@ Não logar senhas, JWT, corpo de upload, XML fiscal completo em canais públicos
 
 ### Live (sem cobrança até autorização)
 
-- Keys/secrets/prices/webhook **separados** do modo test.
-- Confirmar produtos subscription e URLs HTTPS.
+Checklist completo: `docs/STARTER-PRODUCTION-READINESS.md` (seção Stripe live).
+
+- Keys/secrets/prices/webhook **separados** do modo test (`sk_live` ≠ `sk_test`, `whsec` live ≠ test, `price_` live ≠ test).
+- Produtos subscription mensal BRL; `FRONTEND_URL` HTTPS.
+- Redeploy API após trocar envs; smoke `/api/billing/plans` → `priceConfigured=true`.
 - Primeira cobrança real só com OK explícito do proprietário.
+- Probe automatizado de **teste**: `node scripts/stripe-starter-checkout-probe.mjs` (requer `sk_test` + `whsec` + price starter no env).
 
 ## 9. Migration `session_version`
 

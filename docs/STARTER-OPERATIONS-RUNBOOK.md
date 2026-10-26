@@ -42,13 +42,18 @@ BACKUP_HOUR_UTC=6
 
 Monte volume em `/app/backups`. Imagem da API já traz `pg_dump`/`psql`.
 
-One-off no container:
+One-off no container (Terminal Coolify da API — shell Linux, use `curl` sem `.exe`):
 
 ```bash
 npm run db:backup -- --out=/app/backups
+pg_dump --version   # deve ser 16.x se o banco for Postgres 16
 ```
 
+Se aparecer `server version mismatch`, a imagem está com `pg_dump` antigo: redeploy da API com o `Dockerfile` que instala `postgresql-client-16`.
+
 Prova: arquivo `atrack-*.sql.gz` + `/health` → `backup.enabled=true` e `backup.last.ok=true`.
+
+`last: null` com `enabled: true` = backup ligado, mas ainda não houve dump bem-sucedido (ou ainda não chegou o horário `BACKUP_HOUR_UTC`).
 
 Opcional: S3/R2 (`S3_*` + prefixo `BACKUP_S3_PREFIX`) para cópia fora do disco do app.
 

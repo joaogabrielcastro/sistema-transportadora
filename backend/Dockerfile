@@ -2,10 +2,14 @@
 # Não use apt install chromium (puxa GTK e estoura RAM no "exporting layers").
 FROM node:20-bookworm-slim
 
-# Bibliotecas mínimas para o Chrome instalado pelo Puppeteer (PDF)
+# Bibliotecas mínimas para o Chrome (PDF) + pg_dump alinhado ao Postgres 16 do Coolify.
+# O metapacote debian `postgresql-client` traz v15 e falha com server 16.x
+# ("server version mismatch"). Usamos o client 16 do repositório PGDG.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     ca-certificates \
+    curl \
+    gnupg \
     fonts-liberation \
     fonts-dejavu-core \
     libasound2 \
@@ -32,7 +36,12 @@ RUN apt-get update \
     libxrender1 \
     libxshmfence1 \
     libxi6 \
-    postgresql-client \
+  && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+    | gpg --dearmor -o /usr/share/keyrings/postgresql-keyring.gpg \
+  && echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" \
+    > /etc/apt/sources.list.d/pgdg.list \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends postgresql-client-16 \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

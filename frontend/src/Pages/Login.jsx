@@ -14,6 +14,7 @@ import {
   PUBLIC_REGISTER_ENABLED,
 } from "../brand.js";
 import LegalLinks from "../components/LegalLinks.jsx";
+import BrazilOpsMap from "../components/BrazilOpsMap.jsx";
 
 const MailIcon = () => (
   <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -36,12 +37,6 @@ const LockIcon = () => (
     />
   </svg>
 );
-
-const highlights = [
-  "Frota, documentos e composição em um painel",
-  "Pneus, estoque e vida útil sob controle",
-  "Custos, manutenção e relatórios de custo/km",
-];
 
 export default function Login() {
   const { login, isAuthenticated } = useAuth();
@@ -93,69 +88,13 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex">
-      <aside className="hidden lg:flex lg:w-[44%] xl:w-[42%] relative overflow-hidden bg-primary text-white flex-col justify-between p-10 xl:p-14">
-        <div
-          className="absolute inset-0 opacity-30"
-          aria-hidden
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 20% 20%, rgba(59,130,246,0.35) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(148,163,184,0.15) 0%, transparent 45%)",
-          }}
-        />
-        <div className="relative z-10 flex items-center gap-4">
-          <img
-            src={PRODUCT_LOGO_SRC}
-            alt=""
-            className="h-14 w-14 object-contain rounded-xl bg-white p-1.5 shadow-lg"
-          />
-          <div>
-            <p className="text-2xl font-bold tracking-tight text-white">
-              {PRODUCT_NAME}
-            </p>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-              {PRODUCT_TAGLINE}
-            </p>
-          </div>
-        </div>
-
-        <div className="relative z-10 space-y-6 max-w-md">
-          <h2 className="text-3xl xl:text-4xl font-bold leading-tight tracking-tight text-white">
-            Sua frota sob controle, do pátio ao relatório
-          </h2>
-          <p className="text-slate-300 text-lg leading-relaxed">
-            Organize veículos, pneus e custos em um só lugar — com dados da
-            sua empresa isolados e prontos para decidir.
-          </p>
-          <ul className="space-y-3.5">
-            {highlights.map((item) => (
-              <li key={item} className="flex items-start gap-3 text-slate-200">
-                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary/20 text-secondary-light">
-                  <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </span>
-                <span className="leading-snug">{item}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <p className="relative z-10 text-sm text-slate-500">
-          © {new Date().getFullYear()} {PRODUCT_NAME} {PRODUCT_TAGLINE}
-        </p>
-      </aside>
-
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-10 sm:px-8 bg-background">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 py-10 sm:px-8 bg-white lg:bg-background">
         <div className="w-full max-w-[420px] animate-slide-up">
-          <div className="lg:hidden flex flex-col items-center text-center mb-8">
+          <div className="flex flex-col items-center text-center mb-8 lg:items-start lg:text-left">
             <img
               src={PRODUCT_LOGO_SRC}
               alt={PRODUCT_LOGO_ALT}
-              className="h-20 w-20 object-contain rounded-2xl bg-white p-2 shadow-card border border-border mb-4"
+              className="h-16 w-16 object-contain rounded-2xl bg-white p-2 shadow-card border border-border mb-4"
             />
             <p className="text-xl font-bold text-text-primary">{PRODUCT_NAME}</p>
             <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
@@ -163,13 +102,13 @@ export default function Login() {
             </p>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-card border border-border p-6 sm:p-8">
+          <div className="bg-white rounded-2xl shadow-card border border-border p-6 sm:p-8 lg:shadow-none lg:border-0 lg:p-0">
             <div className="mb-8">
               <h1 className="text-2xl font-bold text-text-primary tracking-tight">
                 Entrar
               </h1>
               <p className="mt-1.5 text-sm text-text-secondary">
-                Use seu e-mail e senha para acessar o sistema.
+                Acesse a operação da sua transportadora.
               </p>
             </div>
 
@@ -232,12 +171,12 @@ export default function Login() {
                 loading={loading}
                 className="w-full py-3 text-base font-semibold"
               >
-                Entrar no sistema
+                Entrar
               </Button>
             </form>
 
             {PUBLIC_REGISTER_ENABLED && (
-              <p className="mt-6 text-center text-sm text-text-secondary">
+              <p className="mt-6 text-center text-sm text-text-secondary lg:text-left">
                 Nova empresa?{" "}
                 <Link
                   to={registerHref(readStoredLid())}
@@ -250,13 +189,20 @@ export default function Login() {
           </div>
 
           <LegalLinks />
-          <p className="mt-3 text-center text-xs text-text-light">
+          <p className="mt-3 text-center text-xs text-text-light lg:text-left">
             <Link to="/" className="font-medium text-secondary hover:text-secondary-dark">
               Conhecer o ATrack
             </Link>
           </p>
         </div>
       </main>
+
+      <aside
+        className="hidden lg:flex lg:w-[52%] xl:w-[54%] relative overflow-hidden border-l border-border"
+        aria-hidden
+      >
+        <BrazilOpsMap />
+      </aside>
     </div>
   );
 }

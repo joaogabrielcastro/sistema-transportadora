@@ -50,104 +50,87 @@ const CITIES = {
   natal: { name: "Natal", lon: -35.2, lat: -5.8 },
 };
 
-/** Rotas da referência: arcos altos (lift) + leve bend lateral. */
+/** Rotas: Curitiba → polos primeiro; depois transversais. */
 const ROUTES = [
   {
-    from: "goiania",
-    to: "belem",
-    placa: "SGF2B37",
-    label: "Goiânia/GO → Belém/PA",
-    speed: 86,
+    from: "curitiba",
+    to: "sp",
+    placa: "CPR2A11",
+    label: "Curitiba/PR → São Paulo/SP",
+    speed: 78,
     limit: 90,
-    hours: "1h35",
+    hours: "0h52",
     maxHours: "5h30",
-    eta: "chegada sex 09:20",
+    eta: "chegada sex 08:40",
+    status: "Em rota",
+    bend: 0.2,
+    lift: 0.42,
+    period: 3400,
+    phase: 0.05,
+  },
+  {
+    from: "curitiba",
+    to: "bh",
+    placa: "CPR4B28",
+    label: "Curitiba/PR → Belo Horizonte/MG",
+    speed: 82,
+    limit: 90,
+    hours: "1h28",
+    maxHours: "5h30",
+    eta: "chegada sex 10:15",
+    status: "Em rota",
+    bend: 0.24,
+    lift: 0.48,
+    period: 4000,
+    phase: 0.18,
+  },
+  {
+    from: "curitiba",
+    to: "goiania",
+    placa: "CPR7C44",
+    label: "Curitiba/PR → Goiânia/GO",
+    speed: 75,
+    limit: 80,
+    hours: "1h55",
+    maxHours: "5h30",
+    eta: "chegada sex 12:05",
+    status: "Em rota",
+    bend: -0.18,
+    lift: 0.5,
+    period: 4200,
+    phase: 0.28,
+  },
+  {
+    from: "curitiba",
+    to: "salvador",
+    placa: "CPR9D63",
+    label: "Curitiba/PR → Salvador/BA",
+    speed: 80,
+    limit: 90,
+    hours: "2h40",
+    maxHours: "5h30",
+    eta: "chegada sex 15:20",
     status: "Em rota",
     bend: 0.28,
-    lift: 0.62,
-    period: 3800,
-    phase: 0.08,
-  },
-  {
-    from: "goiania",
-    to: "manaus",
-    placa: "AMZ9K11",
-    label: "Goiânia/GO → Manaus/AM",
-    speed: 72,
-    limit: 80,
-    hours: "2h10",
-    maxHours: "5h30",
-    eta: "chegada sex 14:05",
-    status: "Em rota",
-    bend: -0.22,
-    lift: 0.58,
-    period: 4400,
-    phase: 0.33,
-  },
-  {
-    from: "goiania",
-    to: "fortaleza",
-    placa: "CEF4T28",
-    label: "Goiânia/GO → Fortaleza/CE",
-    speed: 81,
-    limit: 90,
-    hours: "1h02",
-    maxHours: "5h30",
-    eta: "chegada sex 17:40",
-    status: "Em rota",
-    bend: 0.26,
-    lift: 0.64,
-    period: 4000,
-    phase: 0.55,
-  },
-  {
-    from: "goiania",
-    to: "sp",
-    placa: "SPX2R64",
-    label: "Goiânia/GO → São Paulo/SP",
-    speed: 84,
-    limit: 90,
-    hours: "1h18",
-    maxHours: "5h30",
-    eta: "chegada sex 11:20",
-    status: "Em rota",
-    bend: -0.2,
     lift: 0.55,
-    period: 3400,
-    phase: 0.2,
-  },
-  {
-    from: "goiania",
-    to: "poa",
-    placa: "NXP3K17",
-    label: "Goiânia/GO → Porto Alegre/RS",
-    speed: 71,
-    limit: 80,
-    hours: "2h44",
-    maxHours: "5h30",
-    eta: "chegada sex 20:05",
-    status: "Em rota",
-    bend: -0.24,
-    lift: 0.66,
     period: 4600,
-    phase: 0.42,
+    phase: 0.4,
   },
   {
-    from: "bh",
-    to: "salvador",
-    placa: "RJM8F13",
-    label: "Belo Horizonte/MG → Salvador/BA",
-    speed: 0,
-    limit: 80,
-    hours: "0h00",
+    from: "curitiba",
+    to: "fortaleza",
+    placa: "CPR1E17",
+    label: "Curitiba/PR → Fortaleza/CE",
+    speed: 77,
+    limit: 90,
+    hours: "3h10",
     maxHours: "5h30",
-    eta: "No destino · descarga desde 10:12",
-    status: "Descarregando",
-    bend: 0.22,
-    lift: 0.56,
-    period: 4200,
-    phase: 0.7,
-    atDestination: true,
+    eta: "chegada sáb 06:50",
+    status: "Em rota",
+    bend: 0.32,
+    lift: 0.58,
+    period: 5000,
+    phase: 0.52,
   },
   {
     from: "curitiba",
@@ -161,25 +144,42 @@ const ROUTES = [
     eta: "chegada sáb 07:15",
     status: "Em rota",
     bend: 0.3,
-    lift: 0.7,
-    period: 5000,
-    phase: 0.15,
+    lift: 0.56,
+    period: 4800,
+    phase: 0.62,
   },
   {
-    from: "cuiaba",
-    to: "belem",
-    placa: "MTB5L09",
-    label: "Cuiabá/MT → Belém/PA",
-    speed: 77,
-    limit: 90,
-    hours: "1h50",
+    from: "curitiba",
+    to: "poa",
+    placa: "CPR3F09",
+    label: "Curitiba/PR → Porto Alegre/RS",
+    speed: 74,
+    limit: 80,
+    hours: "1h12",
     maxHours: "5h30",
-    eta: "chegada sex 16:25",
+    eta: "chegada sex 09:55",
     status: "Em rota",
-    bend: 0.18,
-    lift: 0.6,
+    bend: -0.22,
+    lift: 0.4,
+    period: 3600,
+    phase: 0.72,
+  },
+  {
+    from: "bh",
+    to: "salvador",
+    placa: "RJM8F13",
+    label: "Belo Horizonte/MG → Salvador/BA",
+    speed: 0,
+    limit: 80,
+    hours: "0h00",
+    maxHours: "5h30",
+    eta: "No destino · descarga desde 10:12",
+    status: "Descarregando",
+    bend: 0.24,
+    lift: 0.46,
     period: 4200,
-    phase: 0.6,
+    phase: 0.85,
+    atDestination: true,
   },
 ];
 
@@ -201,13 +201,17 @@ function travelT(cycle) {
  * Tilt Norvia (fidelidade): mapa bem deitado, sem compensar Y no layout.
  * Gaps vs vídeo: perspectiva, 1 rota “viva” + fundo quieto, arco alto, ping na chegada.
  */
-const TILT = (58 * Math.PI) / 180;
+/**
+ * Perspectiva do norvis.mp4: leve foreshortening (não tilt extremo).
+ * Brasil reconhecível, um pouco mais largo.
+ */
+const TILT = (32 * Math.PI) / 180;
 const COS_T = Math.cos(TILT);
 const SIN_T = Math.sin(TILT);
-const FOCAL = 440;
-const MAP_STRETCH_X = 1.34;
-/** Anéis elípticos no plano do mapa (como no laranja). */
-const RING_Y_RATIO = COS_T * 0.75;
+const FOCAL = 780;
+const MAP_STRETCH_X = 1.16;
+/** Anéis elípticos no plano do mapa. */
+const RING_Y_RATIO = 0.55;
 
 const TICKER = [
   "Velocidade normalizada · KZX9F64 · BR-116",
@@ -225,15 +229,15 @@ function makeLayout(w, h, inset) {
   const latSpan = LAT_MAX - LAT_MIN;
   const geoAspect = (lonSpan / latSpan) * MAP_STRETCH_X;
 
-  // Larga na horizontal; a altura na TELA será drawH * COS_T (mais baixa).
-  let drawW = availW * 0.96;
+  // Cabe o Brasil inteiro com leve compressão (como norvis.mp4)
+  let drawW = availW * 0.92;
   let drawH = drawW / geoAspect;
   const screenH = drawH * COS_T;
-  if (screenH > availH * 0.88) {
-    drawH = (availH * 0.88) / COS_T;
+  if (screenH > availH * 0.92) {
+    drawH = (availH * 0.92) / COS_T;
     drawW = drawH * geoAspect;
-    if (drawW > availW * 0.98) {
-      drawW = availW * 0.98;
+    if (drawW > availW * 0.96) {
+      drawW = availW * 0.96;
       drawH = drawW / geoAspect;
     }
   }
@@ -322,44 +326,43 @@ function drawPolyline(ctx, pts, i0, i1) {
 }
 
 /**
- * Ping de chegada estilo Norvia: ripples disparados no impacto
- * (não um loop contínuo genérico).
- * impacts: [{ born, life }] em ms relativos ao ts atual via age.
+ * Anéis finos no destino (ping local ao chegar).
+ * impacts fine: [{ age, life, maxR }]
  */
-function drawArrivalBurst(ctx, p, impacts, strength = 1) {
-  if (!impacts?.length && strength < 0.05) return;
+function drawArrivalBurst(ctx, p, fineImpacts, strength = 1) {
+  if (!fineImpacts?.length && strength < 0.05) return;
   const s = Math.min(1, strength);
 
-  // glow no chão
   ctx.save();
   ctx.translate(p.x, p.y);
   ctx.scale(1, RING_Y_RATIO);
-  const blob = ctx.createRadialGradient(0, 0, 0, 0, 0, 36 * s);
-  blob.addColorStop(0, `rgba(${TOKENS.glowRgb}, ${0.42 * s})`);
-  blob.addColorStop(0.5, `rgba(${TOKENS.accentRgb}, ${0.14 * s})`);
+  const blob = ctx.createRadialGradient(0, 0, 0, 0, 0, 32 * s);
+  blob.addColorStop(0, `rgba(${TOKENS.glowRgb}, ${0.48 * s})`);
+  blob.addColorStop(0.5, `rgba(${TOKENS.accentRgb}, ${0.16 * s})`);
   blob.addColorStop(1, `rgba(${TOKENS.accentRgb}, 0)`);
   ctx.fillStyle = blob;
   ctx.beginPath();
-  ctx.arc(0, 0, 36 * s, 0, Math.PI * 2);
+  ctx.arc(0, 0, 32 * s, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
-  for (const imp of impacts) {
+  for (const imp of fineImpacts) {
     if (imp.age < 0) continue;
     const t = Math.min(1, imp.age / imp.life);
-    const rx = 4 + t * 56;
+    const maxR = imp.maxR ?? 48;
+    const rx = 4 + t * maxR;
     const ry = rx * RING_Y_RATIO;
-    const alpha = (1 - t) * (1 - t) * 0.85 * s;
+    const alpha = (1 - t) * (1 - t) * 0.95 * s;
     ctx.beginPath();
     ctx.strokeStyle = `rgba(${TOKENS.glowRgb}, ${alpha})`;
-    ctx.lineWidth = Math.max(0.8, 2.6 * (1 - t));
+    ctx.lineWidth = Math.max(0.85, (imp.line ?? 2.4) * (1 - t));
     ctx.ellipse(p.x, p.y, rx, ry, 0, 0, Math.PI * 2);
     ctx.stroke();
   }
 
-  const beamH = 28 * s;
+  const beamH = 26 * s;
   const beam = ctx.createLinearGradient(p.x, p.y, p.x, p.y - beamH);
-  beam.addColorStop(0, `rgba(${TOKENS.glowRgb}, ${0.5 * s})`);
+  beam.addColorStop(0, `rgba(${TOKENS.glowRgb}, ${0.55 * s})`);
   beam.addColorStop(1, `rgba(${TOKENS.accentRgb}, 0)`);
   ctx.strokeStyle = beam;
   ctx.lineWidth = 1.7;
@@ -387,61 +390,48 @@ function drawOriginPulse(ctx, p, strength) {
 }
 
 /**
- * Cometa Norvia: arco suave + cauda longa + bolinha “blob” luminosa.
+ * Cometa do norvis.mp4: só um rastro CURTO atrás da bolinha
+ * (contagem fixa de pontos — não % do arco, senão rotas longas
+ * viram “linha inteira” na tela).
  */
-function drawCometArc(ctx, pts, groundPts, headT, featured, arrival = 0) {
+function drawCometArc(ctx, pts, _groundPts, headT, featured, arrival = 0) {
   const n = pts.length - 1;
   const headIdx = Math.max(0, Math.min(n, headT * n));
-  const nearEnd = headT > 0.85;
+  const nearEnd = headT > 0.88;
   const headBoost = nearEnd
-    ? 1 + (headT - 0.85) * 2.4 + arrival * 0.5
-    : 1 + arrival * 0.2;
+    ? 1 + (headT - 0.88) * 2 + arrival * 0.45
+    : 1 + arrival * 0.15;
 
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
-  if (groundPts?.length && featured) {
-    ctx.strokeStyle = `rgba(${TOKENS.accentRgb}, 0.12)`;
-    ctx.lineWidth = 1.2;
-    drawPolyline(ctx, groundPts, 0, n);
-  }
-
-  // arco base (caminho completo bem sutil)
-  ctx.strokeStyle = featured
-    ? `rgba(${TOKENS.accentRgb}, 0.22)`
-    : `rgba(${TOKENS.accentRgb}, 0.12)`;
-  ctx.lineWidth = featured ? 1.8 : 1.1;
-  drawPolyline(ctx, pts, 0, n);
-
-  // cauda longa e suave (efeito laranja)
-  const tailLen = featured ? 0.62 : 0.36;
-  const steps = featured ? 32 : 14;
+  // ~8–12 amostras (~11–17% num arco de 72) — visual curto como no Norvia
+  const trailSamples = featured ? 9 : 5;
+  const steps = featured ? 18 : 8;
   for (let s = 0; s < steps; s += 1) {
     const f = s / (steps - 1);
-    const tBack = headIdx - tailLen * n * (1 - f);
-    const tFwd = headIdx - tailLen * n * (1 - Math.min(1, f + 1 / steps));
+    const tBack = headIdx - trailSamples * (1 - f);
+    const tFwd = headIdx - trailSamples * (1 - Math.min(1, f + 1 / steps));
     if (tFwd < 0) continue;
-    const alpha = featured ? 0.06 + f * 0.78 : 0.04 + f * 0.4;
-    const width = featured ? 1.1 + f * 4.8 : 0.8 + f * 2.2;
+    const alpha = featured ? 0.1 + f * 0.85 : 0.06 + f * 0.42;
+    const width = featured ? 1.4 + f * 4.5 : 0.9 + f * 2.2;
     ctx.strokeStyle = `rgba(${TOKENS.accentRgb}, ${alpha})`;
     ctx.lineWidth = width;
     drawPolyline(ctx, pts, Math.max(0, tBack), Math.max(0, tFwd));
   }
 
   if (featured) {
-    ctx.strokeStyle = `rgba(${TOKENS.glowRgb}, 0.88)`;
+    ctx.strokeStyle = `rgba(${TOKENS.glowRgb}, 0.92)`;
     ctx.lineWidth = 2.8;
-    drawPolyline(ctx, pts, Math.max(0, headIdx - n * 0.18), headIdx);
+    drawPolyline(ctx, pts, Math.max(0, headIdx - 4), headIdx);
   }
 
-  // bolinha: núcleo branco + halo grande (blob da ref)
   const head = pts[Math.round(headIdx)] || pts[n];
-  const r = (featured ? 28 : 12) * headBoost;
+  const r = (featured ? 24 : 10) * headBoost;
   const g = ctx.createRadialGradient(head.x, head.y, 0, head.x, head.y, r);
   g.addColorStop(0, "rgba(255,255,255,1)");
-  g.addColorStop(0.12, `rgba(${TOKENS.glowRgb}, 0.95)`);
-  g.addColorStop(0.35, `rgba(${TOKENS.accentRgb}, 0.45)`);
-  g.addColorStop(0.7, `rgba(${TOKENS.accentRgb}, 0.12)`);
+  g.addColorStop(0.14, `rgba(${TOKENS.glowRgb}, 0.95)`);
+  g.addColorStop(0.4, `rgba(${TOKENS.accentRgb}, 0.4)`);
   g.addColorStop(1, `rgba(${TOKENS.accentRgb}, 0)`);
   ctx.fillStyle = g;
   ctx.beginPath();
@@ -449,10 +439,49 @@ function drawCometArc(ctx, pts, groundPts, headT, featured, arrival = 0) {
   ctx.fill();
   ctx.beginPath();
   ctx.fillStyle = "#FFFFFF";
-  ctx.arc(head.x, head.y, featured ? 3.4 * headBoost : 2, 0, Math.PI * 2);
+  ctx.arc(head.x, head.y, featured ? 3.1 * headBoost : 1.9, 0, Math.PI * 2);
   ctx.fill();
 
   return { head, dest: pts[n] };
+}
+
+/**
+ * Ondas GRANDES no mapa — só nos dots, disparadas na chegada.
+ * mapWaves: [{ x, y, age, life, maxR, band }]
+ */
+function applyArrivalMapWaves(dots, mapWaves) {
+  if (!mapWaves?.length || !dots?.length) {
+    return dots.map((d) => ({ ...d, wave: 0 }));
+  }
+
+  const fronts = [];
+  for (const w of mapWaves) {
+    if (w.age < 0) continue;
+    const t = Math.min(1, w.age / w.life);
+    fronts.push({
+      x: w.x,
+      y: w.y,
+      rx: 6 + t * w.maxR,
+      fade: (1 - t) * (1 - t),
+      band: w.band ?? Math.max(12, w.maxR * 0.06),
+      strength: w.strength ?? 1,
+    });
+  }
+  if (!fronts.length) return dots.map((d) => ({ ...d, wave: 0 }));
+
+  return dots.map((d) => {
+    let wave = 0;
+    for (const f of fronts) {
+      const dx = d.x - f.x;
+      const dy = (d.y - f.y) / RING_Y_RATIO;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const gap = Math.abs(dist - f.rx);
+      if (gap > f.band) continue;
+      const local = (1 - gap / f.band) * f.fade * f.strength;
+      if (local > wave) wave = local;
+    }
+    return { ...d, wave };
+  });
 }
 
 /** Feixe vertical fino nos nós (como no vídeo). */
@@ -514,8 +543,9 @@ export default function BrazilOpsMap({ className = "" }) {
     const labelAlpha = {};
     /** Cache de geometria — evita recalcular ~6k pontos todo frame (causa “trava”). */
     let geoCache = null;
-    /** Ripples de impacto na chegada (estilo ping Norvia). */
-    let impacts = [];
+    /** Anéis finos no destino + ondas grandes no mapa (só na chegada). */
+    let fineImpacts = [];
+    let mapWaves = [];
     let lastCycleBucket = -1;
     let wasNearStart = false;
 
@@ -528,7 +558,7 @@ export default function BrazilOpsMap({ className = "" }) {
 
     const rebuildGeo = (w, h) => {
       const L = makeLayout(w, h, insetFor(w, h));
-      const hub = project(CITIES.goiania.lon, CITIES.goiania.lat, L);
+      const hub = project(CITIES.curitiba.lon, CITIES.curitiba.lat, L);
       let minX = Infinity;
       let maxX = -Infinity;
       let minY = Infinity;
@@ -564,7 +594,20 @@ export default function BrazilOpsMap({ className = "" }) {
           ground: sampleArc(fromCity, toCity, r.bend * 0.35, 0, L, 72, true),
         };
       });
-      geoCache = { key: `${w}x${h}`, L, hub, dots, ptsCache, arcs, mapBounds };
+      const mapDiag = Math.hypot(
+        mapBounds.maxX - mapBounds.minX,
+        mapBounds.maxY - mapBounds.minY,
+      );
+      geoCache = {
+        key: `${w}x${h}`,
+        L,
+        hub,
+        dots,
+        ptsCache,
+        arcs,
+        mapBounds,
+        mapDiag,
+      };
     };
 
     const resize = () => {
@@ -606,7 +649,8 @@ export default function BrazilOpsMap({ className = "" }) {
       }
       if (feat !== lastFeat && !disposed) {
         lastFeat = feat;
-        impacts = [];
+        fineImpacts = [];
+        mapWaves = [];
         lastCycleBucket = -1;
         wasNearStart = true;
         setFeatured(feat);
@@ -614,7 +658,7 @@ export default function BrazilOpsMap({ className = "" }) {
       }
 
       if (!geoCache || geoCache.key !== `${w}x${h}`) rebuildGeo(w, h);
-      const { hub, dots, ptsCache, arcs, mapBounds } = geoCache;
+      const { hub, dots, ptsCache, arcs, mapBounds, mapDiag } = geoCache;
 
       ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = TOKENS.bg;
@@ -653,14 +697,6 @@ export default function BrazilOpsMap({ className = "" }) {
       ctx.fillStyle = wash;
       ctx.fillRect(0, 0, w, h);
 
-      for (const d of dots) {
-        ctx.beginPath();
-        ctx.fillStyle = `rgba(${TOKENS.dot}, ${d.alpha})`;
-        ctx.arc(d.x, d.y, d.radius, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Norvia: 1 rota viva + 2 cometas fracos; resto = arco estático quieto
       const liveBg = [
         (feat + 2) % ROUTES.length,
         (feat + 5) % ROUTES.length,
@@ -672,13 +708,47 @@ export default function BrazilOpsMap({ className = "" }) {
 
       const featRoute = ROUTES[feat];
       const featCycle = ((ts / featRoute.period + featRoute.phase) % 1 + 1) % 1;
-      // dispara ripples no impacto (3 ondas escalonadas) — como no vídeo
-      if (!reducedMotion) {
+      const featArc = arcs[feat]?.arc;
+      const destPt = featArc?.[featArc.length - 1];
+
+      // Na chegada: anéis finos no destino + ondas GRANDES no mapa
+      if (!reducedMotion && destPt) {
+        const spawnArrivalFx = (big) => {
+          // finos / nítidos no ponto
+          fineImpacts.push(
+            { born: ts, life: 720, maxR: 36, line: 2.2 },
+            { born: ts + 110, life: 820, maxR: 48, line: 2 },
+            { born: ts + 220, life: 900, maxR: 58, line: 1.7 },
+          );
+          // maiores — varrem o Brasil pelos dots
+          const base = mapDiag || 280;
+          mapWaves.push(
+            {
+              born: ts + 40,
+              life: 2100,
+              x: destPt.x,
+              y: destPt.y,
+              maxR: base * (big ? 0.72 : 0.55),
+              band: base * 0.05,
+              strength: 1,
+            },
+            {
+              born: ts + 280,
+              life: 2600,
+              x: destPt.x,
+              y: destPt.y,
+              maxR: base * (big ? 0.95 : 0.78),
+              band: base * 0.065,
+              strength: 0.85,
+            },
+          );
+        };
+
         if (featRoute.atDestination) {
-          const pulseBucket = Math.floor(ts / 700);
+          const pulseBucket = Math.floor(ts / 1600);
           if (pulseBucket !== lastCycleBucket) {
             lastCycleBucket = pulseBucket;
-            impacts.push({ born: ts, life: 1000 });
+            spawnArrivalFx(false);
           }
         } else {
           const bucket = Math.floor(ts / featRoute.period + featRoute.phase);
@@ -688,18 +758,41 @@ export default function BrazilOpsMap({ className = "" }) {
             bucket !== lastCycleBucket
           ) {
             lastCycleBucket = bucket;
-            impacts.push(
-              { born: ts, life: 920 },
-              { born: ts + 160, life: 980 },
-              { born: ts + 320, life: 1040 },
-            );
+            spawnArrivalFx(true);
           }
           if (featCycle < 0.14) wasNearStart = true;
         }
       }
-      impacts = impacts
+
+      fineImpacts = fineImpacts
         .map((imp) => ({ ...imp, age: ts - imp.born }))
         .filter((imp) => imp.age < imp.life);
+      mapWaves = mapWaves
+        .map((w) => ({ ...w, age: ts - w.born }))
+        .filter((w) => w.age < w.life);
+
+      // pontos do mapa + ondas grandes (só após chegada)
+      const waved = reducedMotion
+        ? dots
+        : applyArrivalMapWaves(dots, mapWaves);
+      for (const d of waved) {
+        const wAmt = d.wave || 0;
+        const alpha = Math.min(1, d.alpha + wAmt * 0.6);
+        const radius = d.radius + wAmt * 1.8;
+        ctx.beginPath();
+        if (wAmt > 0.08) {
+          ctx.fillStyle = `rgba(${TOKENS.glowRgb}, ${wAmt * 0.6})`;
+          ctx.arc(d.x, d.y, radius + 1.5 * wAmt, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+        }
+        ctx.fillStyle =
+          wAmt > 0.12
+            ? `rgba(${TOKENS.heat}, ${alpha})`
+            : `rgba(${TOKENS.dot}, ${alpha})`;
+        ctx.arc(d.x, d.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
       let originPulse = 0;
       if (
@@ -726,7 +819,6 @@ export default function BrazilOpsMap({ className = "" }) {
           headT = 1;
           arrival = 0.8;
         } else if (isFeat) {
-          // viaja quase até o fim; nos últimos 14% fica no destino com ping
           if (featCycle < 0.86) {
             headT = travelT(featCycle / 0.86);
             arrival = 0;
@@ -743,19 +835,19 @@ export default function BrazilOpsMap({ className = "" }) {
 
         if (isFeat || isLiveBg) {
           drawCometArc(ctx, arc, ground, headT, isFeat, arrival);
-        } else {
-          ctx.lineCap = "round";
-          ctx.strokeStyle = `rgba(${TOKENS.accentRgb}, 0.11)`;
-          ctx.lineWidth = 1.1;
-          drawPolyline(ctx, arc, 0, arc.length - 1);
         }
 
         if (isFeat) {
           const dest = arc[arc.length - 1];
           const from = arc[0];
           if (originPulse > 0.05) drawOriginPulse(ctx, from, originPulse);
-          if (arrival > 0.05 || impacts.length) {
-            drawArrivalBurst(ctx, dest, impacts, Math.max(arrival, 0.35));
+          if (arrival > 0.05 || fineImpacts.length) {
+            drawArrivalBurst(
+              ctx,
+              dest,
+              fineImpacts,
+              Math.max(arrival, fineImpacts.length ? 0.5 : 0),
+            );
           }
         }
 
@@ -779,7 +871,7 @@ export default function BrazilOpsMap({ className = "" }) {
       for (const [id] of Object.entries(CITIES)) {
         const p = ptsCache[id];
         const isEnd = id === activeRoute.from || id === activeRoute.to;
-        const isHub = id === "goiania";
+        const isHub = id === "curitiba";
         drawPin(ctx, p, isEnd || isHub);
 
         ctx.beginPath();

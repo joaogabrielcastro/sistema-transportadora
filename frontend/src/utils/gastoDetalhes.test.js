@@ -20,6 +20,13 @@ test("defaultStatusForKind: multa pendente, combustível pago", () => {
   assert.equal(defaultStatusForKind("combustivel"), "pago");
 });
 
+test("preço/litro aceita 4 casas (NF-e de combustível)", () => {
+  const preco = camposDetalheGasto("combustivel").find(
+    (c) => c.name === "preco_litro",
+  );
+  assert.equal(preco?.step, "0.0001");
+});
+
 test("compactDetalhes remove vazios", () => {
   assert.equal(compactDetalhes({ a: "", b: "  " }), null);
   assert.deepEqual(compactDetalhes({ a: "x", b: "" }), { a: "x" });

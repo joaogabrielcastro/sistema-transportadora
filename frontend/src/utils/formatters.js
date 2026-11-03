@@ -74,6 +74,22 @@ export const formatCurrency = (value) => {
 };
 
 /**
+ * Preço unitário / R$ por litro: mostra até 4 casas (NF-e de combustível),
+ * sem forçar zeros à direita além de 2.
+ */
+export const formatUnitPrice = (value) => {
+  if (value === null || value === undefined || value === "" || isNaN(value)) {
+    return "—";
+  }
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  }).format(Number(value));
+};
+
+/**
  * Formatar número com separadores de milhares
  */
 export const formatNumber = (value, decimals = 0) => {

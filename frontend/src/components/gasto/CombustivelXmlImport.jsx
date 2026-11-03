@@ -13,6 +13,18 @@ function formatBRL(value) {
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+/** R$/L da NF-e: até 4 casas, sem arredondar para centavos. */
+function formatPrecoLitro(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "—";
+  return n.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  });
+}
+
 function dataIso(value) {
   if (!value) return "—";
   const d = new Date(value);
@@ -153,7 +165,7 @@ export default function CombustivelXmlImport({
                 <dt className="text-text-secondary">R$/L</dt>
                 <dd className="font-medium text-text-primary">
                   {preview.preco_litro != null
-                    ? formatBRL(preview.preco_litro)
+                    ? formatPrecoLitro(preview.preco_litro)
                     : "—"}
                 </dd>
               </div>

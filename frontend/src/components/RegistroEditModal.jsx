@@ -345,10 +345,15 @@ export default function RegistroEditModal({
               {isCombustivelTipo(form.tipo_gasto_id, tiposGastos) && (
                 <FormField
                   label="Quantidade combustível (L)"
+                  type="number"
                   name="quantidade_combustivel"
                   value={form.quantidade_combustivel}
                   onChange={handleChange}
+                  step="0.0001"
+                  min="0"
                   required
+                  placeholder="0,0000"
+                  helperText="Até 4 casas após a vírgula — igual à NF-e do posto."
                 />
               )}
               <GastoDetalhesFields

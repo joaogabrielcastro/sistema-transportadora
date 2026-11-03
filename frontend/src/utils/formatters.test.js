@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   formatCurrency,
+  formatUnitPrice,
   formatNumber,
   formatDate,
   formatDateTime,
@@ -13,6 +14,13 @@ test("formatCurrency e formatNumber tratam nulos", () => {
   assert.match(formatCurrency(10.5), /R\$/);
   assert.equal(formatNumber(null), "0");
   assert.equal(formatNumber(1500), "1.500");
+});
+
+test("formatUnitPrice preserva até 4 casas (combustível)", () => {
+  assert.equal(formatUnitPrice(null), "—");
+  assert.match(formatUnitPrice(5.899), /5,899/);
+  assert.match(formatUnitPrice(6.1997), /6,1997/);
+  assert.match(formatUnitPrice(10), /10,00/);
 });
 
 test("formatDate não atrasa DATE UTC em um dia", () => {

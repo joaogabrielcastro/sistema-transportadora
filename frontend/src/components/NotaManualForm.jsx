@@ -387,14 +387,15 @@ export default function NotaManualForm({
                   <td className="px-3 py-2">
                     <input
                       type="number"
-                      step="0.001"
-                      min="0.001"
+                      step="0.0001"
+                      min="0.0001"
                       required
                       className="w-24 rounded-md border border-border px-2 py-1.5"
                       value={item.quantidade}
                       onChange={(e) =>
                         updateItem(idx, "quantidade", e.target.value)
                       }
+                      title="Até 4 casas decimais (ex.: litros na NF-e)"
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -410,7 +411,7 @@ export default function NotaManualForm({
                   <td className="px-3 py-2">
                     <input
                       type="number"
-                      step="0.01"
+                      step="0.0001"
                       min="0"
                       required
                       className="w-28 rounded-md border border-border px-2 py-1.5"
@@ -418,6 +419,7 @@ export default function NotaManualForm({
                       onChange={(e) =>
                         updateItem(idx, "valor_unitario", e.target.value)
                       }
+                      title="Até 4 casas decimais (preço/litro na NF-e de combustível)"
                     />
                   </td>
                   <td className="px-3 py-2">

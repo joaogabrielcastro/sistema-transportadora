@@ -20,7 +20,7 @@ test(
         nome: `Webhook Replay ${stamp}`,
         slug: `wh-replay-${stamp}`,
         ativo: true,
-        ...newTenantBillingDefaults(15),
+        ...newTenantBillingDefaults(5),
       },
     });
 

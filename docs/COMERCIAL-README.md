@@ -18,7 +18,7 @@ Materiais essenciais para apresentar o produto, captar leads e acompanhar os pri
 ## Fluxo inicial
 
 1. O interessado chega pelo anúncio.
-2. Inicia o teste de 15 dias ou solicita contato.
+2. Inicia o teste de 5 dias ou solicita contato.
 3. O responsável entende a operação e ajuda no primeiro uso.
 4. Quando necessário, apresenta a demonstração.
 5. Antes do final do teste, recomenda o plano adequado.

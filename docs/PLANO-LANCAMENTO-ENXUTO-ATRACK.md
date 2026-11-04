@@ -6,7 +6,7 @@ O objetivo inicial é captar leads, apresentar o produto com clareza e acompanha
 
 1. Página pública explicando o que é o ATrack, para quem serve, planos e limites.
 2. Botão visível para falar com o responsável e agendar uma demonstração.
-3. Cadastro com 15 dias grátis no Starter, sem cartão.
+3. Cadastro com 5 dias grátis no Starter, sem cartão.
 4. Demonstração com dados fictícios e roteiro curto.
 5. Canal único de ajuda para os primeiros clientes.
 6. Pipeline simples para registrar nome, empresa, contato, origem e próxima ação.
@@ -17,7 +17,7 @@ O objetivo inicial é captar leads, apresentar o produto com clareza e acompanha
 2. O interessado solicita contato ou inicia o teste.
 3. O responsável entende a quantidade de veículos e a principal dificuldade.
 4. Quando necessário, realiza uma demonstração de 20 a 30 minutos.
-5. O cliente testa o Starter durante 15 dias.
+5. O cliente testa o Starter durante 5 dias.
 6. O responsável acompanha o cliente diretamente e ajuda na primeira rotina.
 7. Ao final, recomenda Starter, Fiscal ou Completo conforme uso e limites.
 
@@ -48,7 +48,7 @@ Esses itens entram quando o volume real de leads e clientes justificar.
 
 ## Medidas básicas do piloto
 
-Registrar apenas: valor gasto, leads recebidos, conversas realizadas, testes iniciados, propostas enviadas e clientes que assinaram depois dos 15 dias.
+Registrar apenas: valor gasto, leads recebidos, conversas realizadas, testes iniciados, propostas enviadas e clientes que assinaram depois dos 5 dias.
 
 ## Critério para continuar
 

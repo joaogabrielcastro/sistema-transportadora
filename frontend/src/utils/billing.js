@@ -30,8 +30,8 @@ export function featureEnabled(user, featureKey) {
   return features[featureKey] === true;
 }
 
-/** Alinhar com BILLING_TRIAL_DAYS no backend (padrão 15). */
-export const BILLING_TRIAL_DAYS = 15;
+/** Alinhar com BILLING_TRIAL_DAYS no backend (padrão 5). */
+export const BILLING_TRIAL_DAYS = 5;
 
 export function formatPlanPrice(value) {
   return Number(value).toLocaleString("pt-BR", {

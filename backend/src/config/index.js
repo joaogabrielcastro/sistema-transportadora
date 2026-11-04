@@ -122,8 +122,8 @@ export const config = {
       );
     },
     get trialDays() {
-      const n = Number(process.env.BILLING_TRIAL_DAYS || 15);
-      return Number.isFinite(n) && n > 0 ? Math.floor(n) : 15;
+      const n = Number(process.env.BILLING_TRIAL_DAYS || 5);
+      return Number.isFinite(n) && n > 0 ? Math.floor(n) : 5;
     },
     get prices() {
       return {

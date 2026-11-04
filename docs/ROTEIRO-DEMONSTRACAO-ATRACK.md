@@ -27,7 +27,7 @@ Use quando o prospect pediu “só um overview” ou sobrou pouco tempo. Conta d
 | 3–4 | `/documentos` + `/alertas` | Vencido ou perto do vencimento | “A validade vira alerta para a equipe agir.” |
 | 4–5 | `/relatorios` → Gerar | Custo/km do período | “O relatório só existe porque houve lançamento e km.” |
 
-Fechamento (30 s): confirmar porte (veículos/usuários), indicar Starter vs Fiscal, lembrar que implantação Essencial cobre a entrada, e combinar próximo passo (teste de 15 dias ou proposta).
+Fechamento (30 s): confirmar porte (veículos/usuários), indicar Starter vs Fiscal, lembrar que implantação Essencial cobre a entrada, e combinar próximo passo (teste de 5 dias ou proposta).
 
 Não abrir CT-e/MDF-e, ordem de coleta, CIOT nem telemetria neste roteiro de 5 minutos.
 

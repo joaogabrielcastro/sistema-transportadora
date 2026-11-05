@@ -18,7 +18,7 @@ test(
   "POST /api/auth/change-password invalida o JWT anterior",
   { skip: shouldRunDbTests ? false : "Defina RUN_DB_TESTS=1 ou rode no CI" },
   async () => {
-    const { token, user, authHeader } = await loginAsAdmin(app);
+    const { user, authHeader } = await loginAsAdmin(app);
     const meBefore = await request(app).get("/api/auth/me").set(authHeader);
     assert.equal(meBefore.status, 200);
 

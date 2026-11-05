@@ -13,7 +13,10 @@ export function usePublicPlansQuery() {
       const plans = resolvePlanCards(data?.plans);
       return {
         plans,
-        trialDays: Number(data?.trialDays) || BILLING_TRIAL_DAYS,
+        // Duração comercial do trial segue a constante do produto (alinhada ao
+        // default do backend). Não usar data.trialDays aqui: um BILLING_TRIAL_DAYS
+        // antigo no .env de produção ainda devolve 15 e reaparece na landing.
+        trialDays: BILLING_TRIAL_DAYS,
       };
     },
     staleTime: 5 * 60 * 1000,

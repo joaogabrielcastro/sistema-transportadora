@@ -11,7 +11,7 @@ test.describe("Site comercial", () => {
         body: JSON.stringify({
           success: true,
           data: {
-            trialDays: 14,
+            trialDays: 5,
             plans: [
               {
                 id: "starter",
@@ -59,6 +59,7 @@ test.describe("Site comercial", () => {
         name: /mais controle/i,
       }),
     ).toBeVisible();
+    await expect(page.getByText(/5 dias para testar/i).first()).toBeVisible();
     await expect(
       page.getByRole("link", { name: "Começar agora" }).first(),
     ).toBeVisible();

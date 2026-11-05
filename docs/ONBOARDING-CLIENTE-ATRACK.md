@@ -88,7 +88,7 @@ Usar dados de teste e exercícios próximos da operação real.
 - Alertas fazem sentido?
 - Há bloqueios de treinamento?
 
-### Após 5 dias
+### Após 15 dias
 
 - Revisar qualidade dos cadastros.
 - Conferir documentos e vencimentos.

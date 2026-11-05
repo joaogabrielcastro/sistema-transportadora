@@ -107,6 +107,7 @@ Alternativa: Base Directory `.` e Dockerfile na raiz (copia `backend/`).
 | SMTP | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` (obrigatório para senha/convite) |
 | `SENTRY_DSN` | DSN do projeto **backend** no Sentry (opcional, recomendado) |
 | `BACKUP_ENABLED` | `true` para dump diário na API (`BACKUP_DIR=/app/backups`) |
+| `BILLING_TRIAL_DAYS` | `5` (ou remova a variável para usar o padrão do código). Se ficar `15`, novos cadastros ainda entram com trial antigo. |
 
 **Remova** `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium` se existir — o Dockerfile instala Chrome em `/app/.cache/puppeteer`.
 

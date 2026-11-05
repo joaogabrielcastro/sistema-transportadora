@@ -32,7 +32,7 @@ describe("feature flag transporte_fiscal", () => {
     assert.deepEqual(featuresForPlan("ops"), PLAN_FEATURES.ops);
   });
 
-  it("override explícito em tenants.features liga a feature", () => {
+  it("plano Completo mantém emissão; JSON redundante não altera", () => {
     const f = resolveTenantFeatures({
       billingExempt: false,
       plan: "complete",
@@ -41,6 +41,15 @@ describe("feature flag transporte_fiscal", () => {
     assert.equal(f.transporte_fiscal, true);
     assert.equal(f.notas_estoque, true);
     assert.equal(f.ordem_coleta, false);
+  });
+
+  it("Starter ignora override que tenta ligar transporte_fiscal", () => {
+    const f = resolveTenantFeatures({
+      billingExempt: false,
+      plan: "starter",
+      raw: { transporte_fiscal: true },
+    });
+    assert.equal(f.transporte_fiscal, false);
   });
 
   it("sem override, transporte_fiscal continua false", () => {

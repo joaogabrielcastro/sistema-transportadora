@@ -32,6 +32,46 @@ export class ComposicaoService {
     return serializePrisma(rows);
   }
 
+  /**
+   * Vínculos ativos em lote (listagem da frota).
+   * @param {number|string} tenantId
+   * @param {Array<number|string>} cavaloIds
+   * @returns {Promise<Map<number, object[]>>}
+   */
+  static async listarAtivosPorCavalos(tenantId, cavaloIds) {
+    const ids = [...new Set((cavaloIds || []).map(Number).filter((id) => id > 0))];
+    const byCavalo = new Map();
+    if (!ids.length) return byCavalo;
+
+    const rows = await prisma.vinculos_composicao.findMany({
+      where: withTenant(tenantId, {
+        cavalo_id: { in: ids },
+        ativo: true,
+      }),
+      include: {
+        carreta: {
+          select: {
+            id: true,
+            placa: true,
+            tipo_veiculo: true,
+            qtd_pneus: true,
+            modelo: true,
+            marca: true,
+            config_eixos: true,
+          },
+        },
+      },
+      orderBy: [{ cavalo_id: "asc" }, { ordem: "asc" }],
+    });
+
+    for (const row of serializePrisma(rows)) {
+      const key = Number(row.cavalo_id);
+      if (!byCavalo.has(key)) byCavalo.set(key, []);
+      byCavalo.get(key).push(row);
+    }
+    return byCavalo;
+  }
+
   static async listarAtivosDoVeiculo(tenantId, veiculoId) {
     const id = Number(veiculoId);
     const asCavalo = await this.listarPorCavalo(tenantId, id);

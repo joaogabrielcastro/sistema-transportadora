@@ -152,6 +152,25 @@ export class CaminhaoService {
         tipo_veiculo,
       });
 
+      const candidatos = (resultado.data || []).filter((c) =>
+        ["cavalo", "truck"].includes(String(c.tipo_veiculo || "").toLowerCase()),
+      );
+      if (candidatos.length) {
+        const byCavalo = await ComposicaoService.listarAtivosPorCavalos(
+          tenantId,
+          candidatos.map((c) => c.id),
+        );
+        resultado.data = resultado.data.map((c) => {
+          const tipo = String(c.tipo_veiculo || "").toLowerCase();
+          if (tipo !== "cavalo" && tipo !== "truck") return c;
+          const vinculos = byCavalo.get(Number(c.id)) || [];
+          return {
+            ...c,
+            composicao: { papel: "cavalo", vinculos },
+          };
+        });
+      }
+
       logger.info("Caminhões encontrados", {
         total: resultado.count,
         pagina: page,

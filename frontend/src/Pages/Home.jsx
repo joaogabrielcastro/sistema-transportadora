@@ -44,6 +44,30 @@ const TIPO_LABEL = {
   carreta: "Carreta",
 };
 
+/** Texto curto das carretas vinculadas (composição ou legado). */
+function carretasVinculadasDoCard(caminhao) {
+  const tipo = String(caminhao?.tipo_veiculo || "").toLowerCase();
+  if (tipo !== "cavalo" && tipo !== "truck") return [];
+
+  const vinculos = Array.isArray(caminhao?.composicao?.vinculos)
+    ? caminhao.composicao.vinculos.filter((v) => v?.ativo !== false)
+    : [];
+
+  if (vinculos.length) {
+    return vinculos.map((v, index) => {
+      const ordem = v.ordem ?? index + 1;
+      const placa = v.carreta?.placa || "—";
+      const modelo = String(v.carreta?.modelo || "").trim();
+      return modelo ? `${ordem}ª — ${placa} ${modelo}` : `${ordem}ª — ${placa}`;
+    });
+  }
+
+  const legado = [caminhao?.placa_carreta_1, caminhao?.placa_carreta_2]
+    .map((placa) => String(placa || "").trim())
+    .filter(Boolean);
+  return legado.map((placa, index) => `${index + 1}ª — ${placa}`);
+}
+
 const Home = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentPage, setCurrentPage] = useState(() =>
@@ -617,6 +641,7 @@ const TruckCard = ({ caminhao, onDelete, canWrite = true }) => {
   const tipo =
     TIPO_LABEL[caminhao.tipo_veiculo] ||
     (caminhao.tipo_veiculo ? String(caminhao.tipo_veiculo) : "Truck");
+  const carretas = carretasVinculadasDoCard(caminhao);
 
   return (
   <article className="group flex flex-col overflow-hidden rounded-xl border border-border bg-white shadow-card transition-colors hover:border-cyan-300">
@@ -662,7 +687,7 @@ const TruckCard = ({ caminhao, onDelete, canWrite = true }) => {
       <div className="space-y-2">
         <div className="flex items-center text-sm text-gray-600">
           <svg
-            className="w-4 h-4 mr-2 text-gray-400"
+            className="w-4 h-4 mr-2 shrink-0 text-gray-400"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -678,7 +703,7 @@ const TruckCard = ({ caminhao, onDelete, canWrite = true }) => {
         </div>
         <div className="flex items-center text-sm text-gray-600">
           <svg
-            className="w-4 h-4 mr-2 text-gray-400"
+            className="w-4 h-4 mr-2 shrink-0 text-gray-400"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -692,6 +717,37 @@ const TruckCard = ({ caminhao, onDelete, canWrite = true }) => {
           </svg>
           {caminhao.ano || "Ano N/A"}
         </div>
+        {carretas.length > 0 ? (
+          <div className="flex items-start text-sm text-gray-600">
+            <svg
+              className="mt-0.5 w-4 h-4 mr-2 shrink-0 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-hidden
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+              />
+            </svg>
+            <div className="min-w-0">
+              <p className="text-xs font-medium uppercase tracking-wide text-text-secondary">
+                Carreta{carretas.length > 1 ? "s" : ""} vinculada
+                {carretas.length > 1 ? "s" : ""}
+              </p>
+              <ul className="mt-0.5 space-y-0.5">
+                {carretas.map((label) => (
+                  <li key={label} className="font-mono text-sm text-text-primary">
+                    {label}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
 

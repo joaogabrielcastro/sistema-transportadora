@@ -63,7 +63,7 @@ test.describe("Auth JWT", () => {
         req.url().includes("/api/") && !req.url().includes("/auth/login"),
     );
 
-    await page.getByRole("button", { name: /entrar no sistema/i }).click();
+    await page.getByRole("button", { name: /^entrar$/i }).click();
     await expect(page).toHaveURL("/");
 
     const req = await apiRequest;

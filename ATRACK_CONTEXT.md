@@ -480,7 +480,7 @@ faz `caminhoes.updateMany({ motorista_id: null })` antes de deletar.
   `verifyPassword` (bcryptjs), devolve `{ token, user }`.
 - **Register público:** `POST /api/auth/register`
   (`{ empresaNome, email, password, nome? }`) — cria `tenants` + `users` admin
-  numa transação; novo tenant entra em **trial de 14 dias no plano `ops`**
+  numa transação; novo tenant entra em **trial de 5 dias no plano `starter`**
   (`newTenantBillingDefaults`). Desligável com `ALLOW_PUBLIC_REGISTER=false`.
 - **Bootstrap:** `ensureBootstrapAdmin` cria o admin do tenant seed `abbroto` a
   partir de `ADMIN_EMAIL`/`ADMIN_PASSWORD` se o tenant não tiver usuários.

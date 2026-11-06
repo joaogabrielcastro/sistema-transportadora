@@ -116,8 +116,10 @@ const CAMPOS_POR_KIND = {
       name: "preco_litro",
       label: "Preço / litro (R$)",
       type: "number",
-      step: "0.001",
+      // NF-e de combustível costuma trazer até 4 casas em vUnCom.
+      step: "0.0001",
       min: 0,
+      placeholder: "0,0000",
     },
   ],
   seguro: [

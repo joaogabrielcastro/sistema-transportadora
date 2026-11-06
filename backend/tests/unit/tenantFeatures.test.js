@@ -64,7 +64,38 @@ describe("tenantFeatures", () => {
       raw: { ordem_coleta: true, notas_estoque: true },
     });
     assert.equal(forcedOff.ordem_coleta, false);
-    assert.equal(forcedOff.notas_estoque, true);
+    // Starter não inclui NF-e/estoque nem emissão — JSON não sobe o plano.
+    assert.equal(forcedOff.notas_estoque, false);
+    assert.equal(forcedOff.transporte_fiscal, false);
+  });
+
+  it("Starter não libera emissão fiscal mesmo com override no JSON", () => {
+    const f = resolveTenantFeatures({
+      billingExempt: false,
+      slug: "demo",
+      plan: "starter",
+      raw: { transporte_fiscal: true, notas_estoque: true },
+    });
+    assert.equal(f.transporte_fiscal, false);
+    assert.equal(f.notas_estoque, false);
+  });
+
+  it("Fiscal/Completo mantêm emissão; JSON pode só desligar", () => {
+    const fiscal = resolveTenantFeatures({
+      billingExempt: false,
+      plan: "fiscal",
+      raw: { transporte_fiscal: false },
+    });
+    assert.equal(fiscal.transporte_fiscal, false);
+    assert.equal(fiscal.notas_estoque, true);
+
+    const complete = resolveTenantFeatures({
+      billingExempt: false,
+      plan: "complete",
+      raw: {},
+    });
+    assert.equal(complete.transporte_fiscal, true);
+    assert.equal(complete.notas_estoque, true);
   });
 
   it("billing ativo: features vêm do plano", () => {

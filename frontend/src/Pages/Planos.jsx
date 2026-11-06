@@ -27,7 +27,8 @@ export default function Planos() {
   const { lid: pathLid } = useParams();
   const { isAuthenticated } = useAuth();
   const { data, isError } = usePublicPlansQuery();
-  const trialDays = data?.trialDays || BILLING_TRIAL_DAYS;
+  // Constante do produto — evita copy antiga se a API ainda devolver trialDays=15.
+  const trialDays = BILLING_TRIAL_DAYS;
   const plans = resolvePlanCards(data?.plans);
   const selected = resolveSelectedLid({ pathLid });
   const signupHref = PUBLIC_REGISTER_ENABLED ? registerHref("starter") : "/login";
@@ -46,7 +47,7 @@ export default function Planos() {
     <SiteLayout signupHref={signupHref}>
       <Seo
         title={`Planos ${PRODUCT_NAME}`}
-        description={`Starter, Fiscal e Completo. Escolha o plano da sua transportadora e comece o cadastro com o identificador correto da oferta.`}
+        description={`Starter, Fiscal e Completo. ${BILLING_TRIAL_DAYS} dias grátis no Starter. Escolha o plano e comece o cadastro com o identificador correto da oferta.`}
         path={pathLid ? `/planos/${pathLid}` : "/planos"}
       />
 

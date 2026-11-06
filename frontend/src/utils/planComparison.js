@@ -204,7 +204,7 @@ export const PLAN_COMPARE_SECTIONS = [
         complete: true,
       },
       {
-        label: "Teste de 15 dias (Starter)",
+        label: "Teste de 5 dias (Starter)",
         starter: true,
         fiscal: false,
         complete: false,

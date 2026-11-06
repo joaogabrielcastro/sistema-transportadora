@@ -40,7 +40,7 @@ O frontend consome `GET /api/billing/plans`. Fallback local em `frontend/src/uti
 
 | LID | Nome | Preço | Frota / usuários | Trial | Módulos |
 |-----|------|-------|------------------|-------|---------|
-| `starter` | Starter | R$ 249/mês | 8 / 2 | 15 dias | frota operacional |
+| `starter` | Starter | R$ 249/mês | 8 / 2 | 5 dias | frota operacional |
 | `fiscal` | Fiscal | R$ 649/mês | 40 / 8 | — | `notas_estoque` + `transporte_fiscal` |
 | `complete` | Completo | R$ 999/mês | 100 / 20 | — | mesmos do Fiscal |
 
@@ -56,7 +56,7 @@ Rotas públicas: `/`, `/planos`, `/planos/:lid`, `/login`, `/register`, `/termos
 - Cadastro público: `POST /api/auth/register` e `/register` (desligar com `ALLOW_PUBLIC_REGISTER=false` / `VITE_ALLOW_PUBLIC_REGISTER=false`).
 - Papéis: `admin` \| `operator` \| `viewer`. Admin gerencia a equipe em `/usuarios`.
 - Clientes atuais (pré-cobrança): `billing_exempt=true` — usam o sistema sem Stripe.
-- Novos tenants: teste de 15 dias no **Starter**, depois assinam em `/assinatura`.
+- Novos tenants: teste de 5 dias no **Starter**, depois assinam em `/assinatura`.
 - Novo tenant (CLI):
   `cd backend && npm run tenant:create -- --slug=empresa --nome="Empresa" --email=admin@empresa.com --password=SenhaSegura123`
 - Ativar cobrança em isento: `npm run tenant:billing -- --slug=empresa --exempt=false --plan=fiscal`

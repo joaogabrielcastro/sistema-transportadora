@@ -7,6 +7,8 @@ const previewCommand =
 
 export default defineConfig({
   testDir: "./e2e",
+  // Specs *-live* exigem API+Vite locais via playwright.live.config.js.
+  testIgnore: ["**/*live*.spec.js"],
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,

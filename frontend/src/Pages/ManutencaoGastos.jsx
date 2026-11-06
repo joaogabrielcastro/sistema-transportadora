@@ -206,8 +206,8 @@ const RegistroForm = ({
           name="quantidade_estoque"
           value={form.quantidade_estoque || "1"}
           onChange={onChange}
-          step="0.001"
-          min="0.001"
+          step="0.0001"
+          min="0.0001"
           required
           helperText={
             produtoSelecionado
@@ -443,10 +443,11 @@ const RegistroForm = ({
                   name="quantidade_combustivel"
                   value={form.quantidade_combustivel}
                   onChange={onChange}
-                  step="0.01"
+                  step="0.0001"
                   min="0"
                   required
-                  placeholder="0,00"
+                  placeholder="0,0000"
+                  helperText="Até 4 casas após a vírgula — igual à NF-e do posto."
                   className="mb-0"
                 />
               )}

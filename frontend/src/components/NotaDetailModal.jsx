@@ -1,6 +1,7 @@
 import React from "react";
 import { Button, LoadingSpinner, Modal } from "./ui";
 import NotaManualForm from "./NotaManualForm.jsx";
+import { formatUnitPrice } from "../utils/formatters.js";
 
 function formatMoney(value) {
   if (value == null || value === "") return "—";
@@ -157,7 +158,7 @@ export default function NotaDetailModal({
                       </td>
                       <td className="px-3 py-2.5">{item.unidade || "UN"}</td>
                       <td className="px-3 py-2.5 whitespace-nowrap">
-                        {formatMoney(item.valor_unitario)}
+                        {formatUnitPrice(item.valor_unitario)}
                       </td>
                       <td className="px-3 py-2.5 whitespace-nowrap">
                         {formatMoney(item.valor_desconto)}

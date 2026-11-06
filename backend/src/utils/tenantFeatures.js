@@ -127,10 +127,29 @@ function mergeFeatureOverrides(base, raw) {
 }
 
 /**
+ * Em tenants cobrados, o plano é a fonte da verdade para NF-e/estoque e
+ * emissão fiscal: o JSON `tenants.features` pode desligar, mas não pode
+ * ligar um módulo que o plano não inclui (ex.: Starter com transporte_fiscal).
+ * @param {Record<string, boolean>} planFeatures
+ * @param {Record<string, boolean>} merged
+ */
+function clampCommercialFeaturesToPlan(planFeatures, merged) {
+  return {
+    ...merged,
+    notas_estoque: Boolean(
+      planFeatures.notas_estoque && merged.notas_estoque,
+    ),
+    transporte_fiscal: Boolean(
+      planFeatures.transporte_fiscal && merged.transporte_fiscal,
+    ),
+  };
+}
+
+/**
  * Resolve features efetivas do tenant.
  *
  * - billing_exempt: JSON + defaults por slug (comportamento legado)
- * - billing ativo: features do `plan`, com overrides opcionais no JSON
+ * - billing ativo: features do `plan`; JSON só pode restringir módulos comerciais
  *
  * @param {object} opts
  * @param {unknown} [opts.raw] features JSON do banco
@@ -169,9 +188,11 @@ export function resolveTenantFeatures(opts = {}) {
     );
   }
 
+  const planFeatures = featuresForPlan(plan);
+  const merged = mergeFeatureOverrides(planFeatures, raw);
   return applyOrdemColetaPolicy(
     slug,
-    mergeFeatureOverrides(featuresForPlan(plan), raw),
+    clampCommercialFeaturesToPlan(planFeatures, merged),
   );
 }
 
@@ -245,7 +266,7 @@ export function buildBillingPublic(tenant) {
  * @param {number} trialDays
  * @param {Date} [now]
  */
-export function newTenantBillingDefaults(trialDays = 15, now = new Date()) {
+export function newTenantBillingDefaults(trialDays = 5, now = new Date()) {
   const trialEnds = new Date(now);
   trialEnds.setDate(trialEnds.getDate() + trialDays);
   return {

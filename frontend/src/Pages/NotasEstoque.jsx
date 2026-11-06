@@ -23,6 +23,7 @@ import { formatCaminhaoOptions } from "../utils/caminhaoOptions.js";
 import { EMPRESA_FROTA_OPTIONS } from "../utils/empresasFrota.js";
 import NotaManualForm from "../components/NotaManualForm.jsx";
 import NotaDetailModal from "../components/NotaDetailModal.jsx";
+import { formatUnitPrice } from "../utils/formatters.js";
 
 function formatMoney(value) {
   if (value == null || value === "") return "—";
@@ -818,16 +819,19 @@ const NotasEstoque = () => {
                         <td className="px-3 py-2">
                           <input
                             type="number"
-                            step="0.001"
+                            step="0.0001"
                             className="w-24 rounded-md border border-border px-2 py-1.5"
                             value={item.quantidade}
                             onChange={(e) =>
                               updateItem(
                                 idx,
                                 "quantidade",
-                                Number(e.target.value),
+                                e.target.value === ""
+                                  ? ""
+                                  : e.target.value,
                               )
                             }
+                            title="Até 4 casas decimais"
                           />
                         </td>
                         <td className="px-3 py-2">
@@ -842,12 +846,12 @@ const NotasEstoque = () => {
                         <td className="px-3 py-2">
                           <input
                             type="number"
-                            step="0.01"
+                            step="0.0001"
                             className="w-28 rounded-md border border-border px-2 py-1.5 font-semibold"
                             title={
                               item.valor_unitario_bruto != null
-                                ? `Bruto na DANFE: ${formatMoney(item.valor_unitario_bruto)}`
-                                : undefined
+                                ? `Bruto na DANFE: ${formatUnitPrice(item.valor_unitario_bruto)}`
+                                : "Até 4 casas decimais (preço/litro)"
                             }
                             value={
                               item.valor_unitario != null
@@ -860,7 +864,7 @@ const NotasEstoque = () => {
                                 "valor_unitario",
                                 e.target.value === ""
                                   ? null
-                                  : Number(e.target.value),
+                                  : e.target.value,
                               )
                             }
                           />
@@ -936,7 +940,7 @@ const NotasEstoque = () => {
               <FormField
                 label="Quantidade"
                 type="number"
-                step="0.001"
+                step="0.0001"
                 value={baixa.quantidade}
                 onChange={(e) =>
                   setBaixa((p) => ({ ...p, quantidade: e.target.value }))

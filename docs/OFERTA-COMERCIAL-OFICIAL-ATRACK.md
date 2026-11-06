@@ -41,7 +41,7 @@ Os valores são por empresa/tenant, em cobrança recorrente mensal. Não incluem
 ### Starter
 
 - Até 8 veículos e 2 usuários.
-- Teste de 15 dias para novos cadastros elegíveis.
+- Teste de 5 dias para novos cadastros elegíveis.
 - Não inclui NF-e, estoque de peças ligado à NF-e nem emissão de CT-e/MDF-e.
 - Implantação recomendada: Essencial.
 

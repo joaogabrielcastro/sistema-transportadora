@@ -23,6 +23,7 @@
     "import:trans-motin": "node scripts/import-trans-motin-historico.mjs",
     "import:trans-motin-frota": "node scripts/import-trans-motin-frota.mjs",
     "import:sat-contas-pagar": "node scripts/import-sat-contas-pagar.mjs",
+    "import:sat-despesas-gerais": "node scripts/import-sat-despesas-gerais.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node --test tests/unit/*.test.js tests/integration/*.test.js",

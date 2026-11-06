@@ -5,8 +5,9 @@
  *   - notas_fiscais (Notas/Estoque), sem movimentar estoque
  *
  *   node scripts/import-sat-contas-pagar.mjs --slug=trans-motin --dry-run
- *   node scripts/import-sat-contas-pagar.mjs --slug=trans-motin --skip-gastos
+ *   node scripts/import-sat-contas-pagar.mjs --slug=trans-motin --year=2026 --skip-gastos
  *   node scripts/import-sat-contas-pagar.mjs --slug=trans-motin --delete-gastos-sat
+ *   node scripts/import-sat-contas-pagar.mjs --slug=trans-motin --delete-notas-sat
  *
  * Padrão de dados: scripts/data/sat-contas-pagar.txt
  */
@@ -32,6 +33,8 @@ function parseArgs(argv) {
     skipGastos: false,
     skipNotas: false,
     deleteGastosSat: false,
+    deleteNotasSat: false,
+    year: null,
     slug: "trans-motin",
     file: DEFAULT_FILE,
   };
@@ -40,10 +43,17 @@ function parseArgs(argv) {
     else if (arg === "--skip-gastos") out.skipGastos = true;
     else if (arg === "--skip-notas") out.skipNotas = true;
     else if (arg === "--delete-gastos-sat") out.deleteGastosSat = true;
+    else if (arg === "--delete-notas-sat") out.deleteNotasSat = true;
     else {
       const m = arg.match(/^--([^=]+)=(.*)$/);
       if (m) out[m[1]] = m[2];
     }
+  }
+  if (out.year != null && out.year !== "") {
+    const y = Number(out.year);
+    out.year = Number.isFinite(y) ? y : null;
+  } else {
+    out.year = null;
   }
   if (out.file && !isAbsolute(out.file)) {
     out.file = join(process.cwd(), out.file);
@@ -243,10 +253,29 @@ async function deleteGastosSat(prisma, tenant, dryRun) {
   return { deleted: deleted.count };
 }
 
+async function deleteNotasSat(prisma, tenant, dryRun) {
+  const where = {
+    tenant_id: tenant.id,
+    origem: "sat",
+  };
+  const count = await prisma.notas_fiscais.count({ where });
+  if (dryRun) {
+    console.log(`[dry-run] Apagaria ${count} nota(s) SAT do tenant ${tenant.slug}`);
+    return { deleted: 0, would_delete: count };
+  }
+  // Itens caem em cascade (nota_itens onDelete Cascade).
+  const deleted = await prisma.notas_fiscais.deleteMany({ where });
+  console.log({
+    tenant: tenant.slug,
+    notas_sat_apagadas: deleted.count,
+  });
+  return { deleted: deleted.count };
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
 
-  if (args.deleteGastosSat) {
+  if (args.deleteGastosSat || args.deleteNotasSat) {
     const { default: prisma } = await import("../src/lib/prisma.js");
     try {
       const tenant = await prisma.tenants.findUnique({
@@ -256,7 +285,12 @@ async function main() {
         console.error(`Tenant não encontrado: ${args.slug}`);
         process.exit(1);
       }
-      await deleteGastosSat(prisma, tenant, args.dryRun);
+      if (args.deleteGastosSat) {
+        await deleteGastosSat(prisma, tenant, args.dryRun);
+      }
+      if (args.deleteNotasSat) {
+        await deleteNotasSat(prisma, tenant, args.dryRun);
+      }
     } finally {
       await prisma.$disconnect().catch(() => {});
     }
@@ -266,14 +300,20 @@ async function main() {
   const rows = await readSatRows(args.file);
   console.log(`Arquivo: ${args.file}`);
   console.log(`Linhas lidas: ${rows.length}`);
+  if (args.year) console.log(`Filtro ano (emissão): ${args.year}`);
 
   const parsed = [];
   let skipped = 0;
+  let skippedYear = 0;
   for (const row of rows) {
     const dataGasto = parseBrDate(row.dataEmissao);
     const valor = parseBrMoney(row.valorVenc);
     if (!dataGasto || valor == null || valor <= 0) {
       skipped += 1;
+      continue;
+    }
+    if (args.year != null && dataGasto.getUTCFullYear() !== args.year) {
+      skippedYear += 1;
       continue;
     }
     const valorPagto = parseBrMoney(row.valorPagto) || 0;
@@ -292,7 +332,10 @@ async function main() {
     });
   }
 
-  console.log(`Válidas: ${parsed.length} | Ignoradas: ${skipped}`);
+  console.log(
+    `Válidas: ${parsed.length} | Ignoradas: ${skipped}` +
+      (args.year != null ? ` | Fora do ano ${args.year}: ${skippedYear}` : ""),
+  );
   const byEmpresa = {};
   for (const p of parsed) {
     const f = p.empresa || "(sem)";

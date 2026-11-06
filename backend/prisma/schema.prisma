@@ -293,6 +293,8 @@ model gastos {
   status_pagamento       String?       @db.VarChar(20)
   /// Vencimento da multa / IPVA / seguro / fatura. Usado em Alertas.
   data_vencimento        DateTime?     @db.Date
+  /// Solofino | Colombocal | Transmotin (opcional) — mesma convenção de caminhoes.empresa
+  empresa                String?       @db.VarChar(80)
   /// Detalhes por tipo (AIT, órgão, posto, apólice, praça…). Sem schema rígido.
   detalhes               Json?         @db.JsonB
   tenants                tenants       @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
@@ -309,6 +311,7 @@ model gastos {
   @@index([produto_id])
   @@index([motorista_id])
   @@index([tenant_id, status_pagamento, data_vencimento])
+  @@index([tenant_id, empresa])
 }
 
 model itens_checklist {
@@ -402,6 +405,8 @@ model notas_fiscais {
   observacao          String?
   data_vencimento     DateTime?   @db.Date
   condicao_pagamento  String?     @db.VarChar(80)
+  /// Solofino | Colombocal | Transmotin (opcional) — mesma convenção de caminhoes.empresa
+  empresa             String?     @db.VarChar(80)
   caminhao_id         Int?
   criado_em     DateTime    @default(now()) @db.Timestamptz(6)
   tenants       tenants     @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
@@ -413,6 +418,7 @@ model notas_fiscais {
   @@index([tenant_id, numero])
   @@index([tenant_id, chave_acesso])
   @@index([caminhao_id])
+  @@index([tenant_id, empresa])
   // Várias notas sem chave (NULL) continuam válidas no PostgreSQL.
   @@unique([tenant_id, chave_acesso], map: "notas_fiscais_tenant_chave_uidx")
 }

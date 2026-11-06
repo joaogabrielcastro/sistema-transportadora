@@ -7,6 +7,7 @@ import {
   moneySchema,
 } from "./fieldSchemas.js";
 import { sanitizeGastoDetalhes } from "../utils/gastoDetalhes.js";
+import { normalizeEmpresaFrota } from "../utils/empresasFrota.js";
 
 const optionalPositiveId = z.preprocess((val) => {
   if (val === undefined) return undefined;
@@ -51,6 +52,16 @@ export const gastoSchema = z.object({
   motorista_id: optionalPositiveId,
   status_pagamento: statusPagamentoSchema,
   data_vencimento: dataOptionalSchema,
+  empresa: z.preprocess(
+    (val) => {
+      if (val === undefined) return undefined;
+      if (val === "" || val === null) return null;
+      return normalizeEmpresaFrota(val);
+    },
+    z
+      .union([z.null(), z.enum(["Solofino", "Colombocal", "Transmotin"])])
+      .optional(),
+  ),
   detalhes: detalhesSchema,
 });
 

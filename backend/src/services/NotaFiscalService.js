@@ -240,6 +240,7 @@ export class NotaFiscalService {
             ? new Date(parsed.data_vencimento)
             : null,
           condicao_pagamento: parsed.condicao_pagamento || null,
+          empresa: parsed.empresa || null,
           caminhao_id: caminhaoId,
         },
       });
@@ -421,6 +422,10 @@ export class NotaFiscalService {
             parsed.observacao !== undefined
               ? parsed.observacao || null
               : existente.observacao,
+          empresa:
+            parsed.empresa !== undefined
+              ? parsed.empresa || null
+              : existente.empresa,
           valor_total: parsed.valor_total ?? existente.valor_total,
           valor_desconto:
             parsed.valor_desconto !== undefined

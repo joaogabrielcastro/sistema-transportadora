@@ -8,6 +8,7 @@ import {
   tituloDetalheGasto,
 } from "../../utils/gastoDetalhes.js";
 import { classifyTipoGastoById } from "../../utils/tipoGastoUtils.js";
+import { EMPRESA_FROTA_OPTIONS } from "../../utils/empresasFrota.js";
 
 /**
  * Motorista, status de pagamento, vencimento e campos extras do tipo de gasto.
@@ -19,6 +20,7 @@ export default function GastoDetalhesFields({
   motoristaId,
   statusPagamento,
   dataVencimento,
+  empresa = "",
   detalhes = {},
   onChange,
   className = "",
@@ -85,6 +87,16 @@ export default function GastoDetalhesFields({
           }
           className="mb-0"
         />
+        <FormField
+          label="Filial / empresa"
+          type="select"
+          name="empresa"
+          value={empresa || ""}
+          onChange={(e) => onChange?.({ empresa: e.target.value })}
+          options={EMPRESA_FROTA_OPTIONS}
+          helperText="Solofino, Colombocal ou Transmotin."
+          className="mb-0"
+        />
       </div>
 
       {campos.length > 0 && (
@@ -126,6 +138,7 @@ GastoDetalhesFields.propTypes = {
   motoristaId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   statusPagamento: PropTypes.string,
   dataVencimento: PropTypes.string,
+  empresa: PropTypes.string,
   detalhes: PropTypes.object,
   onChange: PropTypes.func,
   className: PropTypes.string,

@@ -7,8 +7,20 @@ import {
   observacaoOptionalSchema,
   requiredString,
 } from "./fieldSchemas.js";
+import { normalizeEmpresaFrota } from "../utils/empresasFrota.js";
 
 const emptyToNull = (v) => (v === "" || v === undefined ? null : v);
+
+const empresaFrotaSchema = z.preprocess(
+  (val) => {
+    if (val === undefined) return undefined;
+    if (val === "" || val === null) return null;
+    return normalizeEmpresaFrota(val);
+  },
+  z
+    .union([z.null(), z.enum(["Solofino", "Colombocal", "Transmotin"])])
+    .optional(),
+);
 
 const itemManualSchema = z.object({
   id: z.coerce.number().int().positive().optional().nullable(),
@@ -68,6 +80,7 @@ export const notaManualSchema = z.object({
       .nullable(),
   ),
   observacao: observacaoOptionalSchema,
+  empresa: empresaFrotaSchema,
   caminhao_id: z.preprocess(
     emptyToNull,
     z.coerce.number().int().positive().optional().nullable(),

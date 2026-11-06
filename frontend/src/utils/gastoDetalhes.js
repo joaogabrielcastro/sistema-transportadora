@@ -223,6 +223,7 @@ export function payloadControleGasto(form, kind) {
     motorista_id: form.motorista_id ? Number(form.motorista_id) : null,
     status_pagamento: status || null,
     data_vencimento: form.data_vencimento || null,
+    empresa: form.empresa || null,
     detalhes: compactDetalhes(form.detalhes),
   };
 }

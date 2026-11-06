@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Button, Card, FormField, SearchableSelect } from "./ui";
 import { formatCaminhaoOptions } from "../utils/caminhaoOptions.js";
 import { FIELD_LIMITS } from "../utils/fieldLimits.js";
+import { EMPRESA_FROTA_OPTIONS } from "../utils/empresasFrota.js";
 
 function toInputDate(value) {
   if (!value) return "";
@@ -43,6 +44,7 @@ function notaToForm(nota) {
     condicao_pagamento: nota?.condicao_pagamento || "À vista",
     chave_acesso: nota?.chave_acesso || "",
     observacao: nota?.observacao || "",
+    empresa: nota?.empresa || "",
     caminhao_id: nota?.caminhao_id ? String(nota.caminhao_id) : "",
     valor_desconto: moneyStr(nota?.valor_desconto),
     valor_frete: moneyStr(nota?.valor_frete),
@@ -143,6 +145,7 @@ export default function NotaManualForm({
     e.preventDefault();
     onSubmit({
       ...form,
+      empresa: form.empresa || null,
       caminhao_id: form.caminhao_id || null,
       valor_desconto: parseMoney(form.valor_desconto),
       valor_frete: parseMoney(form.valor_frete),
@@ -294,6 +297,16 @@ export default function NotaManualForm({
             mask="chaveNfe"
             inputMode="numeric"
             placeholder="Opcional — 44 dígitos"
+          />
+          <FormField
+            label="Filial / empresa"
+            type="select"
+            name="empresa"
+            value={form.empresa}
+            onChange={(e) => setField("empresa", e.target.value)}
+            className="mb-0"
+            options={EMPRESA_FROTA_OPTIONS}
+            helperText="Solofino, Colombocal ou Transmotin."
           />
           <SearchableSelect
             label="Veículo (opcional)"

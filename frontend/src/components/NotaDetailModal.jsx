@@ -104,6 +104,7 @@ export default function NotaDetailModal({
             <InfoItem label="Frete" value={formatMoney(nota.valor_frete)} />
             <InfoItem label="IPI" value={formatMoney(nota.valor_ipi)} />
             <InfoItem label="Valor total" value={formatMoney(nota.valor_total)} />
+            <InfoItem label="Filial / empresa" value={nota.empresa} />
             <InfoItem label="Veículo" value={placaLabel} />
             <InfoItem
               label="Cadastrada em"

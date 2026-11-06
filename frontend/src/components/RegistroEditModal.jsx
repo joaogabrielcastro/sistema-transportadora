@@ -64,6 +64,7 @@ function buildInitialForm(registro, isManutencao) {
       registro.motorista_id != null ? String(registro.motorista_id) : "",
     status_pagamento: registro.status_pagamento || "",
     data_vencimento: toInputDate(registro.data_vencimento),
+    empresa: registro.empresa || "",
     detalhes: detalhesFromRaw(registro.detalhes),
   };
 }
@@ -130,6 +131,7 @@ export default function RegistroEditModal({
               data.motorista_id != null ? String(data.motorista_id) : "",
             status_pagamento: data.status_pagamento || "",
             data_vencimento: toInputDate(data.data_vencimento),
+            empresa: data.empresa || "",
             detalhes: detalhesFromRaw(data.detalhes),
           });
         }
@@ -358,6 +360,7 @@ export default function RegistroEditModal({
                 motoristaId={form.motorista_id}
                 statusPagamento={form.status_pagamento}
                 dataVencimento={form.data_vencimento}
+                empresa={form.empresa}
                 detalhes={form.detalhes || {}}
                 onChange={(patch) =>
                   setForm((prev) => ({ ...prev, ...patch }))

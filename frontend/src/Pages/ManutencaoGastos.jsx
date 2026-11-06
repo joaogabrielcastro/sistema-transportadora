@@ -471,6 +471,7 @@ const RegistroForm = ({
                     motoristaId={form.motorista_id}
                     statusPagamento={form.status_pagamento}
                     dataVencimento={form.data_vencimento}
+                    empresa={form.empresa}
                     detalhes={form.detalhes || {}}
                     onChange={onControleChange}
                   />
@@ -873,6 +874,7 @@ const ManutencaoGastos = () => {
     motorista_id: "",
     status_pagamento: "",
     data_vencimento: "",
+    empresa: "",
     detalhes: {},
   });
   const [submitting, setSubmitting] = useState(false);
@@ -998,6 +1000,7 @@ const ManutencaoGastos = () => {
       motorista_id: form.motorista_id,
       status_pagamento: "",
       data_vencimento: "",
+      empresa: form.empresa || "",
       detalhes: {},
     });
   };
@@ -1115,6 +1118,7 @@ const ManutencaoGastos = () => {
         motorista_id: "",
         status_pagamento: "",
         data_vencimento: "",
+        empresa: "",
         detalhes: {},
       });
       if (showEstoque) {

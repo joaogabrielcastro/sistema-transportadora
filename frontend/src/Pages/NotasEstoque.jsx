@@ -20,6 +20,7 @@ import {
   extractApiData,
 } from "../utils/extractApiArray.js";
 import { formatCaminhaoOptions } from "../utils/caminhaoOptions.js";
+import { EMPRESA_FROTA_OPTIONS } from "../utils/empresasFrota.js";
 import NotaManualForm from "../components/NotaManualForm.jsx";
 import NotaDetailModal from "../components/NotaDetailModal.jsx";
 
@@ -181,6 +182,7 @@ const NotasEstoque = () => {
   const [erro, setErro] = useState("");
   const [caminhoes, setCaminhoes] = useState([]);
   const [previewCaminhaoId, setPreviewCaminhaoId] = useState("");
+  const [previewEmpresa, setPreviewEmpresa] = useState("");
   const [filtroEstoqueCaminhao, setFiltroEstoqueCaminhao] = useState(searchParams.get("caminhao") || "");
   const [buscaNotas, setBuscaNotas] = useState(searchParams.get("nota") || "");
   const debouncedBuscaNotas = useDebouncedValue(buscaNotas, 300);
@@ -436,6 +438,7 @@ const NotasEstoque = () => {
       const fd = new FormData();
       const payload = {
         ...preview,
+        empresa: previewEmpresa || null,
         caminhao_id: previewCaminhaoId
           ? Number(previewCaminhaoId)
           : null,
@@ -451,6 +454,7 @@ const NotasEstoque = () => {
       setMsg("Nota importada e estoque atualizado.");
       setPreview(null);
       setPreviewCaminhaoId("");
+      setPreviewEmpresa("");
       setXmlFile(null);
       setPdfFile(null);
       setBuscaNotas("");
@@ -664,6 +668,7 @@ const NotasEstoque = () => {
                 onFile={(f) => {
                   setXmlFile(f);
                   setPreview(null);
+                  setPreviewEmpresa("");
                   setErro("");
                 }}
               />
@@ -691,6 +696,7 @@ const NotasEstoque = () => {
                   variant="outline"
                   onClick={() => {
                     setPreview(null);
+                    setPreviewEmpresa("");
                     setMsg("");
                   }}
                 >
@@ -746,19 +752,31 @@ const NotasEstoque = () => {
                 ))}
               </div>
 
-              <SearchableSelect
-                label="Caminhão de destino (opcional)"
-                value={previewCaminhaoId}
-                onChange={setPreviewCaminhaoId}
-                options={caminhaoOptions}
-                placeholder="Placa detectada no XML ou escolha manualmente…"
-                helperText={
-                  preview.placa_sugerida
-                    ? `Placa lida do XML: ${preview.placa_sugerida}. As peças entram no estoque ligadas a este caminhão. Na manutenção você escolhe a peça — o valor vem da NF-e e a quantidade sai do estoque.`
-                    : "Se escolher um caminhão, as peças ficam ligadas a ele no estoque. Sem caminhão, entram no estoque geral."
-                }
-                className="mb-0 max-w-xl"
-              />
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 max-w-3xl">
+                <FormField
+                  label="Filial / empresa"
+                  type="select"
+                  name="preview_empresa"
+                  value={previewEmpresa}
+                  onChange={(e) => setPreviewEmpresa(e.target.value)}
+                  options={EMPRESA_FROTA_OPTIONS}
+                  helperText="Solofino, Colombocal ou Transmotin."
+                  className="mb-0"
+                />
+                <SearchableSelect
+                  label="Caminhão de destino (opcional)"
+                  value={previewCaminhaoId}
+                  onChange={setPreviewCaminhaoId}
+                  options={caminhaoOptions}
+                  placeholder="Placa detectada no XML ou escolha manualmente…"
+                  helperText={
+                    preview.placa_sugerida
+                      ? `Placa lida do XML: ${preview.placa_sugerida}. As peças entram no estoque ligadas a este caminhão.`
+                      : "Se escolher um caminhão, as peças ficam ligadas a ele no estoque."
+                  }
+                  className="mb-0"
+                />
+              </div>
 
               <div className="overflow-x-auto rounded-lg border border-border">
                 <table className="min-w-full text-sm">
@@ -1067,6 +1085,7 @@ const NotasEstoque = () => {
                   <tr className="text-left text-text-secondary">
                     <th className="px-3 py-2.5 font-medium">Número</th>
                     <th className="px-3 py-2.5 font-medium">Origem</th>
+                    <th className="px-3 py-2.5 font-medium">Filial</th>
                     <th className="px-3 py-2.5 font-medium">Emitente</th>
                     <th className="px-3 py-2.5 font-medium">Itens</th>
                     <th className="px-3 py-2.5 font-medium">Total</th>
@@ -1088,6 +1107,7 @@ const NotasEstoque = () => {
                       <td className="px-3 py-2.5">
                         {n.origem === "manual" ? "Manual" : "XML"}
                       </td>
+                      <td className="px-3 py-2.5">{n.empresa || "—"}</td>
                       <td className="px-3 py-2.5">{n.emitente || "—"}</td>
                       <td className="px-3 py-2.5">{n.itens?.length || 0}</td>
                       <td className="px-3 py-2.5">

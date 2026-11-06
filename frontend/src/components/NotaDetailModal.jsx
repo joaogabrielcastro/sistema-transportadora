@@ -81,7 +81,11 @@ export default function NotaDetailModal({
             <InfoItem
               label="Origem"
               value={
-                nota.origem === "manual" ? "Cadastro manual" : "Importação XML"
+                nota.origem === "manual"
+                  ? "Cadastro manual"
+                  : nota.origem === "sat"
+                    ? "Importação SAT"
+                    : "Importação XML"
               }
             />
             <InfoItem label="Emitente / Fornecedor" value={nota.emitente} />

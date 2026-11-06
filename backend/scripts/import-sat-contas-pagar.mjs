@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
- * Importa Contas a Pagar exportadas do SAT (CSV/TXT ;) para gastos do tenant.
- * Não altera schema: usa valor, datas, descricao, status_pagamento e detalhes JSON.
+ * Importa Contas a Pagar do SAT (CSV/TXT ;) para:
+ *   - gastos (tipo Peças)
+ *   - notas_fiscais (Notas/Estoque), sem movimentar estoque
  *
  *   node scripts/import-sat-contas-pagar.mjs --slug=trans-motin --dry-run
- *   node scripts/import-sat-contas-pagar.mjs --slug=trans-motin
- *   node scripts/import-sat-contas-pagar.mjs --slug=trans-motin --file="C:\\Users\\...\\importacao trans motin.txt"
+ *   node scripts/import-sat-contas-pagar.mjs --slug=trans-motin --skip-gastos
+ *   node scripts/import-sat-contas-pagar.mjs --slug=trans-motin --delete-gastos-sat
  *
  * Padrão de dados: scripts/data/sat-contas-pagar.txt
  */
@@ -26,9 +27,19 @@ const PLACA_RE =
   /PLACA[:\s\/]*([A-Z]{3}[\s\-]?[0-9][A-Z0-9][0-9]{2}|[A-Z]{3}[\s\-]?[0-9]{4})/i;
 
 function parseArgs(argv) {
-  const out = { dryRun: false, slug: "trans-motin", file: DEFAULT_FILE };
+  const out = {
+    dryRun: false,
+    skipGastos: false,
+    skipNotas: false,
+    deleteGastosSat: false,
+    slug: "trans-motin",
+    file: DEFAULT_FILE,
+  };
   for (const arg of argv) {
     if (arg === "--dry-run") out.dryRun = true;
+    else if (arg === "--skip-gastos") out.skipGastos = true;
+    else if (arg === "--skip-notas") out.skipNotas = true;
+    else if (arg === "--delete-gastos-sat") out.deleteGastosSat = true;
     else {
       const m = arg.match(/^--([^=]+)=(.*)$/);
       if (m) out[m[1]] = m[2];
@@ -176,6 +187,23 @@ function empresaFromRow(row) {
   );
 }
 
+/** Número único na nota (parcelas > 1 viram sufixo -P2). */
+function numeroNota(row) {
+  const num = String(row.numNota || "").trim();
+  const parc = String(row.parcela || "").trim();
+  if (!num) return null;
+  if (parc && parc !== "1") return `${num}-P${parc}`;
+  return num;
+}
+
+function obsNota(row, chave) {
+  const parts = [
+    `[SAT ${chave}]`,
+    fixText(String(row.obs || "").trim()),
+  ].filter(Boolean);
+  return parts.join(" ").slice(0, 2000) || null;
+}
+
 function buildDetalhes(row, chave) {
   return sanitizeGastoDetalhes({
     origem: ORIGEM,
@@ -197,8 +225,44 @@ async function ensureTipoPecas(prisma) {
   return prisma.tipos_gastos.create({ data: { nome_tipo: TIPO_NOME } });
 }
 
+async function deleteGastosSat(prisma, tenant, dryRun) {
+  const where = {
+    tenant_id: tenant.id,
+    detalhes: { path: ["origem"], equals: ORIGEM },
+  };
+  const count = await prisma.gastos.count({ where });
+  if (dryRun) {
+    console.log(`[dry-run] Apagaria ${count} gasto(s) SAT do tenant ${tenant.slug}`);
+    return { deleted: 0, would_delete: count };
+  }
+  const deleted = await prisma.gastos.deleteMany({ where });
+  console.log({
+    tenant: tenant.slug,
+    gastos_sat_apagados: deleted.count,
+  });
+  return { deleted: deleted.count };
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+
+  if (args.deleteGastosSat) {
+    const { default: prisma } = await import("../src/lib/prisma.js");
+    try {
+      const tenant = await prisma.tenants.findUnique({
+        where: { slug: String(args.slug).toLowerCase() },
+      });
+      if (!tenant) {
+        console.error(`Tenant não encontrado: ${args.slug}`);
+        process.exit(1);
+      }
+      await deleteGastosSat(prisma, tenant, args.dryRun);
+    } finally {
+      await prisma.$disconnect().catch(() => {});
+    }
+    return;
+  }
+
   const rows = await readSatRows(args.file);
   console.log(`Arquivo: ${args.file}`);
   console.log(`Linhas lidas: ${rows.length}`);
@@ -265,7 +329,7 @@ async function main() {
       process.exit(1);
     }
 
-    const tipo = await ensureTipoPecas(prisma);
+    const tipo = args.skipGastos ? null : await ensureTipoPecas(prisma);
     const caminhoes = await prisma.caminhoes.findMany({
       where: { tenant_id: tenant.id },
       select: { id: true, placa: true },
@@ -274,63 +338,125 @@ async function main() {
       caminhoes.map((c) => [normalizePlaca(c.placa), c.id]),
     );
 
-    const existentes = await prisma.gastos.findMany({
-      where: {
-        tenant_id: tenant.id,
-        detalhes: { path: ["origem"], equals: ORIGEM },
-      },
-      select: { id: true, detalhes: true },
-    });
-    const chavesOk = new Set(
-      existentes
-        .map((g) =>
-          g.detalhes && typeof g.detalhes === "object" ? g.detalhes.chave : null,
-        )
-        .filter(Boolean),
-    );
+    const resultado = {
+      tenant: tenant.slug,
+      gastos_created: 0,
+      gastos_duplicated: 0,
+      notas_created: 0,
+      notas_duplicated: 0,
+      sem_caminhao: 0,
+    };
 
-    let created = 0;
-    let duplicated = 0;
-    let semPlaca = 0;
+    let chavesGastoOk = new Set();
+    if (!args.skipGastos) {
+      const existentes = await prisma.gastos.findMany({
+        where: {
+          tenant_id: tenant.id,
+          detalhes: { path: ["origem"], equals: ORIGEM },
+        },
+        select: { id: true, detalhes: true },
+      });
+      chavesGastoOk = new Set(
+        existentes
+          .map((g) =>
+            g.detalhes && typeof g.detalhes === "object"
+              ? g.detalhes.chave
+              : null,
+          )
+          .filter(Boolean),
+      );
+    }
 
     for (const p of parsed) {
-      if (chavesOk.has(p.chave)) {
-        duplicated += 1;
-        continue;
-      }
-
       let caminhaoId = null;
       if (p.placa && placaToId.has(p.placa)) {
         caminhaoId = placaToId.get(p.placa);
       } else {
-        semPlaca += 1;
+        resultado.sem_caminhao += 1;
       }
 
-      await prisma.gastos.create({
-        data: {
-          tenant_id: tenant.id,
-          caminhao_id: caminhaoId,
-          tipo_gasto_id: tipo.id,
-          data_gasto: p.dataGasto,
-          data_vencimento: p.dataVenc,
-          valor: p.valor.toFixed(2),
-          descricao: p.descricao,
-          status_pagamento: p.status,
-          empresa: p.empresa,
-          detalhes: p.detalhes,
-        },
-      });
-      chavesOk.add(p.chave);
-      created += 1;
+      if (!args.skipGastos) {
+        if (chavesGastoOk.has(p.chave)) {
+          resultado.gastos_duplicated += 1;
+        } else {
+          await prisma.gastos.create({
+            data: {
+              tenant_id: tenant.id,
+              caminhao_id: caminhaoId,
+              tipo_gasto_id: tipo.id,
+              data_gasto: p.dataGasto,
+              data_vencimento: p.dataVenc,
+              valor: p.valor.toFixed(2),
+              descricao: p.descricao,
+              status_pagamento: p.status,
+              empresa: p.empresa,
+              detalhes: p.detalhes,
+            },
+          });
+          chavesGastoOk.add(p.chave);
+          resultado.gastos_created += 1;
+        }
+      }
+
+      if (!args.skipNotas) {
+        const numero = numeroNota(p.row);
+        const serie = String(p.row.serie || "").trim() || "1";
+        const cnpj = String(p.row.cnpjCpfForn || "").replace(/\D/g, "") || null;
+        if (!numero) {
+          resultado.notas_duplicated += 1;
+          continue;
+        }
+
+        const dup = await prisma.notas_fiscais.findFirst({
+          where: {
+            tenant_id: tenant.id,
+            numero,
+            serie,
+            cnpj_emitente: cnpj,
+          },
+          select: { id: true },
+        });
+        if (dup) {
+          resultado.notas_duplicated += 1;
+          continue;
+        }
+
+        const emitente =
+          fixText(String(p.row.nomeForn || "").trim()) || "Fornecedor SAT";
+        const valor = p.valor.toFixed(2);
+
+        await prisma.notas_fiscais.create({
+          data: {
+            tenant_id: tenant.id,
+            numero,
+            serie,
+            emitente,
+            cnpj_emitente: cnpj,
+            data_emissao: p.dataGasto,
+            data_vencimento: p.dataVenc,
+            valor_total: valor,
+            status: "confirmada",
+            origem: "sat",
+            observacao: obsNota(p.row, p.chave),
+            empresa: p.empresa,
+            caminhao_id: caminhaoId,
+            // Sem estoque_movimentos: título a pagar, não entrada de peças.
+            itens: {
+              create: {
+                descricao: `Título a pagar (SAT) — ${emitente}`.slice(0, 500),
+                unidade: "UN",
+                quantidade: 1,
+                valor_unitario: valor,
+                valor_total: valor,
+              },
+            },
+          },
+        });
+        resultado.notas_created += 1;
+      }
     }
 
-    console.log({
-      tenant: tenant.slug,
-      tipo: tipo.nome_tipo,
-      created,
-      duplicated,
-      sem_caminhao: semPlaca,
-    });
+    console.log(resultado);
   } finally {
     await prisma.$disconnect().catch(() => {});
   }

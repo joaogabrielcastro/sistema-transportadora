@@ -1109,7 +1109,11 @@ const NotasEstoque = () => {
                         {n.serie ? `/${n.serie}` : ""}
                       </td>
                       <td className="px-3 py-2.5">
-                        {n.origem === "manual" ? "Manual" : "XML"}
+                        {n.origem === "manual"
+                          ? "Manual"
+                          : n.origem === "sat"
+                            ? "SAT"
+                            : "XML"}
                       </td>
                       <td className="px-3 py-2.5">{n.empresa || "—"}</td>
                       <td className="px-3 py-2.5">{n.emitente || "—"}</td>

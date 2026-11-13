@@ -25,7 +25,7 @@ const TIPO_NOME = "Peças";
 const ORIGEM = "sat-contas-pagar";
 
 const PLACA_RE =
-  /PLACA[:\s\/]*([A-Z]{3}[\s\-]?[0-9][A-Z0-9][0-9]{2}|[A-Z]{3}[\s\-]?[0-9]{4})/i;
+  /PLACA[:\s/]*([A-Z]{3}[\s-]?[0-9][A-Z0-9][0-9]{2}|[A-Z]{3}[\s-]?[0-9]{4})/i;
 
 function parseArgs(argv) {
   const out = {

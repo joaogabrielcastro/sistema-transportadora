@@ -48,8 +48,22 @@ const Assinatura = lazy(() => import("./Pages/Assinatura.jsx"));
 const Empresa = lazy(() => import("./Pages/Empresa.jsx"));
 const Motoristas = lazy(() => import("./Pages/Motoristas.jsx"));
 const Documentos = lazy(() => import("./Pages/Documentos.jsx"));
-const Alertas = lazy(() => import("./Pages/Alertas.jsx"));
 const Auditoria = lazy(() => import("./Pages/Auditoria.jsx"));
+const TelemetriaMonitoramento = lazy(
+  () => import("./Pages/telemetria/TelemetriaMonitoramento.jsx"),
+);
+const TelemetriaDispositivos = lazy(
+  () => import("./Pages/telemetria/TelemetriaDispositivos.jsx"),
+);
+const TelemetriaHistorico = lazy(
+  () => import("./Pages/telemetria/TelemetriaHistorico.jsx"),
+);
+const TelemetriaGeocercas = lazy(
+  () => import("./Pages/telemetria/TelemetriaGeocercas.jsx"),
+);
+const TelemetriaConfig = lazy(
+  () => import("./Pages/telemetria/TelemetriaConfig.jsx"),
+);
 const Landing = lazy(() => import("./Pages/Landing.jsx"));
 const Planos = lazy(() => import("./Pages/Planos.jsx"));
 const NotFound = lazy(() => import("./Pages/NotFound.jsx"));
@@ -173,11 +187,67 @@ function AppRoutes() {
             </GuardedRoute>
           }
         />
+        <Route path="/alertas" element={<Navigate to="/" replace />} />
         <Route
-          path="/alertas"
+          path="/telemetria"
           element={
-            <GuardedRoute permission={PERMISSIONS.ALERTS_READ}>
-              <Alertas />
+            <GuardedRoute
+              feature="telemetria"
+              permission={PERMISSIONS.TELEMETRY_READ}
+            >
+              <TelemetriaMonitoramento />
+            </GuardedRoute>
+          }
+        />
+        <Route
+          path="/telemetria/mapa"
+          element={<Navigate to="/telemetria" replace />}
+        />
+        <Route
+          path="/telemetria/dispositivos"
+          element={
+            <GuardedRoute
+              feature="telemetria"
+              permission={PERMISSIONS.TELEMETRY_READ}
+            >
+              <TelemetriaDispositivos />
+            </GuardedRoute>
+          }
+        />
+        <Route
+          path="/telemetria/historico"
+          element={
+            <GuardedRoute
+              feature="telemetria"
+              permission={PERMISSIONS.TELEMETRY_READ}
+            >
+              <TelemetriaHistorico />
+            </GuardedRoute>
+          }
+        />
+        <Route
+          path="/telemetria/geocercas"
+          element={
+            <GuardedRoute
+              feature="telemetria"
+              permission={PERMISSIONS.TELEMETRY_READ}
+            >
+              <TelemetriaGeocercas />
+            </GuardedRoute>
+          }
+        />
+        <Route
+          path="/telemetria/alertas"
+          element={<Navigate to="/telemetria" replace />}
+        />
+        <Route
+          path="/telemetria/config"
+          element={
+            <GuardedRoute
+              feature="telemetria"
+              permission={PERMISSIONS.TELEMETRY_READ}
+            >
+              <TelemetriaConfig />
             </GuardedRoute>
           }
         />

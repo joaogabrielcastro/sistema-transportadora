@@ -38,6 +38,10 @@ const server = app.listen(PORT, async () => {
         "./src/queues/telemetryJobQueue.js"
       );
       await startTelemetryWorker();
+      const { startTelemetryRetentionJob } = await import(
+        "./src/services/telemetry/telemetryRetention.js"
+      );
+      startTelemetryRetentionJob();
       const { startWorkerHeartbeat } = await import("./src/lib/workerHeartbeat.js");
       startWorkerHeartbeat({
         queues: ["ordem-coleta-envio", "averbacao-seguro", "telemetry-ingest"],

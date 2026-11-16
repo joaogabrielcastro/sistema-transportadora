@@ -213,6 +213,15 @@ export async function enqueueTelemetryEvent(data) {
     longitude: data.longitude,
     speedKmh: data.speedKmh,
     ignition: data.ignition,
+    heading: data.heading ?? null,
+    altitudeM: data.altitudeM ?? null,
+    odometerKm: data.odometerKm ?? null,
+    engineRpm: data.engineRpm ?? null,
+    fuelLevelPct: data.fuelLevelPct ?? null,
+    fuelConsumedL: data.fuelConsumedL ?? null,
+    engineTempC: data.engineTempC ?? null,
+    engineHours: data.engineHours ?? null,
+    batteryV: data.batteryV ?? null,
     key,
   };
 

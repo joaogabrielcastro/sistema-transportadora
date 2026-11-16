@@ -35,6 +35,7 @@ describe("tenantFeatures", () => {
   it("default genérico: sem módulos premium", () => {
     assert.deepEqual(defaultFeaturesForSlug("outro"), DEFAULT_TENANT_FEATURES);
     assert.equal(DEFAULT_TENANT_FEATURES.ordem_coleta, false);
+    assert.equal(DEFAULT_TENANT_FEATURES.telemetria, false);
   });
 
   it("resolve legado (raw, slug) preenche defaults", () => {

@@ -4,7 +4,7 @@ const KPI = [
   { label: "Total de caminhões", hint: "Veículos cadastrados" },
   { label: "Gastos totais", hint: "Gastos + manutenções" },
   { label: "Manutenções", hint: "Registros de checklist" },
-  { label: "Alertas", hint: "Pendências da operação" },
+  { label: "Média por lançamento", hint: "Custo médio" },
 ];
 
 export default function ProductPreview() {
@@ -38,7 +38,7 @@ export default function ProductPreview() {
             <p className="px-2 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
               Operação
             </p>
-            {["Manutenção", "Relatórios", "Alertas"].map((item) => (
+            {["Manutenção", "Relatórios"].map((item) => (
               <div key={item} className="rounded-md px-2 py-1.5 text-xs text-slate-400">
                 {item}
               </div>

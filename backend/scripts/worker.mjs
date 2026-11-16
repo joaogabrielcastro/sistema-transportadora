@@ -26,13 +26,26 @@ const { startAverbacaoWorker, closeAverbacaoQueue, getAverbacaoJobCounts } =
   await import("../src/queues/averbacaoJobQueue.js");
 const { startTelemetryWorker, closeTelemetryQueue, getTelemetryJobCounts } =
   await import("../src/queues/telemetryJobQueue.js");
+const {
+  startTelemetryRetentionJob,
+  stopTelemetryRetentionJob,
+} = await import("../src/services/telemetry/telemetryRetention.js");
 const { readTelemetryIngestStatus } = await import(
   "../src/services/telemetry/telemetryIngestStatus.js"
+);
+const {
+  startTeltonikaTcpServer,
+  stopTeltonikaTcpServer,
+  readTeltonikaTcpStatus,
+} = await import(
+  "../src/services/telemetry/protocols/teltonika/tcpServer.js"
 );
 
 await startOrdemColetaWorker();
 await startAverbacaoWorker();
 await startTelemetryWorker();
+startTelemetryRetentionJob();
+await startTeltonikaTcpServer();
 startWorkerHeartbeat({
   queues: ["ordem-coleta-envio", "averbacao-seguro", "telemetry-ingest"],
 });
@@ -54,6 +67,7 @@ const server = http.createServer(async (req, res) => {
     getTelemetryJobCounts(),
   ]);
   const telemetryStatus = readTelemetryIngestStatus();
+  const teltonika = readTeltonikaTcpStatus();
   const ok = Boolean(redis.ok && beat.ok);
   const body = {
     role: "worker",
@@ -67,6 +81,7 @@ const server = http.createServer(async (req, res) => {
       lastIngestionSuccess: telemetryStatus.lastIngestionSuccess,
       lastIngestionError: telemetryStatus.lastIngestionError,
     },
+    teltonikaTcp: teltonika,
   };
   res.writeHead(ok ? 200 : 503, { "content-type": "application/json" });
   res.end(JSON.stringify(body));
@@ -83,6 +98,8 @@ const shutdown = async (signal) => {
   console.log(`${signal} — encerrando worker…`);
   server.close();
   await closeWorkerHeartbeat().catch(() => {});
+  stopTelemetryRetentionJob();
+  await stopTeltonikaTcpServer().catch(() => {});
   await closeOrdemColetaQueue().catch(() => {});
   await closeAverbacaoQueue().catch(() => {});
   await closeTelemetryQueue().catch(() => {});

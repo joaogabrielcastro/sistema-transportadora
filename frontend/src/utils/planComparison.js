@@ -84,7 +84,7 @@ export const PLAN_COMPARE_SECTIONS = [
         complete: true,
       },
       {
-        label: "Alertas de vencimento e km",
+        label: "Controle de vencimentos e km",
         starter: true,
         fiscal: true,
         complete: true,

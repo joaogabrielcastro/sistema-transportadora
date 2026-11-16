@@ -289,7 +289,7 @@ export default function RegistroEditModal({
                 onChange={handleChange}
                 min="0"
                 placeholder="Ex.: 150000"
-                helperText="Opcional — aparece em Alertas"
+                helperText="Opcional"
               />
               <FormField
                 label="Próxima troca (data)"
@@ -297,7 +297,7 @@ export default function RegistroEditModal({
                 type="date"
                 value={form.proxima_data}
                 onChange={handleChange}
-                helperText="Opcional — aparece em Alertas"
+                helperText="Opcional"
               />
               <FormField
                 label="Observação"

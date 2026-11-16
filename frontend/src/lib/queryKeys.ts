@@ -71,4 +71,18 @@ export const queryKeys = {
     plan: (lid: string) => ["billing", "plan", lid] as const,
     status: ["billing", "status"] as const,
   },
+  telemetry: {
+    all: ["telemetry"] as const,
+    devices: (params: ListParams = {}) =>
+      ["telemetry", "devices", params] as const,
+    device: (id: number | string) => ["telemetry", "device", String(id)] as const,
+    current: (params: ListParams = {}) =>
+      ["telemetry", "current", params] as const,
+    history: (params: ListParams) => ["telemetry", "history", params] as const,
+    geofences: () => ["telemetry", "geofences"] as const,
+    alerts: (params: ListParams = {}) =>
+      ["telemetry", "alerts", params] as const,
+    efficiency: (params: ListParams = {}) =>
+      ["telemetry", "efficiency", params] as const,
+  },
 };

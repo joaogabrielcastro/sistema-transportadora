@@ -9,11 +9,12 @@ const FEATURE_LABELS = {
   ordem_coleta: "Ordem de coleta",
   notas_estoque: "Notas fiscais / estoque",
   transporte_fiscal: "Emissão de CT-e / MDF-e / contrato de frete",
+  telemetria: "Telemetria e rastreamento",
 };
 
 /**
  * Bloqueia rota se o tenant não tiver a feature (mensagem clara + CTA).
- * @param {{ feature: 'ordem_coleta' | 'notas_estoque' | 'transporte_fiscal', children: React.ReactNode }} props
+ * @param {{ feature: 'ordem_coleta' | 'notas_estoque' | 'transporte_fiscal' | 'telemetria', children: React.ReactNode }} props
  */
 export function FeatureRoute({ feature, children }) {
   const { user } = useAuth();
@@ -32,7 +33,11 @@ export function FeatureRoute({ feature, children }) {
       />
       <Alert
         type="warning"
-        message="Faça upgrade do plano ou peça ao administrador para liberar o módulo na assinatura."
+        message={
+          feature === "telemetria"
+            ? "A telemetria é um módulo adicional. Peça ao administrador ATrack para liberar na assinatura."
+            : "Faça upgrade do plano ou peça ao administrador para liberar o módulo na assinatura."
+        }
       />
       <div className="flex flex-wrap gap-3">
         <Link to="/assinatura">

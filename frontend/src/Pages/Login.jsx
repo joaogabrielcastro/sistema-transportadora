@@ -88,7 +88,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex">
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-10 sm:px-8 bg-white lg:bg-background">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 py-10 sm:px-8 bg-background">
         <div className="w-full max-w-[420px] animate-slide-up">
           <div className="flex flex-col items-center text-center mb-8 lg:items-start lg:text-left">
             <img
@@ -102,7 +102,7 @@ export default function Login() {
             </p>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-card border border-border p-6 sm:p-8 lg:shadow-none lg:border-0 lg:p-0">
+          <div>
             <div className="mb-8">
               <h1 className="text-2xl font-bold text-text-primary tracking-tight">
                 Entrar

@@ -29,6 +29,9 @@ export const PERMISSIONS = Object.freeze({
   // separar em contrato_frete.read/write exigiria migração dos extras em users.
   CIOT_READ: "ciot.read",
   CIOT_WRITE: "ciot.write",
+  // Telemetria (add-on). Também exige feature `telemetria` no tenant.
+  TELEMETRY_READ: "telemetry.read",
+  TELEMETRY_WRITE: "telemetry.write",
 });
 
 const ALL = Object.values(PERMISSIONS);
@@ -47,6 +50,8 @@ const OPERATOR_PERMS = [
   PERMISSIONS.NOTAS_WRITE,
   PERMISSIONS.REPORTS_READ,
   PERMISSIONS.ALERTS_READ,
+  PERMISSIONS.TELEMETRY_READ,
+  PERMISSIONS.TELEMETRY_WRITE,
 ];
 
 const ROLE_PERMISSIONS = Object.freeze({
@@ -59,6 +64,7 @@ const ROLE_PERMISSIONS = Object.freeze({
     PERMISSIONS.NOTAS_READ,
     PERMISSIONS.REPORTS_READ,
     PERMISSIONS.ALERTS_READ,
+    PERMISSIONS.TELEMETRY_READ,
   ],
 });
 

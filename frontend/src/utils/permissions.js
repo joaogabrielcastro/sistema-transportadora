@@ -27,6 +27,9 @@ export const PERMISSIONS = Object.freeze({
   // Contrato de Frete e CIOT usam as mesmas chaves (não quebrar extras já gravados).
   CIOT_READ: "ciot.read",
   CIOT_WRITE: "ciot.write",
+  // Telemetria (add-on). Também exige feature `telemetria` no tenant.
+  TELEMETRY_READ: "telemetry.read",
+  TELEMETRY_WRITE: "telemetry.write",
 });
 
 /**

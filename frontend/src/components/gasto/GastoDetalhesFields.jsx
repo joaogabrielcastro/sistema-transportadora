@@ -69,7 +69,7 @@ export default function GastoDetalhesFields({
           options={STATUS_PAGAMENTO_OPTIONS}
           helperText={
             kind === "multa"
-              ? "Pendente, pago ou em recurso. Vencidas entram em Alertas."
+              ? "Pendente, pago ou em recurso."
               : "Marque pendente quando ainda for pagar."
           }
           className="mb-0"
@@ -82,8 +82,8 @@ export default function GastoDetalhesFields({
           onChange={(e) => onChange?.({ data_vencimento: e.target.value })}
           helperText={
             kind === "multa"
-              ? "Prazo para pagar a multa. Aparece em Alertas se pendente."
-              : "Opcional. Usado em Alertas se a situação for pendente."
+              ? "Prazo para pagar a multa."
+              : "Opcional. Usado quando a situação for pendente."
           }
           className="mb-0"
         />

@@ -9,7 +9,8 @@ Site comercial → plano (LID) → cadastro → sistema. Tudo deve contar a mesm
 - **Backend:** Node.js, Express, Prisma 7, PostgreSQL, Zod, JWT.
 - **Frontend:** React, Vite, Tailwind, TanStack Query, Chart.js.
 - **Isolamento:** banco compartilhado com `tenant_id` em todas as tabelas de negócio (sem RLS).
-- **Filas:** Redis + BullMQ (ordem de coleta e averbação). Em produção o Redis é obrigatório e não há fila em memória. Fora de produção, sem `REDIS_URL`, a fila fica em memória e o log avisa.
+- **Filas:** Redis + BullMQ (ordem de coleta, averbação e telemetria). Em produção o Redis é obrigatório e não há fila em memória. Fora de produção, sem `REDIS_URL`, a fila fica em memória e o log avisa.
+- **Telemetria:** ingestão HTTP (`POST /api/v1/telemetry/ingest`) + gateway TCP Teltonika no worker (`TELETONIKA_TCP_ENABLED`). Módulo UI em `/telemetria` (feature `tenants.features.telemetria`).
 
 ## O que o produto entrega
 
@@ -99,6 +100,21 @@ npm run dev            # http://localhost:3020
 
 Seed típico: `admin@abrotto.local` / `admin123456` (tenant `abbroto`).
 
+Worker (fila + TCP Teltonika):
+
+```bash
+# no backend/.env: REDIS_URL, TELETONIKA_TCP_ENABLED=true, TELETONIKA_TCP_PORT=5027
+npm run worker
+```
+
+Homologação simulada Teltonika (Codec 8/8E na porta 5027) — valida protocolo, ACK, persistência e mapa; **não** comprova FMC650 físico nem CAN do veículo:
+
+```bash
+node scripts/_enable-telemetry-demo.mjs
+node scripts/teltonika-simulate.mjs --imei=352094081111111 --count=20 --route=curitiba
+node scripts/teltonika-simulate.mjs --codec=8e --disconnect-every=5 --count=15
+```
+
 ### Frontend
 
 ```bash
@@ -126,6 +142,8 @@ Site comercial só aparece **deslogado** em `/`. Logado, `/` é o dashboard.
 | `ALLOW_PUBLIC_REGISTER` | cadastro de empresas |
 | `FRONTEND_URL` | links de convite, reset e retorno Stripe |
 | `REDIS_URL` | fila durable |
+| `TELETONIKA_TCP_ENABLED` | `true` no worker para gateway GPS Teltonika |
+| `TELETONIKA_TCP_PORT` | TCP Codec 8 (padrão `5027`) |
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | cobrança |
 | `STRIPE_PRICE_STARTER` / `_FISCAL` / `_COMPLETE` | Price IDs (nunca no frontend) |
 | `BRASIL_NFE_*` / `FISCAL_SECRETS_KEY` | emissão fiscal |

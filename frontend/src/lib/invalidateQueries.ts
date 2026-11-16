@@ -58,4 +58,8 @@ export function invalidateQueriesFromMutation(
   if (/^fiscal\/veiculo-dados/.test(path)) {
     queryClient.invalidateQueries({ queryKey: ["fiscal", "veiculo-dados"] });
   }
+
+  if (/^telemetry/.test(path)) {
+    queryClient.invalidateQueries({ queryKey: queryKeys.telemetry.all });
+  }
 }

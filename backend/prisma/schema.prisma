@@ -50,6 +50,10 @@ model tenants {
   telemetry_events       telemetry_events[]
   telemetry_current_state telemetry_current_state[]
   telemetry_daily        telemetry_daily[]
+  telemetry_geofences    telemetry_geofences[]
+  telemetry_alerts       telemetry_alerts[]
+  telemetry_alert_rules  telemetry_alert_rules[]
+  telemetry_subscriptions telemetry_subscriptions[]
 
   @@index([slug])
   @@index([stripe_customer_id])
@@ -97,6 +101,9 @@ model caminhoes {
   telemetry_events    telemetry_events[]
   telemetry_current_state telemetry_current_state?
   telemetry_daily     telemetry_daily[]
+  telemetry_geofence_vehicles telemetry_geofence_vehicles[]
+  telemetry_alert_rules telemetry_alert_rules[]
+  telemetry_alerts    telemetry_alerts[]
 
   @@unique([tenant_id, placa])
   @@index([tenant_id])
@@ -1120,35 +1127,47 @@ model fiscal_averbacoes {
 }
 
 // =====================================================================
-// Preparação para telemetria. Sem ingestão, sem rastreador e sem mapa.
+// Telemetria: ingestão HTTP + Device Manager (Etapa 0).
 //
-// O tenant do ponto futuro sai de telemetry_devices, nunca do JSON.
+// O tenant do ponto sai de telemetry_devices, nunca do JSON do dispositivo.
 // registrado_em = relógio do aparelho (recorded_at).
 // recebido_em   = relógio do servidor (received_at).
 // Estado atual só avança se registrado_em for mais novo.
-// Retenção prevista: bruto 90 dias; estado atual e resumo diário sem prazo.
+// Retenção do bruto: 90 dias (job no worker). Estado atual e daily sem prazo.
 // O unique (device_id, event_id) é a idempotência. Não depende do Redis.
 // =====================================================================
 
 model telemetry_devices {
-  id              Int       @id @default(autoincrement())
-  tenant_id       Int
-  external_id     String    @db.VarChar(64)
-  nome            String?   @db.VarChar(120)
+  id               Int       @id @default(autoincrement())
+  tenant_id        Int
+  external_id      String    @db.VarChar(64)
+  nome             String?   @db.VarChar(120)
+  manufacturer     String?   @db.VarChar(64)
+  model            String?   @db.VarChar(64)
+  imei             String?   @db.VarChar(32)
+  /// http_json | teltonika | …
+  protocol         String?   @db.VarChar(32)
+  connection_type  String?   @db.VarChar(32)
+  /// ATRACK | CUSTOMER
+  ownership_type   String?   @db.VarChar(16)
   /// SHA-256 da credencial. Nunca o segredo em claro.
-  credential_hash String    @unique @db.VarChar(64)
-  ativo           Boolean   @default(true)
-  revogado_em     DateTime? @db.Timestamptz(6)
-  criado_em       DateTime  @default(now()) @db.Timestamptz(6)
-  atualizado_em   DateTime  @updatedAt @db.Timestamptz(6)
-  tenants         tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  assignments     telemetry_device_assignments[]
-  events          telemetry_events[]
-  current_states  telemetry_current_state[]
+  credential_hash  String    @unique @db.VarChar(64)
+  ativo            Boolean   @default(true)
+  revogado_em      DateTime? @db.Timestamptz(6)
+  last_seen_at     DateTime? @db.Timestamptz(6)
+  criado_em        DateTime  @default(now()) @db.Timestamptz(6)
+  atualizado_em    DateTime  @updatedAt @db.Timestamptz(6)
+  tenants          tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  assignments      telemetry_device_assignments[]
+  events           telemetry_events[]
+  current_states   telemetry_current_state[]
+  alerts           telemetry_alerts[]
 
   @@unique([tenant_id, external_id])
   @@index([tenant_id])
   @@index([tenant_id, ativo])
+  @@index([tenant_id, last_seen_at])
+  @@index([tenant_id, imei])
 }
 
 model telemetry_device_assignments {
@@ -1170,47 +1189,66 @@ model telemetry_device_assignments {
 }
 
 model telemetry_events {
-  id             BigInt    @id @default(autoincrement())
-  tenant_id      Int
-  device_id      Int
-  caminhao_id    Int?
-  event_id       String    @db.VarChar(80)
-  registrado_em  DateTime  @db.Timestamptz(6)
-  recebido_em    DateTime  @db.Timestamptz(6)
-  latitude       Decimal?  @db.Decimal(9, 6)
-  longitude      Decimal?  @db.Decimal(9, 6)
-  velocidade_kmh Decimal?  @db.Decimal(8, 2)
-  odometro_km    Decimal?  @db.Decimal(14, 3)
+  id                  BigInt    @id @default(autoincrement())
+  tenant_id           Int
+  device_id           Int
+  caminhao_id         Int?
+  event_id            String    @db.VarChar(80)
+  registrado_em       DateTime  @db.Timestamptz(6)
+  recebido_em         DateTime  @db.Timestamptz(6)
+  latitude            Decimal?  @db.Decimal(9, 6)
+  longitude           Decimal?  @db.Decimal(9, 6)
+  velocidade_kmh      Decimal?  @db.Decimal(8, 2)
+  heading             Decimal?  @db.Decimal(6, 2)
+  altitude_m          Decimal?  @db.Decimal(8, 2)
+  odometro_km         Decimal?  @db.Decimal(14, 3)
   /// Ignição no instante do ponto. Não altera caminhoes.km_atual.
-  ignicao        Boolean?
-  criado_em      DateTime  @default(now()) @db.Timestamptz(6)
-  tenants        tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  devices        telemetry_devices @relation(fields: [device_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  caminhoes      caminhoes? @relation(fields: [caminhao_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  ignicao             Boolean?
+  engine_rpm          Decimal?  @db.Decimal(8, 2)
+  fuel_level_pct      Decimal?  @db.Decimal(6, 2)
+  fuel_consumed_l     Decimal?  @db.Decimal(12, 3)
+  engine_temp_c       Decimal?  @db.Decimal(6, 2)
+  engine_hours        Decimal?  @db.Decimal(12, 2)
+  battery_v           Decimal?  @db.Decimal(6, 2)
+  criado_em           DateTime  @default(now()) @db.Timestamptz(6)
+  tenants             tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  devices             telemetry_devices @relation(fields: [device_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  caminhoes           caminhoes? @relation(fields: [caminhao_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@unique([device_id, event_id])
   @@index([tenant_id, registrado_em])
   @@index([caminhao_id, registrado_em])
   @@index([device_id, registrado_em])
+  @@index([recebido_em])
 }
 
 /// Uma linha por veículo. Não é histórico. Não substitui caminhoes.km_atual.
 model telemetry_current_state {
-  id             Int      @id @default(autoincrement())
-  tenant_id      Int
-  caminhao_id    Int      @unique
-  device_id      Int?
-  registrado_em  DateTime @db.Timestamptz(6)
-  recebido_em    DateTime @db.Timestamptz(6)
-  latitude       Decimal? @db.Decimal(9, 6)
-  longitude      Decimal? @db.Decimal(9, 6)
-  velocidade_kmh Decimal? @db.Decimal(8, 2)
-  odometro_km    Decimal? @db.Decimal(14, 3)
-  ignicao        Boolean?
-  atualizado_em  DateTime @updatedAt @db.Timestamptz(6)
-  tenants        tenants  @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  caminhoes      caminhoes @relation(fields: [caminhao_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  devices        telemetry_devices? @relation(fields: [device_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  id                  Int      @id @default(autoincrement())
+  tenant_id           Int
+  caminhao_id         Int      @unique
+  device_id           Int?
+  registrado_em       DateTime @db.Timestamptz(6)
+  recebido_em         DateTime @db.Timestamptz(6)
+  latitude            Decimal? @db.Decimal(9, 6)
+  longitude           Decimal? @db.Decimal(9, 6)
+  velocidade_kmh      Decimal? @db.Decimal(8, 2)
+  heading             Decimal? @db.Decimal(6, 2)
+  altitude_m          Decimal? @db.Decimal(8, 2)
+  odometro_km         Decimal? @db.Decimal(14, 3)
+  ignicao             Boolean?
+  engine_rpm          Decimal? @db.Decimal(8, 2)
+  fuel_level_pct      Decimal? @db.Decimal(6, 2)
+  fuel_consumed_l     Decimal? @db.Decimal(12, 3)
+  engine_temp_c       Decimal? @db.Decimal(6, 2)
+  engine_hours        Decimal? @db.Decimal(12, 2)
+  battery_v           Decimal? @db.Decimal(6, 2)
+  /// inside | outside | unknown — última avaliação de geocerca (opcional)
+  geofence_status     String?  @db.VarChar(16)
+  atualizado_em       DateTime @updatedAt @db.Timestamptz(6)
+  tenants             tenants  @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  caminhoes           caminhoes @relation(fields: [caminhao_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  devices             telemetry_devices? @relation(fields: [device_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@index([tenant_id])
   @@index([device_id])
@@ -1224,6 +1262,8 @@ model telemetry_daily {
   dia                DateTime @db.Date
   km                 Decimal? @db.Decimal(14, 3)
   velocidade_max_kmh Decimal? @db.Decimal(8, 2)
+  fuel_consumed_l    Decimal? @db.Decimal(12, 3)
+  engine_hours       Decimal? @db.Decimal(12, 2)
   amostras           Int      @default(0)
   criado_em          DateTime @default(now()) @db.Timestamptz(6)
   atualizado_em      DateTime @updatedAt @db.Timestamptz(6)
@@ -1232,4 +1272,103 @@ model telemetry_daily {
 
   @@unique([tenant_id, caminhao_id, dia])
   @@index([tenant_id, dia])
+}
+
+/// Geocerca circular ou poligonal (geometry JSON).
+model telemetry_geofences {
+  id          Int       @id @default(autoincrement())
+  tenant_id   Int
+  name        String    @db.VarChar(120)
+  /// circle | polygon
+  shape       String    @db.VarChar(16)
+  /// circle: { center:{lat,lng}, radius_m } | polygon: { points:[{lat,lng},...] }
+  geometry    Json      @db.JsonB
+  enabled     Boolean   @default(true)
+  criado_em   DateTime  @default(now()) @db.Timestamptz(6)
+  atualizado_em DateTime @updatedAt @db.Timestamptz(6)
+  tenants     tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  vehicle_links telemetry_geofence_vehicles[]
+  alerts      telemetry_alerts[]
+
+  @@index([tenant_id])
+  @@index([tenant_id, enabled])
+}
+
+model telemetry_geofence_vehicles {
+  id          Int      @id @default(autoincrement())
+  tenant_id   Int
+  geofence_id Int
+  caminhao_id Int
+  criado_em   DateTime @default(now()) @db.Timestamptz(6)
+  geofences   telemetry_geofences @relation(fields: [geofence_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  caminhoes   caminhoes @relation(fields: [caminhao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([geofence_id, caminhao_id])
+  @@index([tenant_id])
+  @@index([caminhao_id])
+}
+
+/// Regras de alerta por tenant (e opcionalmente por veículo).
+model telemetry_alert_rules {
+  id            Int       @id @default(autoincrement())
+  tenant_id     Int
+  caminhao_id   Int?
+  /// speed | offline | geofence_enter | geofence_exit | ignition_on | ignition_off | engine_temp | idle
+  alert_type    String    @db.VarChar(32)
+  enabled       Boolean   @default(true)
+  /// ex: { max_speed_kmh: 90, offline_after_min: 15, max_engine_temp_c: 105 }
+  config        Json      @default("{}") @db.JsonB
+  criado_em     DateTime  @default(now()) @db.Timestamptz(6)
+  atualizado_em DateTime  @updatedAt @db.Timestamptz(6)
+  tenants       tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  caminhoes     caminhoes? @relation(fields: [caminhao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([tenant_id, enabled])
+  @@index([tenant_id, alert_type])
+  @@index([caminhao_id])
+}
+
+model telemetry_alerts {
+  id            Int       @id @default(autoincrement())
+  tenant_id     Int
+  caminhao_id   Int?
+  device_id     Int?
+  geofence_id   Int?
+  alert_type    String    @db.VarChar(32)
+  /// info | warning | critical
+  severity      String    @db.VarChar(16) @default("warning")
+  description   String    @db.VarChar(500)
+  status        String    @db.VarChar(16) @default("open")
+  payload       Json?     @db.JsonB
+  occurred_at   DateTime  @db.Timestamptz(6)
+  resolved_at   DateTime? @db.Timestamptz(6)
+  criado_em     DateTime  @default(now()) @db.Timestamptz(6)
+  tenants       tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  caminhoes     caminhoes? @relation(fields: [caminhao_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  devices       telemetry_devices? @relation(fields: [device_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  geofences     telemetry_geofences? @relation(fields: [geofence_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([tenant_id, occurred_at])
+  @@index([tenant_id, status])
+  @@index([caminhao_id, occurred_at])
+  @@index([device_id, occurred_at])
+}
+
+/// Assinatura comercial do módulo (por tenant; seats = veículos rastreados).
+model telemetry_subscriptions {
+  id              Int       @id @default(autoincrement())
+  tenant_id       Int
+  /// basic | advanced
+  plan            String    @db.VarChar(32)
+  monthly_price   Decimal?  @db.Decimal(12, 2)
+  seat_limit      Int       @default(0)
+  status          String    @db.VarChar(32) @default("active")
+  started_at      DateTime  @default(now()) @db.Timestamptz(6)
+  cancelled_at    DateTime? @db.Timestamptz(6)
+  stripe_price_id String?   @db.VarChar(255)
+  criado_em       DateTime  @default(now()) @db.Timestamptz(6)
+  atualizado_em   DateTime  @updatedAt @db.Timestamptz(6)
+  tenants         tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([tenant_id, status])
 }

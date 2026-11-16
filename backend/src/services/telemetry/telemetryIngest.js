@@ -4,6 +4,7 @@ import { assertDeviceCredentialAllowed } from "./telemetryPolicy.js";
 import { resolveAssignmentAt, resolveDeviceByCredential } from "./telemetryPrep.js";
 import { enqueueTelemetryEvent } from "../../queues/telemetryJobQueue.js";
 import { noteTelemetrySeen } from "./telemetryIngestStatus.js";
+import { touchDeviceLastSeen } from "./telemetryDeviceAdmin.js";
 
 function httpError(message, statusCode, code) {
   const err = new Error(message);
@@ -61,6 +62,7 @@ export async function acceptTelemetryIngest({ authorization, event }) {
   }
 
   noteTelemetrySeen(device.id);
+  await touchDeviceLastSeen(device.id).catch(() => {});
   logger.info("telemetry event received", {
     deviceId: device.id,
     eventId: event.event_id,
@@ -94,6 +96,15 @@ export async function acceptTelemetryIngest({ authorization, event }) {
     longitude: event.longitude,
     speedKmh: event.speed_kmh,
     ignition: event.ignition,
+    heading: event.heading ?? null,
+    altitudeM: event.altitude_m ?? null,
+    odometerKm: event.odometer_km ?? null,
+    engineRpm: event.engine_rpm ?? null,
+    fuelLevelPct: event.fuel_level_pct ?? null,
+    fuelConsumedL: event.fuel_consumed_l ?? null,
+    engineTempC: event.engine_temp_c ?? null,
+    engineHours: event.engine_hours ?? null,
+    batteryV: event.battery_v ?? null,
   });
 
   return {

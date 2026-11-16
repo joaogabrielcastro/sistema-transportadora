@@ -1,22 +1,27 @@
+import prisma from "../../lib/prisma.js";
 import { PLAN_QUOTAS } from "../../utils/planQuotas.js";
 
 /**
- * Retenção inicial do bruto. Estado atual e resumo diário não expiram.
- * Não há job de expurgo nesta fase.
+ * Retenção do bruto. Estado atual e resumo diário não expiram.
+ * O worker roda purgeExpiredTelemetryEvents periodicamente.
  */
 export const RAW_EVENT_RETENTION_DAYS = 90;
 
+const PLAN_SEATS = {
+  basic: 10,
+  advanced: 50,
+};
+
 /**
- * Cotas de telemetria ainda não são cobradas nem bloqueiam o plano atual.
- * Quando forem ligadas, o limite conta dispositivo ativo vinculado a veículo,
- * não a quantidade de eventos.
+ * Cotas de telemetria. Com assinatura ativa, enforced=true.
  */
 export function telemetryLimitsForPlan(plan) {
+  const key = plan && PLAN_SEATS[plan] != null ? plan : null;
   return {
-    enforced: false,
-    plan: plan ?? null,
-    maxActiveDevices: null,
-    maxTrackedVehicles: null,
+    enforced: Boolean(key),
+    plan: key,
+    maxActiveDevices: key ? PLAN_SEATS[key] : null,
+    maxTrackedVehicles: key ? PLAN_SEATS[key] : null,
     rawRetentionDays: RAW_EVENT_RETENTION_DAYS,
     currentStateRetention: "indefinite",
     dailySummaryRetention: "indefinite",
@@ -79,4 +84,33 @@ export function assertDeviceCredentialAllowed(raw) {
     throw err;
   }
   return value;
+}
+
+/**
+ * Bloqueia novo device se assinatura ativa estourou o seat_limit.
+ * Sem assinatura: libera (feature flag já controla o módulo).
+ */
+export async function assertSeatAvailable(tenantId) {
+  const sub = await prisma.telemetry_subscriptions.findFirst({
+    where: { tenant_id: Number(tenantId), status: "active" },
+    orderBy: { id: "desc" },
+  });
+  if (!sub || !sub.seat_limit || sub.seat_limit <= 0) return { ok: true, sub };
+
+  const active = await prisma.telemetry_devices.count({
+    where: {
+      tenant_id: Number(tenantId),
+      ativo: true,
+      revogado_em: null,
+    },
+  });
+  if (active >= sub.seat_limit) {
+    const err = new Error(
+      `Limite de ${sub.seat_limit} dispositivos ativos atingido na assinatura de telemetria.`,
+    );
+    err.statusCode = 403;
+    err.code = "TELEMETRY_SEAT_LIMIT";
+    throw err;
+  }
+  return { ok: true, sub, active };
 }

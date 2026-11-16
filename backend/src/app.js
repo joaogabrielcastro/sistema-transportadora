@@ -34,6 +34,7 @@ import tenantRoutes from "./routes/tenantRoutes.js";
 import opsRoutes from "./routes/opsRoutes.js";
 import fiscalRoutes from "./routes/fiscalRoutes.js";
 import telemetryRoutes from "./routes/telemetryRoutes.js";
+import telemetryAdminRoutes from "./routes/telemetryAdminRoutes.js";
 import { requireFeature } from "./middleware/requireFeature.js";
 import { requireActiveSubscription } from "./middleware/requireActiveSubscription.js";
 import { ensureUploadDirs } from "./utils/uploadPaths.js";
@@ -190,6 +191,11 @@ apiRouter.use(
     return next();
   },
   ordemColetaRoutes,
+);
+apiRouter.use(
+  "/telemetry",
+  requireFeature("telemetria"),
+  telemetryAdminRoutes,
 );
 
 app.use("/api", apiRouter);

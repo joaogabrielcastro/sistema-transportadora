@@ -75,7 +75,6 @@ function buildNavGroups(features = {}) {
       label: "Relatórios",
       permission: PERMISSIONS.REPORTS_READ,
     },
-    { path: "/alertas", label: "Alertas", permission: PERMISSIONS.ALERTS_READ },
   ];
   if (features.ordem_coleta === true) {
     operacao.push({ path: "/ordem-coleta", label: "Ordem de coleta" });
@@ -83,7 +82,17 @@ function buildNavGroups(features = {}) {
   if (features.notas_estoque === true) {
     operacao.push({ path: "/notas-estoque", label: "Notas / Estoque" });
   }
-  return { visao, frota, operacao };
+  const telemetria = [];
+  if (features.telemetria === true) {
+    telemetria.push(
+      { path: "/telemetria", label: "Monitoramento", exact: true, permission: PERMISSIONS.TELEMETRY_READ },
+      { path: "/telemetria/historico", label: "Histórico", permission: PERMISSIONS.TELEMETRY_READ },
+      { path: "/telemetria/dispositivos", label: "Dispositivos", permission: PERMISSIONS.TELEMETRY_READ },
+      { path: "/telemetria/geocercas", label: "Geocercas", permission: PERMISSIONS.TELEMETRY_READ },
+      { path: "/telemetria/config", label: "Config", permission: PERMISSIONS.TELEMETRY_READ },
+    );
+  }
+  return { visao, frota, operacao, telemetria };
 }
 
 const isActivePath = (pathname, path, exact = false) => {
@@ -107,8 +116,13 @@ const PAGE_TITLES = [
   ["/pneus", "Pneus"],
   ["/motoristas", "Motoristas"],
   ["/documentos", "Documentos"],
-  ["/alertas", "Alertas"],
   ["/relatorios", "Relatórios"],
+  ["/telemetria/dispositivos", "Dispositivos"],
+  ["/telemetria/historico", "Histórico"],
+  ["/telemetria/geocercas", "Geocercas"],
+  ["/telemetria/config", "Configurações"],
+  ["/telemetria/mapa", "Monitoramento"],
+  ["/telemetria", "Monitoramento"],
   ["/notas-estoque", "Notas e estoque"],
   ["/fiscal", "Fiscal"],
   ["/usuarios", "Usuários"],
@@ -125,28 +139,68 @@ function currentPageTitle(pathname) {
   )?.[1] || "ATrack";
 }
 
+const LINK_ICON_PATHS = {
+  "/":
+    "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 00-1-1h-2a1 1 0 00-1 1v4",
+  "/manutencao-gastos":
+    "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z",
+  "/relatorios":
+    "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-1-1z",
+  "/documentos":
+    "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
+  "/motoristas":
+    "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z",
+  "/ordem-coleta":
+    "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2",
+  "/notas-estoque":
+    "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4",
+  // Grupo Telemetria (pai) — sinal/radar
+  "/telemetria/mapa":
+    "M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.15 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0",
+  // Monitoramento — olho / visão ao vivo
+  "/telemetria":
+    "M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z",
+  "/telemetria/dispositivos":
+    "M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z",
+  "/telemetria/historico":
+    "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
+  "/telemetria/geocercas":
+    "M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7",
+  "/telemetria/config":
+    "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z",
+  // Fiscal
+  "/fiscal":
+    "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4",
+  "/fiscal/empresas":
+    "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4",
+  "/fiscal/seguro":
+    "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
+  "/fiscal/cte":
+    "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
+  "/fiscal/mdfe":
+    "M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2",
+  "/fiscal/contratos-frete":
+    "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
+};
+
 function linkIcon(path) {
-  const d =
-    path === "/"
-      ? "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 00-1-1h-2a1 1 0 00-1 1v4"
-      : path === "/manutencao-gastos"
-        ? "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-        : path === "/relatorios"
-          ? "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-1-1z"
-          : path === "/alertas"
-            ? "M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-            : path === "/documentos"
-              ? "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              : path === "/motoristas"
-                ? "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                : path === "/ordem-coleta"
-                  ? "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                  : path === "/notas-estoque"
-                    ? "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                    : "M4 6h16M4 12h16M4 18h16";
+  const d = LINK_ICON_PATHS[path] || "M4 6h16M4 12h16M4 18h16";
+  // Alguns ícones Heroicons usam 2 paths no mesmo `d` (ex.: olho).
+  const parts = String(d)
+    .split(/\s(?=M)/)
+    .map((p) => p.trim())
+    .filter(Boolean);
   return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={d} />
+    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      {parts.map((part) => (
+        <path
+          key={part}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d={part}
+        />
+      ))}
     </svg>
   );
 }
@@ -201,6 +255,10 @@ function SidebarNav({
   fiscalOpen,
   setFiscalOpen,
   showFiscalMenu,
+  telemetriaLinks,
+  showTelemetriaMenu,
+  telemetriaOpen,
+  setTelemetriaOpen,
   canWriteFrota,
   vehicleQuotaReached,
   showBillingLink,
@@ -213,6 +271,7 @@ function SidebarNav({
 }) {
   const isPneusSection = pathname.startsWith("/pneus");
   const isFiscalSection = pathname.startsWith("/fiscal");
+  const isTelemetriaSection = pathname.startsWith("/telemetria");
 
   return (
     <nav className="flex min-h-0 flex-1 flex-col" aria-label="Menu principal">
@@ -277,6 +336,43 @@ function SidebarNav({
           ))}
         </div>
 
+        {showTelemetriaMenu && (
+          <div className="flex flex-col gap-0.5 pt-3">
+            <button
+              type="button"
+              className={`${sideLinkClass(isTelemetriaSection)} justify-between gap-2`}
+              aria-expanded={telemetriaOpen}
+              onClick={() => setTelemetriaOpen((open) => !open)}
+            >
+              <span className="flex items-center gap-3">
+                <span className="opacity-80" aria-hidden>
+                  {linkIcon("/telemetria/mapa")}
+                </span>
+                Telemetria
+              </span>
+              <Chevron open={telemetriaOpen} />
+            </button>
+            {telemetriaOpen && (
+              <div className="mt-0.5 flex flex-col gap-0.5 pl-2">
+                {telemetriaLinks.map((sub) => (
+                  <Link
+                    key={sub.path}
+                    to={sub.path}
+                    className={`${sideLinkClass(
+                      isActivePath(pathname, sub.path, sub.exact),
+                    )} gap-2.5 py-1.5 text-[13px]`}
+                  >
+                    <span className="opacity-80" aria-hidden>
+                      {linkIcon(sub.path)}
+                    </span>
+                    {sub.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {showFiscalMenu && (
           <div className="flex flex-col gap-0.5 pt-3">
             <button
@@ -285,7 +381,12 @@ function SidebarNav({
               aria-expanded={fiscalOpen}
               onClick={() => setFiscalOpen((open) => !open)}
             >
-              Fiscal
+              <span className="flex items-center gap-3">
+                <span className="opacity-80" aria-hidden>
+                  {linkIcon("/fiscal")}
+                </span>
+                Fiscal
+              </span>
               <Chevron open={fiscalOpen} />
             </button>
             {fiscalOpen && (
@@ -294,8 +395,11 @@ function SidebarNav({
                   <Link
                     key={sub.path}
                     to={sub.path}
-                    className={`${sideLinkClass(isActivePath(pathname, sub.path))} py-1.5 text-[13px]`}
+                    className={`${sideLinkClass(isActivePath(pathname, sub.path))} gap-2.5 py-1.5 text-[13px]`}
                   >
+                    <span className="opacity-80" aria-hidden>
+                      {linkIcon(sub.path)}
+                    </span>
                     {sub.label}
                   </Link>
                 ))}
@@ -378,6 +482,7 @@ const Navbar = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pneusOpen, setPneusOpen] = useState(false);
   const [fiscalOpen, setFiscalOpen] = useState(false);
+  const [telemetriaOpen, setTelemetriaOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
@@ -386,6 +491,7 @@ const Navbar = ({ children }) => {
   const visaoLinks = filterLinks(navGroups.visao, user);
   const frotaLinks = filterLinks(navGroups.frota, user);
   const operacaoLinks = filterLinks(navGroups.operacao, user);
+  const telemetriaLinks = filterLinks(navGroups.telemetria || [], user);
   const fiscalLinks = fiscalSubLinks.filter((sub) => canSeeFiscalLink(user, sub));
   const showBillingLink = isAuthenticated && user?.billingExempt === false;
   const canWriteFrota = userHasPermission(user, PERMISSIONS.FROTA_WRITE);
@@ -403,6 +509,8 @@ const Navbar = ({ children }) => {
   const showBanner = showTrialBanner || showPastDueBanner;
   const showFiscalMenu =
     user?.features?.transporte_fiscal === true && fiscalLinks.length > 0;
+  const showTelemetriaMenu =
+    user?.features?.telemetria === true && telemetriaLinks.length > 0;
 
   useEffect(() => {
     setMobileOpen(false);
@@ -411,6 +519,7 @@ const Navbar = ({ children }) => {
   useEffect(() => {
     if (location.pathname.startsWith("/pneus")) setPneusOpen(true);
     if (location.pathname.startsWith("/fiscal")) setFiscalOpen(true);
+    if (location.pathname.startsWith("/telemetria")) setTelemetriaOpen(true);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -433,12 +542,16 @@ const Navbar = ({ children }) => {
     frotaLinks,
     operacaoLinks,
     fiscalLinks,
+    telemetriaLinks,
     pathname: location.pathname,
     pneusOpen,
     setPneusOpen,
     fiscalOpen,
     setFiscalOpen,
     showFiscalMenu,
+    showTelemetriaMenu,
+    telemetriaOpen,
+    setTelemetriaOpen,
     canWriteFrota,
     vehicleQuotaReached,
     showBillingLink,
@@ -597,7 +710,7 @@ const Navbar = ({ children }) => {
           </div>
         </header>
 
-        <div className="min-w-0 flex-1">{children}</div>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
       </div>
     </div>
   );

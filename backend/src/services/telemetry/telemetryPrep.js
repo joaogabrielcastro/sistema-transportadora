@@ -25,6 +25,12 @@ export async function createTelemetryDevice({
   externalId,
   nome,
   credential,
+  manufacturer = null,
+  model = null,
+  imei = null,
+  protocol = null,
+  connectionType = null,
+  ownershipType = null,
 }) {
   const secret = assertDeviceCredentialAllowed(credential);
   const tenant = Number(tenantId);
@@ -41,6 +47,16 @@ export async function createTelemetryDevice({
       tenant_id: tenant,
       external_id: external.slice(0, 64),
       nome: nome ? String(nome).slice(0, 120) : null,
+      manufacturer: manufacturer ? String(manufacturer).slice(0, 64) : null,
+      model: model ? String(model).slice(0, 64) : null,
+      imei: imei ? String(imei).slice(0, 32) : null,
+      protocol: protocol ? String(protocol).slice(0, 32) : null,
+      connection_type: connectionType
+        ? String(connectionType).slice(0, 32)
+        : null,
+      ownership_type: ownershipType
+        ? String(ownershipType).slice(0, 16)
+        : null,
       credential_hash: hashDeviceCredential(secret),
       ativo: true,
     },
@@ -324,6 +340,15 @@ export async function applyIngestedTelemetryEvent({
   longitude,
   speedKmh,
   ignition,
+  heading = null,
+  altitudeM = null,
+  odometerKm = null,
+  engineRpm = null,
+  fuelLevelPct = null,
+  fuelConsumedL = null,
+  engineTempC = null,
+  engineHours = null,
+  batteryV = null,
 }) {
   const device = await prisma.telemetry_devices.findFirst({
     where: { id: Number(deviceId) },
@@ -344,12 +369,19 @@ export async function applyIngestedTelemetryEvent({
     return { skipped: true, reason: "no_assignment" };
   }
 
-  return prisma.$transaction(async (tx) => {
+  const previousState = await prisma.telemetry_current_state.findUnique({
+    where: { caminhao_id: assignment.caminhao_id },
+  });
+
+  const result = await prisma.$transaction(async (tx) => {
     const insertedRows = await tx.$queryRaw`
       INSERT INTO telemetry_events (
         tenant_id, device_id, caminhao_id, event_id,
         registrado_em, recebido_em,
-        latitude, longitude, velocidade_kmh, ignicao
+        latitude, longitude, velocidade_kmh, heading, altitude_m,
+        odometro_km, ignicao,
+        engine_rpm, fuel_level_pct, fuel_consumed_l,
+        engine_temp_c, engine_hours, battery_v
       ) VALUES (
         ${device.tenant_id},
         ${device.id},
@@ -360,7 +392,16 @@ export async function applyIngestedTelemetryEvent({
         ${latitude},
         ${longitude},
         ${speedKmh},
-        ${ignition}
+        ${heading},
+        ${altitudeM},
+        ${odometerKm},
+        ${ignition},
+        ${engineRpm},
+        ${fuelLevelPct},
+        ${fuelConsumedL},
+        ${engineTempC},
+        ${engineHours},
+        ${batteryV}
       )
       ON CONFLICT (device_id, event_id) DO NOTHING
       RETURNING id
@@ -371,12 +412,18 @@ export async function applyIngestedTelemetryEvent({
       INSERT INTO telemetry_current_state (
         tenant_id, caminhao_id, device_id,
         registrado_em, recebido_em,
-        latitude, longitude, velocidade_kmh, ignicao, atualizado_em
+        latitude, longitude, velocidade_kmh, heading, altitude_m,
+        odometro_km, ignicao,
+        engine_rpm, fuel_level_pct, fuel_consumed_l,
+        engine_temp_c, engine_hours, battery_v, atualizado_em
       )
       SELECT
         e.tenant_id, e.caminhao_id, e.device_id,
         e.registrado_em, e.recebido_em,
-        e.latitude, e.longitude, e.velocidade_kmh, e.ignicao, NOW()
+        e.latitude, e.longitude, e.velocidade_kmh, e.heading, e.altitude_m,
+        e.odometro_km, e.ignicao,
+        e.engine_rpm, e.fuel_level_pct, e.fuel_consumed_l,
+        e.engine_temp_c, e.engine_hours, e.battery_v, NOW()
       FROM telemetry_events e
       WHERE e.device_id = ${device.id}
         AND e.event_id = ${eventKey}
@@ -388,12 +435,111 @@ export async function applyIngestedTelemetryEvent({
         latitude = EXCLUDED.latitude,
         longitude = EXCLUDED.longitude,
         velocidade_kmh = EXCLUDED.velocidade_kmh,
+        heading = EXCLUDED.heading,
+        altitude_m = EXCLUDED.altitude_m,
+        odometro_km = EXCLUDED.odometro_km,
         ignicao = EXCLUDED.ignicao,
+        engine_rpm = EXCLUDED.engine_rpm,
+        fuel_level_pct = EXCLUDED.fuel_level_pct,
+        fuel_consumed_l = EXCLUDED.fuel_consumed_l,
+        engine_temp_c = EXCLUDED.engine_temp_c,
+        engine_hours = EXCLUDED.engine_hours,
+        battery_v = EXCLUDED.battery_v,
         atualizado_em = NOW()
       WHERE telemetry_current_state.tenant_id = EXCLUDED.tenant_id
         AND telemetry_current_state.registrado_em < EXCLUDED.registrado_em
     `;
 
     return { inserted, duplicate: !inserted, skipped: false };
+  });
+
+  if (result.inserted) {
+    try {
+      await upsertTelemetryDaily({
+        tenantId: device.tenant_id,
+        caminhaoId: assignment.caminhao_id,
+        recordedAt: recorded,
+        speedKmh,
+        fuelConsumedL,
+        engineHours,
+        previousOdometer: previousState?.odometro_km,
+        odometerKm,
+      });
+    } catch {
+      // daily não bloqueia ingestão
+    }
+  }
+
+  return result;
+}
+
+async function upsertTelemetryDaily({
+  tenantId,
+  caminhaoId,
+  recordedAt,
+  speedKmh,
+  fuelConsumedL,
+  engineHours,
+  previousOdometer,
+  odometerKm,
+}) {
+  const day = new Date(recordedAt);
+  const dayOnly = new Date(
+    Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate()),
+  );
+  let deltaKm = null;
+  if (
+    previousOdometer != null &&
+    odometerKm != null &&
+    Number(odometerKm) >= Number(previousOdometer)
+  ) {
+    deltaKm = Number(odometerKm) - Number(previousOdometer);
+  }
+
+  const existing = await prisma.telemetry_daily.findUnique({
+    where: {
+      tenant_id_caminhao_id_dia: {
+        tenant_id: Number(tenantId),
+        caminhao_id: Number(caminhaoId),
+        dia: dayOnly,
+      },
+    },
+  });
+
+  if (!existing) {
+    await prisma.telemetry_daily.create({
+      data: {
+        tenant_id: Number(tenantId),
+        caminhao_id: Number(caminhaoId),
+        dia: dayOnly,
+        km: deltaKm,
+        velocidade_max_kmh: speedKmh,
+        fuel_consumed_l: fuelConsumedL,
+        engine_hours: engineHours,
+        amostras: 1,
+      },
+    });
+    return;
+  }
+
+  const maxSpeed =
+    speedKmh == null
+      ? existing.velocidade_max_kmh
+      : existing.velocidade_max_kmh == null
+        ? speedKmh
+        : Math.max(Number(existing.velocidade_max_kmh), Number(speedKmh));
+
+  await prisma.telemetry_daily.update({
+    where: { id: existing.id },
+    data: {
+      amostras: existing.amostras + 1,
+      velocidade_max_kmh: maxSpeed,
+      km:
+        deltaKm == null
+          ? existing.km
+          : Number(existing.km || 0) + Number(deltaKm),
+      fuel_consumed_l: fuelConsumedL ?? existing.fuel_consumed_l,
+      engine_hours: engineHours ?? existing.engine_hours,
+    },
   });
 }

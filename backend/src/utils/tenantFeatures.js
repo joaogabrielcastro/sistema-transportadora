@@ -10,13 +10,35 @@ export const PLANS = Object.freeze({
 // `transporte_fiscal` (CT-e / MDF-e / Contrato de Frete / CIOT):
 // Starter não emite. Fiscal e Completo abrem o módulo; a operação ainda precisa
 // cadastrar empresa fiscal e certificado. Ordem de coleta não entra em plano.
+// `telemetria` é adicional: nenhum plano libera automaticamente.
+// Liga via tenants.features.telemetria = true (isento ou add-on comercial).
 export const PLAN_FEATURES = Object.freeze({
-  starter: Object.freeze({ ordem_coleta: false, notas_estoque: false, transporte_fiscal: false }),
+  starter: Object.freeze({
+    ordem_coleta: false,
+    notas_estoque: false,
+    transporte_fiscal: false,
+    telemetria: false,
+  }),
   /** Legado — não vendido; ordem de coleta não é liberada via plano. */
-  ops: Object.freeze({ ordem_coleta: false, notas_estoque: false, transporte_fiscal: false }),
-  fiscal: Object.freeze({ ordem_coleta: false, notas_estoque: true, transporte_fiscal: true }),
+  ops: Object.freeze({
+    ordem_coleta: false,
+    notas_estoque: false,
+    transporte_fiscal: false,
+    telemetria: false,
+  }),
+  fiscal: Object.freeze({
+    ordem_coleta: false,
+    notas_estoque: true,
+    transporte_fiscal: true,
+    telemetria: false,
+  }),
   /** Pacote top — mesmos módulos públicos (sem ordem de coleta). */
-  complete: Object.freeze({ ordem_coleta: false, notas_estoque: true, transporte_fiscal: true }),
+  complete: Object.freeze({
+    ordem_coleta: false,
+    notas_estoque: true,
+    transporte_fiscal: true,
+    telemetria: false,
+  }),
 });
 
 /** Planos disponíveis para novos clientes (checkout). */
@@ -33,6 +55,7 @@ export const ABROTTO_FEATURES = Object.freeze({
   ordem_coleta: true,
   notas_estoque: false,
   transporte_fiscal: false,
+  telemetria: false,
 });
 
 /** Isentos genéricos (sem módulos premium). */
@@ -40,12 +63,14 @@ export const DEFAULT_TENANT_FEATURES = Object.freeze({
   ordem_coleta: false,
   notas_estoque: false,
   transporte_fiscal: false,
+  telemetria: false,
 });
 
 export const TRANS_MOTIN_FEATURES = Object.freeze({
   ordem_coleta: false,
   notas_estoque: true,
   transporte_fiscal: false,
+  telemetria: false,
 });
 
 export const TRANS_MOTIN_SLUG = "trans-motin";
@@ -123,6 +148,9 @@ function mergeFeatureOverrides(base, raw) {
       typeof raw.transporte_fiscal === "boolean"
         ? raw.transporte_fiscal
         : base.transporte_fiscal ?? false,
+    // Add-on: JSON pode ligar mesmo com base do plano em false.
+    telemetria:
+      typeof raw.telemetria === "boolean" ? raw.telemetria : base.telemetria ?? false,
   };
 }
 

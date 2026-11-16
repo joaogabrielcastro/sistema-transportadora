@@ -17,6 +17,7 @@
     "worker:averbacao": "node scripts/worker-averbacao.mjs",
     "worker": "node scripts/worker.mjs",
     "telemetry:simulate": "node scripts/telemetry-simulate.mjs",
+    "telemetry:teltonika": "node scripts/teltonika-simulate.mjs",
     "db:restore": "node scripts/restore-db.mjs",
     "job:weekly-digest": "node scripts/run-weekly-digest.mjs",
     "db:backup": "node scripts/backup-db.mjs",

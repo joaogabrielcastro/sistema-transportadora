@@ -85,6 +85,7 @@ services:
     command: ["node", "scripts/worker.mjs"]
     ports:
       - "3021:3021"
+      - "5027:5027"
     environment:
       NODE_ENV: production
       WORKER_HEALTH_PORT: "3021"
@@ -92,6 +93,8 @@ services:
       DB_SSL_MODE: disable
       PRISMA_CLIENT_ENGINE_TYPE: library
       REDIS_URL: redis://redis:6379/0
+      TELETONIKA_TCP_ENABLED: "true"
+      TELETONIKA_TCP_PORT: "5027"
       UPLOADS_DIR: /app/uploads
     volumes:
       - transportadora_uploads:/app/uploads

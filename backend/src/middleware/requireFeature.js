@@ -4,7 +4,7 @@ import { resolveTenantFeatures } from "../utils/tenantFeatures.js";
 
 /**
  * Bloqueia rota se o tenant não tiver a feature ligada.
- * @param {'ordem_coleta' | 'notas_estoque'} featureKey
+ * @param {'ordem_coleta' | 'notas_estoque' | 'transporte_fiscal' | 'telemetria'} featureKey
  */
 export const requireFeature = (featureKey) => async (req, res, next) => {
   try {

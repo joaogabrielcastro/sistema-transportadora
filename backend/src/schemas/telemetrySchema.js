@@ -37,5 +37,14 @@ export const telemetryIngestSchema = z
       .gte(0, "speed_kmh não pode ser negativa.")
       .lte(TELEMETRY_MAX_SPEED_KMH, "speed_kmh acima do limite."),
     ignition: z.boolean(),
+    heading: z.number().finite().gte(0).lte(360).optional().nullable(),
+    altitude_m: z.number().finite().optional().nullable(),
+    odometer_km: z.number().finite().gte(0).optional().nullable(),
+    engine_rpm: z.number().finite().gte(0).lte(10000).optional().nullable(),
+    fuel_level_pct: z.number().finite().gte(0).lte(100).optional().nullable(),
+    fuel_consumed_l: z.number().finite().gte(0).optional().nullable(),
+    engine_temp_c: z.number().finite().gte(-40).lte(200).optional().nullable(),
+    engine_hours: z.number().finite().gte(0).optional().nullable(),
+    battery_v: z.number().finite().gte(0).lte(60).optional().nullable(),
   })
   .strict();

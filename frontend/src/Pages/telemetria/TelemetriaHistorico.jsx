@@ -1,18 +1,36 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import PageLayout from "../../components/layout/PageLayout.jsx";
-import { Alert, Button, StatCard } from "../../components/ui";
+import {
+  Alert,
+  Button,
+  Card,
+  DataTable,
+  DataTableBody,
+  DataTableHead,
+  DataTableRow,
+  DataTableTd,
+  DataTableTh,
+  PageHeader,
+  StatCard,
+} from "../../components/ui";
+import Icon from "../../components/ui/Icon.jsx";
+import EmptyState from "../../components/EmptyState.jsx";
+import { TableSkeleton } from "../../components/Skeleton.jsx";
+import {
+  formatDuration,
+  formatKm,
+  kmPerLiter,
+  segmentTrips,
+} from "../../utils/telemetryDisplay.js";
 import FleetMap from "../../components/telemetria/FleetMap.jsx";
 import { FLEET_MAP_STYLES } from "../../components/telemetria/mapStyles.js";
 import {
-  FleetStatusChart,
-  FuelEfficiencyChart,
   KmByVehicleChart,
   SpeedTimelineChart,
 } from "../../components/telemetria/TelemetryCharts.jsx";
 import { useCaminhoesListQuery } from "../../hooks/queries/useCaminhoesQuery.js";
 import {
-  useTelemetryCurrentQuery,
   useTelemetryEfficiencyQuery,
   useTelemetryGeofencesQuery,
   useTelemetryHistoryQuery,
@@ -77,7 +95,7 @@ function bearingDeg(a, b) {
  * - com veículo: mapa/playback + gráficos daquele veículo
  */
 export default function TelemetriaHistorico() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const now = new Date();
   const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const [caminhaoId, setCaminhaoId] = useState(
@@ -115,10 +133,6 @@ export default function TelemetriaHistorico() {
 
   const vehicleMode = Boolean(submitted?.caminhaoId);
 
-  const { data: current = [] } = useTelemetryCurrentQuery(
-    {},
-    { enabled: !vehicleMode, refetchInterval: 20_000 },
-  );
   const { data: efficiency, isLoading: loadingEff } =
     useTelemetryEfficiencyQuery(period);
 
@@ -183,6 +197,19 @@ export default function TelemetriaHistorico() {
   }, [data]);
 
   const path = useMemo(() => points.map((p) => [p.lat, p.lng]), [points]);
+
+  const segments = useMemo(() => segmentTrips(points), [points]);
+  const tripSummary = useMemo(() => {
+    const trips = segments.filter((x) => x.type === "trip");
+    const stops = segments.filter((x) => x.type === "stop");
+    return {
+      trips: trips.length,
+      drivingMs: trips.reduce((a, b) => a + b.durationMs, 0),
+      stoppedMs: stops.reduce((a, b) => a + b.durationMs, 0),
+      idleMs: stops.filter((x) => x.ignitionOn).reduce((a, b) => a + b.durationMs, 0),
+      maxSpeed: points.reduce((m, p) => (p.speedKmh != null && p.speedKmh > m ? p.speedKmh : m), 0),
+    };
+  }, [segments, points]);
 
   const distanceKm = useMemo(() => {
     let total = 0;
@@ -276,6 +303,37 @@ export default function TelemetriaHistorico() {
     });
   };
 
+  const applyPreset = (hours) => {
+    const end = new Date();
+    const start = new Date(end.getTime() - hours * 3600_000);
+    if (hours === "hoje") start.setTime(new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime());
+    const f = toLocalInputValue(start);
+    const t = toLocalInputValue(end);
+    setFrom(f);
+    setTo(t);
+    setSubmitted({ caminhaoId: caminhaoId || null, from: toIsoOffset(f), to: toIsoOffset(t) });
+  };
+
+  const presets = (
+    <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Períodos rápidos">
+      {[
+        { id: "hoje", label: "Hoje" },
+        { id: 24, label: "24 h" },
+        { id: 24 * 7, label: "7 dias" },
+        { id: 24 * 30, label: "30 dias" },
+      ].map((p) => (
+        <button
+          key={p.id}
+          type="button"
+          onClick={() => applyPreset(p.id === "hoje" ? "hoje" : p.id)}
+          className="inline-flex h-8 items-center rounded-lg bg-slate-100 px-2.5 text-xs font-semibold text-text-secondary hover:bg-slate-200"
+        >
+          {p.label}
+        </button>
+      ))}
+    </div>
+  );
+
   const filters = (
     <form
       onSubmit={onSearch}
@@ -344,60 +402,165 @@ export default function TelemetriaHistorico() {
       <Button type="submit" disabled={isLoading || loadingEff}>
         Consultar
       </Button>
-      <Link
-        to="/telemetria"
-        className="inline-flex h-9 items-center rounded-lg px-2.5 text-xs font-semibold text-secondary hover:underline"
-      >
-        Ao vivo
-      </Link>
+      <div className="flex w-full items-center justify-between gap-2 border-t border-border pt-2">
+        {presets}
+        <Link
+          to="/telemetria"
+          className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-secondary-dark hover:underline"
+        >
+          <Icon name="signal" className="h-3.5 w-3.5" /> Ao vivo
+        </Link>
+      </div>
     </form>
   );
 
   // ——— Visão geral (sem veículo) ———
   if (!vehicleMode) {
+    const vehicles = efficiency?.vehicles || [];
+    const rodaram = vehicles.filter((v) => Number(v.km) > 0);
+    const fleetKmL = kmPerLiter(efficiency?.fleet_km_per_l);
+    const implausibleCount = vehicles.filter((v) => {
+      const k = kmPerLiter(v.km_per_l);
+      return k.value != null && !k.plausible;
+    }).length;
+    const sorted = [...vehicles].sort((a, b) => Number(b.km || 0) - Number(a.km || 0));
+
     return (
       <PageLayout>
-        <div className="space-y-6">
-          <div className="sticky top-0 z-20 -mx-1 px-1 pb-2 pt-1">{filters}</div>
+        <div className="space-y-5">
+          <PageHeader
+            eyebrow="Telemetria"
+            title="Histórico e desempenho"
+            subtitle="Quilometragem e consumo por veículo no período. Escolha um veículo para ver o trajeto, as viagens e as paradas."
+          />
+          <div>{filters}</div>
 
-          <div>
-            <h1 className="text-xl font-bold text-text-primary">Histórico</h1>
-            <p className="mt-1 text-sm text-text-secondary">
-              Visão geral da frota. Selecione um veículo para ver o trajeto e os
-              gráficos dele.
-            </p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <StatCard
-              title="Rendimento médio"
+              layout="compact"
+              title="Km rodados no período"
+              value={loadingEff ? "…" : formatKm(totalKm)}
+              color="cyan"
+              icon={<Icon name="route" />}
+            />
+            <StatCard
+              layout="compact"
+              title="Veículos que rodaram"
+              value={loadingEff ? "…" : `${rodaram.length} de ${vehicles.length}`}
+              hint="Com rastreador vinculado"
+              color="slate"
+              icon={<Icon name="truck" />}
+            />
+            <StatCard
+              layout="compact"
+              title="Consumo médio da frota"
               value={
                 loadingEff
                   ? "…"
-                  : efficiency?.fleet_km_per_l != null
-                    ? `${Number(efficiency.fleet_km_per_l).toFixed(2)} km/L`
-                    : "—"
+                  : fleetKmL.value == null
+                    ? "—"
+                    : `${fleetKmL.value.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km/L`
               }
-            />
-            <StatCard
-              title="Km no período"
-              value={loadingEff ? "…" : totalKm.toFixed(0)}
-            />
-            <StatCard title="Veículos ao vivo" value={current.length} />
-            <StatCard
-              title="Placas com km"
-              value={(efficiency?.vehicles || []).filter((v) => Number(v.km) > 0)
-                .length}
+              hint={
+                fleetKmL.value != null && !fleetKmL.plausible
+                  ? "Fora da faixa esperada — verifique sensores"
+                  : "Telemetria ou abastecimentos lançados"
+              }
+              color={fleetKmL.value != null && !fleetKmL.plausible ? "amber" : "green"}
+              icon={<Icon name="fuel" />}
             />
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <FuelEfficiencyChart vehicles={efficiency?.vehicles || []} />
-            <KmByVehicleChart vehicles={efficiency?.vehicles || []} />
-            <div className="lg:col-span-2">
-              <FleetStatusChart rows={current} />
-            </div>
-          </div>
+          {implausibleCount > 0 ? (
+            <Alert
+              type="warning"
+              title="Consumo com valores fora do esperado"
+              message={`${implausibleCount} veículo(s) com km/L fora da faixa de ${"0,8–8"} km/L típica de caminhões. Normalmente indica contador de combustível do rastreador mal configurado; compare com o diesel lançado na coluna ao lado antes de usar o número.`}
+            />
+          ) : null}
+
+          <Card noPadding className="overflow-hidden" title="Desempenho por veículo" subtitle="Ordenado por quilometragem no período">
+            {loadingEff ? (
+              <div className="p-4">
+                <TableSkeleton rows={4} columns={5} />
+              </div>
+            ) : sorted.length === 0 ? (
+              <div className="p-4">
+                <EmptyState
+                  compact
+                  icon={<Icon name="signal" className="h-5 w-5" />}
+                  title="Sem dados de telemetria no período"
+                  description="Vincule rastreadores aos veículos ou amplie o período."
+                  action={
+                    <Link to="/telemetria/dispositivos">
+                      <Button variant="outline">Ver dispositivos</Button>
+                    </Link>
+                  }
+                />
+              </div>
+            ) : (
+              <DataTable fixed={false}>
+                <DataTableHead>
+                  <tr>
+                    <DataTableTh>Veículo</DataTableTh>
+                    <DataTableTh align="right">Km</DataTableTh>
+                    <DataTableTh align="right">Consumo</DataTableTh>
+                    <DataTableTh align="right">Diesel lançado</DataTableTh>
+                    <DataTableTh align="right">Custo / km</DataTableTh>
+                    <DataTableTh align="right"><span className="sr-only">Ações</span></DataTableTh>
+                  </tr>
+                </DataTableHead>
+                <DataTableBody>
+                  {sorted.map((v) => {
+                    const k = kmPerLiter(v.km_per_l);
+                    return (
+                      <DataTableRow key={v.caminhao_id}>
+                        <DataTableTd>
+                          <span className="plate">{v.placa}</span>
+                        </DataTableTd>
+                        <DataTableTd align="right" className="tabular-nums">
+                          {Number(v.km) > 0 ? formatKm(v.km) : <span className="text-text-light">Parado</span>}
+                        </DataTableTd>
+                        <DataTableTd align="right" className="whitespace-nowrap tabular-nums">
+                          {k.value == null ? (
+                            <span className="text-text-light">—</span>
+                          ) : (
+                            <span className={k.plausible ? "text-text-primary" : "text-amber-700"} title={k.plausible ? undefined : "Fora da faixa esperada para caminhões"}>
+                              {!k.plausible ? <Icon name="alert" className="mr-1 inline h-3.5 w-3.5 align-[-2px]" /> : null}
+                              {k.value.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km/L
+                            </span>
+                          )}
+                          <span className="block text-[11px] text-text-light">
+                            {v.efficiency_source === "telemetry" ? "pela telemetria" : v.efficiency_source === "manual" ? "pelos abastecimentos" : ""}
+                          </span>
+                        </DataTableTd>
+                        <DataTableTd align="right" className="tabular-nums">
+                          {v.fuel_manual_l != null ? `${Number(v.fuel_manual_l).toLocaleString("pt-BR", { maximumFractionDigits: 0 })} L` : <span className="text-text-light">—</span>}
+                        </DataTableTd>
+                        <DataTableTd align="right" className="tabular-nums">
+                          {v.cost_per_km != null ? Number(v.cost_per_km).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : <span className="text-text-light">—</span>}
+                        </DataTableTd>
+                        <DataTableTd align="right">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCaminhaoId(String(v.caminhao_id));
+                              setSubmitted({ caminhaoId: String(v.caminhao_id), from: period.from, to: period.to });
+                            }}
+                            className="inline-flex items-center gap-1 rounded text-[13px] font-semibold text-secondary-dark hover:text-secondary"
+                          >
+                            Ver trajeto <Icon name="chevronRight" className="h-3.5 w-3.5" />
+                          </button>
+                        </DataTableTd>
+                      </DataTableRow>
+                    );
+                  })}
+                </DataTableBody>
+              </DataTable>
+            )}
+          </Card>
+
+          {sorted.length > 1 ? <KmByVehicleChart vehicles={sorted} /> : null}
         </div>
       </PageLayout>
     );
@@ -427,7 +590,7 @@ export default function TelemetriaHistorico() {
         </div>
 
         {error && (
-          <div className="absolute left-3 right-3 top-[5.5rem] z-[600] sm:left-4 sm:right-auto sm:w-[380px]">
+          <div className="absolute left-3 right-3 top-[9rem] z-[600] sm:left-4 sm:right-auto sm:w-[380px]">
             <Alert type="error">
               {error?.response?.data?.error || "Falha ao carregar histórico."}
               <div className="mt-2">
@@ -439,15 +602,29 @@ export default function TelemetriaHistorico() {
           </div>
         )}
 
-        <aside className="absolute bottom-3 left-3 top-[5.5rem] z-[500] flex w-[min(100%-1.5rem,320px)] flex-col overflow-hidden rounded-xl border border-border/80 bg-white/95 shadow-xl backdrop-blur sm:left-4">
-          <div className="border-b border-border px-3 py-2.5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-              Histórico do veículo
-            </p>
-            <p className="text-sm font-semibold text-text-primary">
-              {data?.placa || "Carregando…"}
-              {isLoading ? " · carregando…" : ""}
-            </p>
+        <aside className="absolute bottom-3 left-3 top-[12rem] z-[500] sm:top-[8.75rem] xl:top-[8.5rem] flex w-[min(100%-1.5rem,320px)] flex-col overflow-hidden rounded-xl border border-border/80 bg-white/95 shadow-xl backdrop-blur sm:left-4">
+          <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                Histórico do veículo
+              </p>
+              <p className="mt-0.5 text-sm font-semibold text-text-primary">
+                {data?.placa ? <span className="plate">{data.placa}</span> : "Carregando…"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setCaminhaoId("");
+                setSubmitted({ caminhaoId: null, from: period.from, to: period.to });
+                const next = new URLSearchParams(searchParams);
+                next.delete("caminhao");
+                setSearchParams(next, { replace: true });
+              }}
+              className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-border px-2.5 text-xs font-semibold text-text-secondary hover:bg-slate-50"
+            >
+              <Icon name="chevronLeft" className="h-3.5 w-3.5" /> Frota
+            </button>
           </div>
 
           {isLoading ? (
@@ -462,9 +639,7 @@ export default function TelemetriaHistorico() {
               <div className="h-[200px]">
                 <KmByVehicleChart vehicles={vehicleKm} />
               </div>
-              <div className="h-[200px]">
-                <FuelEfficiencyChart vehicles={vehicleKm} />
-              </div>
+
             </div>
           ) : (
             <div className="flex min-h-0 flex-1 flex-col">
@@ -475,9 +650,12 @@ export default function TelemetriaHistorico() {
                   </dt>
                   <dd className="font-bold tabular-nums text-cyan-950">
                     {data?.period_km_per_l != null
-                      ? `${Number(data.period_km_per_l).toFixed(2)} km/L`
+                      ? `${Number(data.period_km_per_l).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km/L`
                       : "—"}
                   </dd>
+                  {data?.period_km_per_l != null && !kmPerLiter(data.period_km_per_l).plausible ? (
+                    <p className="text-[10px] leading-tight text-amber-700">Fora da faixa esperada</p>
+                  ) : null}
                 </div>
                 <div className="rounded-lg bg-slate-50 px-2.5 py-2">
                   <dt className="text-[11px] text-text-secondary">Combustível</dt>
@@ -490,18 +668,17 @@ export default function TelemetriaHistorico() {
                 <div className="rounded-lg bg-slate-50 px-2.5 py-2">
                   <dt className="text-[11px] text-text-secondary">Distância</dt>
                   <dd className="font-semibold tabular-nums">
-                    {(data?.period_km != null
-                      ? Number(data.period_km)
-                      : distanceKm
-                    ).toFixed(1)}{" "}
-                    km
+                    {formatKm(data?.period_km != null ? Number(data.period_km) : distanceKm, 1)}
                   </dd>
                 </div>
                 <div className="rounded-lg bg-slate-50 px-2.5 py-2">
-                  <dt className="text-[11px] text-text-secondary">Vel. média</dt>
+                  <dt className="text-[11px] text-text-secondary">Tempo dirigindo</dt>
                   <dd className="font-semibold tabular-nums">
-                    {avgSpeed != null ? `${avgSpeed.toFixed(0)} km/h` : "—"}
+                    {tripSummary.drivingMs ? formatDuration(tripSummary.drivingMs) : "—"}
                   </dd>
+                  <p className="text-[11px] text-text-secondary">
+                    Vel. máx. {tripSummary.maxSpeed ? `${Math.round(tripSummary.maxSpeed)} km/h` : "—"}
+                  </p>
                 </div>
               </dl>
 
@@ -545,67 +722,78 @@ export default function TelemetriaHistorico() {
                 />
                 <p className="text-xs text-text-secondary">
                   {formatWhen(cursor?.when)}
-                  {cursor?.heading != null
-                    ? ` · ${Math.round(cursor.heading)}°`
-                    : ""}
+                  {cursor?.speedKmh != null ? ` · ${Math.round(cursor.speedKmh)} km/h` : ""}
                 </p>
               </div>
 
-              <ul className="min-h-0 flex-1 overflow-y-auto divide-y divide-border">
-                {points.map((p, i) => {
-                  const active = i === playIndex;
-                  return (
-                    <li key={p.id}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPlaying(false);
-                          setPlayIndex(i);
-                        }}
-                        className={`flex w-full flex-col gap-0.5 px-3 py-2.5 text-left text-sm ${
-                          active ? "bg-cyan-50" : "hover:bg-slate-50"
-                        }`}
-                      >
-                        <span className="font-semibold text-text-primary">
-                          {formatWhen(p.when)}
-                        </span>
-                        <span className="text-xs text-text-secondary">
-                          {p.speedKmh != null
-                            ? `${Math.round(p.speedKmh)} km/h`
-                            : "—"}
-                          {p.ignition === true
-                            ? " · ignição on"
-                            : p.ignition === false
-                              ? " · ignição off"
-                              : ""}
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
+              <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                  Viagens e paradas
+                </p>
+                <p className="text-[11px] text-text-secondary">
+                  {tripSummary.trips} viagem(ns)
+                  {tripSummary.idleMs ? ` · ${formatDuration(tripSummary.idleMs)} parado ligado` : ""}
+                </p>
+              </div>
+              <ul className="scrollbar-thin min-h-0 flex-1 overflow-y-auto divide-y divide-border">
+                {segments.length === 0 ? (
+                  <li className="px-3 py-6 text-center text-xs text-text-secondary">
+                    Poucos pontos para identificar viagens.
+                  </li>
+                ) : (
+                  [...segments].reverse().map((sg) => {
+                    const active = playIndex >= sg.startIndex && playIndex <= sg.endIndex;
+                    const isTrip = sg.type === "trip";
+                    return (
+                      <li key={`${sg.type}-${sg.startIndex}`}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPlaying(false);
+                            setPlayIndex(sg.startIndex);
+                          }}
+                          className={`flex w-full items-start gap-2.5 px-3 py-2.5 text-left text-sm ${
+                            active ? "bg-cyan-50" : "hover:bg-slate-50"
+                          }`}
+                        >
+                          <span
+                            className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                              isTrip
+                                ? "bg-emerald-50 text-emerald-700"
+                                : sg.ignitionOn
+                                  ? "bg-amber-50 text-amber-700"
+                                  : "bg-slate-100 text-slate-500"
+                            }`}
+                            aria-hidden
+                          >
+                            <Icon name={isTrip ? "route" : "clock"} className="h-3.5 w-3.5" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-baseline justify-between gap-2">
+                              <span className="font-semibold text-text-primary">
+                                {isTrip ? "Viagem" : sg.ignitionOn ? "Parado ligado" : "Parada"}
+                              </span>
+                              <span className="text-xs tabular-nums text-text-secondary">
+                                {formatDuration(sg.durationMs)}
+                              </span>
+                            </span>
+                            <span className="block text-xs text-text-secondary">
+                              {formatWhen(sg.startAt).slice(0, 12)} → {formatWhen(sg.endAt).slice(7, 12)}
+                              {isTrip && sg.km != null ? ` · ${formatKm(sg.km, 1)}` : ""}
+                              {isTrip && sg.maxSpeedKmh != null ? ` · máx. ${Math.round(sg.maxSpeedKmh)} km/h` : ""}
+                            </span>
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })
+                )}
               </ul>
             </div>
           )}
         </aside>
 
         <div className="absolute bottom-3 right-3 z-[500] hidden w-[min(100%-1.5rem,420px)] flex-col gap-2 sm:flex">
-          <div className="overflow-hidden rounded-xl border border-border/80 bg-white/95 shadow-xl backdrop-blur">
-            <div className="h-[200px] [&_.border]:border-0 [&_.shadow-sm]:shadow-none">
-              <FuelEfficiencyChart
-                vehicles={
-                  data?.period_km_per_l != null
-                    ? [
-                        {
-                          caminhao_id: data.caminhao_id,
-                          placa: data.placa,
-                          km_per_l: data.period_km_per_l,
-                        },
-                      ]
-                    : vehicleKm
-                }
-              />
-            </div>
-          </div>
           <div className="overflow-hidden rounded-xl border border-border/80 bg-white/95 shadow-xl backdrop-blur">
             <div className="h-[200px] [&_.border]:border-0 [&_.shadow-sm]:shadow-none">
               <SpeedTimelineChart

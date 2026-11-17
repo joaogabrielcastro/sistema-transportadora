@@ -159,18 +159,17 @@ test.describe("Painel e frota", () => {
     });
   });
 
-  test("painel mostra indicadores, pendências e frota", async ({ page }) => {
+  test("painel mostra indicadores, pendências e custos", async ({ page }) => {
     await page.goto("/");
 
     await expect(page.getByRole("heading", { level: 1, name: /E2E/ })).toBeVisible();
     await expect(page.getByRole("heading", { name: /Pendências da operação/ })).toBeVisible();
     await expect(page.getByText("CNH vencida: João Silva")).toBeVisible();
-    await expect(page.getByText("1 exigem ação imediata").or(page.getByText("2 exigem ação imediata"))).toBeVisible();
-    const frota = page.locator("#frota");
-    await expect(frota.getByRole("link", { name: "ABC1D23" }).first()).toBeVisible();
-    await expect(frota.getByRole("link", { name: "XYZ9Z99" }).first()).toBeVisible();
+    await expect(page.getByText("Custo por km")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Custo mensal da operação" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Composição da frota" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Veículos que mais custam" })).toBeVisible();
+    // A lista completa da frota fica em /frota (o painel só resume).
+    await expect(page.getByRole("link", { name: /Veículos/ }).first()).toBeVisible();
   });
 
   test("pendência leva à tela de solução", async ({ page }) => {

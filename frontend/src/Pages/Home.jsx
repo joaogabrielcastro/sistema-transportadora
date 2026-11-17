@@ -1,36 +1,34 @@
 import React, { lazy, Suspense, useMemo } from "react";
 import { Link, Navigate, useLocation } from "react-router-dom";
 import {
-  useCaminhoesListQuery,
   useCostPerKmReportQuery,
   useCostPerKmTrendQuery,
   useOpsAlertsQuery,
   useReportsOverviewQuery,
 } from "../hooks";
-import { useCaminhaoDelete } from "../hooks/useCaminhaoDelete.js";
-import { Alert, Button, Card, PageHeader, StatCard } from "../components/ui";
+import { useTelemetryCurrentQuery } from "../hooks/queries/useTelemetryQueries.js";
+import { Button, PageHeader, StatCard } from "../components/ui";
 import Icon from "../components/ui/Icon.jsx";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import { formatCurrency, formatNumber, lastMonthsIsoRange } from "../utils";
-import ConfirmModal from "../components/ConfirmModal";
-import { CardSkeleton, TableSkeleton } from "../components/Skeleton.jsx";
+import { CardSkeleton } from "../components/Skeleton.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import OnboardingBanner from "../components/OnboardingBanner.jsx";
 import PlanQuotaBanner from "../components/PlanQuotaBanner.jsx";
 import OpsAlertsPanel from "../components/dashboard/OpsAlertsPanel.jsx";
-import FleetTable from "../components/frota/FleetTable.jsx";
 import { quickActionsFor } from "../components/layout/quickActions.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { PERMISSIONS, userHasPermission } from "../utils/permissions.js";
 import { isVehicleQuotaReached } from "../utils/billing.js";
+import { VEHICLE_STATUS, vehicleStatus } from "../utils/telemetryDisplay.js";
 
 const DashboardCharts = lazy(
   () => import("../components/dashboard/DashboardCharts.jsx"),
 );
 
-const FLEET_PREVIEW = 8;
 /** Parâmetros da antiga lista da frota no painel — agora vivem em /frota. */
 const LEGACY_FLEET_PARAMS = ["busca", "tipo", "pagina"];
+const MONTHS_PT = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
 function greeting(date = new Date()) {
   const h = date.getHours();
@@ -44,18 +42,77 @@ function todayLabel(date = new Date()) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/** Card "Frota agora" (telemetria): quantos estão rodando, parados ligados e sem sinal. */
+function FleetNowCard({ rows, loading }) {
+  const counts = useMemo(() => {
+    const c = { moving: 0, idle: 0, off: 0, offline: 0 };
+    for (const r of rows) {
+      const st = vehicleStatus({
+        connection: r.connection_status,
+        speedKmh: r.velocidade_kmh != null ? Number(r.velocidade_kmh) : null,
+        ignition: r.ignicao,
+      });
+      if (st === "awaiting" || st === "offline") c.offline += 1;
+      else c[st] += 1;
+    }
+    return c;
+  }, [rows]);
+
+  const items = [
+    { key: "moving", label: "Em movimento", value: counts.moving },
+    { key: "idle", label: "Parados ligados", value: counts.idle },
+    { key: "off", label: "Desligados", value: counts.off },
+    { key: "offline", label: "Sem sinal", value: counts.offline },
+  ];
+
+  return (
+    <Link
+      to="/telemetria"
+      className="card group block p-4 transition-[border-color,box-shadow] hover:border-border-strong hover:shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary sm:p-5"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <p className="flex items-center gap-2 text-[13px] font-medium text-text-secondary">
+          <span className="relative inline-flex h-2 w-2">
+            <span className="absolute inset-0 animate-ping rounded-full bg-emerald-500 opacity-60" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+          </span>
+          Frota agora
+        </p>
+        <span className="text-xs font-semibold text-secondary-dark group-hover:text-secondary">Abrir mapa →</span>
+      </div>
+      {loading ? (
+        <div className="mt-3 h-12 animate-pulse rounded bg-slate-100" />
+      ) : rows.length === 0 ? (
+        <p className="mt-3 text-sm text-text-secondary">Nenhum veículo com rastreador vinculado.</p>
+      ) : (
+        <dl className="mt-3 grid grid-cols-4 gap-2">
+          {items.map((it) => (
+            <div key={it.key}>
+              <dt className="flex items-center gap-1.5 text-[11px] text-text-secondary">
+                <span className={`h-1.5 w-1.5 rounded-full ${VEHICLE_STATUS[it.key].dot}`} aria-hidden />
+                <span className="truncate">{it.label}</span>
+              </dt>
+              <dd className={`text-xl font-semibold tabular-nums ${it.key === "offline" && it.value ? "text-red-700" : "text-text-primary"}`}>
+                {it.value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </Link>
+  );
+}
+
 const Home = () => {
   const location = useLocation();
   const { user } = useAuth();
   const canWriteFrota = userHasPermission(user, PERMISSIONS.FROTA_WRITE);
   const canReadReports = userHasPermission(user, PERMISSIONS.REPORTS_READ);
   const canReadAlerts = userHasPermission(user, PERMISSIONS.ALERTS_READ);
+  const canSeeTelemetry =
+    user?.features?.telemetria === true && userHasPermission(user, PERMISSIONS.TELEMETRY_READ);
   const vehicleQuotaReached = isVehicleQuotaReached(user);
   const actions = useMemo(() => quickActionsFor(user), [user]);
-
-  const fleetQuery = useCaminhoesListQuery({ page: 1, limit: FLEET_PREVIEW });
-  const caminhoes = fleetQuery.data?.data ?? [];
-  const pagination = fleetQuery.data?.pagination;
 
   const { data: overview, isLoading: overviewLoading, error: overviewError } =
     useReportsOverviewQuery();
@@ -64,7 +121,7 @@ const Home = () => {
   const trendQuery = useCostPerKmTrendQuery(dashboardRange, canReadReports);
   const costQuery = useCostPerKmReportQuery(costParams, canReadReports);
   const alertsQuery = useOpsAlertsQuery(canReadAlerts);
-  const del = useCaminhaoDelete();
+  const telemetryQuery = useTelemetryCurrentQuery({}, { enabled: canSeeTelemetry, refetchInterval: 60_000 });
 
   // Compatibilidade: links antigos "/?busca=…&tipo=…" abrem a lista da frota.
   const legacy = new URLSearchParams(location.search);
@@ -72,12 +129,17 @@ const Home = () => {
     return <Navigate to={`/frota?${legacy.toString()}`} replace />;
   }
 
-  const totalCaminhoes = overview?.totalCaminhoes ?? pagination?.totalItems ?? caminhoes.length ?? 0;
+  const totalCaminhoes = overview?.totalCaminhoes ?? 0;
   const semMotorista = overview?.semMotorista;
-  const counts = alertsQuery.data?.counts;
-  const urgent = (counts?.critical ?? 0) + (counts?.high ?? 0);
-  const overviewValue = (fn) => (overviewError ? "Indisponível" : fn());
   const firstName = String(user?.nome || "").trim().split(/\s+/)[0];
+  const noVehicles = !overviewLoading && !overviewError && totalCaminhoes === 0;
+
+  // Custo do mês corrente (parcial) e do mês anterior, a partir da série mensal.
+  const months = trendQuery.data?.months || [];
+  const thisMonth = months[months.length - 1];
+  const prevMonth = months[months.length - 2];
+  const monthName = thisMonth?.month ? MONTHS_PT[Number(String(thisMonth.month).slice(5, 7)) - 1] : null;
+  const avgCostPerKm = costQuery.data?.stats?.avgCostPerKm;
 
   return (
     <PageLayout className="space-y-6">
@@ -86,16 +148,13 @@ const Home = () => {
       <PageHeader
         eyebrow={todayLabel()}
         title={firstName ? `${greeting()}, ${firstName}` : "Painel"}
-        subtitle="Visão geral da operação: pendências, custos e situação da frota."
+        subtitle="O que precisa de atenção hoje e como estão os custos da operação."
         actions={
           actions.length ? (
             <>
               {actions.slice(0, 2).map((a, i) => (
                 <Link key={a.id} to={a.to}>
-                  <Button
-                    variant={i === 0 ? "primary" : "outline"}
-                    icon={<Icon name={a.icon} className="h-4 w-4" />}
-                  >
+                  <Button variant={i === 0 ? "primary" : "outline"} icon={<Icon name={a.icon} className="h-4 w-4" />}>
                     {a.label}
                   </Button>
                 </Link>
@@ -107,21 +166,56 @@ const Home = () => {
 
       <PlanQuotaBanner user={user} resource="vehicles" />
 
-      {del.blockedMessage ? (
-        <Alert
-          type="error"
-          message={<span className="whitespace-pre-line">{del.blockedMessage}</span>}
-          onClose={del.clearBlocked}
+      {noVehicles ? (
+        <EmptyState
+          icon={<Icon name="truck" className="h-5 w-5" />}
+          title="Comece cadastrando a sua frota"
+          description="Com os veículos cadastrados, o painel passa a mostrar custos, vencimentos e pendências."
+          action={
+            canWriteFrota ? (
+              <Link to={vehicleQuotaReached ? "/assinatura" : "/cadastro-caminhao"}>
+                <Button>{vehicleQuotaReached ? "Fazer upgrade" : "Cadastrar veículo"}</Button>
+              </Link>
+            ) : null
+          }
         />
       ) : null}
 
       <section aria-labelledby="resumo-operacional">
         <h2 id="resumo-operacional" className="sr-only">Resumo operacional</h2>
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+          {canReadReports ? (
+            <StatCard
+              title={monthName ? `Custo em ${monthName}` : "Custo no mês"}
+              value={trendQuery.error ? "Indisponível" : formatCurrency(thisMonth?.totalCost ?? 0)}
+              loading={trendQuery.isLoading}
+              hint={prevMonth ? `Mês anterior: ${formatCurrency(prevMonth.totalCost ?? 0)}` : "Gastos + manutenções"}
+              color="green"
+              to="/relatorios"
+              icon={<Icon name="money" />}
+            />
+          ) : null}
+          {canReadReports ? (
+            <StatCard
+              title="Custo por km"
+              value={
+                costQuery.error
+                  ? "Indisponível"
+                  : avgCostPerKm != null && Number.isFinite(Number(avgCostPerKm)) && Number(avgCostPerKm) > 0
+                    ? `${Number(avgCostPerKm).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`
+                    : "—"
+              }
+              loading={costQuery.isLoading}
+              hint="Média da frota nos últimos 6 meses"
+              color="cyan"
+              to="/relatorios"
+              icon={<Icon name="gauge" />}
+            />
+          ) : null}
           <StatCard
             title="Veículos"
-            value={formatNumber(totalCaminhoes)}
-            loading={overviewLoading && fleetQuery.isLoading}
+            value={overviewError ? "Indisponível" : formatNumber(totalCaminhoes)}
+            loading={overviewLoading}
             hint={
               semMotorista != null
                 ? semMotorista > 0
@@ -129,62 +223,16 @@ const Home = () => {
                   : "Todos com motorista"
                 : "Veículos cadastrados"
             }
-            color="cyan"
+            color="slate"
             to="/frota"
             icon={<Icon name="truck" />}
           />
-          <StatCard
-            title="Custo acumulado"
-            value={overviewValue(() => formatCurrency(overview?.totalGastos ?? 0))}
-            loading={overviewLoading}
-            hint={
-              overview && !overviewError
-                ? `Média ${formatCurrency(overview.mediaPorLancamento ?? overview.mediaGastos ?? 0)} por lançamento`
-                : "Gastos + manutenções"
-            }
-            color="green"
-            to={canReadReports ? "/relatorios" : "/manutencao-gastos"}
-            icon={<Icon name="money" />}
-          />
-          <StatCard
-            title="Manutenções"
-            value={overviewValue(() => formatNumber(overview?.totalManutencoes ?? 0))}
-            loading={overviewLoading}
-            hint="Serviços registrados"
-            color="orange"
-            to="/manutencao-gastos?tipo=manutencao"
-            icon={<Icon name="wrench" />}
-          />
-          {canReadAlerts ? (
-            <StatCard
-              title="Pendências"
-              value={alertsQuery.error ? "Indisponível" : formatNumber(counts?.total ?? 0)}
-              loading={alertsQuery.isLoading}
-              hint={
-                urgent > 0
-                  ? `${urgent} exigem ação imediata`
-                  : (counts?.total ?? 0) > 0
-                    ? "Vencimentos nos próximos 30 dias"
-                    : "Nada vencendo em 30 dias"
-              }
-              emphasis={urgent > 0}
-              color={urgent > 0 ? "red" : "slate"}
-              to="#pendencias"
-              icon={<Icon name="bell" />}
-            />
-          ) : (
-            <StatCard
-              title="Lançamentos"
-              value={overviewValue(() => formatNumber((overview?.gastosCount ?? 0) + (overview?.totalManutencoes ?? 0)))}
-              loading={overviewLoading}
-              hint="Gastos e manutenções"
-              color="slate"
-              to="/manutencao-gastos"
-              icon={<Icon name="receipt" />}
-            />
-          )}
         </div>
       </section>
+
+      {canSeeTelemetry ? (
+        <FleetNowCard rows={telemetryQuery.data || []} loading={telemetryQuery.isLoading} />
+      ) : null}
 
       {canReadAlerts ? (
         <section id="pendencias" className="scroll-mt-24" aria-label="Pendências da operação">
@@ -209,85 +257,13 @@ const Home = () => {
           }
         >
           <DashboardCharts
-            overview={overview}
-            trendMonths={trendQuery.data?.months}
+            trendMonths={months}
             trendLoading={trendQuery.isLoading}
             truckCosts={costQuery.data?.items}
             truckCostsLoading={costQuery.isFetching}
           />
         </Suspense>
       ) : null}
-
-      <section id="frota" className="scroll-mt-24" aria-labelledby="frota-title">
-        <Card
-          noPadding
-          className="overflow-hidden"
-          title={<span id="frota-title">Frota</span>}
-          subtitle={
-            pagination?.totalItems > FLEET_PREVIEW
-              ? `Mostrando ${caminhoes.length} de ${pagination.totalItems} veículos`
-              : "Veículos cadastrados"
-          }
-          action={
-            <Link
-              to="/frota"
-              className="inline-flex items-center gap-1 rounded text-[13px] font-semibold text-secondary-dark hover:text-secondary"
-            >
-              Ver todos os veículos <Icon name="arrowRight" className="h-3.5 w-3.5" />
-            </Link>
-          }
-        >
-          {fleetQuery.error ? (
-            <div className="p-4">
-              <Alert
-                type="error"
-                title="Erro ao carregar frota"
-                message={fleetQuery.error.message || "Não foi possível carregar a frota."}
-              >
-                <div className="mt-3">
-                  <Button variant="outline" size="sm" onClick={() => fleetQuery.refetch()}>
-                    Tentar novamente
-                  </Button>
-                </div>
-              </Alert>
-            </div>
-          ) : fleetQuery.isLoading ? (
-            <div className="p-4">
-              <TableSkeleton rows={4} columns={5} />
-            </div>
-          ) : caminhoes.length === 0 ? (
-            <div className="p-4">
-              <EmptyState
-                icon={<Icon name="truck" className="h-5 w-5" />}
-                title="Você ainda não possui veículos cadastrados."
-                description="Cadastre o primeiro caminhão para acompanhar gastos, manutenção e documentos."
-                action={
-                  canWriteFrota ? (
-                    <Link to={vehicleQuotaReached ? "/assinatura" : "/cadastro-caminhao"}>
-                      <Button>{vehicleQuotaReached ? "Fazer upgrade" : "Adicionar veículo"}</Button>
-                    </Link>
-                  ) : null
-                }
-                dashed
-              />
-            </div>
-          ) : (
-            <FleetTable caminhoes={caminhoes} canWrite={canWriteFrota} onDelete={del.requestDelete} />
-          )}
-        </Card>
-      </section>
-
-      <ConfirmModal
-        isOpen={Boolean(del.target)}
-        onClose={del.cancel}
-        onConfirm={del.confirm}
-        title="Excluir caminhão"
-        message={del.confirmMessage}
-        confirmText={del.deleting ? "Excluindo..." : "Excluir"}
-        cancelText="Cancelar"
-        warning
-        loading={del.deleting}
-      />
     </PageLayout>
   );
 };

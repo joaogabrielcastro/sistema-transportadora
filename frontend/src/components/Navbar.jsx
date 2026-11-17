@@ -571,25 +571,22 @@ const Navbar = ({ children }) => {
           >
             <Icon name="menu" className="h-5 w-5" />
           </button>
-          <div className="min-w-0 flex-1">
-            {pageMeta.section ? (
-              <p className="hidden truncate text-[11px] font-semibold uppercase tracking-[0.1em] text-text-light sm:block">
-                {pageMeta.section}
-              </p>
-            ) : null}
+          {/* No celular o topo mostra a página atual; no desktop o título já está na página. */}
+          <div className="min-w-0 flex-1 lg:hidden">
             <p className="truncate text-[15px] font-semibold text-text-primary">{pageMeta.title}</p>
           </div>
 
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
-            className="hidden h-9 w-64 items-center gap-2 rounded-lg border border-border bg-slate-50 px-3 text-left text-sm text-text-light transition-colors hover:border-border-strong hover:bg-white md:flex xl:w-80"
+            className="hidden h-9 w-64 items-center gap-2 rounded-lg border border-border bg-slate-50 px-3 text-left text-sm text-text-light transition-colors hover:border-border-strong hover:bg-white md:flex lg:w-96"
             aria-label="Abrir busca rápida"
           >
             <Icon name="search" className="h-4 w-4" />
             <span className="flex-1 truncate">Buscar placa, motorista, módulo…</span>
             <kbd className="kbd">{isMac ? "⌘K" : "Ctrl K"}</kbd>
           </button>
+          <div className="hidden flex-1 lg:block" aria-hidden />
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}

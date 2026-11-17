@@ -2,8 +2,15 @@ import React from "react";
 import { Link } from "react-router-dom";
 import PropTypes from "prop-types";
 
-const Breadcrumbs = ({ items = [], className = "" }) => {
-  if (!items.length) return null;
+/**
+ * Trilha de navegação. "Início" é omitido (o menu lateral já leva ao painel) e
+ * a trilha só aparece quando há um nível intermediário útil — ex.:
+ * "Pneus / Estoque" ou "ABC1D23 / Editar". "Início / Página" não é exibido,
+ * pois repetiria o título da própria página.
+ */
+const Breadcrumbs = ({ items: rawItems = [], className = "" }) => {
+  const items = rawItems.filter((item, i) => !(i === 0 && item.label === "Início" && item.to === "/"));
+  if (items.length < 2) return null;
 
   return (
     <nav

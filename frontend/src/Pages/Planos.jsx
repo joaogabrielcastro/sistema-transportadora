@@ -6,6 +6,7 @@ import SiteLayout from "../components/site/SiteLayout.jsx";
 import SalesContactButton from "../components/site/SalesContactButton.jsx";
 import { SALES_CONTACT_ENABLED } from "../commercial.js";
 import PlanCardGrid from "../components/site/PlanCardGrid.jsx";
+import TelemetryAddonBlock from "../components/site/TelemetryAddonBlock.jsx";
 import Seo from "../components/Seo.jsx";
 import { PRODUCT_NAME, PUBLIC_REGISTER_ENABLED } from "../brand.js";
 import {
@@ -47,7 +48,7 @@ export default function Planos() {
     <SiteLayout signupHref={signupHref}>
       <Seo
         title={`Planos ${PRODUCT_NAME}`}
-        description={`Starter, Fiscal e Completo. ${BILLING_TRIAL_DAYS} dias grátis no Starter. Escolha o plano e comece o cadastro com o identificador correto da oferta.`}
+        description={`Starter, Fiscal e Completo. Telemetria é módulo adicional. ${BILLING_TRIAL_DAYS} dias grátis no Starter.`}
         path={pathLid ? `/planos/${pathLid}` : "/planos"}
       />
 
@@ -61,8 +62,9 @@ export default function Planos() {
         <p className="mt-3 max-w-2xl text-sm text-text-secondary sm:text-base">
           Preços e tetos vêm do catálogo oficial. Starter organiza a frota.
           Fiscal e Completo sobem capacidade e abrem NF-e, estoque e emissão
-          de CT-e / MDF-e e contrato de frete. O registro de CIOT depende de
-          provedor homologado. O identificador do plano (LID) segue para o
+          de CT-e / MDF-e e contrato de frete. Telemetria e rastreamento são
+          add-on — não entram nesses três planos. O registro de CIOT depende
+          de provedor homologado. O identificador do plano (LID) segue para o
           cadastro e o checkout.
         </p>
 
@@ -103,10 +105,14 @@ export default function Planos() {
           <PlanComparison />
         </div>
 
+        <div className="mt-10">
+          <TelemetryAddonBlock />
+        </div>
+
         {SALES_CONTACT_ENABLED ? <div className="mt-10 rounded-2xl border border-border bg-slate-50 p-6 text-center">
-          <h2 className="text-xl font-semibold text-primary-dark">Precisa de implantação ou módulo fiscal?</h2>
+          <h2 className="text-xl font-semibold text-primary-dark">Precisa de implantação, fiscal ou telemetria?</h2>
           <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-text-secondary">
-            Converse com a equipe antes de contratar para dimensionar migração, treinamento, certificado e integrações.
+            Converse com a equipe antes de contratar para dimensionar migração, treinamento, certificado, rastreadores e integrações.
           </p>
           <div className="mt-4 flex justify-center">
             <SalesContactButton location="plans_consultative" variant="secondary" />

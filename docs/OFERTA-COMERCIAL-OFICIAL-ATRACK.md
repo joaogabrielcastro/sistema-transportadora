@@ -68,7 +68,8 @@ Os valores são por empresa/tenant, em cobrança recorrente mensal. Não incluem
 - AT&M, WhatsApp e outros provedores cobrados por consumo ou contrato próprio.
 - CIOT, até existir provedor homologado e validação formal para venda.
 - Ordem de coleta, que permanece exclusiva do tenant ABroto.
-- Consulta automática ao Detran, rastreamento/telemetria e integrações com ERP.
+- Consulta automática ao Detran e integrações com ERP.
+- Telemetria e rastreamento (módulo adicional — ver seção 7).
 - Digitação, saneamento ou importação recorrente de dados.
 - Treinamentos adicionais, atendimento presencial e plantão fora do horário.
 - Desenvolvimento de regras, telas ou relatórios exclusivos.
@@ -84,6 +85,23 @@ Os valores são por empresa/tenant, em cobrança recorrente mensal. Não incluem
 Pagamento sugerido: 50% no aceite e 50% antes do treinamento final. Na implantação Fiscal: 50% no aceite, 30% após homologação e 20% antes da entrada em produção.
 
 ## 7. Adicionais
+
+### Telemetria e rastreamento (add-on)
+
+Não faz parte dos planos Starter, Fiscal ou Completo. Pode ser contratado junto a qualquer um deles, com liberação na assinatura da empresa (`features.telemetria`).
+
+Âncora comercial: **a partir de R$ 39/veículo/mês**.
+
+| Faixa | Assentos (dispositivos ativos) | Mensalidade | Indicação |
+| --- | ---: | ---: | --- |
+| Basic | até 10 | R$ 149/mês | Frota pequena / piloto |
+| Advanced | até 50 | R$ 449/mês | Operação com mais rastreadores |
+
+Inclui, quando liberado: mapa em tempo real, histórico, dispositivos (ex.: Teltonika), geocercas, alertas e eficiência.
+
+Fora da mensalidade do add-on: chip, instalação do rastreador, hardware e homologação — sob orçamento.
+
+### Outros
 
 - Hora técnica: R$ 220, sempre com estimativa e autorização prévia.
 - Treinamento remoto adicional de até 90 minutos: R$ 390.

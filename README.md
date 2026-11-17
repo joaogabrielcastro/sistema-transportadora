@@ -30,6 +30,7 @@ A operação ainda precisa cadastrar empresa fiscal e certificado para emitir.
 
 ### Não vendido nos planos públicos
 
+- **Telemetria / rastreamento**: módulo adicional (`tenants.features.telemetria`), fora dos LIDs Starter/Fiscal/Completo. Referência comercial: a partir de R$ 39/veículo, Basic R$ 149 (10 seats) / Advanced R$ 449 (50 seats). Aparece no site como add-on (login, `/planos`, landing).
 - **Ordem de coleta** (PDF / e-mail): exclusiva do tenant ABroto (`slug=abbroto`).
 - Plano legado **`ops`**: não aparece no site nem no checkout. LID inválido.
 

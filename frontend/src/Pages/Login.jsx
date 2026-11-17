@@ -108,7 +108,8 @@ export default function Login() {
                 Entrar
               </h1>
               <p className="mt-1.5 text-sm text-text-secondary">
-                Acesse a operação da sua transportadora.
+                Acesse a operação da frota — com telemetria quando o módulo
+                estiver liberado na assinatura.
               </p>
             </div>
 

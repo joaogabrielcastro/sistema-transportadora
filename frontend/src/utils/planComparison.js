@@ -211,4 +211,34 @@ export const PLAN_COMPARE_SECTIONS = [
       },
     ],
   },
+  {
+    id: "telemetria",
+    title: "Telemetria (módulo adicional)",
+    rows: [
+      {
+        label: "Rastreamento e mapa em tempo real",
+        starter: "Add-on",
+        fiscal: "Add-on",
+        complete: "Add-on",
+      },
+      {
+        label: "Dispositivos, geocercas e alertas",
+        starter: "Add-on",
+        fiscal: "Add-on",
+        complete: "Add-on",
+      },
+      {
+        label: "Incluído na mensalidade do plano",
+        starter: false,
+        fiscal: false,
+        complete: false,
+      },
+      {
+        label: "Referência do add-on",
+        starter: "R$ 149–449/mês",
+        fiscal: "R$ 149–449/mês",
+        complete: "R$ 149–449/mês",
+      },
+    ],
+  },
 ];

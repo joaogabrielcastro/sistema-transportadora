@@ -24,3 +24,27 @@ export const SALES_CONTACT_URL =
     : "");
 
 export const SALES_CONTACT_ENABLED = Boolean(SALES_CONTACT_URL);
+
+/**
+ * Preços de referência do add-on Telemetria (fora dos LIDs públicos).
+ * Implantação de rastreador / chip / instalação ficam fora da mensalidade.
+ */
+export const TELEMETRY_ADDON = Object.freeze({
+  fromPerVehicleBrl: 39,
+  tiers: Object.freeze([
+    {
+      id: "basic",
+      name: "Basic",
+      seatLimit: 10,
+      priceMonthlyBrl: 149,
+      tagline: "Frota pequena / piloto",
+    },
+    {
+      id: "advanced",
+      name: "Advanced",
+      seatLimit: 50,
+      priceMonthlyBrl: 449,
+      tagline: "Mais rastreadores",
+    },
+  ]),
+});

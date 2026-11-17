@@ -6,6 +6,7 @@ import SiteLayout from "../components/site/SiteLayout.jsx";
 import SalesContactButton from "../components/site/SalesContactButton.jsx";
 import ProductPreview from "../components/site/ProductPreview.jsx";
 import PlanCardGrid from "../components/site/PlanCardGrid.jsx";
+import TelemetryAddonBlock from "../components/site/TelemetryAddonBlock.jsx";
 import Seo from "../components/Seo.jsx";
 import {
   PRODUCT_NAME,
@@ -60,6 +61,11 @@ const BENEFITS = [
   },
   {
     eyebrow: "06",
+    title: "Telemetria",
+    text: "Rastreamento em tempo real — add-on a partir de R$ 39/veículo ou pacotes Basic R$ 149 / Advanced R$ 449.",
+  },
+  {
+    eyebrow: "07",
     title: "Equipe e limites",
     text: "Perfis admin, operador e leitura, com teto claro de veículos e usuários por plano.",
   },
@@ -124,7 +130,11 @@ function faqs(trialDays) {
     },
     {
       q: "Quais recursos estão em cada plano?",
-      a: "Starter: até 8 veículos e 2 usuários, com dashboard, frota, pneus, gastos, manutenção, documentos e relatórios. Fiscal (até 40 veículos / 8 usuários) e Completo (até 100 / 20) abrem NF-e, estoque, CT-e, MDF-e e contrato de frete. CIOT depende de provedor homologado. Ordem de coleta não entra nos planos públicos.",
+      a: "Starter: até 8 veículos e 2 usuários, com dashboard, frota, pneus, gastos, manutenção, documentos e relatórios. Fiscal (até 40 veículos / 8 usuários) e Completo (até 100 / 20) abrem NF-e, estoque, CT-e, MDF-e e contrato de frete. Telemetria e rastreamento são módulo adicional, fora desses planos. CIOT depende de provedor homologado. Ordem de coleta não entra nos planos públicos.",
+    },
+    {
+      q: "A telemetria está inclusa no plano?",
+      a: "Não. Telemetria é um add-on: mapa em tempo real, dispositivos, geocercas e alertas. Referência: a partir de R$ 39/veículo/mês, ou pacotes Basic (até 10 dispositivos, R$ 149/mês) e Advanced (até 50, R$ 449/mês). Chip e instalação do rastreador ficam fora da mensalidade.",
     },
     {
       q: "Como funciona a contratação?",
@@ -426,8 +436,8 @@ export default function Landing() {
               </h2>
               <p className="mt-4 text-base leading-7 text-text-secondary">
                 Starter organiza a frota. Fiscal e Completo sobem capacidade e
-                abrem NF-e, estoque e emissão. Comece pelo essencial e evolua
-                quando precisar.
+                abrem NF-e, estoque e emissão. Telemetria fica como add-on.
+                Comece pelo essencial e evolua quando precisar.
               </p>
             </div>
             <Link
@@ -456,6 +466,9 @@ export default function Landing() {
           </div>
           <div className="mt-12">
             <PlanComparison />
+          </div>
+          <div className="mt-10">
+            <TelemetryAddonBlock />
           </div>
         </div>
       </section>

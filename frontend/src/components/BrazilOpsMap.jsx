@@ -214,10 +214,10 @@ const MAP_STRETCH_X = 1.16;
 const RING_Y_RATIO = 0.55;
 
 const TICKER = [
-  "Velocidade normalizada · KZX9F64 · BR-116",
-  "Pausa de 30 min cumprida · QXN7J84",
-  "Chegada em São Paulo/SP · LMN3E02",
-  "Chegada em Uberlândia/MG · HUB2L85",
+  "Telemetria · velocidade normalizada · KZX9F64 · BR-116",
+  "Telemetria · pausa de 30 min cumprida · QXN7J84",
+  "Telemetria · chegada em São Paulo/SP · LMN3E02",
+  "Telemetria · chegada em Uberlândia/MG · HUB2L85",
 ];
 
 /** Layout: largo + Y comprimido de verdade (mapa deitado). */
@@ -956,15 +956,19 @@ export default function BrazilOpsMap({ className = "" }) {
 
       {/* Título — composição da referência */}
       <div className="pointer-events-none absolute left-8 top-8 z-10 max-w-[420px] xl:left-10 xl:top-10">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary">
+          Módulo Telemetria
+        </p>
         <h2
           className="text-[1.75rem] font-bold leading-[1.15] tracking-[-0.03em] text-primary xl:text-[2rem]"
         >
           Sua frota sob controle.
         </h2>
         <p className="mt-3 text-[0.95rem] leading-relaxed text-text-secondary">
-          <span className="font-medium text-secondary">Rotas</span>,{" "}
-          <span className="font-medium text-secondary">veículos</span> e operação
-          em um só lugar — com a visão do Brasil em tempo real.
+          <span className="font-medium text-secondary">Rastreamento</span>,{" "}
+          <span className="font-medium text-secondary">velocidade</span> e{" "}
+          <span className="font-medium text-secondary">rotas</span> em tempo real
+          — add-on do ATrack, sob demanda.
         </p>
       </div>
 

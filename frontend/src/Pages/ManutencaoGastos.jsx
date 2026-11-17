@@ -22,9 +22,10 @@ import {
   DataTableTd,
   TableRowActions,
   StatusBadge,
+  StatCard,
 } from "../components/ui";
+import Icon from "../components/ui/Icon.jsx";
 import PageLayout from "../components/layout/PageLayout.jsx";
-import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import { TableSkeleton } from "../components/Skeleton.jsx";
 import { isCombustivelTipo, tiposGastosFinanceiros, classifyTipoGastoById } from "../utils/tipoGastoUtils.js";
@@ -35,7 +36,7 @@ import {
 } from "../utils/gastoDetalhes.js";
 import GastoDetalhesFields from "../components/gasto/GastoDetalhesFields.jsx";
 import CombustivelXmlImport from "../components/gasto/CombustivelXmlImport.jsx";
-import { formatDate } from "../utils/formatters.js";
+import { formatCurrency, formatDate } from "../utils/formatters.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { apiFetch } from "../lib/apiClient.js";
 import { extractApiArray } from "../utils/extractApiArray.js";
@@ -125,6 +126,7 @@ const RegistroForm = ({
   onSugerirProxima,
   onXmlImported,
   loading,
+  onClose,
 }) => {
   const isManutencao = form.tipo === "manutencao";
   const isCombustivel =
@@ -311,7 +313,17 @@ const RegistroForm = ({
   );
 
   return (
-    <Card title="Adicionar Novo Registro" className="mb-8">
+    <Card
+      title="Novo lançamento"
+      subtitle="Gasto financeiro ou serviço de manutenção. Campos com * são obrigatórios."
+      action={
+        onClose ? (
+          <Button variant="ghost" size="sm" onClick={onClose} aria-label="Fechar formulário de lançamento">
+            Fechar
+          </Button>
+        ) : null
+      }
+    >
       <form onSubmit={onSubmit} className="space-y-4">
         {campoTipo}
         {isManutencao ? (
@@ -528,7 +540,11 @@ const HistoricoRegistros = ({
   onFiltroTipoChange,
   pagination,
   onPageChange,
+  onLimparFiltros,
 }) => {
+  const hasFiltros = Boolean(
+    filtroPlaca || filtroDataInicio || filtroDataFim || (filtroTipo && filtroTipo !== "todos"),
+  );
   const registrosFormatados = useMemo(() => {
     return registros.map((registro) => ({
       ...registro,
@@ -547,54 +563,27 @@ const HistoricoRegistros = ({
     }));
   }, [registros]);
 
-  const estatisticas = summary ?? {
-    totalRegistros: registros.length,
-    totalGastos: 0,
-    totalManutencoes: 0,
-  };
-
   return (
     <Card className="overflow-hidden" noPadding>
-      <div className="px-4 sm:px-5 py-4 border-b border-border flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-bold text-text-primary">
-            Histórico de Registros
+      <div className="border-b border-border px-4 py-4 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-[15px] font-semibold text-text-primary">
+            Histórico de lançamentos
           </h2>
-          <div className="flex flex-wrap gap-2 mt-2">
-            <span className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium border border-blue-100">
-              {Number(estatisticas.totalRegistros || 0).toLocaleString("pt-BR")}{" "}
-              registros
-            </span>
-            <span className="bg-green-50 text-green-700 px-2.5 py-0.5 rounded-md text-xs font-medium border border-green-100">
-              {Number(estatisticas.totalManutencoes || 0).toLocaleString(
-                "pt-BR",
-                { style: "currency", currency: "BRL" },
-              )}{" "}
-              manutenções
-            </span>
-            <span className="bg-purple-50 text-purple-700 px-2.5 py-0.5 rounded-md text-xs font-medium border border-purple-100">
-              {Number(estatisticas.totalGastos || 0).toLocaleString("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-              })}{" "}
-              gastos
-            </span>
-          </div>
-          {pagination?.totalPages > 1 && (
-            <p className="text-xs text-text-secondary mt-1">
-              Totais consideram todos os registros do filtro, não só esta página.
-            </p>
-          )}
+          {hasFiltros ? (
+            <Button variant="ghost" size="xs" onClick={onLimparFiltros}>
+              Limpar filtros
+            </Button>
+          ) : null}
         </div>
-
-        <div className="w-full xl:w-auto shrink-0 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <FormField
-            label="Filtrar por placa"
+            label="Placa"
             name="filtro_placa"
             placeholder="Ex.: ABC1D23"
             value={filtroPlaca}
             onChange={onFiltroChange}
-            className="mb-0"
+            className="col-span-2 mb-0 lg:col-span-1"
           />
           <FormField
             label="De"
@@ -623,7 +612,7 @@ const HistoricoRegistros = ({
               { value: "gasto", label: "Só gastos" },
               { value: "manutencao", label: "Só manutenções" },
             ]}
-            className="mb-0"
+            className="col-span-2 mb-0 lg:col-span-1"
           />
         </div>
       </div>
@@ -632,15 +621,27 @@ const HistoricoRegistros = ({
         <div className="p-6">
           <EmptyState
             title={
-              filtroPlaca
+              hasFiltros
                 ? "Nenhum registro encontrado"
                 : "Você ainda não possui gastos ou manutenções."
             }
             description={
               filtroPlaca
-                ? `Não há registros para a placa "${filtroPlaca}".`
-                : "Lance o primeiro registro no formulário acima."
+                ? `Não há registros para a placa "${filtroPlaca}" com os filtros atuais.`
+                : hasFiltros
+                  ? "Nenhum lançamento corresponde aos filtros atuais."
+                  : canWrite
+                    ? "Use “Novo lançamento” para registrar o primeiro gasto ou manutenção."
+                    : "Quando a equipe lançar gastos e manutenções, eles aparecerão aqui."
             }
+            action={
+              hasFiltros ? (
+                <Button variant="outline" onClick={onLimparFiltros}>
+                  Limpar filtros
+                </Button>
+              ) : null
+            }
+            dashed
           />
         </div>
       ) : (
@@ -696,9 +697,9 @@ const HistoricoRegistros = ({
           <DataTable className="hidden md:block">
             <DataTableHead>
               <tr>
-                <DataTableTh width="9%">Tipo</DataTableTh>
-                <DataTableTh width="8%">Caminhão</DataTableTh>
-                <DataTableTh width="38%">Descrição</DataTableTh>
+                <DataTableTh width="12%">Tipo</DataTableTh>
+                <DataTableTh width="10%">Caminhão</DataTableTh>
+                <DataTableTh width="33%">Descrição</DataTableTh>
                 <DataTableTh width="10%">Data</DataTableTh>
                 <DataTableTh width="11%" align="right">
                   Valor
@@ -855,6 +856,8 @@ const ManutencaoGastos = () => {
     tipo: filtroTipo,
   });
 
+  const [formOpen, setFormOpen] = useState(() => Boolean(searchParams.get("novo")));
+  const formRef = useRef(null);
   const [registroSelecionado, setRegistroSelecionado] = useState(null);
   const [registroEmEdicao, setRegistroEmEdicao] = useState(null);
   const [form, setForm] = useState({
@@ -1004,6 +1007,46 @@ const ManutencaoGastos = () => {
       empresa: form.empresa || "",
       detalhes: {},
     });
+  };
+
+  // Atalhos "Lançar gasto" / "Registrar manutenção" (?novo=gasto|manutencao).
+  const novoParam = searchParams.get("novo");
+  useEffect(() => {
+    if (!novoParam) return;
+    if (canWrite) {
+      setFormOpen(true);
+      if (novoParam === "gasto" || novoParam === "manutencao") {
+        setForm((prev) => (prev.tipo === novoParam ? prev : { ...prev, tipo: novoParam, tipo_id: "", nome_item: "" }));
+      }
+      window.setTimeout(() => {
+        formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 60);
+    }
+    const caminhaoParam = searchParams.get("caminhao");
+    if (canWrite && caminhaoParam) setPrefillCaminhao(caminhaoParam);
+    const next = new URLSearchParams(searchParams);
+    next.delete("novo");
+    next.delete("caminhao");
+    setSearchParams(next, { replace: true });
+  }, [novoParam, canWrite, searchParams, setSearchParams]);
+
+  // Pré-seleciona o veículo quando o lançamento parte do detalhe do caminhão.
+  const [prefillCaminhao, setPrefillCaminhao] = useState(null);
+  useEffect(() => {
+    if (!prefillCaminhao) return;
+    const lista = Array.isArray(caminhoes) ? caminhoes : [];
+    const alvo = lista.find((c) => String(c.id) === String(prefillCaminhao));
+    if (!alvo) return;
+    handleCaminhaoChange({ target: { value: String(alvo.id) } });
+    setPrefillCaminhao(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillCaminhao, caminhoes]);
+
+  const limparFiltros = () => {
+    setFiltroPlaca("");
+    setFiltroDataInicio("");
+    setFiltroDataFim("");
+    setFiltroTipo("todos");
   };
 
   const handleSugerirProxima = () => {
@@ -1177,8 +1220,9 @@ const ManutencaoGastos = () => {
     return (
       <PageLayout className="space-y-6">
         <PageHeader
-          title="Manutenção e Gastos"
-          subtitle="Multas, combustível, pedágio e demais despesas com vencimento e situação"
+          eyebrow="Operação"
+          title="Manutenção e gastos"
+          subtitle="Combustível, pedágio, multas, serviços de oficina e demais despesas da frota."
         />
         <Card>
           <TableSkeleton rows={8} columns={5} />
@@ -1189,12 +1233,22 @@ const ManutencaoGastos = () => {
 
   return (
     <PageLayout className="space-y-6">
-      <Breadcrumbs
-        items={[{ label: "Início", to: "/" }, { label: "Manutenção e gastos" }]}
-      />
       <PageHeader
-        title="Manutenção e Gastos"
-        subtitle="Multas, combustível, pedágio e demais despesas com vencimento e situação"
+        eyebrow="Operação"
+        title="Manutenção e gastos"
+        subtitle="Combustível, pedágio, multas, serviços de oficina e demais despesas da frota."
+        actions={
+          canWrite ? (
+            <Button
+              variant={formOpen ? "outline" : "primary"}
+              aria-expanded={formOpen}
+              onClick={() => setFormOpen((v) => !v)}
+              icon={<Icon name={formOpen ? "x" : "plus"} className="h-4 w-4" strokeWidth={2.25} />}
+            >
+              {formOpen ? "Fechar formulário" : "Novo lançamento"}
+            </Button>
+          ) : null
+        }
       />
 
       {!canWrite && (
@@ -1205,39 +1259,64 @@ const ManutencaoGastos = () => {
         />
       )}
 
-      {pagination && pagination.totalItems > 0 && (
-        <p className="text-sm text-text-secondary">
-          {pagination.totalItems.toLocaleString("pt-BR")} registros no total
-          {pagination.totalPages > 1
-            ? ` · página ${pagination.currentPage} de ${pagination.totalPages}`
-            : ""}
-        </p>
-      )}
-
-      {canWrite && (
-      <RegistroForm
-          form={form}
-          caminhoes={caminhoes}
-          tiposGastos={tiposGastos}
-          itensChecklist={itensChecklist}
-          produtosEstoque={produtosEstoque}
-          onSearchProdutos={setBuscaProdutoEstoque}
-          motoristas={motoristas}
-          showEstoque={showEstoque}
-          onChange={handleChange}
-          onControleChange={(patch) =>
-            setForm((prev) => ({ ...prev, ...patch }))
+      <section aria-label="Totais do filtro atual" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatCard
+          layout="compact"
+          title="Lançamentos no filtro"
+          value={Number(summary?.totalRegistros ?? pagination?.totalItems ?? registros.length ?? 0).toLocaleString("pt-BR")}
+          hint={
+            pagination?.totalPages > 1
+              ? `Página ${pagination.currentPage} de ${pagination.totalPages}`
+              : "Considera todos os registros do filtro"
           }
-          onCaminhaoChange={handleCaminhaoChange}
-          onTipoChange={handleTipoChange}
-          onSugerirProxima={handleSugerirProxima}
-          onXmlImported={async () => {
-            toast.success("Abastecimento lançado a partir do XML da NF-e.");
-            await refetch();
-          }}
-          onSubmit={handleSubmit}
-          loading={submitting}
+          color="slate"
+          icon={<Icon name="receipt" />}
         />
+        <StatCard
+          layout="compact"
+          title="Total em gastos"
+          value={formatCurrency(summary?.totalGastos || 0)}
+          hint="Combustível, pedágio, multas…"
+          color="cyan"
+          icon={<Icon name="fuel" />}
+        />
+        <StatCard
+          layout="compact"
+          title="Total em manutenções"
+          value={formatCurrency(summary?.totalManutencoes || 0)}
+          hint="Serviços de oficina"
+          color="orange"
+          icon={<Icon name="wrench" />}
+        />
+      </section>
+
+      {canWrite && formOpen && (
+        <div ref={formRef} className="scroll-mt-20">
+          <RegistroForm
+            form={form}
+            caminhoes={caminhoes}
+            tiposGastos={tiposGastos}
+            itensChecklist={itensChecklist}
+            produtosEstoque={produtosEstoque}
+            onSearchProdutos={setBuscaProdutoEstoque}
+            motoristas={motoristas}
+            showEstoque={showEstoque}
+            onChange={handleChange}
+            onControleChange={(patch) =>
+              setForm((prev) => ({ ...prev, ...patch }))
+            }
+            onCaminhaoChange={handleCaminhaoChange}
+            onTipoChange={handleTipoChange}
+            onSugerirProxima={handleSugerirProxima}
+            onXmlImported={async () => {
+              toast.success("Abastecimento lançado a partir do XML da NF-e.");
+              await refetch();
+            }}
+            onSubmit={handleSubmit}
+            loading={submitting}
+            onClose={() => setFormOpen(false)}
+          />
+        </div>
       )}
 
       <HistoricoRegistros
@@ -1257,6 +1336,7 @@ const ManutencaoGastos = () => {
         pagination={pagination}
         onPageChange={setCurrentPage}
         canWrite={canWrite}
+        onLimparFiltros={limparFiltros}
       />
 
       {registroEmEdicao && (

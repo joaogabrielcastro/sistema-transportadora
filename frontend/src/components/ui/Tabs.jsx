@@ -13,7 +13,7 @@ export const Tabs = ({
 
   return (
     <div className={className}>
-      <div className="flex gap-1 overflow-x-auto rounded-xl border border-border bg-white p-1" role="tablist">
+      <div className="scrollbar-thin flex gap-1 overflow-x-auto rounded-xl border border-border bg-slate-100/70 p-1" role="tablist">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           const tabId = `${baseId}-tab-${tab.id}`;
@@ -29,10 +29,10 @@ export const Tabs = ({
               aria-controls={panelId}
               tabIndex={isActive ? 0 : -1}
               onClick={() => onChange(tab.id)}
-              className={`min-h-10 shrink-0 rounded-lg px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary ${
+              className={`min-h-9 shrink-0 rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary ${
                 isActive
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-text-secondary hover:bg-slate-50 hover:text-text-primary"
+                  ? "bg-white text-text-primary shadow-[0_1px_2px_rgba(15,23,42,0.08),0_0_0_1px_rgba(15,23,42,0.04)]"
+                  : "text-text-secondary hover:bg-white/60 hover:text-text-primary"
               }`}
             >
               {tab.label}

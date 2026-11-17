@@ -10,11 +10,13 @@
 
   html {
     @apply bg-background;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
     @apply m-0 min-w-[320px] bg-background text-text-primary font-sans antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    text-rendering: optimizeLegibility;
   }
 
   h1,
@@ -23,7 +25,15 @@
   h4,
   h5,
   h6 {
-    @apply font-bold tracking-tight text-text-primary;
+    @apply font-semibold tracking-tight text-text-primary;
+  }
+
+  ::selection {
+    @apply bg-cyan-100 text-primary;
+  }
+
+  :focus-visible {
+    outline-color: theme("colors.secondary.DEFAULT");
   }
 }
 
@@ -33,11 +43,46 @@
   }
 
   .control {
-    @apply h-10 rounded-lg border border-border bg-white px-3 text-sm text-text-primary outline-none transition-colors placeholder:text-text-light focus:border-secondary focus:ring-2 focus:ring-cyan-100;
+    @apply h-10 rounded-lg border border-border bg-white px-3 text-sm text-text-primary outline-none transition-colors placeholder:text-text-light hover:border-border-strong focus:border-secondary focus:ring-4 focus:ring-cyan-500/10;
   }
 
   .section-label {
-    @apply text-xs font-semibold uppercase tracking-[0.08em] text-text-secondary;
+    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary;
+  }
+
+  /* Placa no padrão visual Mercosul — identidade do ATrack para veículos. */
+  .plate {
+    @apply relative inline-flex items-center overflow-hidden rounded-[5px] border border-slate-300 bg-white pb-[1px] pl-1.5 pr-1.5 pt-[5px] font-mono text-[13px] font-bold uppercase leading-none tracking-[0.06em] text-slate-900 shadow-[0_1px_0_rgba(15,23,42,0.06)];
+  }
+
+  .plate::before {
+    content: "";
+    @apply absolute inset-x-0 top-0 h-[3px] bg-blue-700;
+  }
+
+  .plate-lg {
+    @apply rounded-md px-2.5 pb-1 pt-2 text-lg tracking-[0.08em];
+  }
+
+  .plate-lg::before {
+    @apply h-[5px];
+  }
+
+  .kbd {
+    @apply inline-flex h-5 min-w-5 items-center justify-center rounded border border-border-strong bg-white px-1 font-sans text-[10px] font-semibold text-text-secondary shadow-[0_1px_0_rgba(15,23,42,0.08)];
+  }
+
+  .chip {
+    @apply inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-white px-3 text-sm font-medium text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary;
+  }
+
+  .chip-active {
+    @apply border-primary bg-primary text-white hover:border-primary hover:text-white;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
   }
 }
 

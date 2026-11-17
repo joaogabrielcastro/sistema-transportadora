@@ -154,7 +154,8 @@ const PneusEstoque = () => {
         ]}
       />
       <PageHeader
-        title="Estoque de Pneus"
+        eyebrow="Frota · Pneus"
+        title="Estoque de pneus"
         subtitle="Cadastre pneus em lote e gerencie o estoque disponível"
         actions={
           canWrite ? (

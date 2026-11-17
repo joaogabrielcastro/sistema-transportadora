@@ -1,6 +1,9 @@
 type ListParams = Record<string, unknown>;
 
 export const queryKeys = {
+  ops: {
+    alerts: ["ops", "alerts"] as const,
+  },
   caminhoes: {
     all: ["caminhoes"] as const,
     list: (params: ListParams) => ["caminhoes", "list", params] as const,

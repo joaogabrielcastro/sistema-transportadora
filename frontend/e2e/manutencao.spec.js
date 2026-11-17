@@ -114,9 +114,11 @@ test.describe("Manutenção e Gastos", () => {
     await expect(page.getByRole("cell", { name: "ABC1D23" })).toHaveCount(2);
   });
 
-  test("formulário de novo registro está visível", async ({ page }) => {
+  test("formulário de novo lançamento abre pelo botão", async ({ page }) => {
     await page.goto("/manutencao-gastos");
-    await expect(page.getByText("Adicionar Novo Registro")).toBeVisible();
+    // O formulário fica recolhido; abre pelo botão do cabeçalho.
+    await page.getByRole("button", { name: "Novo lançamento" }).click();
+    await expect(page.getByRole("heading", { name: "Novo lançamento" })).toBeVisible();
     await expect(page.getByLabel("Tipo de Registro")).toBeVisible();
     await expect(page.getByLabel("Caminhão")).toBeVisible();
     await expect(
@@ -146,9 +148,10 @@ test.describe("Manutenção e Gastos", () => {
       return route.continue();
     });
 
-    await page.goto("/manutencao-gastos");
+    // Atalho "Registrar manutenção" já abre o formulário no tipo certo.
+    await page.goto("/manutencao-gastos?novo=manutencao");
 
-    await page.getByLabel("Tipo de Registro").selectOption("manutencao");
+    await expect(page.getByLabel("Tipo de Registro")).toHaveValue("manutencao");
     await expect(page.getByText("Caminhão, KM e data")).toBeVisible();
     await expect(page.getByText("Serviço e oficina")).toBeVisible();
     await expect(

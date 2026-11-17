@@ -18,6 +18,7 @@ export {
   usePosicoesPneusQuery,
   usePneuAtribuirQueries,
   useCaminhaoDetailQuery,
+  useOpsAlertsQuery,
   useEditPneuQuery,
   useCteListQuery,
   useMdfeListQuery,

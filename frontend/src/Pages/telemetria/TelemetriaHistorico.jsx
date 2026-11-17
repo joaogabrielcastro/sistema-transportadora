@@ -2,9 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import PageLayout from "../../components/layout/PageLayout.jsx";
 import { Alert, Button, StatCard } from "../../components/ui";
-import FleetMap, {
-  FLEET_MAP_STYLES,
-} from "../../components/telemetria/FleetMap.jsx";
+import FleetMap from "../../components/telemetria/FleetMap.jsx";
+import { FLEET_MAP_STYLES } from "../../components/telemetria/mapStyles.js";
 import {
   FleetStatusChart,
   FuelEfficiencyChart,

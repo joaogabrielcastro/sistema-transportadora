@@ -94,7 +94,7 @@ const Modal = ({
       >
         {/* Background overlay */}
         <div
-          className="fixed inset-0 z-0 bg-slate-950/55 backdrop-blur-[1px]"
+          className="fixed inset-0 z-0 bg-ink-950/50 backdrop-blur-[2px]"
           aria-hidden="true"
         />
 
@@ -110,15 +110,15 @@ const Modal = ({
         <div
           ref={modalRef}
           tabIndex={-1}
-          className={`relative z-10 inline-block max-h-[calc(100vh-2rem)] w-full overflow-y-auto rounded-t-2xl border border-border bg-white text-left shadow-xl sm:my-8 sm:align-middle sm:rounded-xl ${sizes[size]} ${className}`}
+          className={`relative z-10 inline-block max-h-[calc(100dvh-2rem)] w-full animate-pop-in overflow-y-auto rounded-t-2xl border border-border bg-white text-left shadow-pop sm:my-8 sm:rounded-2xl sm:align-middle ${sizes[size]} ${className}`}
         >
           {/* Header */}
           {(title || showCloseButton) && (
-            <div className="sticky top-0 z-10 border-b border-border bg-white px-4 py-4 sm:px-6">
+            <div className="sticky top-0 z-10 border-b border-border bg-white/95 px-4 py-3.5 backdrop-blur sm:px-6">
               <div className="flex items-center justify-between">
                 {title && (
                   <h3
-                    className="text-lg font-semibold text-text-primary"
+                    className="text-base font-semibold text-text-primary sm:text-lg"
                     id={titleId}
                   >
                     {title}
@@ -132,7 +132,7 @@ const Modal = ({
                     aria-label="Fechar modal"
                   >
                     <svg
-                      className="h-6 w-6"
+                      className="h-5 w-5"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"

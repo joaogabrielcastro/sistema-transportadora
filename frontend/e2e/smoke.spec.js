@@ -69,8 +69,9 @@ test.describe("Smoke", () => {
     await expect(
       page.getByRole("navigation", { name: "Menu principal" }),
     ).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "+ Caminhão" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /E2E/ })).toBeVisible();
+    await page.getByRole("button", { name: /Novo/ }).first().click();
+    await expect(page.getByRole("menuitem", { name: /Cadastrar veículo/ })).toBeVisible();
   });
 
   test("navega para ordem de coleta", async ({ page }) => {

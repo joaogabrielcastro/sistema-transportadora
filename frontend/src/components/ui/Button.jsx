@@ -16,27 +16,28 @@ const Button = ({
   ...props
 }) => {
   const baseClasses =
-    "inline-flex min-h-10 items-center justify-center rounded-lg font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+    "inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-lg font-semibold transition-[background-color,border-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 active:translate-y-px disabled:pointer-events-none disabled:opacity-50";
 
   const variants = {
     primary:
-      "bg-primary hover:bg-primary-light text-white",
+      "bg-primary text-white shadow-[0_1px_2px_rgba(11,19,36,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] hover:bg-primary-light",
     secondary:
-      "bg-secondary hover:bg-secondary-dark text-white",
+      "bg-secondary text-white shadow-[0_1px_2px_rgba(8,145,178,0.25)] hover:bg-secondary-dark",
     danger:
-      "bg-danger hover:bg-danger-dark text-white focus:ring-danger shadow-sm",
+      "bg-danger-dark text-white shadow-sm hover:bg-red-700",
     success:
-      "bg-success hover:bg-success-dark text-white focus:ring-success shadow-sm",
+      "bg-success-dark text-white shadow-sm hover:bg-emerald-700",
     outline:
-      "border border-border bg-white hover:bg-gray-50 text-text-primary focus:ring-gray-200",
+      "border border-border bg-white text-text-primary shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:border-border-strong hover:bg-slate-50",
     ghost:
-      "bg-transparent hover:bg-gray-100 text-text-secondary hover:text-text-primary",
+      "bg-transparent text-text-secondary hover:bg-slate-100 hover:text-text-primary",
   };
 
   const sizes = {
-    sm: "px-3 py-1.5 text-sm",
-    md: "px-4 py-2.5 text-sm",
-    lg: "px-6 py-3.5 text-base",
+    xs: "min-h-8 px-2.5 text-xs",
+    sm: "min-h-9 px-3 text-sm",
+    md: "min-h-10 px-4 text-sm",
+    lg: "min-h-12 px-6 text-base",
   };
 
   const classes = `${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`;
@@ -51,7 +52,7 @@ const Button = ({
     >
       {loading ? (
         <svg
-          className="animate-spin -ml-1 mr-2 h-4 w-4"
+          className="h-4 w-4 animate-spin"
           fill="none"
           viewBox="0 0 24 24"
         >
@@ -70,7 +71,7 @@ const Button = ({
           ></path>
         </svg>
       ) : icon ? (
-        <span className="mr-2">{icon}</span>
+        <span className="inline-flex shrink-0" aria-hidden>{icon}</span>
       ) : null}
       {loading && loadingText ? loadingText : children}
     </button>
@@ -87,7 +88,7 @@ Button.propTypes = {
     "outline",
     "ghost",
   ]),
-  size: PropTypes.oneOf(["sm", "md", "lg"]),
+  size: PropTypes.oneOf(["xs", "sm", "md", "lg"]),
   type: PropTypes.oneOf(["button", "submit", "reset"]),
   disabled: PropTypes.bool,
   loading: PropTypes.bool,

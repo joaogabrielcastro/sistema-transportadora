@@ -15,6 +15,7 @@ export {
   usePneuAtribuirQueries,
 } from "./usePneusQuery.js";
 export { useCaminhaoDetailQuery } from "./useCaminhaoDetailQuery.js";
+export { useOpsAlertsQuery } from "./useOpsAlertsQuery.js";
 export { useEditPneuQuery } from "./useEditFormQueries.js";
 export {
   useCteListQuery,

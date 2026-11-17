@@ -7,6 +7,7 @@ import { formatCaminhaoRegistros } from "../utils/formatRegistro.js";
 import { Card, Button, Alert, PageHeader, StatCard, StatusBadge, Tabs } from "../components/ui";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
+import Icon from "../components/ui/Icon.jsx";
 import { CardSkeleton } from "../components/Skeleton.jsx";
 import CaminhaoDocumentos from "../components/CaminhaoDocumentos";
 import VinculosComposicao from "../components/VinculosComposicao.jsx";
@@ -42,6 +43,7 @@ const CaminhaoDetail = () => {
   });
   const { user } = useAuth();
   const canWriteFrota = userHasPermission(user, PERMISSIONS.FROTA_WRITE);
+  const canWriteGastos = userHasPermission(user, PERMISSIONS.GASTOS_WRITE);
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -147,45 +149,84 @@ const CaminhaoDetail = () => {
     <PageLayout className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Início", to: "/" },
+          { label: "Veículos", to: "/frota" },
           { label: caminhao.placa },
         ]}
       />
 
-      <PageHeader
-        title={`${
-          caminhao.tipo_veiculo === "carreta"
-            ? "Carreta"
-            : caminhao.tipo_veiculo === "cavalo"
-              ? "Cavalo"
-              : "Veículo"
-        } ${caminhao.placa}`}
-        subtitle="Detalhes completos e análise de desempenho"
-        actions={
-          <div className="flex items-center gap-3 flex-wrap">
-            <StatusBadge
-              status={
-                caminhao.tipo_veiculo === "carreta"
-                  ? "Carreta"
-                  : caminhao.tipo_veiculo === "cavalo"
-                    ? "Cavalo"
-                    : caminhao.status || "Truck"
-              }
-              type="vehicle"
-            />
-            <Button variant="outline" onClick={() => navigate("/")}>
-              Voltar
-            </Button>
+      <div className="card overflow-hidden">
+        <div className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+            <span className="plate plate-lg hidden sm:inline-flex" aria-hidden>
+              {caminhao.placa}
+            </span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-bold tracking-tight text-text-primary sm:text-2xl">
+                  {`${
+                    caminhao.tipo_veiculo === "carreta"
+                      ? "Carreta"
+                      : caminhao.tipo_veiculo === "cavalo"
+                        ? "Cavalo"
+                        : "Veículo"
+                  } ${caminhao.placa}`}
+                </h1>
+                <StatusBadge
+                  status={
+                    caminhao.tipo_veiculo === "carreta"
+                      ? "Carreta"
+                      : caminhao.tipo_veiculo === "cavalo"
+                        ? "Cavalo"
+                        : caminhao.status || "Truck"
+                  }
+                  type="vehicle"
+                />
+              </div>
+              <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-secondary">
+                <span>{[caminhao.marca, caminhao.modelo].filter(Boolean).join(" ") || "Modelo não informado"}{caminhao.ano ? ` · ${caminhao.ano}` : ""}</span>
+                <span className="inline-flex items-center gap-1">
+                  <Icon name="user" className="h-3.5 w-3.5" />
+                  {caminhao.motorista || "Sem motorista"}
+                </span>
+                {caminhao.km_atual ? (
+                  <span className="inline-flex items-center gap-1 tabular-nums">
+                    <Icon name="gauge" className="h-3.5 w-3.5" />
+                    {Number(caminhao.km_atual).toLocaleString("pt-BR")} km
+                  </span>
+                ) : null}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {canWriteGastos && caminhao.id ? (
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/manutencao-gastos?novo=gasto&caminhao=${caminhao.id}`)}
+                icon={<Icon name="fuel" className="h-4 w-4" />}
+              >
+                Lançar gasto
+              </Button>
+            ) : null}
+            {canWriteGastos && caminhao.id ? (
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/manutencao-gastos?novo=manutencao&caminhao=${caminhao.id}`)}
+                icon={<Icon name="wrench" className="h-4 w-4" />}
+              >
+                Manutenção
+              </Button>
+            ) : null}
             {canWriteFrota && (
-            <Button
-              onClick={() => navigate(`/caminhao/editar/${caminhao.placa}`)}
-            >
-              Editar veículo
-            </Button>
+              <Button
+                onClick={() => navigate(`/caminhao/editar/${caminhao.placa}`)}
+                icon={<Icon name="pencil" className="h-4 w-4" />}
+              >
+                Editar veículo
+              </Button>
             )}
           </div>
-        }
-      />
+        </div>
+      </div>
 
       <Tabs tabs={DETAIL_TABS} activeTab={activeTab} onChange={handleTabChange} />
 
@@ -328,7 +369,7 @@ const CaminhaoDetail = () => {
                 { label: "Ano", value: caminhao.ano || "N/A" },
                 {
                   label: "KM Atual",
-                  value: `${(caminhao.km_atual || 0).toLocaleString()} km`,
+                  value: `${Number(caminhao.km_atual || 0).toLocaleString("pt-BR")} km`,
                 },
                 { label: "Qtd. Pneus", value: caminhao.qtd_pneus },
                 {
@@ -383,7 +424,9 @@ const CaminhaoDetail = () => {
               {consumoKmPorLitro ? (
                 <>
                   <div className="mb-2 text-4xl font-bold tabular-nums text-emerald-600">
-                    {consumoKmPorLitro}
+                    {Number.isFinite(Number(consumoKmPorLitro))
+                      ? Number(consumoKmPorLitro).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                      : consumoKmPorLitro}
                   </div>
                   <p className="text-lg font-medium text-gray-600">Km/L</p>
                   <p className="text-sm text-gray-400 mt-4 text-center">

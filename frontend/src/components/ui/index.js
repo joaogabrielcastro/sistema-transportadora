@@ -19,3 +19,4 @@ export {
   TableRowActions,
 } from "./DataTable.jsx";
 export { StatusBadge } from "./StatusBadge.jsx";
+export { default as Icon } from "./Icon.jsx";

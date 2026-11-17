@@ -1,28 +1,25 @@
-import React, { useState, useMemo, lazy, Suspense } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import React, { lazy, Suspense, useMemo } from "react";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import {
-  useApi,
-  useApiMutation,
   useCaminhoesListQuery,
-  useReportsOverviewQuery,
   useCostPerKmReportQuery,
   useCostPerKmTrendQuery,
-  useDebouncedValue,
+  useOpsAlertsQuery,
+  useReportsOverviewQuery,
 } from "../hooks";
-import { Button, Alert, PageHeader, StatCard, StatusBadge } from "../components/ui";
-import { useToast } from "../components/ui/useToast.js";
+import { useCaminhaoDelete } from "../hooks/useCaminhaoDelete.js";
+import { Alert, Button, Card, PageHeader, StatCard } from "../components/ui";
+import Icon from "../components/ui/Icon.jsx";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import { formatCurrency, formatNumber, lastMonthsIsoRange } from "../utils";
-import { extractApiArray, extractApiData } from "../utils/extractApiArray.js";
-import { queryKeys } from "../lib/queryKeys.ts";
-import { apiFetch, parseApiError } from "../lib/apiClient.js";
 import ConfirmModal from "../components/ConfirmModal";
-import Pagination from "../components/Pagination.jsx";
-import { CardSkeleton } from "../components/Skeleton.jsx";
+import { CardSkeleton, TableSkeleton } from "../components/Skeleton.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import OnboardingBanner from "../components/OnboardingBanner.jsx";
 import PlanQuotaBanner from "../components/PlanQuotaBanner.jsx";
+import OpsAlertsPanel from "../components/dashboard/OpsAlertsPanel.jsx";
+import FleetTable from "../components/frota/FleetTable.jsx";
+import { quickActionsFor } from "../components/layout/quickActions.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { PERMISSIONS, userHasPermission } from "../utils/permissions.js";
 import { isVehicleQuotaReached } from "../utils/billing.js";
@@ -31,765 +28,267 @@ const DashboardCharts = lazy(
   () => import("../components/dashboard/DashboardCharts.jsx"),
 );
 
-const TIPO_FILTROS = [
-  { id: "", label: "Todos" },
-  { id: "truck", label: "Trucks" },
-  { id: "cavalo", label: "Cavalos" },
-  { id: "carreta", label: "Carretas" },
-];
+const FLEET_PREVIEW = 8;
+/** Parâmetros da antiga lista da frota no painel — agora vivem em /frota. */
+const LEGACY_FLEET_PARAMS = ["busca", "tipo", "pagina"];
 
-const TIPO_LABEL = {
-  truck: "Truck",
-  cavalo: "Cavalo",
-  carreta: "Carreta",
-};
+function greeting(date = new Date()) {
+  const h = date.getHours();
+  if (h < 12) return "Bom dia";
+  if (h < 18) return "Boa tarde";
+  return "Boa noite";
+}
 
-/** Texto curto das carretas vinculadas (composição ou legado). */
-function carretasVinculadasDoCard(caminhao) {
-  const tipo = String(caminhao?.tipo_veiculo || "").toLowerCase();
-  if (tipo !== "cavalo" && tipo !== "truck") return [];
-
-  const vinculos = Array.isArray(caminhao?.composicao?.vinculos)
-    ? caminhao.composicao.vinculos.filter((v) => v?.ativo !== false)
-    : [];
-
-  if (vinculos.length) {
-    return vinculos.map((v, index) => {
-      const ordem = v.ordem ?? index + 1;
-      const placa = v.carreta?.placa || "—";
-      const modelo = String(v.carreta?.modelo || "").trim();
-      return modelo ? `${ordem}ª — ${placa} ${modelo}` : `${ordem}ª — ${placa}`;
-    });
-  }
-
-  const legado = [caminhao?.placa_carreta_1, caminhao?.placa_carreta_2]
-    .map((placa) => String(placa || "").trim())
-    .filter(Boolean);
-  return legado.map((placa, index) => `${index + 1}ª — ${placa}`);
+function todayLabel(date = new Date()) {
+  const s = date.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 const Home = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [currentPage, setCurrentPage] = useState(() =>
-    Math.max(1, Number(searchParams.get("pagina")) || 1),
-  );
-  const [tipoFiltro, setTipoFiltro] = useState(() =>
-    TIPO_FILTROS.some((item) => item.id === searchParams.get("tipo"))
-      ? searchParams.get("tipo") || ""
-      : "",
-  );
-  const toast = useToast();
-  const queryClient = useQueryClient();
+  const location = useLocation();
   const { user } = useAuth();
   const canWriteFrota = userHasPermission(user, PERMISSIONS.FROTA_WRITE);
   const canReadReports = userHasPermission(user, PERMISSIONS.REPORTS_READ);
+  const canReadAlerts = userHasPermission(user, PERMISSIONS.ALERTS_READ);
   const vehicleQuotaReached = isVehicleQuotaReached(user);
+  const actions = useMemo(() => quickActionsFor(user), [user]);
 
-  const listParams = useMemo(
-    () => ({
-      page: currentPage,
-      limit: 10,
-      ...(tipoFiltro ? { tipo_veiculo: tipoFiltro } : {}),
-    }),
-    [currentPage, tipoFiltro],
-  );
+  const fleetQuery = useCaminhoesListQuery({ page: 1, limit: FLEET_PREVIEW });
+  const caminhoes = fleetQuery.data?.data ?? [];
+  const pagination = fleetQuery.data?.pagination;
 
-  const {
-    data: caminhoesPage,
-    isLoading: loadingCaminhoes,
-    error: errorCaminhoes,
-    refetch: refetchCaminhoes,
-  } = useCaminhoesListQuery(listParams);
-
-  const caminhoes = caminhoesPage?.data ?? [];
-  const pagination = caminhoesPage?.pagination;
-
-  const {
-    data: overview,
-    isLoading: overviewLoading,
-    error: overviewError,
-  } = useReportsOverviewQuery();
+  const { data: overview, isLoading: overviewLoading, error: overviewError } =
+    useReportsOverviewQuery();
   const dashboardRange = useMemo(() => lastMonthsIsoRange(6), []);
-  const costParams = useMemo(
-    () => ({ ...dashboardRange, entriesLimit: 1 }),
-    [dashboardRange],
-  );
+  const costParams = useMemo(() => ({ ...dashboardRange, entriesLimit: 1 }), [dashboardRange]);
   const trendQuery = useCostPerKmTrendQuery(dashboardRange, canReadReports);
   const costQuery = useCostPerKmReportQuery(costParams, canReadReports);
+  const alertsQuery = useOpsAlertsQuery(canReadAlerts);
+  const del = useCaminhaoDelete();
 
-  const { get: apiGet } = useApi();
-  const { delete: apiDelete } = useApiMutation();
+  // Compatibilidade: links antigos "/?busca=…&tipo=…" abrem a lista da frota.
+  const legacy = new URLSearchParams(location.search);
+  if (LEGACY_FLEET_PARAMS.some((k) => legacy.get(k))) {
+    return <Navigate to={`/frota?${legacy.toString()}`} replace />;
+  }
 
-  const stats = useMemo(
-    () => ({
-      totalCaminhoes:
-        overview?.totalCaminhoes ??
-        pagination?.totalItems ??
-        caminhoes?.length ??
-        0,
-      totalGastos: overview?.totalGastos ?? 0,
-      totalManutencoes: overview?.totalManutencoes ?? 0,
-      mediaGastos: overview?.mediaPorLancamento ?? overview?.mediaGastos ?? 0,
-    }),
-    [overview, pagination?.totalItems, caminhoes?.length],
-  );
-
-  const [searchTerm, setSearchTerm] = useState(() => searchParams.get("busca") || "");
-  const debouncedSearch = useDebouncedValue(searchTerm, 350);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [caminhaoParaExcluir, setCaminhaoParaExcluir] = useState(null);
-  const [ordensHistoricoCount, setOrdensHistoricoCount] = useState(0);
-  const [excluindo, setExcluindo] = useState(false);
-
-  const isSearching = debouncedSearch.trim().length >= 2;
-
-  const searchQuery = useQuery({
-    queryKey: queryKeys.caminhoes.search(debouncedSearch, tipoFiltro),
-    queryFn: async () => {
-      try {
-        const params = new URLSearchParams({
-          term: debouncedSearch.trim(),
-        });
-        if (tipoFiltro) params.set("tipo_veiculo", tipoFiltro);
-        const res = await apiFetch({
-          method: "GET",
-          url: `/caminhoes/search?${params.toString()}`,
-        });
-        return extractApiArray(res);
-      } catch (err) {
-        throw await parseApiError(err);
-      }
-    },
-    enabled: isSearching,
-  });
-
-  const displayedCaminhoes = isSearching
-    ? (searchQuery.data ?? [])
-    : caminhoes;
-
-  const listLoading = isSearching ? searchQuery.isLoading : loadingCaminhoes;
-  const listError = isSearching ? searchQuery.error : errorCaminhoes;
-
-  const handleTipoFiltro = (tipo) => {
-    setTipoFiltro(tipo);
-    setCurrentPage(1);
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      tipo ? next.set("tipo", tipo) : next.delete("tipo");
-      next.delete("pagina");
-      return next;
-    }, { replace: true });
-  };
-
-  const handleOpenDeleteModal = async (caminhao) => {
-    try {
-      const dependenciasResponse = await apiGet(
-        `/caminhoes/${caminhao.placa}/check-dependencies`,
-      );
-
-      const responseData = extractApiData(dependenciasResponse);
-      const { temDependencias, detalhes } = responseData;
-
-      if (temDependencias) {
-        let mensagemDependencias = `Não é possível excluir o caminhão ${caminhao.placa}. Existem registros vinculados:\n`;
-        if (detalhes.gastos > 0)
-          mensagemDependencias += `• ${detalhes.gastos} gastos\n`;
-        if (detalhes.checklists > 0)
-          mensagemDependencias += `• ${detalhes.checklists} manutenções\n`;
-        if (detalhes.pneus > 0)
-          mensagemDependencias += `• ${detalhes.pneus} pneus\n`;
-        if (detalhes.documentos > 0)
-          mensagemDependencias += `• ${detalhes.documentos} documentos\n`;
-        mensagemDependencias +=
-          "\nRemova esses registros antes de excluir o caminhão.";
-        setErrorMessage(mensagemDependencias);
-        toast.error("Este caminhão possui registros vinculados e não pode ser excluído.");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        return;
-      }
-
-      setCaminhaoParaExcluir(caminhao);
-      setOrdensHistoricoCount(detalhes?.ordens_envio ?? 0);
-      setModalOpen(true);
-    } catch (err) {
-      toast.error("Não foi possível verificar dependências. Tente novamente.");
-    }
-  };
-
-  const handleCloseModal = () => {
-    setModalOpen(false);
-    setCaminhaoParaExcluir(null);
-    setOrdensHistoricoCount(0);
-  };
-
-  const handleDeleteCaminhao = async () => {
-    if (!caminhaoParaExcluir) return;
-
-    setExcluindo(true);
-    try {
-      await apiDelete(`/caminhoes/${caminhaoParaExcluir.placa}/cascade`, {
-        skipSuccessToast: true,
-      });
-      toast.success(`Caminhão ${caminhaoParaExcluir.placa} excluído com sucesso.`);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.caminhoes.all });
-      handleCloseModal();
-    } catch (err) {
-      const nextError =
-        err.message?.includes("registros vinculados")
-          ? `Não é possível excluir o caminhão ${caminhaoParaExcluir.placa}. Existem registros vinculados.`
-          : err.message || "Erro ao excluir caminhão. Tente novamente.";
-      setErrorMessage(nextError);
-      toast.error(nextError);
-    } finally {
-      setExcluindo(false);
-    }
-  };
-
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      page > 1 ? next.set("pagina", String(page)) : next.delete("pagina");
-      return next;
-    }, { replace: true });
-  };
-
-  const handleSearchChange = (value) => {
-    setSearchTerm(value);
-    setCurrentPage(1);
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      value ? next.set("busca", value) : next.delete("busca");
-      next.delete("pagina");
-      return next;
-    }, { replace: true });
-  };
-
-  const tipoFiltroLabel =
-    TIPO_FILTROS.find((t) => t.id === tipoFiltro)?.label || "Todos";
+  const totalCaminhoes = overview?.totalCaminhoes ?? pagination?.totalItems ?? caminhoes.length ?? 0;
+  const semMotorista = overview?.semMotorista;
+  const counts = alertsQuery.data?.counts;
+  const urgent = (counts?.critical ?? 0) + (counts?.high ?? 0);
+  const overviewValue = (fn) => (overviewError ? "Indisponível" : fn());
+  const firstName = String(user?.nome || "").trim().split(/\s+/)[0];
 
   return (
-    <PageLayout className="space-y-7">
-        <OnboardingBanner />
-        <PageHeader
-          title="Dashboard"
-          subtitle="Indicadores, custos e situação da frota."
+    <PageLayout className="space-y-6">
+      <OnboardingBanner />
+
+      <PageHeader
+        eyebrow={todayLabel()}
+        title={firstName ? `${greeting()}, ${firstName}` : "Painel"}
+        subtitle="Visão geral da operação: pendências, custos e situação da frota."
+        actions={
+          actions.length ? (
+            <>
+              {actions.slice(0, 2).map((a, i) => (
+                <Link key={a.id} to={a.to}>
+                  <Button
+                    variant={i === 0 ? "primary" : "outline"}
+                    icon={<Icon name={a.icon} className="h-4 w-4" />}
+                  >
+                    {a.label}
+                  </Button>
+                </Link>
+              ))}
+            </>
+          ) : null
+        }
+      />
+
+      <PlanQuotaBanner user={user} resource="vehicles" />
+
+      {del.blockedMessage ? (
+        <Alert
+          type="error"
+          message={<span className="whitespace-pre-line">{del.blockedMessage}</span>}
+          onClose={del.clearBlocked}
         />
+      ) : null}
 
-        <PlanQuotaBanner user={user} resource="vehicles" />
-
-        {errorMessage && (
-          <div className="space-y-3">
-            <Alert
-              type="error"
-              message={
-                <span className="whitespace-pre-line">{errorMessage}</span>
-              }
-              dismissible
-              onClose={() => setErrorMessage("")}
-            />
-          </div>
-        )}
-
-        <section aria-labelledby="resumo-operacional" className="space-y-3">
-          <h2 id="resumo-operacional" className="section-label">Resumo operacional</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-labelledby="resumo-operacional">
+        <h2 id="resumo-operacional" className="sr-only">Resumo operacional</h2>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
           <StatCard
-            title="Total de Caminhões"
-            value={loadingCaminhoes ? "…" : formatNumber(stats.totalCaminhoes)}
-            hint="Veículos cadastrados"
-            color="blue"
-            to="#frota"
-            icon={
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"
-                />
-              </svg>
+            title="Veículos"
+            value={formatNumber(totalCaminhoes)}
+            loading={overviewLoading && fleetQuery.isLoading}
+            hint={
+              semMotorista != null
+                ? semMotorista > 0
+                  ? `${semMotorista} sem motorista`
+                  : "Todos com motorista"
+                : "Veículos cadastrados"
             }
+            color="cyan"
+            to="/frota"
+            icon={<Icon name="truck" />}
           />
           <StatCard
-            title="Gastos Totais"
-            value={overviewLoading ? "…" : overviewError ? "Indisponível" : formatCurrency(stats.totalGastos)}
-            hint="Gastos + manutenções"
-            color="green"
-            to={canReadReports ? "/relatorios" : undefined}
-            icon={
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
+            title="Custo acumulado"
+            value={overviewValue(() => formatCurrency(overview?.totalGastos ?? 0))}
+            loading={overviewLoading}
+            hint={
+              overview && !overviewError
+                ? `Média ${formatCurrency(overview.mediaPorLancamento ?? overview.mediaGastos ?? 0)} por lançamento`
+                : "Gastos + manutenções"
             }
+            color="green"
+            to={canReadReports ? "/relatorios" : "/manutencao-gastos"}
+            icon={<Icon name="money" />}
           />
           <StatCard
             title="Manutenções"
-            value={overviewLoading ? "…" : overviewError ? "Indisponível" : formatNumber(stats.totalManutencoes)}
-            hint="Registros de checklist"
+            value={overviewValue(() => formatNumber(overview?.totalManutencoes ?? 0))}
+            loading={overviewLoading}
+            hint="Serviços registrados"
             color="orange"
-            to="/manutencao-gastos"
-            icon={
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-              </svg>
-            }
+            to="/manutencao-gastos?tipo=manutencao"
+            icon={<Icon name="wrench" />}
           />
-          <StatCard
-            title="Média por lançamento"
-            value={
-              overviewLoading
-                ? "…"
-                : overviewError
-                  ? "Indisponível"
-                  : formatCurrency(stats.mediaGastos)
-            }
-            hint="Custo médio"
-            color="amber"
-            to={canReadReports ? "/relatorios" : undefined}
-            icon={
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            }
-          />
+          {canReadAlerts ? (
+            <StatCard
+              title="Pendências"
+              value={alertsQuery.error ? "Indisponível" : formatNumber(counts?.total ?? 0)}
+              loading={alertsQuery.isLoading}
+              hint={
+                urgent > 0
+                  ? `${urgent} exigem ação imediata`
+                  : (counts?.total ?? 0) > 0
+                    ? "Vencimentos nos próximos 30 dias"
+                    : "Nada vencendo em 30 dias"
+              }
+              emphasis={urgent > 0}
+              color={urgent > 0 ? "red" : "slate"}
+              to="#pendencias"
+              icon={<Icon name="bell" />}
+            />
+          ) : (
+            <StatCard
+              title="Lançamentos"
+              value={overviewValue(() => formatNumber((overview?.gastosCount ?? 0) + (overview?.totalManutencoes ?? 0)))}
+              loading={overviewLoading}
+              hint="Gastos e manutenções"
+              color="slate"
+              to="/manutencao-gastos"
+              icon={<Icon name="receipt" />}
+            />
+          )}
         </div>
-        </section>
+      </section>
 
-        {canReadReports ? (
-          <Suspense
-            fallback={
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                <div className="lg:col-span-2">
-                  <CardSkeleton />
-                </div>
+      {canReadAlerts ? (
+        <section id="pendencias" className="scroll-mt-24" aria-label="Pendências da operação">
+          <OpsAlertsPanel
+            data={alertsQuery.data}
+            isLoading={alertsQuery.isLoading}
+            error={alertsQuery.error}
+            onRetry={() => alertsQuery.refetch()}
+          />
+        </section>
+      ) : null}
+
+      {canReadReports ? (
+        <Suspense
+          fallback={
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+              <div className="xl:col-span-2">
                 <CardSkeleton />
               </div>
-            }
-          >
-            <DashboardCharts
-              overview={overview}
-              trendMonths={trendQuery.data?.months}
-              trendLoading={trendQuery.isLoading}
-              truckCosts={costQuery.data?.items}
-              truckCostsLoading={costQuery.isFetching}
-            />
-          </Suspense>
-        ) : null}
-
-        <section id="frota" className="scroll-mt-24 space-y-5" aria-labelledby="frota-title">
-        <div className="rounded-xl border border-border bg-white p-4 sm:p-5">
-          <div className="mb-4">
-            <h2 id="frota-title" className="text-lg font-semibold text-text-primary">Frota</h2>
-            <p className="mt-1 text-sm text-text-secondary">Busque por placa, motorista ou modelo e acesse os registros do veículo.</p>
-          </div>
-        <div className="w-full space-y-3">
-          <label htmlFor="home-search" className="sr-only">
-            Buscar caminhão por placa, motorista ou modelo
-          </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <svg
-                className="h-5 w-5 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
+              <CardSkeleton />
             </div>
-            <input
-              id="home-search"
-              type="search"
-              className="control block w-full pl-11 pr-4"
-              placeholder="Buscar por placa, motorista ou modelo..."
-              value={searchTerm}
-              onChange={(e) => handleSearchChange(e.target.value)}
-            />
-          </div>
+          }
+        >
+          <DashboardCharts
+            overview={overview}
+            trendMonths={trendQuery.data?.months}
+            trendLoading={trendQuery.isLoading}
+            truckCosts={costQuery.data?.items}
+            truckCostsLoading={costQuery.isFetching}
+          />
+        </Suspense>
+      ) : null}
 
-          <div
-            className="flex flex-wrap gap-2"
-            role="group"
-            aria-label="Filtrar por tipo de veículo"
-          >
-            {TIPO_FILTROS.map((filtro) => {
-              const active = tipoFiltro === filtro.id;
-              return (
-                <button
-                  key={filtro.id || "todos"}
-                  type="button"
-                  onClick={() => handleTipoFiltro(filtro.id)}
-                  className={`px-3.5 py-2.5 min-h-10 rounded-lg text-sm font-medium border transition-colors ${
-                    active
-                      ? "bg-secondary text-white border-secondary shadow-sm"
-                      : "bg-white text-text-secondary border-border hover:border-secondary/40 hover:text-text-primary"
-                  }`}
-                  aria-pressed={active}
-                >
-                  {filtro.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        </div>
-
-        {listError ? (
-          <Alert
-            type="error"
-            title="Erro ao carregar frota"
-            message={listError.message || "Não foi possível carregar a frota."}
-          >
-            <div className="mt-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  isSearching ? searchQuery.refetch() : refetchCaminhoes()
-                }
+      <section id="frota" className="scroll-mt-24" aria-labelledby="frota-title">
+        <Card
+          noPadding
+          className="overflow-hidden"
+          title={<span id="frota-title">Frota</span>}
+          subtitle={
+            pagination?.totalItems > FLEET_PREVIEW
+              ? `Mostrando ${caminhoes.length} de ${pagination.totalItems} veículos`
+              : "Veículos cadastrados"
+          }
+          action={
+            <Link
+              to="/frota"
+              className="inline-flex items-center gap-1 rounded text-[13px] font-semibold text-secondary-dark hover:text-secondary"
+            >
+              Ver todos os veículos <Icon name="arrowRight" className="h-3.5 w-3.5" />
+            </Link>
+          }
+        >
+          {fleetQuery.error ? (
+            <div className="p-4">
+              <Alert
+                type="error"
+                title="Erro ao carregar frota"
+                message={fleetQuery.error.message || "Não foi possível carregar a frota."}
               >
-                Tentar novamente
-              </Button>
-            </div>
-          </Alert>
-        ) : listLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <CardSkeleton />
-            <CardSkeleton />
-            <CardSkeleton />
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center flex-wrap gap-3">
-              <h2 className="text-xl font-bold text-text-primary">
-                {isSearching
-                  ? "Resultados da busca"
-                  : tipoFiltro
-                    ? tipoFiltroLabel
-                    : "Frota recente"}
-              </h2>
-              <div className="flex items-center gap-3">
-                {!isSearching && !tipoFiltro && pagination?.totalPages > 1 && (
-                  <p className="text-sm text-text-secondary">
-                    Página {currentPage} de {pagination.totalPages}
-                  </p>
-                )}
-                {!isSearching && tipoFiltro && pagination && (
-                  <p className="text-sm text-text-secondary">
-                    {pagination.totalItems} veículo
-                    {pagination.totalItems === 1 ? "" : "s"}
-                    {pagination.totalPages > 1
-                      ? ` · pág. ${currentPage}/${pagination.totalPages}`
-                      : ""}
-                  </p>
-                )}
-                {isSearching && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleSearchChange("")}
-                  >
-                    Limpar busca
+                <div className="mt-3">
+                  <Button variant="outline" size="sm" onClick={() => fleetQuery.refetch()}>
+                    Tentar novamente
                   </Button>
-                )}
-              </div>
+                </div>
+              </Alert>
             </div>
-
-            {displayedCaminhoes.length === 0 ? (
+          ) : fleetQuery.isLoading ? (
+            <div className="p-4">
+              <TableSkeleton rows={4} columns={5} />
+            </div>
+          ) : caminhoes.length === 0 ? (
+            <div className="p-4">
               <EmptyState
-                title={
-                  isSearching || tipoFiltro
-                    ? "Nenhum veículo encontrado"
-                    : "Você ainda não possui veículos cadastrados."
-                }
-                description={
-                  isSearching
-                    ? "Tente outro termo ou mude o filtro de tipo."
-                    : tipoFiltro
-                      ? `Não há ${tipoFiltroLabel.toLowerCase()} cadastrados.`
-                      : "Cadastre o primeiro caminhão para acompanhar gastos, manutenção e documentos."
-                }
+                icon={<Icon name="truck" className="h-5 w-5" />}
+                title="Você ainda não possui veículos cadastrados."
+                description="Cadastre o primeiro caminhão para acompanhar gastos, manutenção e documentos."
                 action={
-                  !isSearching && !tipoFiltro && canWriteFrota ? (
-                    <Link
-                      to={
-                        vehicleQuotaReached
-                          ? "/assinatura"
-                          : "/cadastro-caminhao"
-                      }
-                    >
-                      <Button variant="primary">
-                        {vehicleQuotaReached
-                          ? "Fazer upgrade"
-                          : "Adicionar veículo"}
-                      </Button>
+                  canWriteFrota ? (
+                    <Link to={vehicleQuotaReached ? "/assinatura" : "/cadastro-caminhao"}>
+                      <Button>{vehicleQuotaReached ? "Fazer upgrade" : "Adicionar veículo"}</Button>
                     </Link>
                   ) : null
                 }
+                dashed
               />
-            ) : (
-              <>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
-                  {displayedCaminhoes.map((caminhao) => (
-                    <TruckCard
-                      key={caminhao.id}
-                      caminhao={caminhao}
-                      canWrite={canWriteFrota}
-                      onDelete={() => handleOpenDeleteModal(caminhao)}
-                    />
-                  ))}
-                </div>
-                {!isSearching && pagination?.totalPages > 1 && (
-                  <Pagination
-                    currentPage={currentPage}
-                    totalPages={pagination.totalPages}
-                    onPageChange={handlePageChange}
-                  />
-                )}
-              </>
-            )}
-          </div>
-        )}
-        </section>
-
-        <ConfirmModal
-          isOpen={modalOpen}
-          onClose={handleCloseModal}
-          onConfirm={handleDeleteCaminhao}
-          title="Excluir Caminhão"
-          message={
-            ordensHistoricoCount > 0
-              ? `Tem certeza que deseja excluir o caminhão ${caminhaoParaExcluir?.placa}? ${ordensHistoricoCount} registro(s) de ordem de coleta no histórico também serão removidos. Esta ação não pode ser desfeita.`
-              : `Tem certeza que deseja excluir o caminhão ${caminhaoParaExcluir?.placa}? Esta ação não pode ser desfeita.`
-          }
-          confirmText={excluindo ? "Excluindo..." : "Excluir"}
-          cancelText="Cancelar"
-          warning={true}
-          loading={excluindo}
-        />
-    </PageLayout>
-  );
-};
-
-const TruckCard = ({ caminhao, onDelete, canWrite = true }) => {
-  const tipo =
-    TIPO_LABEL[caminhao.tipo_veiculo] ||
-    (caminhao.tipo_veiculo ? String(caminhao.tipo_veiculo) : "Truck");
-  const carretas = carretasVinculadasDoCard(caminhao);
-
-  return (
-  <article className="group flex flex-col overflow-hidden rounded-xl border border-border bg-white shadow-card transition-colors hover:border-cyan-300">
-    <div className="flex-1 p-5">
-      <div className="flex justify-between items-start mb-4">
-        <div className="bg-secondary/10 p-2 rounded-lg">
-          <svg
-            className="w-6 h-6 text-secondary"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"
-            />
-          </svg>
-        </div>
-        <div className="flex flex-col items-end gap-1.5">
-          <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-semibold text-text-secondary">
-            {tipo}
-          </span>
-          <StatusBadge
-            status={caminhao.motorista ? "Com motorista" : "Sem motorista"}
-            type="vehicle"
-          />
-        </div>
-      </div>
-
-      <h3 className="mb-1 font-mono text-xl font-bold tracking-wide text-text-primary">
-        <Link to={`/caminhao/${caminhao.placa}`} className="rounded hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary">
-          {caminhao.placa}
-        </Link>
-      </h3>
-      <p className="text-sm text-text-secondary mb-4">
-        {caminhao.modelo || "Modelo não informado"} •{" "}
-        {caminhao.marca || "Marca não informada"}
-      </p>
-
-      <div className="space-y-2">
-        <div className="flex items-center text-sm text-gray-600">
-          <svg
-            className="w-4 h-4 mr-2 shrink-0 text-gray-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-            />
-          </svg>
-          {caminhao.motorista || "Sem motorista"}
-        </div>
-        <div className="flex items-center text-sm text-gray-600">
-          <svg
-            className="w-4 h-4 mr-2 shrink-0 text-gray-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-            />
-          </svg>
-          {caminhao.ano || "Ano N/A"}
-        </div>
-        {carretas.length > 0 ? (
-          <div className="flex items-start text-sm text-gray-600">
-            <svg
-              className="mt-0.5 w-4 h-4 mr-2 shrink-0 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              aria-hidden
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-              />
-            </svg>
-            <div className="min-w-0">
-              <p className="text-xs font-medium uppercase tracking-wide text-text-secondary">
-                Carreta{carretas.length > 1 ? "s" : ""} vinculada
-                {carretas.length > 1 ? "s" : ""}
-              </p>
-              <ul className="mt-0.5 space-y-0.5">
-                {carretas.map((label) => (
-                  <li key={label} className="font-mono text-sm text-text-primary">
-                    {label}
-                  </li>
-                ))}
-              </ul>
             </div>
-          </div>
-        ) : null}
-      </div>
-    </div>
+          ) : (
+            <FleetTable caminhoes={caminhoes} canWrite={canWriteFrota} onDelete={del.requestDelete} />
+          )}
+        </Card>
+      </section>
 
-    <div className="flex items-center justify-between border-t border-border bg-slate-50/70 px-5 py-3">
-      <Link
-        to={`/caminhao/${caminhao.placa}`}
-        className="rounded text-sm font-semibold text-secondary hover:text-secondary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
-      >
-        Ver detalhes
-      </Link>
-      <div className="flex gap-2">
-        {canWrite && (
-          <>
-        <Link to={`/caminhao/editar/${caminhao.placa}`}>
-          <button
-            type="button"
-            aria-label={`Editar caminhão ${caminhao.placa}`}
-            className="p-2.5 min-h-10 min-w-10 inline-flex items-center justify-center text-gray-400 hover:text-secondary transition-colors rounded-md hover:bg-blue-50"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-              />
-            </svg>
-          </button>
-        </Link>
-        <button
-          type="button"
-          onClick={onDelete}
-          aria-label={`Excluir caminhão ${caminhao.placa}`}
-          className="p-2.5 min-h-10 min-w-10 inline-flex items-center justify-center text-gray-400 hover:text-danger transition-colors rounded-md hover:bg-red-50"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-            />
-          </svg>
-        </button>
-          </>
-        )}
-      </div>
-    </div>
-  </article>
+      <ConfirmModal
+        isOpen={Boolean(del.target)}
+        onClose={del.cancel}
+        onConfirm={del.confirm}
+        title="Excluir caminhão"
+        message={del.confirmMessage}
+        confirmText={del.deleting ? "Excluindo..." : "Excluir"}
+        cancelText="Cancelar"
+        warning
+        loading={del.deleting}
+      />
+    </PageLayout>
   );
 };
 

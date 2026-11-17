@@ -389,8 +389,9 @@ const Pneus = () => {
         items={[{ label: "Início", to: "/" }, { label: "Pneus em uso" }]}
       />
       <PageHeader
-        title="Controle de Pneus"
-        subtitle="Gerencie a atribuição de pneus aos caminhões da frota"
+        eyebrow="Frota · Pneus"
+        title="Pneus em uso"
+        subtitle="Pneus instalados por veículo, posição e vida útil restante."
         actions={
           <div className="flex flex-wrap gap-2">
             {canWrite && (
@@ -399,7 +400,7 @@ const Pneus = () => {
             </Button>
             )}
             <Link to="/pneus/estoque">
-              <Button variant="outline">Ir para Estoque de Pneus</Button>
+              <Button variant="outline">Ver estoque</Button>
             </Link>
           </div>
         }

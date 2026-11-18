@@ -221,7 +221,7 @@ export default function TelemetriaConfig() {
             <div>
               <p className="font-semibold text-text-primary">Consumo e eficiência por veículo</p>
               <p className="text-sm text-text-secondary">
-                Km rodados, km/L (telemetria × diesel lançado) e custo por km ficam em Histórico e desempenho.
+                Km rodados, litros, litros por km e custo por km ficam em Histórico e desempenho.
               </p>
             </div>
             <Link to="/telemetria/historico">

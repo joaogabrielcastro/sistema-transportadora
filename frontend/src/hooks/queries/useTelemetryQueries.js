@@ -155,12 +155,3 @@ export function useRotateTelemetryCredentialMutation() {
     onSuccess: () => invalidateTelemetry(qc),
   });
 }
-
-export function useResolveTelemetryAlertMutation() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id) =>
-      apiFetch({ method: "POST", url: `/telemetry/alerts/${id}/resolve` }),
-    onSuccess: () => invalidateTelemetry(qc),
-  });
-}

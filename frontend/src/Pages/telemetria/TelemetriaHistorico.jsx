@@ -20,7 +20,9 @@ import { TableSkeleton } from "../../components/Skeleton.jsx";
 import {
   formatDuration,
   formatKm,
-  kmPerLiter,
+  formatLiters,
+  formatLitersPerKm,
+  litersPerKm,
   segmentTrips,
 } from "../../utils/telemetryDisplay.js";
 import FleetMap from "../../components/telemetria/FleetMap.jsx";
@@ -418,11 +420,22 @@ export default function TelemetriaHistorico() {
   if (!vehicleMode) {
     const vehicles = efficiency?.vehicles || [];
     const rodaram = vehicles.filter((v) => Number(v.km) > 0);
-    const fleetKmL = kmPerLiter(efficiency?.fleet_km_per_l);
-    const implausibleCount = vehicles.filter((v) => {
-      const k = kmPerLiter(v.km_per_l);
-      return k.value != null && !k.plausible;
-    }).length;
+    // Litros da mesma fonte que o backend usa no consumo: telemetria quando
+    // houver; senão, os abastecimentos lançados.
+    const litersOf = (v) =>
+      v.efficiency_source === "telemetry"
+        ? v.fuel_telemetry_l
+        : v.efficiency_source === "manual"
+          ? v.fuel_manual_l
+          : null;
+    const consumption = (v) => litersPerKm(litersOf(v), v.km);
+    // Frota: soma dos litros ÷ soma dos km (média ponderada pela distância).
+    const withFuel = vehicles.filter((v) => consumption(v).value != null);
+    const fleetLKm = litersPerKm(
+      withFuel.reduce((acc, v) => acc + Number(litersOf(v) || 0), 0),
+      withFuel.reduce((acc, v) => acc + Number(v.km || 0), 0),
+    );
+    const implausibleCount = withFuel.filter((v) => !consumption(v).plausible).length;
     const sorted = [...vehicles].sort((a, b) => Number(b.km || 0) - Number(a.km || 0));
 
     return (
@@ -453,20 +466,16 @@ export default function TelemetriaHistorico() {
             />
             <StatCard
               layout="compact"
-              title="Consumo médio da frota"
-              value={
-                loadingEff
-                  ? "…"
-                  : fleetKmL.value == null
-                    ? "—"
-                    : `${fleetKmL.value.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km/L`
-              }
+              title="Consumo da frota"
+              value={loadingEff ? "…" : formatLitersPerKm(fleetLKm.value)}
               hint={
-                fleetKmL.value != null && !fleetKmL.plausible
-                  ? "Fora da faixa esperada — verifique sensores"
-                  : "Telemetria ou abastecimentos lançados"
+                fleetLKm.value == null
+                  ? "Sem litros registrados no período"
+                  : !fleetLKm.plausible
+                    ? "Fora da faixa esperada — verifique sensores"
+                    : `${formatLiters(fleetLKm.liters)} em ${formatKm(fleetLKm.km)}`
               }
-              color={fleetKmL.value != null && !fleetKmL.plausible ? "amber" : "green"}
+              color={fleetLKm.value != null && !fleetLKm.plausible ? "amber" : "green"}
               icon={<Icon name="fuel" />}
             />
           </div>
@@ -475,7 +484,7 @@ export default function TelemetriaHistorico() {
             <Alert
               type="warning"
               title="Consumo com valores fora do esperado"
-              message={`${implausibleCount} veículo(s) com km/L fora da faixa de ${"0,8–8"} km/L típica de caminhões. Normalmente indica contador de combustível do rastreador mal configurado; compare com o diesel lançado na coluna ao lado antes de usar o número.`}
+              message={`${implausibleCount} veículo(s) com consumo fora da faixa típica de caminhões (0,12 a 1,25 L/km). Normalmente indica contador de combustível do rastreador mal configurado; compare com o diesel lançado antes de usar o número.`}
             />
           ) : null}
 
@@ -504,15 +513,15 @@ export default function TelemetriaHistorico() {
                   <tr>
                     <DataTableTh>Veículo</DataTableTh>
                     <DataTableTh align="right">Km</DataTableTh>
-                    <DataTableTh align="right">Consumo</DataTableTh>
-                    <DataTableTh align="right">Diesel lançado</DataTableTh>
+                    <DataTableTh align="right">Litros</DataTableTh>
+                    <DataTableTh align="right">Litros por km</DataTableTh>
                     <DataTableTh align="right">Custo / km</DataTableTh>
                     <DataTableTh align="right"><span className="sr-only">Ações</span></DataTableTh>
                   </tr>
                 </DataTableHead>
                 <DataTableBody>
                   {sorted.map((v) => {
-                    const k = kmPerLiter(v.km_per_l);
+                    const k = consumption(v);
                     return (
                       <DataTableRow key={v.caminhao_id}>
                         <DataTableTd>
@@ -522,20 +531,24 @@ export default function TelemetriaHistorico() {
                           {Number(v.km) > 0 ? formatKm(v.km) : <span className="text-text-light">Parado</span>}
                         </DataTableTd>
                         <DataTableTd align="right" className="whitespace-nowrap tabular-nums">
+                          {litersOf(v) != null ? formatLiters(litersOf(v)) : <span className="text-text-light">—</span>}
+                          <span className="block text-[11px] text-text-light">
+                            {v.efficiency_source === "telemetry"
+                              ? `telemetria${v.fuel_manual_l != null ? ` · lançados ${formatLiters(v.fuel_manual_l)}` : ""}`
+                              : v.efficiency_source === "manual"
+                                ? "abastecimentos lançados"
+                                : ""}
+                          </span>
+                        </DataTableTd>
+                        <DataTableTd align="right" className="whitespace-nowrap tabular-nums">
                           {k.value == null ? (
                             <span className="text-text-light">—</span>
                           ) : (
-                            <span className={k.plausible ? "text-text-primary" : "text-amber-700"} title={k.plausible ? undefined : "Fora da faixa esperada para caminhões"}>
+                            <span className={k.plausible ? "font-semibold text-text-primary" : "text-amber-700"} title={k.plausible ? undefined : "Fora da faixa esperada para caminhões"}>
                               {!k.plausible ? <Icon name="alert" className="mr-1 inline h-3.5 w-3.5 align-[-2px]" /> : null}
-                              {k.value.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km/L
+                              {formatLitersPerKm(k.value)}
                             </span>
                           )}
-                          <span className="block text-[11px] text-text-light">
-                            {v.efficiency_source === "telemetry" ? "pela telemetria" : v.efficiency_source === "manual" ? "pelos abastecimentos" : ""}
-                          </span>
-                        </DataTableTd>
-                        <DataTableTd align="right" className="tabular-nums">
-                          {v.fuel_manual_l != null ? `${Number(v.fuel_manual_l).toLocaleString("pt-BR", { maximumFractionDigits: 0 })} L` : <span className="text-text-light">—</span>}
                         </DataTableTd>
                         <DataTableTd align="right" className="tabular-nums">
                           {v.cost_per_km != null ? Number(v.cost_per_km).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : <span className="text-text-light">—</span>}
@@ -644,25 +657,22 @@ export default function TelemetriaHistorico() {
           ) : (
             <div className="flex min-h-0 flex-1 flex-col">
               <dl className="grid grid-cols-2 gap-2 border-b border-border p-3 text-sm">
-                <div className="rounded-lg bg-cyan-50 px-2.5 py-2 ring-1 ring-cyan-100">
-                  <dt className="text-[11px] font-semibold text-cyan-800">
-                    Rendimento
-                  </dt>
-                  <dd className="font-bold tabular-nums text-cyan-950">
-                    {data?.period_km_per_l != null
-                      ? `${Number(data.period_km_per_l).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km/L`
-                      : "—"}
-                  </dd>
-                  {data?.period_km_per_l != null && !kmPerLiter(data.period_km_per_l).plausible ? (
-                    <p className="text-[10px] leading-tight text-amber-700">Fora da faixa esperada</p>
-                  ) : null}
-                </div>
+                {(() => {
+                  const c = litersPerKm(data?.period_fuel_l, data?.period_km);
+                  return (
+                    <div className="rounded-lg bg-cyan-50 px-2.5 py-2 ring-1 ring-cyan-100">
+                      <dt className="text-[11px] font-semibold text-cyan-800">Litros por km</dt>
+                      <dd className="font-bold tabular-nums text-cyan-950">{formatLitersPerKm(c.value)}</dd>
+                      {c.value != null && !c.plausible ? (
+                        <p className="text-[10px] leading-tight text-amber-700">Fora da faixa esperada</p>
+                      ) : null}
+                    </div>
+                  );
+                })()}
                 <div className="rounded-lg bg-slate-50 px-2.5 py-2">
-                  <dt className="text-[11px] text-text-secondary">Combustível</dt>
+                  <dt className="text-[11px] text-text-secondary">Litros</dt>
                   <dd className="font-semibold tabular-nums">
-                    {data?.period_fuel_l != null
-                      ? `${Number(data.period_fuel_l).toFixed(1)} L`
-                      : "—"}
+                    {data?.period_fuel_l != null && Number(data.period_fuel_l) > 0 ? formatLiters(data.period_fuel_l) : "—"}
                   </dd>
                 </div>
                 <div className="rounded-lg bg-slate-50 px-2.5 py-2">

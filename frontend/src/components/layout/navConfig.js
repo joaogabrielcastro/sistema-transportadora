@@ -55,7 +55,7 @@ export const NAV_SECTIONS = [
       { path: "/telemetria/historico", label: "Histórico", icon: "clock", permission: PERMISSIONS.TELEMETRY_READ, keywords: "rotas trajetos" },
       { path: "/telemetria/dispositivos", label: "Dispositivos", icon: "device", permission: PERMISSIONS.TELEMETRY_READ, keywords: "rastreadores imei" },
       { path: "/telemetria/geocercas", label: "Geocercas", icon: "map", permission: PERMISSIONS.TELEMETRY_READ, keywords: "cercas areas" },
-      { path: "/telemetria/config", label: "Ajustes", icon: "cog", permission: PERMISSIONS.TELEMETRY_READ, keywords: "telemetria regras alertas" },
+      { path: "/telemetria/config", label: "Ajustes", icon: "cog", permission: PERMISSIONS.TELEMETRY_READ, keywords: "telemetria plano retencao equipamentos" },
     ],
   },
   {

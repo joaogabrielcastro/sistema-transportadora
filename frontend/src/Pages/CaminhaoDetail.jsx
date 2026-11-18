@@ -9,7 +9,7 @@ import PageLayout from "../components/layout/PageLayout.jsx";
 import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
 import Icon from "../components/ui/Icon.jsx";
 import { useTelemetryCurrentQuery } from "../hooks/queries/useTelemetryQueries.js";
-import { VEHICLE_STATUS, kmPerLiter, relativeTime, vehicleStatus } from "../utils/telemetryDisplay.js";
+import { VEHICLE_STATUS, litersPerKmFromKmPerL, relativeTime, vehicleStatus } from "../utils/telemetryDisplay.js";
 import { CardSkeleton } from "../components/Skeleton.jsx";
 import CaminhaoDocumentos from "../components/CaminhaoDocumentos";
 import VinculosComposicao from "../components/VinculosComposicao.jsx";
@@ -83,6 +83,8 @@ const CaminhaoDetail = () => {
   const checklists = useMemo(() => data?.checklists ?? [], [data?.checklists]);
   const pneus = useMemo(() => data?.pneus ?? [], [data?.pneus]);
   const consumoKmPorLitro = data?.consumoKmPorLitro ?? null;
+  // Exibido como litros por km (L/km), padrão do ATrack para consumo.
+  const consumo = litersPerKmFromKmPerL(consumoKmPorLitro);
   const listTruncation = data?.listTruncation ?? {
     gastos: false,
     checklists: false,
@@ -442,17 +444,15 @@ const CaminhaoDetail = () => {
 
           <Card title="Eficiência" className="h-full">
             <div className="flex flex-col items-center justify-center h-full py-4">
-              {consumoKmPorLitro ? (
+              {consumo.value != null ? (
                 <>
                   <div className="mb-2 text-4xl font-bold tabular-nums text-emerald-600">
-                    {Number.isFinite(Number(consumoKmPorLitro))
-                      ? Number(consumoKmPorLitro).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                      : consumoKmPorLitro}
+                    {consumo.value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
-                  <p className="text-lg font-medium text-gray-600">Km/L</p>
-                  {!kmPerLiter(consumoKmPorLitro).plausible ? (
+                  <p className="text-lg font-medium text-gray-600">litros por km</p>
+                  {!consumo.plausible ? (
                     <p className="mt-2 max-w-[16rem] text-center text-xs font-medium text-amber-700">
-                      Valor fora da faixa típica de caminhões (0,8–8 km/L). Confira litros e KM dos abastecimentos.
+                      Valor fora da faixa típica de caminhões (0,12 a 1,25 L/km). Confira litros e KM dos abastecimentos.
                     </p>
                   ) : null}
                   <p className="text-sm text-gray-400 mt-4 text-center">

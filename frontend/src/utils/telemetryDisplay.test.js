@@ -1,7 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  kmPerLiter,
+  formatLitersPerKm,
+  litersPerKm,
+  litersPerKmFromKmPerL,
   relativeTime,
   segmentTrips,
   vehicleStatus,
@@ -25,11 +27,16 @@ test("relativeTime em pt-BR", () => {
   assert.equal(relativeTime(null, now), "—");
 });
 
-test("kmPerLiter sinaliza valores implausíveis", () => {
-  assert.deepEqual(kmPerLiter(2.6), { value: 2.6, plausible: true });
-  assert.equal(kmPerLiter(197.8).plausible, false);
-  assert.equal(kmPerLiter(0).value, null);
-  assert.equal(kmPerLiter(null).value, null);
+test("litersPerKm = litros ÷ km, com faixa plausível", () => {
+  const r = litersPerKm(190, 500);
+  assert.equal(r.value, 0.38);
+  assert.equal(r.plausible, true);
+  assert.equal(litersPerKm(2.7, 473).plausible, false);
+  assert.equal(litersPerKm(0, 100).value, null);
+  assert.equal(litersPerKm(50, 0).value, null);
+  assert.equal(litersPerKm(null, 10).value, null);
+  assert.equal(litersPerKmFromKmPerL(2.5).value, 0.4);
+  assert.equal(formatLitersPerKm(0.384), "0,38 L/km");
 });
 
 test("segmentTrips separa viagens e paradas longas, ignora paradas curtas", () => {

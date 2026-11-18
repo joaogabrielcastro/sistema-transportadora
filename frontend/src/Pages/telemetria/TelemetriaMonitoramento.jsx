@@ -3,23 +3,18 @@ import { Link, useSearchParams } from "react-router-dom";
 import PageLayout from "../../components/layout/PageLayout.jsx";
 import { Alert, Button } from "../../components/ui";
 import Icon from "../../components/ui/Icon.jsx";
-import { useToast } from "../../components/ui/useToast.js";
 import FleetMap from "../../components/telemetria/FleetMap.jsx";
 import { FLEET_MAP_STYLES } from "../../components/telemetria/mapStyles.js";
 import { useCaminhoesListQuery } from "../../hooks/queries/useCaminhoesQuery.js";
 import {
-  useResolveTelemetryAlertMutation,
-  useTelemetryAlertsQuery,
   useTelemetryCurrentQuery,
   useTelemetryGeofencesQuery,
 } from "../../hooks/queries/useTelemetryQueries.js";
-import { useAuth } from "../../context/AuthContext.jsx";
-import { PERMISSIONS, userHasPermission } from "../../utils/permissions.js";
-import { parseApiError } from "../../lib/apiClient.js";
 import {
   VEHICLE_STATUS,
   googleMapsUrl,
-  kmPerLiter,
+  formatLitersPerKm,
+  litersPerKm,
   relativeTime,
   vehicleStatus,
 } from "../../utils/telemetryDisplay.js";
@@ -106,33 +101,16 @@ function Metric({ label, value, hint, warn = false }) {
   );
 }
 
-const ALERT_TYPE_LABEL = {
-  speed: "Excesso de velocidade",
-  offline: "Rastreador sem sinal",
-  geofence_enter: "Entrou em geocerca",
-  geofence_exit: "Saiu de geocerca",
-  engine_temp: "Temperatura do motor",
-  ignition_on: "Ignição ligada",
-  ignition_off: "Ignição desligada",
-};
 
 /**
  * Console operacional: mapa em tela cheia, lista da frota com um status claro
- * por veículo, painel de detalhe e alertas abertos da telemetria.
+ * por veículo e painel de detalhe.
  */
 export default function TelemetriaMonitoramento() {
-  const toast = useToast();
-  const { user } = useAuth();
-  const canWrite = userHasPermission(user, PERMISSIONS.TELEMETRY_WRITE);
   const { data: current = [], isLoading, error, refetch, dataUpdatedAt } =
     useTelemetryCurrentQuery({}, { refetchInterval: POLL_MS });
   const { data: caminhoesRes } = useCaminhoesListQuery({ page: 1, limit: 200 });
   const { data: geofences = [] } = useTelemetryGeofencesQuery();
-  const { data: openAlerts = [] } = useTelemetryAlertsQuery(
-    { status: "open" },
-    { refetchInterval: 30_000 },
-  );
-  const resolveMut = useResolveTelemetryAlertMutation();
 
   const [searchParams] = useSearchParams();
   // ?caminhao=ID (vindo da ficha do veículo) abre já com ele selecionado.
@@ -148,7 +126,6 @@ export default function TelemetriaMonitoramento() {
     setSelectedId(id);
     if (isNarrow()) setListOpen(false);
   };
-  const [alertsOpen, setAlertsOpen] = useState(false);
   const [mapStyle, setMapStyle] = useState("modern");
   const [followSelected, setFollowSelected] = useState(true);
   const [showTrail, setShowTrail] = useState(true);
@@ -216,7 +193,7 @@ export default function TelemetriaMonitoramento() {
         if (cur.startFuelL == null && row.fuelConsumedL != null) cur.startFuelL = row.fuelConsumedL;
         const km = cur.startOdo != null && row.odometerKm != null ? Math.max(0, row.odometerKm - cur.startOdo) : null;
         const liters = cur.startFuelL != null && row.fuelConsumedL != null ? Math.max(0, row.fuelConsumedL - cur.startFuelL) : null;
-        const updated = { ...cur, km, liters, kmPerL: km != null && liters != null && liters > 0.05 ? km / liters : null };
+        const updated = { ...cur, km, liters };
         if (JSON.stringify(updated) !== JSON.stringify(next[row.id])) {
           next[row.id] = updated;
           changed = true;
@@ -249,14 +226,6 @@ export default function TelemetriaMonitoramento() {
   }, [rows, filter, query]);
 
   const selected = rows.find((r) => String(r.id) === String(selectedId)) || null;
-  const alertsBySelected = selected
-    ? openAlerts.filter((a) => Number(a.caminhao_id) === Number(selected.id))
-    : [];
-  const alertsByTruck = useMemo(() => {
-    const m = new Map();
-    for (const a of openAlerts) m.set(Number(a.caminhao_id), (m.get(Number(a.caminhao_id)) || 0) + 1);
-    return m;
-  }, [openAlerts]);
 
   // Endereço só é buscado de novo quando o veículo anda ~100 m.
   const latKey = selected?.lat != null ? selected.lat.toFixed(3) : null;
@@ -295,17 +264,9 @@ export default function TelemetriaMonitoramento() {
 
   const trailPath = showTrail && selected ? liveTrails[selected.id] || [] : [];
   const fuelInfo = selected ? sessionFuel[selected.id] : null;
-  const sessionKmL = kmPerLiter(fuelInfo?.kmPerL);
+  const sessionLKm = litersPerKm(fuelInfo?.liters, fuelInfo?.km);
   const lastUpdateSec = dataUpdatedAt ? Math.max(0, Math.round((now - dataUpdatedAt) / 1000)) : null;
 
-  const resolveAlert = async (id) => {
-    try {
-      await resolveMut.mutateAsync(id);
-      toast.success("Alerta marcado como resolvido.");
-    } catch (err) {
-      toast.error((await parseApiError(err)).message || "Não foi possível resolver o alerta.");
-    }
-  };
 
   const toggleClass = (on) =>
     `inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold transition-colors ${
@@ -374,17 +335,6 @@ export default function TelemetriaMonitoramento() {
                 );
               })}
             </div>
-            {openAlerts.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => setAlertsOpen((v) => !v)}
-                aria-expanded={alertsOpen}
-                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-red-50 px-2.5 text-xs font-semibold text-red-700 ring-1 ring-red-200 hover:bg-red-100"
-              >
-                <Icon name="bell" className="h-3.5 w-3.5" />
-                {openAlerts.length} alerta{openAlerts.length === 1 ? "" : "s"}
-              </button>
-            ) : null}
             <div className="flex shrink-0 items-center gap-1.5">
               <button type="button" aria-pressed={showTrail} onClick={() => setShowTrail((v) => !v)} className={toggleClass(showTrail)} title="Mostrar o caminho percorrido desde que a tela foi aberta">
                 <Icon name="route" className="h-3.5 w-3.5" /> Rastro
@@ -411,46 +361,6 @@ export default function TelemetriaMonitoramento() {
             </span>
           </div>
         </div>
-
-        {/* Alertas abertos */}
-        {alertsOpen && openAlerts.length > 0 ? (
-          <div className="absolute right-3 top-[4.5rem] z-[600] max-h-[50vh] w-[min(100%-1.5rem,380px)] overflow-hidden rounded-xl border border-border bg-white shadow-pop sm:right-4 sm:top-[5rem]">
-            <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
-              <p className="text-sm font-semibold text-text-primary">Alertas abertos</p>
-              <button type="button" className="text-xs text-text-secondary hover:text-text-primary" onClick={() => setAlertsOpen(false)}>
-                Fechar
-              </button>
-            </div>
-            <ul className="scrollbar-thin max-h-[calc(50vh-3rem)] divide-y divide-border overflow-y-auto">
-              {openAlerts.map((a) => (
-                <li key={a.id} className="flex items-start gap-3 px-3 py-2.5">
-                  <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${a.severity === "critical" ? "bg-red-500" : "bg-amber-500"}`} aria-hidden />
-                  <button
-                    type="button"
-                    className="min-w-0 flex-1 text-left"
-                    onClick={() => {
-                      pickVehicle(a.caminhao_id);
-                      setAlertsOpen(false);
-                    }}
-                  >
-                    <span className="flex items-center gap-2">
-                      {a.placa ? <span className="plate !text-[11px]">{a.placa}</span> : null}
-                      <span className="truncate text-sm font-medium text-text-primary">{ALERT_TYPE_LABEL[a.alert_type] || a.alert_type}</span>
-                    </span>
-                    <span className="mt-0.5 block text-xs text-text-secondary">
-                      {a.description} · {relativeTime(a.occurred_at, now)}
-                    </span>
-                  </button>
-                  {canWrite ? (
-                    <Button size="xs" variant="outline" onClick={() => resolveAlert(a.id)} disabled={resolveMut.isPending}>
-                      Resolver
-                    </Button>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
 
         {/* Lista da frota */}
         {listOpen && (
@@ -491,7 +401,6 @@ export default function TelemetriaMonitoramento() {
                   const active = String(row.id) === String(selectedId);
                   const s = VEHICLE_STATUS[row.vstatus];
                   const onMap = Number.isFinite(row.lat) && Number.isFinite(row.lng);
-                  const nAlerts = alertsByTruck.get(Number(row.id)) || 0;
                   return (
                     <li key={row.id}>
                       <button
@@ -506,12 +415,6 @@ export default function TelemetriaMonitoramento() {
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center gap-2">
                             <span className="plate !text-[12px]">{row.label}</span>
-                            {nAlerts ? (
-                              <span className="inline-flex items-center gap-0.5 rounded bg-red-50 px-1 text-[10px] font-bold text-red-700" title={`${nAlerts} alerta(s) aberto(s)`}>
-                                <Icon name="bell" className="h-3 w-3" />
-                                {nAlerts}
-                              </span>
-                            ) : null}
                           </span>
                           <span className="mt-1 block truncate text-xs text-text-secondary">
                             {row.motorista || "Sem motorista"}
@@ -602,31 +505,15 @@ export default function TelemetriaMonitoramento() {
                       <Metric
                         label="Desde que abriu esta tela"
                         value={`${fuelInfo.km.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} km${
-                          sessionKmL.value != null
-                            ? ` · ${sessionKmL.value.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km/L`
+                          sessionLKm.value != null
+                            ? ` · ${formatLitersPerKm(sessionLKm.value)}`
                             : ""
                         }`}
-                        hint={sessionKmL.value != null && !sessionKmL.plausible ? "Consumo fora da faixa esperada — verifique o sensor." : null}
+                        hint={sessionLKm.value != null && !sessionLKm.plausible ? "Consumo fora da faixa esperada — verifique o sensor." : null}
                       />
                     </div>
                   ) : null}
                 </dl>
-
-                {alertsBySelected.length ? (
-                  <ul className="mt-3 space-y-1.5">
-                    {alertsBySelected.slice(0, 3).map((a) => (
-                      <li key={a.id} className="flex items-start gap-2 rounded-lg bg-red-50 px-2.5 py-2 text-xs text-red-800">
-                        <Icon name="alert" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                        <span className="min-w-0 flex-1">{a.description} · {relativeTime(a.occurred_at, now)}</span>
-                        {canWrite ? (
-                          <button type="button" className="shrink-0 font-semibold underline-offset-2 hover:underline" onClick={() => resolveAlert(a.id)}>
-                            Resolver
-                          </button>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
 
                 <p className="mt-3 flex items-start gap-1.5 text-xs text-text-secondary">
                   <Icon name="map" className="mt-px h-3.5 w-3.5 shrink-0" />

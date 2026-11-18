@@ -8,10 +8,11 @@
 export const MOVING_SPEED_KMH = 3;
 
 /**
- * Faixa plausível de km/L para veículos pesados. Fora dela o número quase
+ * Consumo exibido em litros por km (L/km). Faixa plausível para veículos
+ * pesados ≈ 0,12–1,25 L/km (equivale a 8–0,8 km/L). Fora dela o número quase
  * sempre indica sensor/contador incorreto — exibimos com aviso, não como fato.
  */
-export const PLAUSIBLE_KM_PER_L = { min: 0.8, max: 8 };
+export const PLAUSIBLE_L_PER_KM = { min: 0.12, max: 1.25 };
 
 export const VEHICLE_STATUS = {
   moving: { label: "Em movimento", dot: "bg-emerald-500", tone: "text-emerald-700", chip: "bg-emerald-50 text-emerald-700 ring-emerald-200" },
@@ -57,14 +58,42 @@ export function formatDuration(ms) {
   return m ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`;
 }
 
-/** @returns {{ value: number|null, plausible: boolean }} */
-export function kmPerLiter(value) {
-  const n = value == null ? null : Number(value);
-  if (n == null || !Number.isFinite(n) || n <= 0) return { value: null, plausible: false };
+/**
+ * Litros por km = litros ÷ km. Sem litros ou sem km, não há consumo.
+ * @returns {{ value: number|null, plausible: boolean, liters: number|null, km: number|null }}
+ */
+export function litersPerKm(liters, km) {
+  const l = liters == null ? null : Number(liters);
+  const k = km == null ? null : Number(km);
+  if (l == null || k == null || !Number.isFinite(l) || !Number.isFinite(k) || l <= 0 || k <= 0) {
+    return { value: null, plausible: false, liters: Number.isFinite(l) ? l : null, km: Number.isFinite(k) ? k : null };
+  }
+  const value = l / k;
   return {
-    value: n,
-    plausible: n >= PLAUSIBLE_KM_PER_L.min && n <= PLAUSIBLE_KM_PER_L.max,
+    value,
+    plausible: value >= PLAUSIBLE_L_PER_KM.min && value <= PLAUSIBLE_L_PER_KM.max,
+    liters: l,
+    km: k,
   };
+}
+
+/** Converte um km/L (já calculado em outro lugar) para L/km. */
+export function litersPerKmFromKmPerL(kmPerL) {
+  const n = Number(kmPerL);
+  if (!Number.isFinite(n) || n <= 0) return litersPerKm(null, null);
+  return litersPerKm(1, n);
+}
+
+/** "0,38 L/km" */
+export function formatLitersPerKm(value) {
+  if (value == null || !Number.isFinite(Number(value))) return "—";
+  return `${Number(value).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} L/km`;
+}
+
+export function formatLiters(value) {
+  const n = Number(value);
+  if (value == null || !Number.isFinite(n)) return "—";
+  return `${n.toLocaleString("pt-BR", { maximumFractionDigits: n >= 100 ? 0 : 1 })} L`;
 }
 
 export function formatKm(value, decimals = 0) {

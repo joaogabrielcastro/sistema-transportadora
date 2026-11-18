@@ -300,6 +300,10 @@ export async function cleanupTenant(tenantId) {
   await prisma.telemetry_daily.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.telemetry_device_assignments.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.telemetry_devices.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
+  await prisma.telemetry_alerts.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
+  await prisma.telemetry_alert_rules.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
+  await prisma.telemetry_geofences.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
+  await prisma.telemetry_subscriptions.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.fiscal_averbacoes.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.audit_logs.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.auth_tokens.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});

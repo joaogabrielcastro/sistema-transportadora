@@ -103,7 +103,9 @@ test("CRUD dispositivo, assign, current/history e last_seen no ingest", { skip }
       .set("Authorization", `Device ${secret}`)
       .send({
         event_id: `adm-${Date.now()}`,
-        recorded_at: "2026-11-13T12:00:00.000Z",
+        // Data relativa: o vínculo é criado agora, e eventos anteriores ao
+        // vínculo são recusados (409). Uma data fixa expira com o tempo.
+        recorded_at: new Date().toISOString(),
         latitude: -25.4,
         longitude: -49.2,
         speed_kmh: 55,

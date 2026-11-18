@@ -2,7 +2,6 @@ import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import {
   Chart as ChartJS,
-  ArcElement,
   CategoryScale,
   LinearScale,
   BarElement,
@@ -12,10 +11,9 @@ import {
   Legend,
   Filler,
 } from "chart.js";
-import { Doughnut, Bar, Line } from "react-chartjs-2";
+import { Bar, Line } from "react-chartjs-2";
 
 ChartJS.register(
-  ArcElement,
   CategoryScale,
   LinearScale,
   BarElement,
@@ -75,71 +73,6 @@ ChartShell.propTypes = {
   empty: PropTypes.string,
 };
 
-/** Status ao vivo da frota (em movimento / parado / sem sinal). */
-export function FleetStatusChart({ rows = [] }) {
-  const counts = useMemo(() => {
-    let moving = 0;
-    let stopped = 0;
-    let offline = 0;
-    for (const row of rows) {
-      const status = row.connection_status || row.status;
-      const speed = Number(row.velocidade_kmh ?? row.speedKmh);
-      if (status === "offline" || status === "awaiting") {
-        offline += 1;
-      } else if (Number.isFinite(speed) && speed > 3) {
-        moving += 1;
-      } else {
-        stopped += 1;
-      }
-    }
-    return { moving, stopped, offline };
-  }, [rows]);
-
-  const total = counts.moving + counts.stopped + counts.offline;
-  const data = {
-    labels: ["Em movimento", "Parados", "Sem sinal"],
-    datasets: [
-      {
-        data: [counts.moving, counts.stopped, counts.offline],
-        backgroundColor: [BRAND.success, BRAND.warning, BRAND.muted],
-        borderWidth: 0,
-      },
-    ],
-  };
-
-  return (
-    <ChartShell
-      title="Status da frota"
-      subtitle="Visão ao vivo dos veículos com telemetria"
-      empty={total === 0 ? "Nenhum veículo com posição ainda." : null}
-    >
-      <Doughnut
-        data={data}
-        options={{
-          ...chartDefaults,
-          cutout: "62%",
-          plugins: {
-            ...chartDefaults.plugins,
-            tooltip: {
-              callbacks: {
-                label: (ctx) => {
-                  const v = Number(ctx.raw) || 0;
-                  const pct = total ? Math.round((v / total) * 100) : 0;
-                  return ` ${ctx.label}: ${v} (${pct}%)`;
-                },
-              },
-            },
-          },
-        }}
-      />
-    </ChartShell>
-  );
-}
-
-FleetStatusChart.propTypes = {
-  rows: PropTypes.array,
-};
-
 /** Km agregados por veículo (telemetry_daily / efficiency). */
 export function KmByVehicleChart({ vehicles = [] }) {
   const sorted = useMemo(
@@ -190,68 +123,6 @@ export function KmByVehicleChart({ vehicles = [] }) {
 }
 
 KmByVehicleChart.propTypes = {
-  vehicles: PropTypes.array,
-};
-
-/** Rendimento km/L por veículo — métrica central de telemetria. */
-export function FuelEfficiencyChart({ vehicles = [] }) {
-  const sorted = useMemo(
-    () =>
-      [...vehicles]
-        .filter(
-          (v) =>
-            v.km_per_l != null &&
-            Number.isFinite(Number(v.km_per_l)) &&
-            Number(v.km_per_l) > 0,
-        )
-        .sort((a, b) => Number(b.km_per_l) - Number(a.km_per_l))
-        .slice(0, 8),
-    [vehicles],
-  );
-
-  const data = {
-    labels: sorted.map((v) => v.placa || `#${v.caminhao_id}`),
-    datasets: [
-      {
-        label: "km/L",
-        data: sorted.map((v) => Number(Number(v.km_per_l).toFixed(2))),
-        backgroundColor: BRAND.secondary,
-        borderRadius: 6,
-        maxBarThickness: 40,
-      },
-    ],
-  };
-
-  return (
-    <ChartShell
-      title="Rendimento (km/L)"
-      subtitle="Quilômetros por litro no período — prioriza telemetria"
-      empty={
-        !sorted.length
-          ? "Sem consumo suficiente para calcular km/L neste período."
-          : null
-      }
-    >
-      <Bar
-        data={data}
-        options={{
-          ...chartDefaults,
-          plugins: { ...chartDefaults.plugins, legend: { display: false } },
-          scales: {
-            y: {
-              beginAtZero: true,
-              title: { display: true, text: "km/L" },
-              grid: { color: "rgba(148,163,184,.25)" },
-            },
-            x: { grid: { display: false } },
-          },
-        }}
-      />
-    </ChartShell>
-  );
-}
-
-FuelEfficiencyChart.propTypes = {
   vehicles: PropTypes.array,
 };
 

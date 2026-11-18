@@ -13,6 +13,13 @@ export function invalidateQueriesFromMutation(
     return;
   }
 
+  // Pendências operacionais (CNH, documentos, pneus, manutenção, gastos a vencer).
+  if (
+    /^(caminhoes|gastos|checklist|motoristas|pneus|registros)/.test(path)
+  ) {
+    queryClient.invalidateQueries({ queryKey: queryKeys.ops.alerts });
+  }
+
   if (/^caminhoes/.test(path)) {
     queryClient.invalidateQueries({ queryKey: queryKeys.caminhoes.all });
     queryClient.invalidateQueries({ queryKey: ["reports"] });

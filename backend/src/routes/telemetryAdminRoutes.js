@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { telemetryAdminController } from "../controllers/telemetryAdminController.js";
 import { requirePermission } from "../middleware/requirePermission.js";
+import { requireRole } from "../middleware/security.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 
 const router = Router();
@@ -105,9 +106,12 @@ router.get(
   requirePermission(PERMISSIONS.TELEMETRY_READ),
   telemetryAdminController.getSubscription,
 );
+// Plano, quantidade de veículos e mensalidade são dados comerciais:
+// só administradores alteram (operadores têm telemetry.write por padrão).
 router.put(
   "/subscription",
   requirePermission(PERMISSIONS.TELEMETRY_WRITE),
+  requireRole("admin"),
   telemetryAdminController.upsertSubscription,
 );
 

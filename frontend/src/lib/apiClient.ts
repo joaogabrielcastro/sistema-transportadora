@@ -119,7 +119,10 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    logger.error("API Error:", error);
+    // Cancelamentos intencionais (troca de tela, StrictMode) não são falhas.
+    if (!axios.isCancel(error)) {
+      logger.error("API Error:", error);
+    }
 
     const axiosError = error as {
       code?: string;

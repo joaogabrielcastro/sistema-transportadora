@@ -19,7 +19,7 @@ const frota = [
   },
 ];
 
-test.describe("Home — busca de caminhões", () => {
+test.describe("Painel e frota", () => {
   test.beforeEach(async ({ page }) => {
     await page.route("**/api/reports/overview**", async (route) => {
       await route.fulfill({
@@ -89,7 +89,29 @@ test.describe("Home — busca de caminhões", () => {
         contentType: "application/json",
         body: JSON.stringify({
           success: true,
-          data: { counts: { total: 0, critical: 0, high: 0, medium: 0 }, alerts: [] },
+          data: {
+            counts: { total: 2, critical: 1, high: 1, medium: 0 },
+            alerts: [
+              {
+                id: "cnh-1",
+                type: "cnh_expired",
+                severity: "critical",
+                title: "CNH vencida: João Silva",
+                message: "Vencida há 3 dia(s)",
+                entity: "motorista",
+                href: "/motoristas",
+              },
+              {
+                id: "doc-1",
+                type: "doc_expiring",
+                severity: "high",
+                title: "Documento a vencer: CRLV.pdf",
+                message: "Placa ABC1D23 · vence em 5 dia(s)",
+                entity: "documento",
+                href: "/caminhao/ABC1D23",
+              },
+            ],
+          },
         }),
       });
     });
@@ -137,81 +159,95 @@ test.describe("Home — busca de caminhões", () => {
     });
   });
 
-  test("lista frota recente no dashboard", async ({ page }) => {
+  test("painel mostra indicadores, pendências e custos", async ({ page }) => {
     await page.goto("/");
 
-    await expect(
-      page.getByRole("heading", { name: "Dashboard" }),
-    ).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Frota recente" })).toBeVisible();
-    await expect(page.getByRole("heading", { level: 3, name: "ABC1D23" })).toBeVisible();
-    await expect(page.getByRole("heading", { level: 3, name: "XYZ9Z99" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Evolução de custos" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Composição da frota" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /E2E/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Pendências da operação/ })).toBeVisible();
+    await expect(page.getByText("CNH vencida: João Silva")).toBeVisible();
+    await expect(page.getByText("Custo por km")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Custo mensal da operação" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Veículos que mais custam" })).toBeVisible();
+    // A lista completa da frota fica em /frota (o painel só resume).
+    await expect(page.getByRole("link", { name: /Veículos/ }).first()).toBeVisible();
   });
 
-  test("navbar mostra itens principais e esconde CT-e sem feature fiscal", async ({
+  test("pendência leva à tela de solução", async ({ page }) => {
+    await page.route("**/api/motoristas**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ success: true, data: [] }) }),
+    );
+    await page.goto("/");
+    await page.getByRole("link", { name: /CNH vencida: João Silva/ }).click();
+    await expect(page).toHaveURL(/\/motoristas$/);
+  });
+
+  test("navbar mostra itens principais e esconde fiscal sem a feature", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
     await page.goto("/");
 
     const nav = page.getByRole("navigation", { name: "Menu principal" });
-    await expect(nav.getByRole("link", { name: "Início" })).toBeVisible();
-    await expect(nav.getByRole("link", { name: "Alertas" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: /Painel/ })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Veículos" })).toBeVisible();
     await expect(nav.getByRole("button", { name: "Pneus" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Usuários" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Configurações" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Auditoria" })).toBeVisible();
-    await expect(nav.getByRole("button", { name: "Fiscal" })).toHaveCount(0);
+    await expect(nav.getByRole("link", { name: "CT-e" })).toHaveCount(0);
   });
 
-  test("busca por placa filtra resultados", async ({ page }) => {
-    await page.goto("/");
-
-    const searchInput = page.getByPlaceholder(
-      "Buscar por placa, motorista ou modelo...",
-    );
-
+  test("busca por placa filtra a lista de veículos", async ({ page }) => {
+    await page.goto("/frota");
+    const searchInput = page.getByPlaceholder("Buscar placa, motorista ou modelo…");
     const searchRequest = page.waitForRequest((req) =>
       req.url().includes("/api/caminhoes/search"),
     );
-
     await searchInput.fill("ABC1");
     await searchRequest;
-    await page.waitForTimeout(400);
 
-    await expect(
-      page.getByRole("heading", { name: "Resultados da busca" }),
-    ).toBeVisible();
-    await expect(page.getByRole("heading", { level: 3, name: "ABC1D23" })).toBeVisible();
-    await expect(page.getByRole("heading", { level: 3, name: "XYZ9Z99" })).toHaveCount(0);
+    await expect(page.getByText(/1 resultado\(s\)/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "ABC1D23" }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "XYZ9Z99" })).toHaveCount(0);
   });
 
   test("limpar busca restaura lista completa", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/frota");
+    const searchInput = page.getByPlaceholder("Buscar placa, motorista ou modelo…");
+    await searchInput.fill("ABC1");
+    await page.waitForRequest((req) => req.url().includes("/api/caminhoes/search"));
+    await expect(page.getByRole("link", { name: "XYZ9Z99" })).toHaveCount(0);
+    await searchInput.fill("");
 
-    await page
-      .getByPlaceholder("Buscar por placa, motorista ou modelo...")
-      .fill("ABC1");
-    await page.waitForRequest((req) =>
-      req.url().includes("/api/caminhoes/search"),
-    );
-
-    await page.getByRole("button", { name: "Limpar busca" }).click();
-
-    await expect(page.getByRole("heading", { name: "Frota recente" })).toBeVisible();
-    await expect(page.getByRole("heading", { level: 3, name: "XYZ9Z99" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "XYZ9Z99" }).first()).toBeVisible();
   });
 
   test("preserva busca e filtro na URL", async ({ page }) => {
-    await page.goto("/");
-    await page.getByPlaceholder("Buscar por placa, motorista ou modelo...").fill("ABC1");
+    await page.goto("/frota");
+    await page.getByPlaceholder("Buscar placa, motorista ou modelo…").fill("ABC1");
     await page.waitForRequest((req) => req.url().includes("/api/caminhoes/search"));
     await page.getByRole("button", { name: "Trucks" }).click();
 
     await expect(page).toHaveURL(/busca=ABC1/);
     await expect(page).toHaveURL(/tipo=truck/);
+  });
+
+  test("links antigos do painel com busca abrem a lista de veículos", async ({ page }) => {
+    await page.goto("/?busca=ABC1&tipo=truck");
+    await expect(page).toHaveURL(/\/frota\?busca=ABC1&tipo=truck/);
+  });
+
+  test("busca rápida (Ctrl+K) encontra veículo e abre o detalhe", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto("/");
+    await expect(page.getByRole("navigation", { name: "Menu principal" })).toBeVisible();
+    await page.keyboard.press("Control+k");
+    const dialog = page.getByRole("dialog", { name: "Busca rápida" });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("textbox", { name: "Termo de busca" }).fill("ABC1");
+    await expect(dialog.getByRole("option", { name: /ABC1D23/ })).toBeVisible();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/caminhao\/ABC1D23$/);
   });
 
   test("menu móvel abre e fecha sem rolagem horizontal", async ({ page }) => {

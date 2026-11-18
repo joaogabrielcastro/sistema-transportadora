@@ -125,7 +125,7 @@ const SearchableSelect = ({
       {label && (
         <label
           htmlFor={fieldId}
-          className="mb-1.5 block text-sm font-medium text-text-secondary"
+          className="mb-1.5 block text-[13px] font-medium text-slate-700"
         >
           {label}
           {required && <span className="ml-1 text-danger">*</span>}
@@ -197,7 +197,7 @@ const SearchableSelect = ({
           <ul
             id={listId}
             role="listbox"
-            className="absolute z-[60] mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border bg-white py-1 shadow-lg"
+            className="absolute z-[60] mt-1 max-h-64 w-full animate-pop-in overflow-auto rounded-xl border border-border bg-white p-1 shadow-pop"
           >
             {filteredOptions.length > 0 ? (
               filteredOptions.map((option, index) => {

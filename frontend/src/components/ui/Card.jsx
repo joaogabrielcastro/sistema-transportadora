@@ -17,20 +17,20 @@ const Card = ({
     <div className={`card flex flex-col ${className}`}>
       {(title || subtitle || action) && (
         <div
-          className={`flex flex-col gap-3 border-b border-border px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5 ${headerClassName}`}
+          className={`flex flex-col gap-3 border-b border-border px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5 ${headerClassName}`}
         >
           <div className="min-w-0">
             {title && (
-              <h3 className="text-base font-semibold text-text-primary tracking-tight break-words">
+              <h3 className="break-words text-[15px] font-semibold tracking-tight text-text-primary">
                 {title}
               </h3>
             )}
             {subtitle && (
-              <p className="text-sm text-text-secondary mt-1">{subtitle}</p>
+              <p className="mt-0.5 text-[13px] leading-5 text-text-secondary">{subtitle}</p>
             )}
           </div>
           {action && (
-            <div className="w-full sm:w-auto sm:ml-4 shrink-0 flex flex-wrap gap-2">
+            <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:ml-4 sm:w-auto">
               {action}
             </div>
           )}
@@ -43,9 +43,7 @@ const Card = ({
 
       {footer && (
         <div
-          className={`px-6 py-4 bg-gray-50/50 border-t border-border rounded-b-xl ${
-            noPadding ? "" : ""
-          }`}
+          className="rounded-b-xl border-t border-border bg-slate-50/60 px-4 py-3 sm:px-5"
         >
           {footer}
         </div>
@@ -55,8 +53,8 @@ const Card = ({
 };
 
 Card.propTypes = {
-  title: PropTypes.string,
-  subtitle: PropTypes.string,
+  title: PropTypes.node,
+  subtitle: PropTypes.node,
   children: PropTypes.node,
   className: PropTypes.string,
   headerClassName: PropTypes.string,

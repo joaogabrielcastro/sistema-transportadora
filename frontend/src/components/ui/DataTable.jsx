@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 
 const cellBase =
-  "px-3 py-2.5 text-sm text-text-primary align-middle first:pl-4 last:pr-4 md:first:pl-5 md:last:pr-5";
+  "px-3 py-3 text-sm text-text-primary align-middle first:pl-4 last:pr-4 md:first:pl-5 md:last:pr-5";
 
 export const DataTable = ({ children, fixed = true, className = "" }) => (
   <div className={`w-full overflow-x-auto overscroll-x-contain ${className}`} tabIndex="0">
@@ -23,7 +23,7 @@ DataTable.propTypes = {
 };
 
 export const DataTableHead = ({ children }) => (
-  <thead className="sticky top-0 z-10 bg-slate-50">
+  <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur">
     {children}
   </thead>
 );
@@ -38,7 +38,7 @@ DataTableBody.propTypes = { children: PropTypes.node };
 
 export const DataTableRow = ({ children, className = "", onClick }) => (
   <tr
-    className={`hover:bg-cyan-50/40 transition-colors ${onClick ? "cursor-pointer focus-within:bg-cyan-50/40" : ""} ${className}`}
+    className={`transition-colors hover:bg-slate-50/80 ${onClick ? "cursor-pointer focus-within:bg-slate-50" : ""} ${className}`}
     onClick={onClick}
   >
     {children}
@@ -55,7 +55,7 @@ export const DataTableTh = ({ children, className = "", align = "left", width })
   <th
     scope="col"
     style={width ? { width } : undefined}
-    className={`${cellBase} py-2 text-xs font-semibold text-text-secondary uppercase tracking-wide whitespace-nowrap ${
+    className={`${cellBase} !py-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-secondary whitespace-nowrap ${
       align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left"
     } ${className}`}
   >
@@ -100,7 +100,7 @@ DataTableTd.propTypes = {
 };
 
 const actionBtn =
-  "inline-flex items-center justify-center min-h-10 min-w-10 p-2.5 rounded-md text-text-secondary hover:text-primary hover:bg-primary/5 transition-colors disabled:opacity-40";
+  "inline-flex h-9 w-9 items-center justify-center rounded-lg text-text-light transition-colors hover:bg-slate-100 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary disabled:opacity-40";
 
 export const TableRowActions = ({ onEdit, onView, onDelete, editTitle = "Editar", viewTitle = "Ver detalhes", deleteTitle = "Excluir" }) => (
   <div className="flex items-center justify-end gap-0.5 shrink-0">

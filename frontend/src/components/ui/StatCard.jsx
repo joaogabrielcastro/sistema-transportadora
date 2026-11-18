@@ -2,34 +2,22 @@ import React from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router-dom";
 
-const colorStyles = {
-  blue: {
-    card: "border-border hover:shadow-soft",
-    icon: "bg-blue-500/10 text-blue-600",
-    compact: "bg-blue-50 text-blue-600 border-blue-200",
-  },
-  green: {
-    card: "border-border hover:shadow-soft",
-    icon: "bg-emerald-500/10 text-emerald-600",
-    compact: "bg-green-50 text-green-600 border-green-200",
-  },
-  purple: {
-    card: "border-border hover:shadow-soft",
-    icon: "bg-purple-500/10 text-purple-600",
-    compact: "bg-purple-50 text-purple-600 border-purple-200",
-  },
-  orange: {
-    card: "border-border hover:shadow-soft",
-    icon: "bg-orange-500/10 text-orange-600",
-    compact: "bg-orange-50 text-orange-600 border-orange-200",
-  },
-  amber: {
-    card: "border-border hover:shadow-soft",
-    icon: "bg-amber-500/10 text-amber-600",
-    compact: "bg-amber-50 text-amber-600 border-amber-200",
-  },
+const toneStyles = {
+  blue: { icon: "bg-blue-50 text-blue-600 ring-blue-100", bar: "bg-blue-500" },
+  green: { icon: "bg-emerald-50 text-emerald-600 ring-emerald-100", bar: "bg-emerald-500" },
+  purple: { icon: "bg-violet-50 text-violet-600 ring-violet-100", bar: "bg-violet-500" },
+  orange: { icon: "bg-orange-50 text-orange-600 ring-orange-100", bar: "bg-orange-500" },
+  amber: { icon: "bg-amber-50 text-amber-600 ring-amber-100", bar: "bg-amber-500" },
+  cyan: { icon: "bg-cyan-50 text-cyan-700 ring-cyan-100", bar: "bg-cyan-500" },
+  red: { icon: "bg-red-50 text-red-600 ring-red-100", bar: "bg-red-500" },
+  slate: { icon: "bg-slate-100 text-slate-600 ring-slate-200", bar: "bg-slate-400" },
 };
 
+/**
+ * Indicador numérico. `layout="dashboard"` (padrão) mostra rótulo, valor e dica;
+ * `layout="compact"` cabe em faixas de KPIs dentro de páginas de detalhe.
+ * `emphasis` destaca indicadores que pedem ação (ex.: vencidos > 0).
+ */
 const StatCard = ({
   title,
   value,
@@ -39,22 +27,29 @@ const StatCard = ({
   hint,
   to,
   className = "",
+  emphasis = false,
+  loading = false,
 }) => {
-  const styles = colorStyles[color] || colorStyles.blue;
+  const styles = toneStyles[color] || toneStyles.blue;
+  const valueNode = loading ? (
+    <span className="inline-block h-7 w-20 animate-pulse rounded bg-slate-200 align-middle" aria-label="Carregando" />
+  ) : (
+    value
+  );
 
   if (layout === "compact") {
     return (
-      <div
-        className={`rounded-xl border bg-white p-4 shadow-card ${className}`}
-      >
+      <div className={`card p-4 ${className}`}>
         <div className="flex items-center gap-3">
-          <div className={`rounded-lg p-2.5 ${styles.icon}`}>{icon}</div>
+          {icon ? (
+            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset ${styles.icon}`}>
+              {icon}
+            </div>
+          ) : null}
           <div className="min-w-0">
-            <div className="truncate text-xl font-bold tabular-nums text-text-primary">{value}</div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">{title}</p>
-            {hint ? (
-              <p className="mt-0.5 text-xs opacity-70">{hint}</p>
-            ) : null}
+            <p className="truncate text-xs font-medium text-text-secondary">{title}</p>
+            <div className="truncate text-lg font-semibold tabular-nums text-text-primary">{valueNode}</div>
+            {hint ? <p className="mt-0.5 truncate text-xs text-text-secondary">{hint}</p> : null}
           </div>
         </div>
       </div>
@@ -63,44 +58,73 @@ const StatCard = ({
 
   const content = (
     <>
-      <div className="flex justify-between items-start">
-        <div>
-          <p className="text-sm font-medium text-text-secondary mb-1">{title}</p>
-          <div className="text-2xl font-bold tabular-nums text-text-primary">{value}</div>
-          {hint ? (
-            <p className="mt-1 text-xs text-text-secondary">{hint}</p>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[13px] font-medium text-text-secondary">{title}</p>
+        {icon ? (
+          <div
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset [&>svg]:h-4 [&>svg]:w-4 ${styles.icon}`}
+          >
+            {icon}
+          </div>
+        ) : null}
+      </div>
+      <div
+        className={`mt-1 break-words text-xl font-semibold leading-tight tracking-tight tabular-nums sm:text-[1.65rem] ${
+          emphasis ? "text-red-700" : "text-text-primary"
+        }`}
+      >
+        {valueNode}
+      </div>
+      {hint || to ? (
+        <div className="mt-2 flex items-center justify-between gap-2 text-xs text-text-secondary">
+          <span className="min-w-0 truncate">{hint}</span>
+          {to ? (
+            <span
+              aria-hidden
+              className="shrink-0 text-text-light transition-transform group-hover:translate-x-0.5 group-hover:text-secondary"
+            >
+              →
+            </span>
           ) : null}
         </div>
-        <div
-          className={`p-3 rounded-lg ${styles.icon} group-hover:opacity-90 transition-colors`}
-        >
-          {icon}
-        </div>
-      </div>
-      {to ? (
-        <span className="mt-4 inline-flex items-center text-xs font-semibold text-secondary">
-          Ver detalhes <span aria-hidden className="ml-1">→</span>
-        </span>
       ) : null}
     </>
   );
 
-  const classes = `group block rounded-xl border bg-white p-5 shadow-card transition-colors ${styles.card} ${
-    to ? "hover:border-cyan-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary" : ""
+  const classes = `group relative block overflow-hidden rounded-xl border bg-white p-4 shadow-card transition-[border-color,box-shadow] sm:p-5 ${
+    emphasis ? "border-red-200" : "border-border"
+  } ${
+    to
+      ? "hover:border-border-strong hover:shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+      : ""
   } ${className}`;
 
-  return to ? <Link to={to} className={classes}>{content}</Link> : <div className={classes}>{content}</div>;
+  if (!to) return <div className={classes}>{content}</div>;
+  if (to.startsWith("#")) {
+    return (
+      <a href={to} className={classes}>
+        {content}
+      </a>
+    );
+  }
+  return (
+    <Link to={to} className={classes}>
+      {content}
+    </Link>
+  );
 };
 
 StatCard.propTypes = {
-  title: PropTypes.string.isRequired,
-  value: PropTypes.node.isRequired,
+  title: PropTypes.node.isRequired,
+  value: PropTypes.node,
   icon: PropTypes.node,
-  color: PropTypes.oneOf(["blue", "green", "purple", "orange", "amber"]),
+  color: PropTypes.oneOf(["blue", "green", "purple", "orange", "amber", "cyan", "red", "slate"]),
   layout: PropTypes.oneOf(["dashboard", "compact"]),
   hint: PropTypes.node,
   to: PropTypes.string,
   className: PropTypes.string,
+  emphasis: PropTypes.bool,
+  loading: PropTypes.bool,
 };
 
 export default StatCard;

@@ -2,6 +2,14 @@ import React, { useCallback, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { useToast } from "./useToast.js";
 import { ToastContext } from "./ToastContext.js";
+import Icon from "./Icon.jsx";
+
+const TOAST_TONES = {
+  success: { icon: "check", badge: "bg-emerald-100 text-emerald-700" },
+  error: { icon: "x", badge: "bg-red-100 text-red-700" },
+  warning: { icon: "alert", badge: "bg-amber-100 text-amber-700" },
+  info: { icon: "info", badge: "bg-sky-100 text-sky-700" },
+};
 
 const DEFAULT_DURATION_MS = 3500;
 
@@ -37,62 +45,47 @@ export const ToastProvider = ({ children }) => {
   return (
     <ToastContext.Provider value={api}>
       {children}
-      <div className="fixed right-4 top-20 z-[1000] flex w-[min(420px,calc(100vw-2rem))] flex-col gap-2">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={[
-              "rounded-lg border bg-white shadow-lg",
-              "px-4 py-3",
-              "transition-all duration-200",
-              t.type === "success" && "border-success/30",
-              t.type === "error" && "border-danger/30",
-              t.type === "warning" && "border-yellow-500/30",
-              t.type === "info" && "border-border",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            role="status"
-          >
-            <div className="flex items-start gap-3">
-              <div
-                className={[
-                  "mt-0.5 h-2.5 w-2.5 rounded-full",
-                  t.type === "success" && "bg-success",
-                  t.type === "error" && "bg-danger",
-                  t.type === "warning" && "bg-yellow-500",
-                  t.type === "info" && "bg-secondary",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-              />
-              <div className="min-w-0 flex-1">
-                {t.title && (
-                  <div className="text-sm font-semibold text-text-primary">
-                    {t.title}
+      <div
+        className="pointer-events-none fixed inset-x-4 bottom-4 z-[1000] flex flex-col gap-2 sm:inset-x-auto sm:bottom-auto sm:right-5 sm:top-5 sm:w-[400px]"
+        aria-live="polite"
+      >
+        {toasts.map((t) => {
+          const tone = TOAST_TONES[t.type] || TOAST_TONES.info;
+          return (
+            <div
+              key={t.id}
+              className="pointer-events-auto animate-pop-in rounded-xl border border-border bg-white px-3.5 py-3 shadow-pop"
+              role={t.type === "error" ? "alert" : "status"}
+            >
+              <div className="flex items-start gap-3">
+                <span
+                  className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${tone.badge}`}
+                  aria-hidden
+                >
+                  <Icon name={tone.icon} className="h-3.5 w-3.5" strokeWidth={2.25} />
+                </span>
+                <div className="min-w-0 flex-1 pt-0.5">
+                  {t.title && (
+                    <div className="text-sm font-semibold text-text-primary">
+                      {t.title}
+                    </div>
+                  )}
+                  <div className="break-words text-sm leading-5 text-text-primary">
+                    {t.message}
                   </div>
-                )}
-                <div className="text-sm text-text-secondary break-words">
-                  {t.message}
                 </div>
+                <button
+                  type="button"
+                  className="-mr-1 inline-flex h-7 w-7 items-center justify-center rounded-md text-text-light hover:bg-slate-100 hover:text-text-secondary"
+                  onClick={() => remove(t.id)}
+                  aria-label="Fechar notificação"
+                >
+                  <Icon name="x" className="h-4 w-4" />
+                </button>
               </div>
-              <button
-                type="button"
-                className="ml-2 text-text-light hover:text-text-secondary rounded-md p-1"
-                onClick={() => remove(t.id)}
-                aria-label="Fechar"
-              >
-                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                  <path
-                    fillRule="evenodd"
-                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </button>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </ToastContext.Provider>
   );

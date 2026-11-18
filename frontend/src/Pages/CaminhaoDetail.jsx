@@ -7,6 +7,9 @@ import { formatCaminhaoRegistros } from "../utils/formatRegistro.js";
 import { Card, Button, Alert, PageHeader, StatCard, StatusBadge, Tabs } from "../components/ui";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
+import Icon from "../components/ui/Icon.jsx";
+import { useTelemetryCurrentQuery } from "../hooks/queries/useTelemetryQueries.js";
+import { VEHICLE_STATUS, litersPerKmFromKmPerL, relativeTime, vehicleStatus } from "../utils/telemetryDisplay.js";
 import { CardSkeleton } from "../components/Skeleton.jsx";
 import CaminhaoDocumentos from "../components/CaminhaoDocumentos";
 import VinculosComposicao from "../components/VinculosComposicao.jsx";
@@ -42,6 +45,9 @@ const CaminhaoDetail = () => {
   });
   const { user } = useAuth();
   const canWriteFrota = userHasPermission(user, PERMISSIONS.FROTA_WRITE);
+  const canWriteGastos = userHasPermission(user, PERMISSIONS.GASTOS_WRITE);
+  const canSeeTelemetry =
+    user?.features?.telemetria === true && userHasPermission(user, PERMISSIONS.TELEMETRY_READ);
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -61,10 +67,24 @@ const CaminhaoDetail = () => {
   } = usePneuAtribuirQueries({ enabled: novoPneuOpen });
 
   const caminhao = data?.caminhao ?? null;
+  const telemetryQuery = useTelemetryCurrentQuery(
+    { caminhao_id: caminhao?.id },
+    { enabled: canSeeTelemetry && Boolean(caminhao?.id), refetchInterval: 30_000 },
+  );
+  const tel = (telemetryQuery.data || [])[0] || null;
+  const telStatus = tel
+    ? vehicleStatus({
+        connection: tel.connection_status,
+        speedKmh: tel.velocidade_kmh != null ? Number(tel.velocidade_kmh) : null,
+        ignition: tel.ignicao,
+      })
+    : null;
   const gastos = useMemo(() => data?.gastos ?? [], [data?.gastos]);
   const checklists = useMemo(() => data?.checklists ?? [], [data?.checklists]);
   const pneus = useMemo(() => data?.pneus ?? [], [data?.pneus]);
   const consumoKmPorLitro = data?.consumoKmPorLitro ?? null;
+  // Exibido como litros por km (L/km), padrão do ATrack para consumo.
+  const consumo = litersPerKmFromKmPerL(consumoKmPorLitro);
   const listTruncation = data?.listTruncation ?? {
     gastos: false,
     checklists: false,
@@ -147,45 +167,96 @@ const CaminhaoDetail = () => {
     <PageLayout className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Início", to: "/" },
+          { label: "Veículos", to: "/frota" },
           { label: caminhao.placa },
         ]}
       />
 
-      <PageHeader
-        title={`${
-          caminhao.tipo_veiculo === "carreta"
-            ? "Carreta"
-            : caminhao.tipo_veiculo === "cavalo"
-              ? "Cavalo"
-              : "Veículo"
-        } ${caminhao.placa}`}
-        subtitle="Detalhes completos e análise de desempenho"
-        actions={
-          <div className="flex items-center gap-3 flex-wrap">
-            <StatusBadge
-              status={
-                caminhao.tipo_veiculo === "carreta"
-                  ? "Carreta"
-                  : caminhao.tipo_veiculo === "cavalo"
-                    ? "Cavalo"
-                    : caminhao.status || "Truck"
-              }
-              type="vehicle"
-            />
-            <Button variant="outline" onClick={() => navigate("/")}>
-              Voltar
-            </Button>
+      <div className="card overflow-hidden">
+        <div className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+            <span className="plate plate-lg hidden sm:inline-flex" aria-hidden>
+              {caminhao.placa}
+            </span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-bold tracking-tight text-text-primary sm:text-2xl">
+                  {`${
+                    caminhao.tipo_veiculo === "carreta"
+                      ? "Carreta"
+                      : caminhao.tipo_veiculo === "cavalo"
+                        ? "Cavalo"
+                        : "Veículo"
+                  } ${caminhao.placa}`}
+                </h1>
+                <StatusBadge
+                  status={
+                    caminhao.tipo_veiculo === "carreta"
+                      ? "Carreta"
+                      : caminhao.tipo_veiculo === "cavalo"
+                        ? "Cavalo"
+                        : caminhao.status || "Truck"
+                  }
+                  type="vehicle"
+                />
+              </div>
+              <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-secondary">
+                <span>{[caminhao.marca, caminhao.modelo].filter(Boolean).join(" ") || "Modelo não informado"}{caminhao.ano ? ` · ${caminhao.ano}` : ""}</span>
+                <span className="inline-flex items-center gap-1">
+                  <Icon name="user" className="h-3.5 w-3.5" />
+                  {caminhao.motorista || "Sem motorista"}
+                </span>
+                {caminhao.km_atual ? (
+                  <span className="inline-flex items-center gap-1 tabular-nums">
+                    <Icon name="gauge" className="h-3.5 w-3.5" />
+                    {Number(caminhao.km_atual).toLocaleString("pt-BR")} km
+                  </span>
+                ) : null}
+              </p>
+              {tel && telStatus ? (
+                <Link
+                  to={`/telemetria?caminhao=${caminhao.id}`}
+                  className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset hover:opacity-90 ${VEHICLE_STATUS[telStatus].chip}`}
+                >
+                  <span className={`h-2 w-2 rounded-full ${VEHICLE_STATUS[telStatus].dot}`} aria-hidden />
+                  {VEHICLE_STATUS[telStatus].label}
+                  {telStatus === "moving" && tel.velocidade_kmh != null ? ` · ${Math.round(Number(tel.velocidade_kmh))} km/h` : ""}
+                  <span className="font-normal opacity-80">· {relativeTime(tel.registrado_em)}</span>
+                  <span className="ml-1 underline-offset-2">Ver no mapa →</span>
+                </Link>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {canWriteGastos && caminhao.id ? (
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/manutencao-gastos?novo=gasto&caminhao=${caminhao.id}`)}
+                icon={<Icon name="fuel" className="h-4 w-4" />}
+              >
+                Lançar gasto
+              </Button>
+            ) : null}
+            {canWriteGastos && caminhao.id ? (
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/manutencao-gastos?novo=manutencao&caminhao=${caminhao.id}`)}
+                icon={<Icon name="wrench" className="h-4 w-4" />}
+              >
+                Manutenção
+              </Button>
+            ) : null}
             {canWriteFrota && (
-            <Button
-              onClick={() => navigate(`/caminhao/editar/${caminhao.placa}`)}
-            >
-              Editar veículo
-            </Button>
+              <Button
+                onClick={() => navigate(`/caminhao/editar/${caminhao.placa}`)}
+                icon={<Icon name="pencil" className="h-4 w-4" />}
+              >
+                Editar veículo
+              </Button>
             )}
           </div>
-        }
-      />
+        </div>
+      </div>
 
       <Tabs tabs={DETAIL_TABS} activeTab={activeTab} onChange={handleTabChange} />
 
@@ -314,45 +385,38 @@ const CaminhaoDetail = () => {
 
         {/* Info Cards */}
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-          <Card title="Dados do Veículo" className="lg:col-span-2 h-full">
+          <Card
+            title="Ficha técnica"
+            subtitle="Placa, tipo e motorista ficam no cabeçalho; carretas, na composição abaixo."
+            className="lg:col-span-2 h-full"
+          >
             <dl className="grid grid-cols-1 gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
               {[
-                { label: "Placa", value: caminhao.placa },
-                {
-                  label: "Tipo",
-                  value: caminhao.tipo_veiculo || "truck",
-                },
-                { label: "Motorista", value: caminhao.motorista || "N/A" },
-                { label: "Marca", value: caminhao.marca || "N/A" },
-                { label: "Modelo", value: caminhao.modelo || "N/A" },
-                { label: "Ano", value: caminhao.ano || "N/A" },
+                { label: "Marca", value: caminhao.marca || "—" },
+                { label: "Modelo", value: caminhao.modelo || "—" },
+                { label: "Ano", value: caminhao.ano || "—" },
                 {
                   label: "KM Atual",
-                  value: `${(caminhao.km_atual || 0).toLocaleString()} km`,
+                  value: `${Number(caminhao.km_atual || 0).toLocaleString("pt-BR")} km`,
                 },
                 { label: "Qtd. Pneus", value: caminhao.qtd_pneus },
                 {
                   label: "Config. eixos",
-                  value: caminhao.config_eixos || "N/A",
+                  value: caminhao.config_eixos || "—",
                 },
-                { label: "Chassi", value: caminhao.chassi || "N/A" },
-                { label: "Empresa", value: caminhao.empresa || "N/A" },
-                ...(caminhao.tipo_veiculo === "carreta"
+                { label: "Chassi", value: caminhao.chassi || "—" },
+                { label: "Empresa", value: caminhao.empresa || "—" },
+                ...(caminhao.tipo_veiculo === "carreta" || !caminhao.numero_cavalo
                   ? []
                   : [
                       {
                         label: "Nº Cavalo",
-                        value: caminhao.numero_cavalo || "N/A",
+                        value: caminhao.numero_cavalo,
                       },
                     ]),
-                ...(caminhao.tipo_veiculo === "carreta"
+                ...(caminhao.tipo_veiculo === "carreta" || caminhao.composicao?.vinculos?.length
                   ? []
-                  : caminhao.composicao?.vinculos?.length
-                    ? caminhao.composicao.vinculos.map((v, i) => ({
-                        label: `Carreta vinculada ${i + 1}`,
-                        value: v.carreta?.placa || v.cavalo?.placa || "—",
-                      }))
-                    : caminhao.placa_carreta_1 || caminhao.placa_carreta_2
+                  : caminhao.placa_carreta_1 || caminhao.placa_carreta_2
                       ? [
                           {
                             label: "Carreta 1 (legado)",
@@ -370,7 +434,7 @@ const CaminhaoDetail = () => {
                   className="border-b border-border py-3 last:border-b-0 sm:last:border-b"
                 >
                   <dt className="text-xs font-medium uppercase tracking-wide text-text-secondary">{item.label}</dt>
-                  <dd className={`mt-1 break-words font-semibold text-text-primary ${item.label === "Placa" ? "font-mono tracking-wide" : ""}`}>
+                  <dd className="mt-1 break-words font-semibold text-text-primary">
                     {item.value}
                   </dd>
                 </div>
@@ -380,12 +444,17 @@ const CaminhaoDetail = () => {
 
           <Card title="Eficiência" className="h-full">
             <div className="flex flex-col items-center justify-center h-full py-4">
-              {consumoKmPorLitro ? (
+              {consumo.value != null ? (
                 <>
                   <div className="mb-2 text-4xl font-bold tabular-nums text-emerald-600">
-                    {consumoKmPorLitro}
+                    {consumo.value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
-                  <p className="text-lg font-medium text-gray-600">Km/L</p>
+                  <p className="text-lg font-medium text-gray-600">litros por km</p>
+                  {!consumo.plausible ? (
+                    <p className="mt-2 max-w-[16rem] text-center text-xs font-medium text-amber-700">
+                      Valor fora da faixa típica de caminhões (0,12 a 1,25 L/km). Confira litros e KM dos abastecimentos.
+                    </p>
+                  ) : null}
                   <p className="text-sm text-gray-400 mt-4 text-center">
                     Média baseada nos últimos abastecimentos
                   </p>

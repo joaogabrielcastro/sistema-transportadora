@@ -27,6 +27,7 @@ const AcceptInvite = lazy(() => import("./Pages/AcceptInvite.jsx"));
 const Termos = lazy(() => import("./Pages/Termos.jsx"));
 const Privacidade = lazy(() => import("./Pages/Privacidade.jsx"));
 const Conta = lazy(() => import("./Pages/Conta.jsx"));
+const Frota = lazy(() => import("./Pages/Frota.jsx"));
 const CadastroCaminhao = lazy(() => import("./Pages/CadastroCaminhao.jsx"));
 const CaminhaoDetail = lazy(() => import("./Pages/CaminhaoDetail.jsx"));
 const Pneus = lazy(() => import("./Pages/Pneus.jsx"));
@@ -127,8 +128,8 @@ function AppRoutes() {
   const routes = (
     <Suspense
       fallback={
-        <div className="flex items-center justify-center min-h-screen">
-          <LoadingSpinner size="lg" />
+        <div className="flex min-h-[60vh] flex-1 items-center justify-center">
+          <LoadingSpinner size="md" />
         </div>
       }
     >
@@ -256,6 +257,14 @@ function AppRoutes() {
           element={
             <GuardedRoute permission={PERMISSIONS.AUDIT_READ}>
               <Auditoria />
+            </GuardedRoute>
+          }
+        />
+        <Route
+          path="/frota"
+          element={
+            <GuardedRoute>
+              <Frota />
             </GuardedRoute>
           }
         />

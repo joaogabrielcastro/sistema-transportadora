@@ -1,217 +1,104 @@
 import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router-dom";
-import {
-  Chart as ChartJS,
-  ArcElement,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Tooltip,
-  Legend,
-} from "chart.js";
-import { Doughnut, Bar } from "react-chartjs-2";
 import { Card } from "../ui";
 import CostPerKmTrendChart from "../relatorios/CostPerKmTrendChart.jsx";
 import { formatCurrency } from "../../utils/formatters.js";
 
-ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend);
+const linkClass =
+  "rounded text-[13px] font-semibold text-secondary-dark hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary";
 
-const TIPO_LABEL = {
-  truck: "Trucks",
-  cavalo: "Cavalos",
-  carreta: "Carretas",
-};
-
-const FROTA_COLORS = ["#2563EB", "#0F766E", "#D97706", "#64748B"];
-
-function ChartEmpty({ text }) {
-  return (
-    <p className="flex h-56 items-center justify-center px-4 text-center text-sm text-text-secondary">
-      {text}
-    </p>
-  );
-}
-
+/**
+ * Bloco analítico do painel: evolução mensal do custo e ranking dos veículos
+ * que mais custam (com custo por km). Composição da frota e divisão
+ * gastos × manutenção saíram do painel — mudam pouco e não pedem ação diária.
+ */
 export default function DashboardCharts({
-  overview,
   trendMonths = [],
   trendLoading = false,
   truckCosts = [],
   truckCostsLoading = false,
 }) {
-  const frotaData = useMemo(() => {
-    const rows = Array.isArray(overview?.frotaPorTipo) ? overview.frotaPorTipo : [];
-    const labels = rows.map(
-      (row) => TIPO_LABEL[row.tipo] || String(row.tipo || "Outros"),
-    );
-    const values = rows.map((row) => Number(row.count || 0));
-    return { labels, values };
-  }, [overview]);
-
-  const custoSplit = useMemo(() => {
-    const gastos = Number(overview?.gastosValor || 0);
-    const manutencoes = Number(overview?.manutencoesValor || 0);
-    return {
-      gastos,
-      manutencoes,
-      hasData: gastos > 0 || manutencoes > 0,
-    };
-  }, [overview]);
-
   const topTrucks = useMemo(
     () =>
       (Array.isArray(truckCosts) ? truckCosts : [])
         .filter((item) => Number(item.totalCost) > 0)
-        .slice(0, 8),
+        .sort((a, b) => Number(b.totalCost) - Number(a.totalCost))
+        .slice(0, 6),
     [truckCosts],
   );
-
-  const doughnutOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { position: "bottom", labels: { usePointStyle: true, padding: 16 } },
-    },
-  };
+  const maxCost = topTrucks.length ? Number(topTrucks[0].totalCost) : 0;
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
       <Card
-        className="lg:col-span-2"
-        title="Evolução de custos"
-        subtitle="Gastos e manutenções nos últimos 6 meses"
+        className="xl:col-span-2"
+        title="Custo mensal da operação"
+        subtitle="Gastos e manutenções lançados nos últimos 6 meses"
         action={
-          <Link to="/relatorios" className="text-sm font-medium text-secondary">
+          <Link to="/relatorios" className={linkClass}>
             Ver relatórios
           </Link>
         }
       >
         {trendLoading ? (
-          <div className="h-72 animate-pulse rounded-lg bg-slate-100" />
+          <div className="h-64 animate-pulse rounded-lg bg-slate-100 sm:h-72" />
         ) : (
           <CostPerKmTrendChart months={trendMonths} />
         )}
       </Card>
 
       <Card
-        title="Composição da frota"
-        subtitle={
-          overview?.comMotorista != null
-            ? `${overview.comMotorista} com motorista · ${overview.semMotorista || 0} sem motorista`
-            : "Por tipo de veículo"
-        }
-      >
-        {frotaData.values.some((n) => n > 0) ? (
-          <div className="h-56">
-            <Doughnut
-              data={{
-                labels: frotaData.labels,
-                datasets: [
-                  {
-                    data: frotaData.values,
-                    backgroundColor: FROTA_COLORS.slice(0, frotaData.labels.length),
-                    borderWidth: 0,
-                  },
-                ],
-              }}
-              options={doughnutOptions}
-            />
-          </div>
-        ) : (
-          <ChartEmpty text="Cadastre veículos para ver a composição da frota." />
-        )}
-      </Card>
-
-      <Card
-        title="Gastos × manutenção"
-        subtitle="Valores lançados na operação"
-      >
-        {custoSplit.hasData ? (
-          <div className="h-56">
-            <Doughnut
-              data={{
-                labels: ["Gastos", "Manutenções"],
-                datasets: [
-                  {
-                    data: [custoSplit.gastos, custoSplit.manutencoes],
-                    backgroundColor: ["#2563EB", "#EA580C"],
-                    borderWidth: 0,
-                  },
-                ],
-              }}
-              options={{
-                ...doughnutOptions,
-                plugins: {
-                  ...doughnutOptions.plugins,
-                  tooltip: {
-                    callbacks: {
-                      label: (ctx) =>
-                        `${ctx.label}: ${formatCurrency(ctx.raw || 0)}`,
-                    },
-                  },
-                },
-              }}
-            />
-          </div>
-        ) : (
-          <ChartEmpty text="Sem lançamentos de gasto ou manutenção ainda." />
-        )}
-      </Card>
-
-      <Card
-        className="lg:col-span-2"
-        title="Custo por veículo"
-        subtitle="Maiores custos no período"
+        title="Veículos que mais custam"
+        subtitle="Últimos 6 meses"
         action={
-          <Link to="/relatorios" className="text-sm font-medium text-secondary">
+          <Link to="/relatorios" className={linkClass}>
             Detalhar
           </Link>
         }
       >
         {truckCostsLoading ? (
-          <div className="h-64 animate-pulse rounded-lg bg-slate-100" />
-        ) : topTrucks.length > 0 ? (
-          <div className="h-64">
-            <Bar
-              data={{
-                labels: topTrucks.map((item) => item.placa),
-                datasets: [
-                  {
-                    label: "Custo total (R$)",
-                    data: topTrucks.map((item) => Number(item.totalCost || 0)),
-                    backgroundColor: "rgba(37, 99, 235, 0.7)",
-                    borderRadius: 6,
-                  },
-                ],
-              }}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: { display: false },
-                  tooltip: {
-                    callbacks: {
-                      label: (ctx) => formatCurrency(ctx.raw || 0),
-                    },
-                  },
-                },
-                scales: {
-                  y: {
-                    beginAtZero: true,
-                    ticks: {
-                      callback: (value) =>
-                        `R$ ${Number(value || 0).toLocaleString("pt-BR")}`,
-                    },
-                    grid: { color: "rgba(0, 0, 0, 0.05)" },
-                  },
-                  x: { grid: { display: false } },
-                },
-              }}
-            />
+          <div className="space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-8 animate-pulse rounded bg-slate-100" />
+            ))}
           </div>
+        ) : topTrucks.length === 0 ? (
+          <p className="flex h-48 items-center justify-center px-4 text-center text-sm text-text-secondary">
+            Sem custos por veículo neste período.
+          </p>
         ) : (
-          <ChartEmpty text="Sem custos por veículo neste período." />
+          <ol className="space-y-3.5">
+            {topTrucks.map((t, i) => {
+              const pct = maxCost > 0 ? Math.max(4, Math.round((Number(t.totalCost) / maxCost) * 100)) : 0;
+              return (
+                <li key={t.caminhaoId ?? t.placa}>
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <Link
+                      to={`/caminhao/${encodeURIComponent(t.placa)}`}
+                      className="plate hover:border-secondary"
+                    >
+                      {t.placa}
+                    </Link>
+                    <span className="tabular-nums">
+                      <span className="font-semibold text-text-primary">{formatCurrency(t.totalCost)}</span>
+                      {t.costPerKm != null && !t.kmDataInsufficient ? (
+                        <span className="ml-2 text-xs text-text-secondary">
+                          {Number(t.costPerKm).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}/km
+                        </span>
+                      ) : null}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden>
+                    <div
+                      className={`h-full rounded-full ${i === 0 ? "bg-primary" : "bg-slate-400"}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
         )}
       </Card>
     </div>
@@ -219,7 +106,6 @@ export default function DashboardCharts({
 }
 
 DashboardCharts.propTypes = {
-  overview: PropTypes.object,
   trendMonths: PropTypes.array,
   trendLoading: PropTypes.bool,
   truckCosts: PropTypes.array,

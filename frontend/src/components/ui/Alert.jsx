@@ -32,28 +32,28 @@ const Alert = ({
 
   const variants = {
     info: {
-      container: "bg-blue-50 border-blue-200",
+      container: "bg-sky-50/70 border-sky-200",
       icon: "text-blue-500",
       title: "text-blue-800",
       text: "text-blue-700",
       border: "border-l-blue-500",
     },
     success: {
-      container: "bg-green-50 border-green-200",
+      container: "bg-emerald-50/70 border-emerald-200",
       icon: "text-green-500",
       title: "text-green-800",
       text: "text-green-700",
       border: "border-l-green-500",
     },
     warning: {
-      container: "bg-amber-50 border-amber-200",
+      container: "bg-amber-50/70 border-amber-200",
       icon: "text-amber-500",
       title: "text-amber-800",
       text: "text-amber-700",
       border: "border-l-amber-500",
     },
     error: {
-      container: "bg-red-50 border-red-200",
+      container: "bg-red-50/70 border-red-200",
       icon: "text-red-500",
       title: "text-red-800",
       text: "text-red-700",
@@ -129,14 +129,14 @@ const Alert = ({
   return (
     <div
       role={type === "error" ? "alert" : "status"}
-      className={`relative w-full rounded-lg border border-l-4 p-4 ${variant.container} ${variant.border} ${className}`}
+      className={`relative w-full rounded-xl border p-3.5 ${variant.container} ${className}`}
     >
       <div className="flex items-start">
         <div className={`flex-shrink-0 ${variant.icon}`}>{icons[type]}</div>
         <div className="ml-3 flex-1 md:flex md:justify-between">
           <div>
             {title && (
-              <h3 className={`text-sm font-medium ${variant.title}`}>
+              <h3 className={`text-sm font-semibold ${variant.title}`}>
                 {title}
               </h3>
             )}

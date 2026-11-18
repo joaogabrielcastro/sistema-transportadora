@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import PropTypes from "prop-types";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import {
@@ -7,529 +8,453 @@ import {
   PRODUCT_NAME,
   PRODUCT_TAGLINE,
 } from "../brand.js";
-import { trialDaysRemaining, isVehicleQuotaReached } from "../utils/billing.js";
+import { trialDaysRemaining } from "../utils/billing.js";
 import { PERMISSIONS, userHasPermission } from "../utils/permissions.js";
+import Icon from "./ui/Icon.jsx";
+import CommandPalette from "./layout/CommandPalette.jsx";
+import {
+  currentPageMeta,
+  flatNavItems,
+  isActivePath,
+  visibleNavSections,
+} from "./layout/navConfig.js";
+import { quickActionsFor } from "./layout/quickActions.js";
+import { useOpsAlertsQuery } from "../hooks/queries/useOpsAlertsQuery.js";
 
-const pneusSubLinks = [
-  { path: "/pneus", label: "Pneus em uso", exact: true },
-  { path: "/pneus/estoque", label: "Estoque" },
-];
+/** Seções que podem ser recolhidas (as demais ficam sempre abertas). */
+const COLLAPSIBLE_SECTIONS = new Set(["telemetria", "fiscal", "admin"]);
+const COLLAPSE_STORAGE_KEY = "atrack_nav_collapsed";
 
-const fiscalSubLinks = [
-  {
-    path: "/fiscal/empresas",
-    label: "Empresa fiscal",
-    permission: PERMISSIONS.CTE_WRITE,
-    anyPermission: [
-      PERMISSIONS.CTE_WRITE,
-      PERMISSIONS.MDFE_WRITE,
-      PERMISSIONS.CIOT_WRITE,
-    ],
-  },
-  {
-    path: "/fiscal/seguro",
-    label: "Seguro / Averbação",
-    permission: PERMISSIONS.CTE_WRITE,
-    anyPermission: [
-      PERMISSIONS.CTE_WRITE,
-      PERMISSIONS.MDFE_WRITE,
-      PERMISSIONS.CIOT_WRITE,
-    ],
-  },
-  { path: "/fiscal/cte", label: "CT-e", permission: PERMISSIONS.CTE_READ },
-  { path: "/fiscal/mdfe", label: "MDF-e", permission: PERMISSIONS.MDFE_READ },
-  { path: "/fiscal/contratos-frete", label: "Contrato de Frete", permission: PERMISSIONS.CIOT_READ },
-];
-
-function canSeeFiscalLink(user, sub) {
-  if (sub.anyPermission) {
-    return sub.anyPermission.some((p) => userHasPermission(user, p));
+function readCollapsed() {
+  try {
+    const raw = localStorage.getItem(COLLAPSE_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
   }
-  return userHasPermission(user, sub.permission);
 }
 
-function filterLinks(links, user) {
-  return links.filter(
-    (link) => !link.permission || userHasPermission(user, link.permission),
-  );
+function writeCollapsed(value) {
+  try {
+    localStorage.setItem(COLLAPSE_STORAGE_KEY, JSON.stringify(value));
+  } catch {
+    /* modo privado: preferência só na sessão */
+  }
 }
 
-function buildNavGroups(features = {}) {
-  const visao = [{ path: "/", label: "Início", exact: true }];
-  const frota = [
-    {
-      path: "/motoristas",
-      label: "Motoristas",
-      permission: PERMISSIONS.MOTORISTAS_READ,
-    },
-    {
-      path: "/documentos",
-      label: "Documentos",
-      permission: PERMISSIONS.DOCS_READ,
-    },
-  ];
-  const operacao = [
-    { path: "/manutencao-gastos", label: "Manutenção" },
-    {
-      path: "/relatorios",
-      label: "Relatórios",
-      permission: PERMISSIONS.REPORTS_READ,
-    },
-  ];
-  if (features.ordem_coleta === true) {
-    operacao.push({ path: "/ordem-coleta", label: "Ordem de coleta" });
-  }
-  if (features.notas_estoque === true) {
-    operacao.push({ path: "/notas-estoque", label: "Notas / Estoque" });
-  }
-  const telemetria = [];
-  if (features.telemetria === true) {
-    telemetria.push(
-      { path: "/telemetria", label: "Monitoramento", exact: true, permission: PERMISSIONS.TELEMETRY_READ },
-      { path: "/telemetria/historico", label: "Histórico", permission: PERMISSIONS.TELEMETRY_READ },
-      { path: "/telemetria/dispositivos", label: "Dispositivos", permission: PERMISSIONS.TELEMETRY_READ },
-      { path: "/telemetria/geocercas", label: "Geocercas", permission: PERMISSIONS.TELEMETRY_READ },
-      { path: "/telemetria/config", label: "Config", permission: PERMISSIONS.TELEMETRY_READ },
-    );
-  }
-  return { visao, frota, operacao, telemetria };
+const isMac =
+  typeof navigator !== "undefined" && /Mac|iPhone|iPad/i.test(navigator.platform || "");
+
+function initials(user) {
+  const base = String(user?.nome || user?.email || "U").trim();
+  const parts = base.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  return base.charAt(0).toUpperCase();
 }
 
-const isActivePath = (pathname, path, exact = false) => {
-  if (exact) return pathname === path;
-  return pathname === path || pathname.startsWith(`${path}/`);
-};
+/** Fecha popovers ao clicar fora ou pressionar Esc. */
+function useDismiss(open, onClose) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) onClose();
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, onClose]);
+  return ref;
+}
 
-const sideLinkClass = (active) =>
-  `group flex min-h-10 w-full items-center gap-3 rounded-lg border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
+const navItemClass = (active, nested = false) =>
+  `group relative flex w-full items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70 ${
+    nested ? "min-h-8 py-1.5 pl-9" : "min-h-9 py-2"
+  } ${
     active
-      ? "border-cyan-400/20 bg-cyan-400/10 text-cyan-50"
-      : "border-transparent text-slate-300 hover:bg-white/5 hover:text-white"
+      ? "bg-white/[0.08] text-white"
+      : "text-ink-300 hover:bg-white/[0.04] hover:text-white"
   }`;
 
-const PAGE_TITLES = [
-  ["/caminhao/editar/", "Editar veículo"],
-  ["/caminhao/", "Detalhes do veículo"],
-  ["/cadastro-caminhao", "Novo veículo"],
-  ["/manutencao-gastos", "Manutenção e gastos"],
-  ["/pneus/estoque", "Estoque de pneus"],
-  ["/pneus", "Pneus"],
-  ["/motoristas", "Motoristas"],
-  ["/documentos", "Documentos"],
-  ["/relatorios", "Relatórios"],
-  ["/telemetria/dispositivos", "Dispositivos"],
-  ["/telemetria/historico", "Histórico"],
-  ["/telemetria/geocercas", "Geocercas"],
-  ["/telemetria/config", "Configurações"],
-  ["/telemetria/mapa", "Monitoramento"],
-  ["/telemetria", "Monitoramento"],
-  ["/notas-estoque", "Notas e estoque"],
-  ["/fiscal", "Fiscal"],
-  ["/usuarios", "Usuários"],
-  ["/empresa", "Configurações"],
-  ["/auditoria", "Auditoria"],
-  ["/conta", "Minha conta"],
-  ["/assinatura", "Assinatura"],
-  ["/", "Visão geral"],
-];
-
-function currentPageTitle(pathname) {
-  return PAGE_TITLES.find(([path]) =>
-    path === "/" ? pathname === "/" : pathname.startsWith(path),
-  )?.[1] || "ATrack";
-}
-
-const LINK_ICON_PATHS = {
-  "/":
-    "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 00-1-1h-2a1 1 0 00-1 1v4",
-  "/manutencao-gastos":
-    "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z",
-  "/relatorios":
-    "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-1-1z",
-  "/documentos":
-    "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
-  "/motoristas":
-    "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z",
-  "/ordem-coleta":
-    "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2",
-  "/notas-estoque":
-    "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4",
-  // Grupo Telemetria (pai) — sinal/radar
-  "/telemetria/mapa":
-    "M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.15 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0",
-  // Monitoramento — olho / visão ao vivo
-  "/telemetria":
-    "M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z",
-  "/telemetria/dispositivos":
-    "M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z",
-  "/telemetria/historico":
-    "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
-  "/telemetria/geocercas":
-    "M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7",
-  "/telemetria/config":
-    "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z",
-  // Fiscal
-  "/fiscal":
-    "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4",
-  "/fiscal/empresas":
-    "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4",
-  "/fiscal/seguro":
-    "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
-  "/fiscal/cte":
-    "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
-  "/fiscal/mdfe":
-    "M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2",
-  "/fiscal/contratos-frete":
-    "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
-};
-
-function linkIcon(path) {
-  const d = LINK_ICON_PATHS[path] || "M4 6h16M4 12h16M4 18h16";
-  // Alguns ícones Heroicons usam 2 paths no mesmo `d` (ex.: olho).
-  const parts = String(d)
-    .split(/\s(?=M)/)
-    .map((p) => p.trim())
-    .filter(Boolean);
+function ActiveBar({ active }) {
+  if (!active) return null;
   return (
-    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      {parts.map((part) => (
-        <path
-          key={part}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d={part}
-        />
-      ))}
-    </svg>
+    <span
+      className="absolute -left-3 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-cyan-400"
+      aria-hidden
+    />
   );
 }
 
-const Chevron = ({ open }) => (
-  <svg
-    className={`h-3.5 w-3.5 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-    aria-hidden
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M19 9l-7 7-7-7"
-    />
-  </svg>
-);
+ActiveBar.propTypes = { active: PropTypes.bool };
 
-function NavLink({ link, pathname }) {
+function SidebarItem({ item, pathname, badge }) {
+  const [open, setOpen] = useState(() =>
+    item.children ? item.children.some((c) => isActivePath(pathname, c.path, c.exact)) : false,
+  );
+  const childActive = item.children?.some((c) => isActivePath(pathname, c.path, c.exact));
+
+  useEffect(() => {
+    if (childActive) setOpen(true);
+  }, [childActive]);
+
+  if (item.children) {
+    return (
+      <div>
+        <button
+          type="button"
+          className={navItemClass(false)}
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+        >
+          <Icon name={item.icon} className={`h-[18px] w-[18px] ${childActive ? "text-cyan-300" : "text-ink-400 group-hover:text-ink-300"}`} />
+          <span className={`flex-1 text-left ${childActive ? "text-white" : ""}`}>{item.label}</span>
+          <Icon
+            name="chevronDown"
+            className={`h-3.5 w-3.5 text-ink-400 transition-transform ${open ? "rotate-180" : ""}`}
+          />
+        </button>
+        {open ? (
+          <div className="mt-0.5 flex flex-col gap-0.5">
+            {item.children.map((child) => {
+              const active = isActivePath(pathname, child.path, child.exact);
+              return (
+                <Link
+                  key={child.path}
+                  to={child.path}
+                  className={navItemClass(active, true)}
+                  aria-current={active ? "page" : undefined}
+                >
+                  <ActiveBar active={active} />
+                  {child.label}
+                </Link>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  const active = isActivePath(pathname, item.path, item.exact);
   return (
     <Link
-      to={link.path}
-      className={sideLinkClass(isActivePath(pathname, link.path, link.exact))}
+      to={item.path}
+      className={navItemClass(active)}
+      aria-current={active ? "page" : undefined}
     >
-      <span className="opacity-80" aria-hidden>
-        {linkIcon(link.path)}
-      </span>
-      {link.label}
+      <ActiveBar active={active} />
+      <Icon
+        name={item.icon}
+        className={`h-[18px] w-[18px] ${active ? "text-cyan-300" : "text-ink-400 group-hover:text-ink-300"}`}
+      />
+      <span className="flex-1 truncate">{item.label}</span>
+      {badge ? (
+        <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-red-500/90 px-1.5 text-[11px] font-semibold leading-5 text-white tabular-nums">
+          {badge}
+        </span>
+      ) : null}
     </Link>
   );
 }
 
-function GroupLabel({ children }) {
+SidebarItem.propTypes = {
+  item: PropTypes.object.isRequired,
+  pathname: PropTypes.string.isRequired,
+  badge: PropTypes.node,
+};
+
+function SidebarSection({ section, pathname, collapsed, onToggle, badges }) {
+  const collapsible = COLLAPSIBLE_SECTIONS.has(section.id);
+  const hasActive = section.items.some((item) =>
+    item.children
+      ? item.children.some((c) => isActivePath(pathname, c.path, c.exact))
+      : isActivePath(pathname, item.path, item.exact),
+  );
+  const isOpen = !collapsible || !collapsed || hasActive;
+
   return (
-    <p className="px-3 pb-1.5 pt-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 first:pt-0">
-      {children}
-    </p>
+    <div className="pt-4 first:pt-1">
+      {collapsible ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={isOpen}
+          className="flex w-full items-center justify-between rounded-md px-2.5 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-400 hover:text-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70"
+        >
+          {section.label}
+          <Icon name="chevronDown" className={`h-3 w-3 transition-transform ${isOpen ? "" : "-rotate-90"}`} />
+        </button>
+      ) : (
+        <p className="px-2.5 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-400">
+          {section.label}
+        </p>
+      )}
+      {isOpen ? (
+        <div className="flex flex-col gap-0.5">
+          {section.items.map((item) => (
+            <SidebarItem
+              key={item.path || item.id}
+              item={item}
+              pathname={pathname}
+              badge={badges[item.path]}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
-function SidebarNav({
-  visaoLinks,
-  frotaLinks,
-  operacaoLinks,
-  fiscalLinks,
-  pathname,
-  pneusOpen,
-  setPneusOpen,
-  fiscalOpen,
-  setFiscalOpen,
-  showFiscalMenu,
-  telemetriaLinks,
-  showTelemetriaMenu,
-  telemetriaOpen,
-  setTelemetriaOpen,
-  canWriteFrota,
-  vehicleQuotaReached,
-  showBillingLink,
-  canManageUsers,
-  canWriteSettings,
-  canReadAudit,
-  isAuthenticated,
-  user,
-  onLogout,
-}) {
-  const isPneusSection = pathname.startsWith("/pneus");
-  const isFiscalSection = pathname.startsWith("/fiscal");
-  const isTelemetriaSection = pathname.startsWith("/telemetria");
+SidebarSection.propTypes = {
+  section: PropTypes.object.isRequired,
+  pathname: PropTypes.string.isRequired,
+  collapsed: PropTypes.bool,
+  onToggle: PropTypes.func.isRequired,
+  badges: PropTypes.object.isRequired,
+};
+
+function UserMenu({ user, onLogout, placement = "top" }) {
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+  const ref = useDismiss(open, close);
+  const isTop = placement === "top";
 
   return (
-    <nav className="flex min-h-0 flex-1 flex-col" aria-label="Menu principal">
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
-        {canWriteFrota && !vehicleQuotaReached && (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        className={
+          isTop
+            ? "flex w-full items-center gap-2.5 rounded-lg p-2 text-left transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70"
+            : "flex h-9 w-9 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2"
+        }
+        aria-label="Abrir menu do usuário"
+      >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 text-xs font-bold text-white ring-2 ring-white/10">
+          {initials(user)}
+        </span>
+        {isTop ? (
+          <>
+            <span className="min-w-0 flex-1 leading-tight">
+              <span className="block truncate text-[13px] font-semibold text-white">
+                {user?.nome || "Usuário"}
+              </span>
+              <span className="block truncate text-[11px] text-ink-400" title={user?.email}>
+                {user?.email}
+              </span>
+            </span>
+            <Icon name="chevronDown" className={`h-3.5 w-3.5 text-ink-400 transition-transform ${open ? "" : "rotate-180"}`} />
+          </>
+        ) : null}
+      </button>
+      {open ? (
+        <div
+          role="menu"
+          className={`absolute z-[70] w-60 animate-pop-in overflow-hidden rounded-xl border border-border bg-white p-1 text-sm shadow-pop ${
+            isTop ? "bottom-full left-0 mb-2" : "right-0 top-full mt-2"
+          }`}
+        >
+          <div className="border-b border-border px-3 py-2.5">
+            <p className="truncate font-semibold text-text-primary">{user?.nome || "Usuário"}</p>
+            <p className="truncate text-xs text-text-secondary">{user?.tenantNome || user?.email}</p>
+            {user?.role ? (
+              <p className="mt-1 inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium capitalize text-text-secondary">
+                {user.role === "admin" ? "Administrador" : user.role === "operator" ? "Operador" : user.role}
+              </p>
+            ) : null}
+          </div>
           <Link
-            to="/cadastro-caminhao"
-            className="mb-4 flex h-10 items-center justify-center rounded-lg bg-secondary text-sm font-semibold text-white transition-colors hover:bg-secondary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+            role="menuitem"
+            to="/conta"
+            onClick={close}
+            className="mt-1 flex items-center gap-2.5 rounded-lg px-3 py-2 text-text-primary hover:bg-slate-100"
           >
-            + Caminhão
+            <Icon name="user" className="h-4 w-4 text-text-secondary" /> Minha conta
           </Link>
-        )}
-
-        <GroupLabel>Visão geral</GroupLabel>
-        <div className="flex flex-col gap-0.5">
-          {visaoLinks.map((link) => (
-            <NavLink key={link.path} link={link} pathname={pathname} />
-          ))}
-        </div>
-
-        <GroupLabel>Frota</GroupLabel>
-        <div className="flex flex-col gap-0.5">
-          {frotaLinks.map((link) => (
-            <NavLink key={link.path} link={link} pathname={pathname} />
-          ))}
-          <div>
-            <button
-              type="button"
-              className={`${sideLinkClass(isPneusSection)} justify-between gap-2`}
-              aria-expanded={pneusOpen}
-              onClick={() => setPneusOpen((open) => !open)}
-            >
-              Pneus
-              <Chevron open={pneusOpen} />
-            </button>
-            {pneusOpen && (
-              <div className="mt-0.5 flex flex-col gap-0.5 pl-2">
-                {pneusSubLinks.map((sub) => (
-                  <Link
-                    key={sub.path}
-                    to={sub.path}
-                    className={`${sideLinkClass(
-                      isActivePath(
-                        pathname,
-                        sub.path,
-                        sub.exact || sub.path === "/pneus",
-                      ),
-                    )} py-1.5 text-[13px]`}
-                  >
-                    {sub.label}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <GroupLabel>Operação</GroupLabel>
-        <div className="flex flex-col gap-0.5">
-          {operacaoLinks.map((link) => (
-            <NavLink key={link.path} link={link} pathname={pathname} />
-          ))}
-        </div>
-
-        {showTelemetriaMenu && (
-          <div className="flex flex-col gap-0.5 pt-3">
-            <button
-              type="button"
-              className={`${sideLinkClass(isTelemetriaSection)} justify-between gap-2`}
-              aria-expanded={telemetriaOpen}
-              onClick={() => setTelemetriaOpen((open) => !open)}
-            >
-              <span className="flex items-center gap-3">
-                <span className="opacity-80" aria-hidden>
-                  {linkIcon("/telemetria/mapa")}
-                </span>
-                Telemetria
-              </span>
-              <Chevron open={telemetriaOpen} />
-            </button>
-            {telemetriaOpen && (
-              <div className="mt-0.5 flex flex-col gap-0.5 pl-2">
-                {telemetriaLinks.map((sub) => (
-                  <Link
-                    key={sub.path}
-                    to={sub.path}
-                    className={`${sideLinkClass(
-                      isActivePath(pathname, sub.path, sub.exact),
-                    )} gap-2.5 py-1.5 text-[13px]`}
-                  >
-                    <span className="opacity-80" aria-hidden>
-                      {linkIcon(sub.path)}
-                    </span>
-                    {sub.label}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {showFiscalMenu && (
-          <div className="flex flex-col gap-0.5 pt-3">
-            <button
-              type="button"
-              className={`${sideLinkClass(isFiscalSection)} justify-between gap-2`}
-              aria-expanded={fiscalOpen}
-              onClick={() => setFiscalOpen((open) => !open)}
-            >
-              <span className="flex items-center gap-3">
-                <span className="opacity-80" aria-hidden>
-                  {linkIcon("/fiscal")}
-                </span>
-                Fiscal
-              </span>
-              <Chevron open={fiscalOpen} />
-            </button>
-            {fiscalOpen && (
-              <div className="mt-0.5 flex flex-col gap-0.5 pl-2">
-                {fiscalLinks.map((sub) => (
-                  <Link
-                    key={sub.path}
-                    to={sub.path}
-                    className={`${sideLinkClass(isActivePath(pathname, sub.path))} gap-2.5 py-1.5 text-[13px]`}
-                  >
-                    <span className="opacity-80" aria-hidden>
-                      {linkIcon(sub.path)}
-                    </span>
-                    {sub.label}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="mt-4 border-t border-white/10 pt-3">
-          <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-            Conta
-          </p>
-          <div className="flex flex-col gap-0.5">
-            {showBillingLink && (
-              <Link
-                to="/assinatura"
-                className={sideLinkClass(isActivePath(pathname, "/assinatura"))}
-              >
-                Assinatura
-              </Link>
-            )}
-            {isAuthenticated && canManageUsers && (
-              <Link
-                to="/usuarios"
-                className={sideLinkClass(isActivePath(pathname, "/usuarios"))}
-              >
-                Usuários
-              </Link>
-            )}
-            {isAuthenticated && canWriteSettings && (
-              <Link
-                to="/empresa"
-                className={sideLinkClass(isActivePath(pathname, "/empresa"))}
-              >
-                Configurações
-              </Link>
-            )}
-            {isAuthenticated && canReadAudit && (
-              <Link
-                to="/auditoria"
-                className={sideLinkClass(isActivePath(pathname, "/auditoria"))}
-              >
-                Auditoria
-              </Link>
-            )}
-            {isAuthenticated && (
-              <Link
-                to="/conta"
-                className={sideLinkClass(isActivePath(pathname, "/conta"))}
-              >
-                Minha conta
-              </Link>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {isAuthenticated && (
-        <div className="shrink-0 border-t border-white/10 p-3">
-          <p className="truncate px-3 text-xs text-gray-400" title={user?.email}>
-            {user?.email}
-          </p>
           <button
+            role="menuitem"
             type="button"
-            onClick={onLogout}
-            className={`${sideLinkClass(false)} mt-1`}
+            onClick={() => {
+              close();
+              onLogout();
+            }}
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-red-700 hover:bg-red-50"
           >
-            Sair
+            <Icon name="logout" className="h-4 w-4" /> Sair
           </button>
         </div>
-      )}
-    </nav>
+      ) : null}
+    </div>
   );
 }
 
+UserMenu.propTypes = {
+  user: PropTypes.object,
+  onLogout: PropTypes.func.isRequired,
+  placement: PropTypes.oneOf(["top", "bottom"]),
+};
+
+function NewMenu({ actions }) {
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+  const ref = useDismiss(open, close);
+  if (!actions.length) return null;
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-white shadow-[0_1px_2px_rgba(11,19,36,0.2)] transition-colors hover:bg-primary-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2"
+      >
+        <Icon name="plus" className="h-4 w-4" strokeWidth={2.25} />
+        <span className="hidden sm:inline">Novo</span>
+        <span className="sr-only sm:hidden">Novo cadastro</span>
+      </button>
+      {open ? (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-[70] mt-2 w-72 animate-pop-in rounded-xl border border-border bg-white p-1.5 shadow-pop"
+        >
+          {actions.map((a) => (
+            <Link
+              key={a.id}
+              role="menuitem"
+              to={a.to}
+              onClick={close}
+              className="flex items-start gap-3 rounded-lg px-2.5 py-2 hover:bg-slate-100"
+            >
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-text-secondary">
+                <Icon name={a.icon} className="h-4 w-4" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-text-primary">{a.label}</span>
+                <span className="block text-xs text-text-secondary">{a.description}</span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+NewMenu.propTypes = { actions: PropTypes.array.isRequired };
+
+function AlertsBell({ counts, loading }) {
+  const total = counts?.total ?? 0;
+  const urgent = (counts?.critical ?? 0) + (counts?.high ?? 0);
+  return (
+    <Link
+      to="/#pendencias"
+      className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-slate-100 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+      aria-label={
+        loading ? "Pendências operacionais" : `${total} pendência(s) operacional(is)`
+      }
+      title="Pendências operacionais"
+    >
+      <Icon name="bell" className="h-[18px] w-[18px]" />
+      {!loading && total > 0 ? (
+        <span
+          className={`absolute -right-0.5 -top-0.5 inline-flex min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold leading-[18px] text-white ring-2 ring-white tabular-nums ${
+            urgent > 0 ? "bg-red-600" : "bg-amber-500"
+          }`}
+        >
+          {total > 99 ? "99+" : total}
+        </span>
+      ) : null}
+    </Link>
+  );
+}
+
+AlertsBell.propTypes = { counts: PropTypes.object, loading: PropTypes.bool };
+
 /**
- * Shell autenticado: sidebar à esquerda no desktop, drawer no mobile.
+ * Shell autenticado: sidebar fixa no desktop, drawer no mobile, topo com
+ * contexto da página, busca rápida (Ctrl/⌘+K), cadastro rápido e pendências.
  */
 const Navbar = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [pneusOpen, setPneusOpen] = useState(false);
-  const [fiscalOpen, setFiscalOpen] = useState(false);
-  const [telemetriaOpen, setTelemetriaOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(readCollapsed);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
 
-  const navGroups = buildNavGroups(user?.features);
-  const visaoLinks = filterLinks(navGroups.visao, user);
-  const frotaLinks = filterLinks(navGroups.frota, user);
-  const operacaoLinks = filterLinks(navGroups.operacao, user);
-  const telemetriaLinks = filterLinks(navGroups.telemetria || [], user);
-  const fiscalLinks = fiscalSubLinks.filter((sub) => canSeeFiscalLink(user, sub));
+  const sections = useMemo(() => visibleNavSections(user), [user]);
+  const destinations = useMemo(() => flatNavItems(user), [user]);
+  const actions = useMemo(() => quickActionsFor(user), [user]);
+  const pageMeta = currentPageMeta(location.pathname);
+
+  const canReadAlerts = isAuthenticated && userHasPermission(user, PERMISSIONS.ALERTS_READ);
+  const alertsQuery = useOpsAlertsQuery(canReadAlerts);
+  const urgentCount =
+    (alertsQuery.data?.counts?.critical ?? 0) + (alertsQuery.data?.counts?.high ?? 0);
+
   const showBillingLink = isAuthenticated && user?.billingExempt === false;
-  const canWriteFrota = userHasPermission(user, PERMISSIONS.FROTA_WRITE);
-  const vehicleQuotaReached = isVehicleQuotaReached(user);
-  const canManageUsers = userHasPermission(user, PERMISSIONS.USERS_MANAGE);
-  const canWriteSettings = userHasPermission(user, PERMISSIONS.SETTINGS_WRITE);
-  const canReadAudit = userHasPermission(user, PERMISSIONS.AUDIT_READ);
   const trialDays = trialDaysRemaining(user);
   const showTrialBanner =
-    showBillingLink &&
-    user?.subscriptionStatus === "trialing" &&
-    trialDays != null;
-  const showPastDueBanner =
-    showBillingLink && user?.subscriptionStatus === "past_due";
-  const showBanner = showTrialBanner || showPastDueBanner;
-  const showFiscalMenu =
-    user?.features?.transporte_fiscal === true && fiscalLinks.length > 0;
-  const showTelemetriaMenu =
-    user?.features?.telemetria === true && telemetriaLinks.length > 0;
+    showBillingLink && user?.subscriptionStatus === "trialing" && trialDays != null;
+  const showPastDueBanner = showBillingLink && user?.subscriptionStatus === "past_due";
 
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
-    if (location.pathname.startsWith("/pneus")) setPneusOpen(true);
-    if (location.pathname.startsWith("/fiscal")) setFiscalOpen(true);
-    if (location.pathname.startsWith("/telemetria")) setTelemetriaOpen(true);
-  }, [location.pathname]);
-
-  useEffect(() => {
     if (!mobileOpen) return undefined;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const onKey = (e) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = previous;
+      document.removeEventListener("keydown", onKey);
     };
   }, [mobileOpen]);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && String(e.key).toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Rolagem até âncoras (ex.: /#pendencias) após a navegação.
+  useEffect(() => {
+    if (!location.hash) return undefined;
+    const id = window.setTimeout(() => {
+      document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
+    return () => window.clearTimeout(id);
+  }, [location.hash, location.pathname]);
+
+  const toggleSection = (id) => {
+    setCollapsed((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      writeCollapsed(next);
+      return next;
+    });
+  };
 
   const handleLogout = () => {
     logout();
@@ -537,183 +462,188 @@ const Navbar = ({ children }) => {
     setMobileOpen(false);
   };
 
-  const navProps = {
-    visaoLinks,
-    frotaLinks,
-    operacaoLinks,
-    fiscalLinks,
-    telemetriaLinks,
-    pathname: location.pathname,
-    pneusOpen,
-    setPneusOpen,
-    fiscalOpen,
-    setFiscalOpen,
-    showFiscalMenu,
-    showTelemetriaMenu,
-    telemetriaOpen,
-    setTelemetriaOpen,
-    canWriteFrota,
-    vehicleQuotaReached,
-    showBillingLink,
-    canManageUsers,
-    canWriteSettings,
-    canReadAudit,
-    isAuthenticated,
-    user,
-    onLogout: handleLogout,
-  };
+  const badges = useMemo(
+    () => (urgentCount > 0 ? { "/": urgentCount > 99 ? "99+" : urgentCount } : {}),
+    [urgentCount],
+  );
 
   const brand = (
-    <Link to="/" className="flex min-w-0 items-center gap-2.5">
+    <Link to="/" className="flex min-w-0 items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70">
       <img
         src={PRODUCT_LOGO_SRC}
         alt={PRODUCT_LOGO_ALT}
-        className="h-9 w-9 shrink-0 rounded-lg bg-white object-contain p-1"
+        className="h-8 w-8 shrink-0 rounded-lg bg-white object-contain p-[3px] shadow-[0_0_0_1px_rgba(255,255,255,0.1)]"
       />
       <div className="min-w-0 leading-tight">
-        <span className="block truncate text-base font-bold tracking-tight text-white">
+        <span className="block truncate text-[15px] font-bold tracking-tight text-white">
           {PRODUCT_NAME}
         </span>
-        <span className="block truncate text-[10px] font-medium uppercase tracking-wider text-gray-400">
+        <span className="block truncate text-[11px] font-medium text-ink-400">
           {user?.tenantNome || PRODUCT_TAGLINE}
         </span>
       </div>
     </Link>
   );
 
-  const banner = showBanner ? (
-    <div
-      className={`text-center text-xs leading-snug sm:text-sm px-3 py-1.5 ${
-        showPastDueBanner
-          ? "bg-amber-500 text-amber-950"
-          : "bg-secondary text-white"
-      }`}
+  const searchTrigger = (
+    <button
+      type="button"
+      onClick={() => setPaletteOpen(true)}
+      className="flex h-9 w-full items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 text-left text-[13px] text-ink-400 transition-colors hover:border-white/20 hover:text-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70"
     >
-      {showPastDueBanner ? (
-        <>
-          Pagamento pendente.{" "}
-          <Link to="/assinatura" className="font-semibold underline">
-            Regularizar assinatura
-          </Link>
-        </>
-      ) : (
-        <>
-          {trialDays === 0
-            ? "Último dia do período de teste."
-            : `Período de teste: restam ${trialDays} dia${trialDays === 1 ? "" : "s"}.`}{" "}
-          <Link to="/assinatura" className="font-semibold underline">
-            Ver planos
-          </Link>
-        </>
-      )}
-    </div>
-  ) : null;
+      <Icon name="search" className="h-4 w-4" />
+      <span className="flex-1">Buscar…</span>
+      <span className="rounded border border-white/10 px-1.5 text-[10px] font-semibold text-ink-400">
+        {isMac ? "⌘K" : "Ctrl K"}
+      </span>
+    </button>
+  );
+
+  const sidebarBody = (
+    <nav className="flex min-h-0 flex-1 flex-col" aria-label="Menu principal">
+      <div className="px-3 pb-2 pt-3">{searchTrigger}</div>
+      <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+        {sections.map((section) => (
+          <SidebarSection
+            key={section.id}
+            section={section}
+            pathname={location.pathname}
+            collapsed={Boolean(collapsed[section.id])}
+            onToggle={() => toggleSection(section.id)}
+            badges={badges}
+          />
+        ))}
+      </div>
+      {isAuthenticated ? (
+        <div className="shrink-0 border-t border-white/[0.06] p-2">
+          <UserMenu user={user} onLogout={handleLogout} />
+        </div>
+      ) : null}
+    </nav>
+  );
+
+  const banner =
+    showTrialBanner || showPastDueBanner ? (
+      <div
+        className={`flex items-center justify-center gap-2 px-3 py-1.5 text-center text-xs leading-snug sm:text-[13px] ${
+          showPastDueBanner ? "bg-amber-400 text-amber-950" : "bg-ink-800 text-ink-300"
+        }`}
+      >
+        {showPastDueBanner ? (
+          <>
+            <Icon name="alert" className="h-4 w-4" />
+            Pagamento pendente.
+            <Link to="/assinatura" className="font-semibold underline underline-offset-2">
+              Regularizar assinatura
+            </Link>
+          </>
+        ) : (
+          <>
+            <span className="text-white">
+              {trialDays === 0
+                ? "Último dia do período de teste."
+                : `Período de teste: restam ${trialDays} dia${trialDays === 1 ? "" : "s"}.`}
+            </span>
+            <Link to="/assinatura" className="font-semibold text-cyan-300 underline underline-offset-2">
+              Ver planos
+            </Link>
+          </>
+        )}
+      </div>
+    ) : null;
 
   return (
     <div className="flex min-h-screen bg-background">
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-slate-800 bg-primary lg:flex xl:w-72">
-        <div className="shrink-0 border-b border-white/10 px-5 py-5">{brand}</div>
-        <SidebarNav {...navProps} />
+      <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-r border-black/20 bg-ink-950 lg:flex">
+        <div className="shrink-0 px-4 pb-1 pt-4">{brand}</div>
+        {sidebarBody}
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
         {banner}
-        <header className="sticky top-0 z-50 flex h-14 items-center gap-3 bg-primary px-4 shadow-md lg:hidden">
-          {brand}
+        <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b border-border bg-white/90 px-3 backdrop-blur-md sm:px-4 lg:h-[60px] lg:px-6 xl:px-8">
           <button
             type="button"
-            className="ml-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-md p-2.5 text-gray-300 hover:bg-white/10 hover:text-white"
-            onClick={() => setMobileOpen((open) => !open)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-text-secondary hover:bg-slate-100 hover:text-text-primary lg:hidden"
+            onClick={() => setMobileOpen(true)}
             aria-expanded={mobileOpen}
-            aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
+            aria-label="Abrir menu"
           >
-            {mobileOpen ? (
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            ) : (
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-            )}
+            <Icon name="menu" className="h-5 w-5" />
           </button>
-        </header>
-
-        {mobileOpen && (
-          <>
-            <button
-              type="button"
-              className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-              aria-label="Fechar menu"
-              onClick={() => setMobileOpen(false)}
-            />
-            <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-primary shadow-xl lg:hidden">
-              <div className="flex items-center justify-between border-b border-white/10 px-4 py-4">
-                {brand}
-                <button
-                  type="button"
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-gray-300 hover:bg-white/10 hover:text-white"
-                  onClick={() => setMobileOpen(false)}
-                  aria-label="Fechar menu"
-                >
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <SidebarNav {...navProps} />
-            </aside>
-          </>
-        )}
-
-        <header className="sticky top-0 z-30 hidden h-16 items-center justify-between border-b border-border bg-white/95 px-6 backdrop-blur lg:flex xl:px-8">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-secondary">
-              Central operacional
-            </p>
-            <p className="truncate text-sm font-semibold text-text-primary">
-              {currentPageTitle(location.pathname)}
-            </p>
+          {/* No celular o topo mostra a página atual; no desktop o título já está na página. */}
+          <div className="min-w-0 flex-1 lg:hidden">
+            <p className="truncate text-[15px] font-semibold text-text-primary">{pageMeta.title}</p>
           </div>
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="hidden text-right xl:block">
-              <p className="max-w-56 truncate text-sm font-medium text-text-primary">
-                {user?.nome || "Usuário"}
-              </p>
-              <p className="max-w-56 truncate text-xs text-text-secondary">
-                {user?.tenantNome || user?.email}
-              </p>
+
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            className="hidden h-9 w-64 items-center gap-2 rounded-lg border border-border bg-slate-50 px-3 text-left text-sm text-text-light transition-colors hover:border-border-strong hover:bg-white md:flex lg:w-96"
+            aria-label="Abrir busca rápida"
+          >
+            <Icon name="search" className="h-4 w-4" />
+            <span className="flex-1 truncate">Buscar placa, motorista, módulo…</span>
+            <kbd className="kbd">{isMac ? "⌘K" : "Ctrl K"}</kbd>
+          </button>
+          <div className="hidden flex-1 lg:block" aria-hidden />
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-text-secondary hover:bg-slate-100 hover:text-text-primary md:hidden"
+            aria-label="Abrir busca rápida"
+          >
+            <Icon name="search" className="h-[18px] w-[18px]" />
+          </button>
+
+          {canReadAlerts ? (
+            <AlertsBell counts={alertsQuery.data?.counts} loading={alertsQuery.isLoading} />
+          ) : null}
+          <NewMenu actions={actions} />
+          {isAuthenticated ? (
+            <div className="hidden lg:block">
+              <UserMenu user={user} onLogout={handleLogout} placement="bottom" />
             </div>
-            <Link
-              to="/conta"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2"
-              aria-label="Abrir minha conta"
-              title="Minha conta"
-            >
-              {(user?.nome || user?.email || "U").trim().charAt(0).toUpperCase()}
-            </Link>
-          </div>
+          ) : null}
         </header>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
       </div>
+
+      {mobileOpen ? (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div
+            className="absolute inset-0 bg-ink-950/50 backdrop-blur-[2px]"
+            aria-hidden
+            onClick={() => setMobileOpen(false)}
+          />
+          <aside className="relative flex h-full w-[min(86vw,300px)] animate-drawer-in flex-col bg-ink-950 shadow-pop">
+            <div className="flex items-center justify-between gap-2 px-4 pb-1 pt-4">
+              {brand}
+              <button
+                type="button"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-ink-300 hover:bg-white/10 hover:text-white"
+                onClick={() => setMobileOpen(false)}
+                aria-label="Fechar menu"
+              >
+                <Icon name="x" className="h-5 w-5" />
+              </button>
+            </div>
+            {sidebarBody}
+          </aside>
+        </div>
+      ) : null}
+
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        destinations={destinations}
+        actions={actions}
+      />
     </div>
   );
 };
+
+Navbar.propTypes = { children: PropTypes.node };
 
 export default Navbar;

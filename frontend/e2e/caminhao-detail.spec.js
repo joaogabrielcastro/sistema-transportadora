@@ -167,8 +167,9 @@ test.describe("Detalhe do caminhão", () => {
       page.getByRole("heading", { name: `Veículo ${PLACA}` }),
     ).toBeVisible();
     await expect(page.getByText("KM Atual")).toBeVisible();
-    await expect(page.getByText(/50[.,]000\s*km/)).toBeVisible();
-    await expect(page.getByText("João Silva")).toBeVisible();
+    await expect(page.getByText(/50[.,]000\s*km/).first()).toBeVisible();
+    // Motorista e KM também aparecem no cabeçalho do veículo.
+    await expect(page.getByText("João Silva").first()).toBeVisible();
   });
 
   test("aba Registros exibe gastos e manutenções", async ({ page }) => {

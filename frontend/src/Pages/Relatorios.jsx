@@ -23,7 +23,6 @@ import {
   StatCard,
 } from "../components/ui";
 import PageLayout from "../components/layout/PageLayout.jsx";
-import Breadcrumbs from "../components/layout/Breadcrumbs.jsx";
 import { exportToPDF, exportToExcel } from "../utils/exportUtils";
 import { formatCurrency, formatNumber, formatDate } from "../utils/formatters";
 import { formatCaminhaoOptions } from "../utils/caminhaoOptions.js";
@@ -57,15 +56,12 @@ const Relatorios = () => {
     start: initialStart,
     end: initialEnd,
   });
-  const [submittedParams, setSubmittedParams] = useState(() =>
-    searchParams.get("inicio") || searchParams.get("fim") || initialTruck
-      ? {
-          startDate: initialStart,
-          endDate: initialEnd,
-          caminhaoId: initialTruck ? Number(initialTruck) : undefined,
-        }
-      : null,
-  );
+  // O relatório já abre com o período padrão (último mês) — sem clique extra.
+  const [submittedParams, setSubmittedParams] = useState(() => ({
+    startDate: initialStart,
+    endDate: initialEnd,
+    caminhaoId: initialTruck ? Number(initialTruck) : undefined,
+  }));
   const [exporting, setExporting] = useState(null);
 
   const {
@@ -131,10 +127,10 @@ const Relatorios = () => {
     entryCount: 0,
   };
 
-  const generateReport = () => {
+  const generateReport = (range = dateRange) => {
     const params = {
-      startDate: dateRange.start,
-      endDate: dateRange.end,
+      startDate: range.start,
+      endDate: range.end,
       caminhaoId: selectedCaminhao
         ? parseInt(selectedCaminhao, 10)
         : undefined,
@@ -145,6 +141,22 @@ const Relatorios = () => {
     if (params.endDate) next.set("fim", params.endDate);
     if (params.caminhaoId) next.set("caminhao", String(params.caminhaoId));
     setSearchParams(next, { replace: true });
+  };
+
+  const applyPreset = (months) => {
+    const end = new Date();
+    const start = new Date();
+    if (months === "ano") {
+      start.setMonth(0, 1);
+    } else {
+      start.setMonth(start.getMonth() - months);
+    }
+    const range = {
+      start: start.toISOString().split("T")[0],
+      end: end.toISOString().split("T")[0],
+    };
+    setDateRange(range);
+    generateReport(range);
   };
 
   const activeFilterChips = useMemo(() => {
@@ -302,16 +314,28 @@ const Relatorios = () => {
 
   return (
     <PageLayout className="space-y-6">
-      <Breadcrumbs
-        items={[{ label: "Início", to: "/" }, { label: "Relatórios" }]}
-      />
       <PageHeader
-        title="Relatórios Gerenciais"
-        subtitle="Análise de custos e eficiência da frota"
+        eyebrow="Operação"
+        title="Relatórios gerenciais"
+        subtitle="Custo total e custo por quilômetro da frota no período, com exportação em PDF e Excel."
       />
 
         <Card>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+          <div className="mb-4 flex flex-wrap items-center gap-1.5" role="group" aria-label="Períodos rápidos">
+            <span className="mr-1 text-[13px] font-medium text-text-secondary">Período rápido:</span>
+            {[
+              { id: 1, label: "Último mês" },
+              { id: 3, label: "3 meses" },
+              { id: 6, label: "6 meses" },
+              { id: 12, label: "12 meses" },
+              { id: "ano", label: "Este ano" },
+            ].map((p) => (
+              <button key={p.id} type="button" className="chip" onClick={() => applyPreset(p.id)}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 items-end gap-x-4 md:grid-cols-4">
             <FormField
               label="Data Inicial"
               type="date"
@@ -339,8 +363,8 @@ const Relatorios = () => {
               allowEmpty
               emptyLabel="Todos os caminhões"
             />
-            <Button onClick={generateReport} loading={loading}>
-              Gerar Relatório
+            <Button onClick={() => generateReport()} loading={loading} className="mb-4">
+              Gerar relatório
             </Button>
           </div>
         </Card>

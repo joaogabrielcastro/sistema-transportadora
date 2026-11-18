@@ -10,6 +10,7 @@ import {
   loginWithCredentials,
 } from "../helpers/dbTestFixtures.js";
 import { waitForTelemetryQueueIdle } from "../../src/queues/telemetryJobQueue.js";
+import { hashPassword } from "../../src/utils/password.js";
 
 const skip = shouldRunDbTests ? false : "Defina RUN_DB_TESTS=1 ou rode no CI";
 
@@ -102,7 +103,9 @@ test("CRUD dispositivo, assign, current/history e last_seen no ingest", { skip }
       .set("Authorization", `Device ${secret}`)
       .send({
         event_id: `adm-${Date.now()}`,
-        recorded_at: "2026-11-13T12:00:00.000Z",
+        // Data relativa: o vínculo é criado agora, e eventos anteriores ao
+        // vínculo são recusados (409). Uma data fixa expira com o tempo.
+        recorded_at: new Date().toISOString(),
         latitude: -25.4,
         longitude: -49.2,
         speed_kmh: 55,
@@ -162,6 +165,45 @@ test("CRUD dispositivo, assign, current/history e last_seen no ingest", { skip }
       .set(fleet.auth.authHeader);
     assert.equal(revoked.status, 200);
     assert.equal(revoked.body.data.connection_status, "revoked");
+  } finally {
+    await cleanupTenant(fleet.secondary.tenant.id);
+  }
+});
+
+test("plano/preço do módulo (PUT /subscription) só o admin altera", { skip }, async () => {
+  const fleet = await makeTelemetryTenant("sub");
+  try {
+    const email = `oper-${Date.now().toString(36)}@saas.test`;
+    const password = "Operador123!";
+    await prisma.users.create({
+      data: {
+        tenant_id: fleet.secondary.tenant.id,
+        email,
+        nome: "Operador",
+        role: "operator",
+        password_hash: await hashPassword(password),
+        ativo: true,
+      },
+    });
+    const operator = await loginWithCredentials(app, email, password);
+
+    // Operador tem telemetry.write, mas não pode mexer em dados comerciais.
+    const denied = await request(app)
+      .put("/api/telemetry/subscription")
+      .set(operator.authHeader)
+      .send({ plan: "advanced", seat_limit: 99, monthly_price: 1 });
+    assert.equal(denied.status, 403);
+
+    const read = await request(app)
+      .get("/api/telemetry/subscription")
+      .set(operator.authHeader);
+    assert.equal(read.status, 200);
+
+    const allowed = await request(app)
+      .put("/api/telemetry/subscription")
+      .set(fleet.auth.authHeader)
+      .send({ plan: "basic", seat_limit: 10, monthly_price: 49 });
+    assert.equal(allowed.status, 200);
   } finally {
     await cleanupTenant(fleet.secondary.tenant.id);
   }

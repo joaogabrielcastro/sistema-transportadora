@@ -84,9 +84,10 @@ const FormField = ({
         : "border-border focus:ring-secondary"
     } 
     bg-white px-3 py-2 text-sm text-text-primary placeholder-text-light
-    focus:border-secondary focus:outline-none focus:ring-2 focus:ring-cyan-100
-    disabled:bg-gray-50 disabled:text-text-light disabled:cursor-not-allowed
-    transition-colors
+    shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-border-strong
+    focus:border-secondary focus:outline-none focus:ring-4 focus:ring-cyan-500/10
+    disabled:bg-slate-50 disabled:text-text-light disabled:cursor-not-allowed
+    transition-[border-color,box-shadow]
   `;
 
   if (type === "typeahead" || type === "searchable") {
@@ -313,7 +314,7 @@ const FormField = ({
       {label && (
         <label
           htmlFor={fieldId}
-          className="mb-1.5 block text-sm font-medium text-text-secondary"
+          className="mb-1.5 block text-[13px] font-medium text-slate-700"
         >
           {label}
           {required && <span className="ml-1 text-danger">*</span>}

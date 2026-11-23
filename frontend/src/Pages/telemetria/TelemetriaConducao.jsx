@@ -34,9 +34,10 @@ const PERIODS = [
 
 function periodParams(days) {
   const to = new Date();
-  const from = new Date(to.getTime() - days * 86_400_000);
+  // Dias inteiros desde 00:00 (hoje conta como um dia), como no Histórico,
+  // para os km e a taxa por 100 km baterem entre as telas.
+  const from = new Date(to.getFullYear(), to.getMonth(), to.getDate() - (days - 1));
   // Arredonda para o minuto: evita refazer a consulta a cada render.
-  from.setSeconds(0, 0);
   to.setSeconds(59, 999);
   return { from: from.toISOString(), to: to.toISOString() };
 }

@@ -166,7 +166,16 @@ test("FMC650: modelo com FMS e leitura dos dados do caminhão", () => {
     [FMS_IO.FUEL_LEVEL_PCT]: 63,
     [FMS_IO.ENGINE_SPEED_RPM]: 1340,
   });
-  assert.deepEqual(r, { fuelConsumedL: 152340, fuelLevelPct: 63, engineRpm: 1340 });
+  assert.deepEqual(r, { fuelConsumedL: 152340, fuelLevelPct: 63, engineRpm: 1340, engineTempC: null });
   // fora da faixa (102 = "não disponível" na FMS) ou ausente → null
-  assert.deepEqual(interpretFmsIo({ 87: 102 }), { fuelConsumedL: null, fuelLevelPct: null, engineRpm: null });
+  assert.deepEqual(interpretFmsIo({ 87: 102 }), {
+    fuelConsumedL: null,
+    fuelLevelPct: null,
+    engineRpm: null,
+    engineTempC: null,
+  });
+  // temperatura: byte − 40 °C
+  assert.equal(interpretFmsIo({ [FMS_IO.ENGINE_COOLANT_TEMP]: 128 }).engineTempC, 88);
+  assert.equal(interpretFmsIo({ [FMS_IO.ENGINE_COOLANT_TEMP]: 0 }).engineTempC, -40);
+  assert.equal(interpretFmsIo({ [FMS_IO.ENGINE_COOLANT_TEMP]: 255 }).engineTempC, null);
 });

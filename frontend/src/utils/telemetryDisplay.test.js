@@ -83,6 +83,8 @@ test("eventos de condução e saúde do rastreador", () => {
   assert.equal(formatDrivingValue("harsh_braking", 0.48), "0,48 g");
   assert.equal(formatDrivingValue("overspeed", 104), "104 km/h");
   assert.equal(formatDrivingValue("unplug", null), null);
+  assert.equal(formatDrivingValue("fuel_drop", 16), "−16 % do tanque");
+  assert.equal(drivingEventLabel("fuel_drop"), "Queda de combustível com o caminhão parado");
   assert.deepEqual(batteryStatus(27.4), { label: "27,4 V", tone: "ok" });
   assert.equal(batteryStatus(12.1).tone, "ok");
   assert.equal(batteryStatus(22.1).tone, "warn");

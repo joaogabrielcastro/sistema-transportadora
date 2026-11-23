@@ -392,17 +392,20 @@ test("FMC650: consumo, tanque e rotação vêm do caminhão (FMS)", { skip }, as
     assert.equal(created.status, 201, created.body?.error);
 
     const now = Date.now();
-    const rec = (s, odometerM, fuelL, level, rpm) => ({
+    const rec = (s, odometerM, fuelL, level, rpm, speedKmh = 70) => ({
       recordedAt: new Date(now + s * 1000),
       latitude: -25.4,
       longitude: -49.2,
-      speedKmh: 70,
+      speedKmh,
       ignition: true,
       odometerM,
       // "Fuel used GPS" também chega, mas não pode ser usado no FMC650.
       fuelUsedMl: 999_000_000,
       io: {
-        ones: [{ id: FMS_IO.FUEL_LEVEL_PCT, value: level }],
+        ones: [
+          { id: FMS_IO.FUEL_LEVEL_PCT, value: level },
+          { id: FMS_IO.ENGINE_COOLANT_TEMP, value: 128 }, // 88 °C
+        ],
         twos: [{ id: FMS_IO.ENGINE_SPEED_RPM, value: rpm }],
         fours: [{ id: FMS_IO.ENGINE_TOTAL_FUEL_USED_L, value: fuelL }],
       },
@@ -414,6 +417,11 @@ test("FMC650: consumo, tanque e rotação vêm do caminhão (FMS)", { skip }, as
     const device = await findActiveDeviceByImei(imei);
     await enqueueTeltonikaRecords(device, tryParseAvlPacket(packet).records, imei);
     await waitForTelemetryQueueIdle();
+    const engineTemp = (
+      await request(app).get("/api/telemetry/current").set(fleet.auth.authHeader)
+    ).body.data.find((r) => r.caminhao_id === fleet.truck.id).engine_temp_c;
+    assert.equal(engineTemp, 88);
+
 
     const current = await request(app).get("/api/telemetry/current").set(fleet.auth.authHeader);
     const row = current.body.data.find((r) => r.caminhao_id === fleet.truck.id);
@@ -429,7 +437,32 @@ test("FMC650: consumo, tanque e rotação vêm do caminhão (FMS)", { skip }, as
     assert.equal(v.km, 50);
     assert.equal(v.fuel_telemetry_l, 18); // medido: 152.318 − 152.300 L
     assert.equal(v.fuel_telemetry_source, "can");
+
+    // Estacionado: o tanque cai 16 pontos sem o motor consumir → possível furto.
+    const parked = buildAvlPacket({
+      codecId: CODEC8_EXTENDED,
+      records: [rec(600, 850_000, 152_318, 61, 0, 0)],
+    });
+    await enqueueTeltonikaRecords(device, tryParseAvlPacket(parked).records, imei);
+    await waitForTelemetryQueueIdle();
+    const drained = buildAvlPacket({
+      codecId: CODEC8_EXTENDED,
+      records: [rec(2400, 850_000, 152_318, 45, 0, 0)],
+    });
+    await enqueueTeltonikaRecords(device, tryParseAvlPacket(drained).records, imei);
+    await waitForTelemetryQueueIdle();
+    const report = await request(app)
+      .get("/api/telemetry/reports/driving")
+      .query({ from: new Date(now - 60_000).toISOString(), to: new Date(now + 3_600_000).toISOString() })
+      .set(fleet.auth.authHeader);
+    assert.equal(report.status, 200, report.body?.error);
+    assert.equal(report.body.data.totals.fuel_drop, 1);
+    const drop = report.body.data.events.find((e) => e.tipo === "fuel_drop");
+    assert.equal(drop.valor, 16);
   } finally {
+    await prisma.telemetry_driving_events
+      .deleteMany({ where: { tenant_id: fleet.secondary.tenant.id } })
+      .catch(() => {});
     await cleanupTenant(fleet.secondary.tenant.id);
   }
 });

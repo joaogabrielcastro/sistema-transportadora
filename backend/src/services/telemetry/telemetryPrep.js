@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { checkFuelDrop } from "./telemetryFuelWatch.js";
 import prisma from "../../lib/prisma.js";
 import {
   assertDeviceCredentialAllowed,
@@ -500,6 +501,19 @@ export async function applyIngestedTelemetryEvent({
     } catch {
       // daily não bloqueia ingestão
     }
+    // Queda do nível do tanque com o caminhão parado (possível furto).
+    await checkFuelDrop({
+      device,
+      caminhaoId: assignment.caminhao_id,
+      motoristaId,
+      eventKey,
+      recordedAt: recorded,
+      fuelLevelPct,
+      fuelConsumedL,
+      speedKmh,
+      latitude,
+      longitude,
+    });
   }
 
   return result;

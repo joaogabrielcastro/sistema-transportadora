@@ -142,9 +142,13 @@ export default function TelemetriaConducao() {
           />
           <StatCard
             layout="compact"
-            title="Segurança do rastreador"
+            title="Segurança e combustível"
             value={isLoading ? "…" : fmtInt(securityTotal)}
-            hint="Desconexão, reboque, colisão, jammer"
+            hint={
+              Number(totals.fuel_drop || 0) > 0
+                ? `${fmtInt(totals.fuel_drop)} queda(s) de combustível parado`
+                : "Desconexão, reboque, colisão, jammer, combustível"
+            }
             color={securityTotal > 0 ? "amber" : "slate"}
             emphasis={securityTotal > 0}
             icon={<Icon name="shield" />}

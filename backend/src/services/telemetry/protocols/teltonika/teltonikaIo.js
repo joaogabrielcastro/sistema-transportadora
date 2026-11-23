@@ -156,6 +156,7 @@ export const FMS_IO = Object.freeze({
   ENGINE_TOTAL_FUEL_USED_L: 86, // contador do motor, em litros
   FUEL_LEVEL_PCT: 87, // nível do tanque, 0–100 %
   ENGINE_SPEED_RPM: 88,
+  ENGINE_COOLANT_TEMP: 127, // 1 byte; °C = valor − 40 (faixa −40 a 210)
 });
 
 /** O modelo cadastrado no dispositivo é da linha com leitura FMS? */
@@ -174,9 +175,14 @@ export function interpretFmsIo(ioInput) {
   const fuel = toNumber(get(FMS_IO.ENGINE_TOTAL_FUEL_USED_L));
   const level = toNumber(get(FMS_IO.FUEL_LEVEL_PCT));
   const rpm = toNumber(get(FMS_IO.ENGINE_SPEED_RPM));
+  // Temperatura do líquido de arrefecimento: byte da FMS com deslocamento
+  // de −40 °C (0 = −40 °C, 250 = 210 °C). Bytes acima de 250 = sem leitura.
+  const coolantRaw = toNumber(get(FMS_IO.ENGINE_COOLANT_TEMP));
   return {
     fuelConsumedL: fuel != null && fuel > 0 ? fuel : null,
     fuelLevelPct: level != null && level >= 0 && level <= 100 ? level : null,
     engineRpm: rpm != null && rpm >= 0 && rpm <= 8032 ? Math.round(rpm) : null,
+    engineTempC:
+      coolantRaw != null && coolantRaw >= 0 && coolantRaw <= 250 ? coolantRaw - 40 : null,
   };
 }

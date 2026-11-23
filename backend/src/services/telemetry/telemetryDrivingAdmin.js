@@ -9,6 +9,7 @@ export const DRIVING_EVENT_TYPES = Object.freeze([
   "towing",
   "crash",
   "jamming",
+  "fuel_drop", // queda do tanque com o caminhão parado (possível furto)
 ]);
 
 /** Eventos que dependem de como o motorista dirige (entram em "eventos/100 km"). */

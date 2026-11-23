@@ -239,11 +239,12 @@ export const DRIVING_EVENTS = {
   towing: { label: "Movido com ignição desligada", short: "Reboque", unit: null },
   crash: { label: "Possível colisão", short: "Colisões", unit: null },
   jamming: { label: "Bloqueio de sinal (jammer)", short: "Jammer", unit: null },
+  fuel_drop: { label: "Queda de combustível com o caminhão parado", short: "Combustível", unit: "pct" },
 };
 
 /** Eventos que dependem do motorista (os demais são de segurança do veículo). */
 export const BEHAVIOR_EVENT_TYPES = ["harsh_braking", "harsh_acceleration", "harsh_cornering", "overspeed"];
-export const SECURITY_EVENT_TYPES = ["unplug", "towing", "crash", "jamming"];
+export const SECURITY_EVENT_TYPES = ["unplug", "towing", "crash", "jamming", "fuel_drop"];
 
 export function drivingEventLabel(tipo) {
   return DRIVING_EVENTS[tipo]?.label || tipo || "—";
@@ -256,6 +257,7 @@ export function formatDrivingValue(tipo, valor) {
   const unit = DRIVING_EVENTS[tipo]?.unit;
   if (unit === "g") return `${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} g`;
   if (unit === "km/h") return `${Math.round(n)} km/h`;
+  if (unit === "pct") return `−${n.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} % do tanque`;
   return null;
 }
 

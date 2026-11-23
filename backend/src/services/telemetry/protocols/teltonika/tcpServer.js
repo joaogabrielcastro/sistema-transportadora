@@ -114,6 +114,7 @@ export async function enqueueTeltonikaRecords(device, records, imei) {
       fuelConsumedL: fms ? fms.fuelConsumedL : rec.fuelConsumedL ?? null,
       fuelLevelPct: fms ? fms.fuelLevelPct : rec.fuelLevelPct ?? null,
       engineRpm: fms ? fms.engineRpm : null,
+      engineTempC: fms ? fms.engineTempC : null,
       batteryV: rec.batteryV ?? null,
       satellites: rec.satellites ?? null,
       gsmSignal: rec.gsmSignal ?? null,

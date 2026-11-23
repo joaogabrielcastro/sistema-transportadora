@@ -347,6 +347,7 @@ function buildRecords(startIndex, n, state) {
     if (fmsProfile) {
       // FMC650: dados do motor pela FMS (litros inteiros, %, rpm).
       io.ones.push({ id: 87, value: Math.round(state.fuelLevelPct) });
+      io.ones.push({ id: 127, value: 40 + 82 + (idx % 6) }); // 82–87 °C (byte − 40)
       io.twos.push({ id: 88, value: speed > 0 ? 1100 + Math.round(speed * 6) : ignition ? 650 : 0 });
       // contador do motor de um caminhão já rodado (~150 mil litros)
       io.fours = [{ id: 86, value: 150_000 + Math.round(state.fuelUsedMl / 1000) }];

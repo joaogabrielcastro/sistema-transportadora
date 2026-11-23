@@ -89,5 +89,7 @@ export const queryKeys = {
       ["telemetry", "efficiency", params] as const,
     driving: (params: ListParams = {}) =>
       ["telemetry", "driving", params] as const,
+    commands: (params: ListParams = {}) =>
+      ["telemetry", "commands", params] as const,
   },
 };

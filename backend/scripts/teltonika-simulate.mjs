@@ -23,6 +23,12 @@ import {
   buildAvlPacket,
   buildImeiHandshake,
 } from "../src/services/telemetry/protocols/teltonika/codec8.js";
+import {
+  CODEC12_RESPONSE,
+  buildCodec12Command,
+  isCodec12Packet,
+  tryParseCodec12,
+} from "../src/services/telemetry/protocols/teltonika/codec12.js";
 
 const ROUTES = {
   curitiba: [
@@ -159,38 +165,72 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function readExact(socket, size, timeoutMs) {
-  return new Promise((resolve, reject) => {
-    let buf = Buffer.alloc(0);
-    const onData = (chunk) => {
-      buf = Buffer.concat([buf, chunk]);
-      if (buf.length >= size) {
-        cleanup();
-        resolve(buf.subarray(0, size));
+/**
+ * Leitor único por conexão: separa os comandos Codec 12 enviados pelo
+ * servidor (respondidos como um aparelho real faria) dos bytes de handshake/ACK.
+ */
+const readers = new WeakMap();
+function readerFor(socket) {
+  if (readers.has(socket)) return readers.get(socket);
+  const state = { buf: Buffer.alloc(0), waiters: [], dout1: 0 };
+  const pump = () => {
+    for (;;) {
+      if (isCodec12Packet(state.buf)) {
+        const msg = tryParseCodec12(state.buf);
+        if (!msg) return;
+        state.buf = state.buf.subarray(msg.bytesConsumed);
+        const m = /^setdigout\s+([01?])/i.exec(msg.text);
+        if (m && m[1] !== "?") state.dout1 = Number(m[1]);
+        const reply = m ? `DOUT1:${state.dout1} DOUT2:IGNORED` : `ERR:Unknown command`;
+        console.log(`[comando] recebido "${msg.text}" → respondendo "${reply}"`);
+        socket.write(buildCodec12Command(reply, CODEC12_RESPONSE));
+        continue;
       }
-    };
-    const onErr = (err) => {
-      cleanup();
-      reject(err);
-    };
-    const onClose = () => {
-      cleanup();
-      reject(new Error("socket fechado antes do ACK"));
-    };
-    const timer = setTimeout(() => {
-      cleanup();
-      reject(new Error(`timeout aguardando ${size} byte(s) do servidor`));
-    }, timeoutMs);
-    const cleanup = () => {
-      clearTimeout(timer);
-      socket.off("data", onData);
-      socket.off("error", onErr);
-      socket.off("close", onClose);
-    };
-    socket.on("data", onData);
-    socket.on("error", onErr);
-    socket.on("close", onClose);
+      const w = state.waiters[0];
+      if (!w || state.buf.length < w.size) return;
+      state.waiters.shift();
+      const out = state.buf.subarray(0, w.size);
+      state.buf = state.buf.subarray(w.size);
+      w.done(null, out);
+    }
+  };
+  socket.on("data", (chunk) => {
+    state.buf = Buffer.concat([state.buf, chunk]);
+    pump();
   });
+  socket.on("close", () => {
+    for (const w of state.waiters.splice(0)) w.done(new Error("socket fechado antes do ACK"));
+  });
+  socket.on("error", (err) => {
+    for (const w of state.waiters.splice(0)) w.done(err);
+  });
+  const api = {
+    readExact(size, timeoutMs) {
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          const i = state.waiters.indexOf(waiter);
+          if (i >= 0) state.waiters.splice(i, 1);
+          reject(new Error(`timeout aguardando ${size} byte(s) do servidor`));
+        }, timeoutMs);
+        const waiter = {
+          size,
+          done: (err, out) => {
+            clearTimeout(timer);
+            if (err) reject(err);
+            else resolve(out);
+          },
+        };
+        state.waiters.push(waiter);
+        pump();
+      });
+    },
+  };
+  readers.set(socket, api);
+  return api;
+}
+
+function readExact(socket, size, timeoutMs) {
+  return readerFor(socket).readExact(size, timeoutMs);
 }
 
 function connect(host, port) {

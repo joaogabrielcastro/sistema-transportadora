@@ -4,6 +4,8 @@ import {
   createTelemetryDeviceBodySchema,
   efficiencyQuerySchema,
   drivingReportQuerySchema,
+  deviceCommandBodySchema,
+  deviceCommandQuerySchema,
   geofenceBodySchema,
   geofenceUpdateBodySchema,
   rotateCredentialBodySchema,
@@ -37,6 +39,10 @@ import {
   upsertAlertRule,
   upsertSubscription,
 } from "../services/telemetry/telemetryOpsAdmin.js";
+import {
+  createDeviceCommand,
+  listDeviceCommands,
+} from "../services/telemetry/telemetryCommands.js";
 import { listSupportedProtocols } from "../services/telemetry/protocols/registry.js";
 import { drivingReport } from "../services/telemetry/telemetryDrivingAdmin.js";
 import { catchAsync } from "../utils/catchAsync.js";
@@ -207,6 +213,23 @@ export const telemetryAdminController = {
       motoristaId: q.motorista_id,
       limit: q.limit,
     });
+    res.json({ success: true, data });
+  }),
+
+  createCommand: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    const body = deviceCommandBodySchema.parse(req.body);
+    const data = await createDeviceCommand(tenantId, req.context?.user?.id ?? null, {
+      caminhaoId: body.caminhao_id,
+      acao: body.acao,
+    });
+    res.status(201).json({ success: true, data });
+  }),
+
+  listCommands: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    const q = deviceCommandQuerySchema.parse(req.query);
+    const data = await listDeviceCommands(tenantId, { caminhaoId: q.caminhao_id, limit: q.limit });
     res.json({ success: true, data });
   }),
 

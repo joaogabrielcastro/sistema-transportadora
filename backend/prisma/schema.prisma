@@ -55,6 +55,7 @@ model tenants {
   telemetry_alerts             telemetry_alerts[]
   telemetry_alert_rules        telemetry_alert_rules[]
   telemetry_subscriptions      telemetry_subscriptions[]
+  telemetry_device_commands    telemetry_device_commands[]
 
   @@index([slug])
   @@index([stripe_customer_id])
@@ -106,6 +107,7 @@ model caminhoes {
   telemetry_geofence_vehicles  telemetry_geofence_vehicles[]
   telemetry_alert_rules        telemetry_alert_rules[]
   telemetry_alerts             telemetry_alerts[]
+  telemetry_device_commands    telemetry_device_commands[]
 
   @@unique([tenant_id, placa])
   @@index([tenant_id])
@@ -217,22 +219,23 @@ model ordens_coleta_envio {
 }
 
 model users {
-  id                Int           @id @default(autoincrement())
-  tenant_id         Int
-  email             String        @unique @db.VarChar(255)
-  nome              String        @db.VarChar(120)
-  password_hash     String        @db.VarChar(255)
-  role              String        @default("operator") @db.VarChar(32)
+  id                        Int                         @id @default(autoincrement())
+  tenant_id                 Int
+  email                     String                      @unique @db.VarChar(255)
+  nome                      String                      @db.VarChar(120)
+  password_hash             String                      @db.VarChar(255)
+  role                      String                      @default("operator") @db.VarChar(32)
   /// Permissões extras além do role (array JSON de strings)
-  permissions       Json          @default("[]") @db.JsonB
-  ativo             Boolean       @default(true)
-  criado_em         DateTime      @default(now()) @db.Timestamptz(6)
+  permissions               Json                        @default("[]") @db.JsonB
+  ativo                     Boolean                     @default(true)
+  criado_em                 DateTime                    @default(now()) @db.Timestamptz(6)
   /// Incrementado ao alterar senha; o JWT carrega `sv` e a sessão é rejeitada se divergir.
-  session_version   Int           @default(0)
-  legal_version     String?       @db.VarChar(16)
-  legal_accepted_at DateTime?     @db.Timestamptz(6)
-  tenants           tenants       @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  auth_tokens       auth_tokens[]
+  session_version           Int                         @default(0)
+  legal_version             String?                     @db.VarChar(16)
+  legal_accepted_at         DateTime?                   @db.Timestamptz(6)
+  tenants                   tenants                     @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  auth_tokens               auth_tokens[]
+  telemetry_device_commands telemetry_device_commands[]
 
   @@index([role])
   @@index([tenant_id])
@@ -1174,6 +1177,7 @@ model telemetry_devices {
   driving_events  telemetry_driving_events[]
   current_states  telemetry_current_state[]
   alerts          telemetry_alerts[]
+  commands        telemetry_device_commands[]
 
   @@unique([tenant_id, external_id])
   @@index([tenant_id])
@@ -1427,4 +1431,30 @@ model telemetry_driving_events {
   @@index([tenant_id, ocorrido_em])
   @@index([caminhao_id, ocorrido_em])
   @@index([motorista_id, ocorrido_em])
+}
+
+/// Comandos enviados ao rastreador (Teltonika Codec 12), com auditoria.
+model telemetry_device_commands {
+  id            Int               @id @default(autoincrement())
+  tenant_id     Int
+  device_id     Int
+  caminhao_id   Int?
+  acao          String            @db.VarChar(32)
+  comando       String            @db.VarChar(120)
+  status        String            @default("pendente") @db.VarChar(16)
+  resposta      String?
+  erro          String?           @db.VarChar(255)
+  criado_por    Int?
+  criado_em     DateTime          @default(now()) @db.Timestamptz(6)
+  expira_em     DateTime          @db.Timestamptz(6)
+  enviado_em    DateTime?         @db.Timestamptz(6)
+  respondido_em DateTime?         @db.Timestamptz(6)
+  tenants       tenants           @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  devices       telemetry_devices @relation(fields: [device_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  caminhoes     caminhoes?        @relation(fields: [caminhao_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  users         users?            @relation(fields: [criado_por], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([device_id, status])
+  @@index([tenant_id, criado_em])
+  @@index([caminhao_id, criado_em])
 }

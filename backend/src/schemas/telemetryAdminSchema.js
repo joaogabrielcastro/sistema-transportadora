@@ -119,3 +119,13 @@ export const drivingReportQuerySchema = z.object({
   motorista_id: z.coerce.number().int().positive().optional(),
   limit: z.coerce.number().int().min(1).max(1000).optional(),
 });
+
+export const deviceCommandBodySchema = z.object({
+  caminhao_id: z.coerce.number().int().positive(),
+  acao: z.enum(["bloquear", "desbloquear"]),
+});
+
+export const deviceCommandQuerySchema = z.object({
+  caminhao_id: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});

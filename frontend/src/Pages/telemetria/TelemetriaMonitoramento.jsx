@@ -5,6 +5,8 @@ import { Alert, Button } from "../../components/ui";
 import Icon from "../../components/ui/Icon.jsx";
 import FleetMap from "../../components/telemetria/FleetMap.jsx";
 import { FLEET_MAP_STYLES } from "../../components/telemetria/mapStyles.js";
+import VehicleCommandPanel from "../../components/telemetria/VehicleCommandPanel.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
 import { useCaminhoesListQuery } from "../../hooks/queries/useCaminhoesQuery.js";
 import {
   useTelemetryCurrentQuery,
@@ -75,6 +77,7 @@ function toRow(row, motoristaById) {
     gsm: row.gsm_sinal != null ? Number(row.gsm_sinal) : null,
     satellites: row.satelites != null ? Number(row.satelites) : null,
     fuelFromCan: row.fuel_source === "can",
+    commandsSupported: Boolean(row.commands_supported),
     rawWhen: row.registrado_em,
     // Motorista identificado pelo iButton no rastreador; senão, o vinculado ao veículo.
     motorista: row.motorista_nome || motoristaById.get(row.caminhao_id) || null,
@@ -114,6 +117,9 @@ function Metric({ label, value, hint, warn = false }) {
  * por veículo e painel de detalhe.
  */
 export default function TelemetriaMonitoramento() {
+  const { user } = useAuth();
+  // Bloqueio do motor: só administradores (o servidor também exige).
+  const isAdmin = user?.role === "admin";
   const { data: current = [], isLoading, error, refetch, dataUpdatedAt } =
     useTelemetryCurrentQuery({}, { refetchInterval: POLL_MS });
   const { data: caminhoesRes } = useCaminhoesListQuery({ page: 1, limit: 200 });
@@ -272,7 +278,7 @@ export default function TelemetriaMonitoramento() {
   const trailPath = showTrail && selected ? liveTrails[selected.id] || [] : [];
   const battery = batteryStatus(selected?.batteryV);
   const hot = selected?.engineTempC != null && selected.engineTempC >= 105;
-  // Até 4 indicadores, só com o que o rastreador realmente envia
+  // Só os indicadores que o rastreador realmente envia
   // (FMB920/FMB130 não leem nível de tanque, RPM nem temperatura — isso exige CAN).
   const detailMetrics = selected
     ? [
@@ -304,7 +310,8 @@ export default function TelemetriaMonitoramento() {
         { label: "Ignição", value: selected.ignition == null ? "—" : selected.ignition ? "Ligada" : "Desligada" },
       ]
         .filter(Boolean)
-        .slice(0, 4)
+        // Até 6 (3 linhas): com FMC650 entram tanque, temperatura e rotação.
+        .slice(0, 6)
     : [];
   const fuelInfo = selected ? sessionFuel[selected.id] : null;
   const sessionLKm = litersPerKm(fuelInfo?.liters, fuelInfo?.km);
@@ -592,6 +599,15 @@ export default function TelemetriaMonitoramento() {
                     <Icon name="truck" className="h-3.5 w-3.5" /> Ficha do veículo
                   </Link>
                 </div>
+
+                {isAdmin && selected.commandsSupported ? (
+                  <VehicleCommandPanel
+                    caminhaoId={selected.id}
+                    placa={selected.label}
+                    speedKmh={selected.speedKmh}
+                    now={now}
+                  />
+                ) : null}
               </div>
             </div>
           );

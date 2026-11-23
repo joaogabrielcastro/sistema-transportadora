@@ -253,6 +253,7 @@ export async function listCurrentStates(tenantId, { caminhaoId } = {}) {
           ativo: true,
           revogado_em: true,
           model: true,
+          protocol: true,
         },
       },
     },
@@ -296,6 +297,9 @@ export async function listCurrentStates(tenantId, { caminhaoId } = {}) {
       row.fuel_consumed_l != null ? Number(row.fuel_consumed_l) : null,
     // "can" = medido pelo caminhão (FMS); "gps" = estimado pelo rastreador.
     fuel_source: isFmsModel(row.devices?.model) ? "can" : "gps",
+    device_model: row.devices?.model ?? null,
+    // Bloqueio/desbloqueio por comando (Codec 12) só em rastreadores Teltonika.
+    commands_supported: String(row.devices?.protocol || "").toLowerCase() === "teltonika",
     engine_temp_c:
       row.engine_temp_c != null ? Number(row.engine_temp_c) : null,
     engine_hours: row.engine_hours != null ? Number(row.engine_hours) : null,

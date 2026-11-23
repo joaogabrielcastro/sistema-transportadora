@@ -13,10 +13,11 @@ import { waitForTelemetryQueueIdle } from "../../src/queues/telemetryJobQueue.js
 import { hashPassword } from "../../src/utils/password.js";
 import {
   CODEC8,
+  CODEC8_EXTENDED,
   buildAvlPacket,
   tryParseAvlPacket,
 } from "../../src/services/telemetry/protocols/teltonika/codec8.js";
-import { IO } from "../../src/services/telemetry/protocols/teltonika/teltonikaIo.js";
+import { FMS_IO, IO } from "../../src/services/telemetry/protocols/teltonika/teltonikaIo.js";
 import { enqueueTeltonikaRecords } from "../../src/services/telemetry/protocols/teltonika/tcpServer.js";
 import { findActiveDeviceByImei } from "../../src/services/telemetry/protocols/teltonika/deviceByImei.js";
 
@@ -369,6 +370,66 @@ test("Teltonika ponta a ponta: eventos de condução, iButton e relatório", { s
     await prisma.telemetry_driving_events
       .deleteMany({ where: { tenant_id: fleet.secondary.tenant.id } })
       .catch(() => {});
+    await cleanupTenant(fleet.secondary.tenant.id);
+  }
+});
+
+test("FMC650: consumo, tanque e rotação vêm do caminhão (FMS)", { skip }, async () => {
+  const fleet = await makeTelemetryTenant("fms");
+  try {
+    const imei = `35210${Date.now().toString().slice(-10)}`;
+    const created = await request(app)
+      .post("/api/telemetry/devices")
+      .set(fleet.auth.authHeader)
+      .send({
+        external_id: `fmc650-${imei}`,
+        imei,
+        protocol: "teltonika",
+        manufacturer: "Teltonika",
+        model: "FMC650",
+        caminhao_id: fleet.truck.id,
+      });
+    assert.equal(created.status, 201, created.body?.error);
+
+    const now = Date.now();
+    const rec = (s, odometerM, fuelL, level, rpm) => ({
+      recordedAt: new Date(now + s * 1000),
+      latitude: -25.4,
+      longitude: -49.2,
+      speedKmh: 70,
+      ignition: true,
+      odometerM,
+      // "Fuel used GPS" também chega, mas não pode ser usado no FMC650.
+      fuelUsedMl: 999_000_000,
+      io: {
+        ones: [{ id: FMS_IO.FUEL_LEVEL_PCT, value: level }],
+        twos: [{ id: FMS_IO.ENGINE_SPEED_RPM, value: rpm }],
+        fours: [{ id: FMS_IO.ENGINE_TOTAL_FUEL_USED_L, value: fuelL }],
+      },
+    });
+    const packet = buildAvlPacket({
+      codecId: CODEC8_EXTENDED,
+      records: [rec(1, 800_000, 152_300, 64, 1300), rec(2, 850_000, 152_318, 61, 1420)],
+    });
+    const device = await findActiveDeviceByImei(imei);
+    await enqueueTeltonikaRecords(device, tryParseAvlPacket(packet).records, imei);
+    await waitForTelemetryQueueIdle();
+
+    const current = await request(app).get("/api/telemetry/current").set(fleet.auth.authHeader);
+    const row = current.body.data.find((r) => r.caminhao_id === fleet.truck.id);
+    assert.equal(row.fuel_source, "can");
+    assert.equal(row.fuel_level_pct, 61);
+    assert.equal(row.engine_rpm, 1420);
+    assert.equal(row.fuel_consumed_l, 152318);
+
+    const eff = await request(app)
+      .get("/api/telemetry/reports/efficiency")
+      .set(fleet.auth.authHeader);
+    const v = eff.body.data.vehicles.find((x) => x.caminhao_id === fleet.truck.id);
+    assert.equal(v.km, 50);
+    assert.equal(v.fuel_telemetry_l, 18); // medido: 152.318 − 152.300 L
+    assert.equal(v.fuel_telemetry_source, "can");
+  } finally {
     await cleanupTenant(fleet.secondary.tenant.id);
   }
 });

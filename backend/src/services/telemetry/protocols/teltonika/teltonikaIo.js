@@ -146,3 +146,37 @@ export function ioMapToJson(map) {
   for (const [id, value] of map.entries()) out[String(id)] = value;
   return out;
 }
+
+/**
+ * Modelos com leitura FMS (rede CAN de caminhões): FMC650/FMM650/FMB640/FMC640.
+ * Nesses aparelhos os IDs abaixo vêm do próprio caminhão. Referência: Teltonika
+ * Wiki — "FMC650 Teltonika Data Sending Parameters ID", grupo "FMS elements".
+ */
+export const FMS_IO = Object.freeze({
+  ENGINE_TOTAL_FUEL_USED_L: 86, // contador do motor, em litros
+  FUEL_LEVEL_PCT: 87, // nível do tanque, 0–100 %
+  ENGINE_SPEED_RPM: 88,
+});
+
+/** O modelo cadastrado no dispositivo é da linha com leitura FMS? */
+export function isFmsModel(model) {
+  return /FM[A-Z]?6[45]0/i.test(String(model || ""));
+}
+
+/**
+ * Dados do caminhão lidos pela FMS. Consumo MEDIDO pelo motor (não estimado
+ * por GPS). Valores fora da faixa da tabela Teltonika são descartados.
+ * @param {Map<number, number|string>|Record<string, number|string>} ioInput
+ */
+export function interpretFmsIo(ioInput) {
+  const get = (id) =>
+    ioInput instanceof Map ? ioInput.get(id) : ioInput?.[String(id)] ?? ioInput?.[id];
+  const fuel = toNumber(get(FMS_IO.ENGINE_TOTAL_FUEL_USED_L));
+  const level = toNumber(get(FMS_IO.FUEL_LEVEL_PCT));
+  const rpm = toNumber(get(FMS_IO.ENGINE_SPEED_RPM));
+  return {
+    fuelConsumedL: fuel != null && fuel > 0 ? fuel : null,
+    fuelLevelPct: level != null && level >= 0 && level <= 100 ? level : null,
+    engineRpm: rpm != null && rpm >= 0 && rpm <= 8032 ? Math.round(rpm) : null,
+  };
+}

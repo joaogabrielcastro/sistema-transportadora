@@ -6,6 +6,7 @@ import { touchDeviceLastSeen } from "../../telemetryDeviceAdmin.js";
 import { resolveAssignmentAt } from "../../telemetryPrep.js";
 import { TELEMETRY_MAX_SPEED_KMH } from "../../../../schemas/telemetrySchema.js";
 import { findActiveDeviceByImei } from "./deviceByImei.js";
+import { interpretFmsIo, isFmsModel } from "./teltonikaIo.js";
 import {
   avlAck,
   buildTeltonikaEventId,
@@ -94,6 +95,10 @@ export async function enqueueTeltonikaRecords(device, records, imei) {
     }
 
     const eventId = buildTeltonikaEventId(imei, rec.recordedAt, i);
+    // FMC650 e afins: combustível, tanque e rotação vêm do caminhão (FMS).
+    // Só os IDs FMS valem para esses modelos: misturar com o "Fuel Used GPS"
+    // (IO 12) quebraria o contador de consumo.
+    const fms = isFmsModel(device.model) ? interpretFmsIo(rec.io || {}) : null;
     await enqueueTelemetryEvent({
       deviceId: device.id,
       eventId,
@@ -106,8 +111,9 @@ export async function enqueueTeltonikaRecords(device, records, imei) {
       heading: rec.heading ?? null,
       altitudeM: rec.altitudeM ?? null,
       odometerKm: rec.odometerKm ?? null,
-      fuelConsumedL: rec.fuelConsumedL ?? null,
-      fuelLevelPct: rec.fuelLevelPct ?? null,
+      fuelConsumedL: fms ? fms.fuelConsumedL : rec.fuelConsumedL ?? null,
+      fuelLevelPct: fms ? fms.fuelLevelPct : rec.fuelLevelPct ?? null,
+      engineRpm: fms ? fms.engineRpm : null,
       batteryV: rec.batteryV ?? null,
       satellites: rec.satellites ?? null,
       gsmSignal: rec.gsmSignal ?? null,

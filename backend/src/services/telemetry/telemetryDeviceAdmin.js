@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { isFmsModel } from "./protocols/teltonika/teltonikaIo.js";
 import prisma from "../../lib/prisma.js";
 import {
   assignTelemetryDevice,
@@ -251,6 +252,7 @@ export async function listCurrentStates(tenantId, { caminhaoId } = {}) {
           last_seen_at: true,
           ativo: true,
           revogado_em: true,
+          model: true,
         },
       },
     },
@@ -292,6 +294,8 @@ export async function listCurrentStates(tenantId, { caminhaoId } = {}) {
       row.fuel_level_pct != null ? Number(row.fuel_level_pct) : null,
     fuel_consumed_l:
       row.fuel_consumed_l != null ? Number(row.fuel_consumed_l) : null,
+    // "can" = medido pelo caminhão (FMS); "gps" = estimado pelo rastreador.
+    fuel_source: isFmsModel(row.devices?.model) ? "can" : "gps",
     engine_temp_c:
       row.engine_temp_c != null ? Number(row.engine_temp_c) : null,
     engine_hours: row.engine_hours != null ? Number(row.engine_hours) : null,

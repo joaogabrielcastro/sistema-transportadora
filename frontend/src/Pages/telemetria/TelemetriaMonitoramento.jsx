@@ -74,6 +74,7 @@ function toRow(row, motoristaById) {
     batteryV: row.battery_v != null ? Number(row.battery_v) : null,
     gsm: row.gsm_sinal != null ? Number(row.gsm_sinal) : null,
     satellites: row.satelites != null ? Number(row.satelites) : null,
+    fuelFromCan: row.fuel_source === "can",
     rawWhen: row.registrado_em,
     // Motorista identificado pelo iButton no rastreador; senão, o vinculado ao veículo.
     motorista: row.motorista_nome || motoristaById.get(row.caminhao_id) || null,
@@ -547,7 +548,9 @@ export default function TelemetriaMonitoramento() {
                             ? null
                             : !sessionLKm.plausible
                               ? "Consumo fora da faixa esperada — verifique o sensor."
-                              : "Consumo estimado pelo rastreador"
+                              : selected.fuelFromCan
+                                ? "Consumo medido no motor (CAN)"
+                                : "Consumo estimado pelo rastreador"
                         }
                       />
                     </div>

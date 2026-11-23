@@ -1,3 +1,4 @@
+import { isFmsModel } from "./protocols/teltonika/teltonikaIo.js";
 import prisma from "../../lib/prisma.js";
 import { isInsideGeofence } from "./geofenceMath.js";
 import {
@@ -356,6 +357,16 @@ export async function efficiencyReport(tenantId, { from, to } = {}) {
     fuelByTruck.set(g.caminhao_id, cur);
   }
 
+  // Origem do combustível da telemetria por veículo, pelo aparelho vinculado:
+  // FMC650 e afins leem o consumo do motor (CAN/FMS); os demais estimam por GPS.
+  const assignments = await prisma.telemetry_device_assignments.findMany({
+    where: { tenant_id: Number(tenantId), fim_em: null },
+    select: { caminhao_id: true, devices: { select: { model: true } } },
+  });
+  const fuelSourceByTruck = new Map(
+    assignments.map((a) => [a.caminhao_id, isFmsModel(a.devices?.model) ? "can" : "gps"]),
+  );
+
   const vehicles = [...byTruck.values()].map((v) => {
     const manual = fuelByTruck.get(v.caminhao_id) || { litros: 0, valor: 0 };
     const telemFuel = v.has_fuel_telemetry ? v.fuel_consumed_l : null;
@@ -372,6 +383,8 @@ export async function efficiencyReport(tenantId, { from, to } = {}) {
     return {
       ...v,
       fuel_telemetry_l: telemFuel,
+      fuel_telemetry_source:
+        telemFuel != null ? fuelSourceByTruck.get(v.caminhao_id) || "gps" : null,
       fuel_manual_l: manual.litros || null,
       fuel_manual_cost: manual.valor || null,
       km_per_l: kmPerL,

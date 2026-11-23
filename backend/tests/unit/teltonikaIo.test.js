@@ -7,8 +7,11 @@ import {
   tryParseAvlPacket,
 } from "../../src/services/telemetry/protocols/teltonika/codec8.js";
 import {
+  FMS_IO,
   IO,
+  interpretFmsIo,
   interpretTeltonikaIo,
+  isFmsModel,
   normalizeIbutton,
   teltonikaDrivingEvents,
 } from "../../src/services/telemetry/protocols/teltonika/teltonikaIo.js";
@@ -149,4 +152,21 @@ test("interpretação de IOs e iButton", () => {
   assert.equal(normalizeIbutton("1a2b"), "0000000000001A2B");
   assert.equal(normalizeIbutton("0000000000000000"), null);
   assert.equal(normalizeIbutton(null), null);
+});
+
+test("FMC650: modelo com FMS e leitura dos dados do caminhão", () => {
+  assert.equal(isFmsModel("FMC650"), true);
+  assert.equal(isFmsModel("Teltonika fmm650"), true);
+  assert.equal(isFmsModel("FMB640"), true);
+  assert.equal(isFmsModel("FMC130"), false);
+  assert.equal(isFmsModel("FMB920"), false);
+  assert.equal(isFmsModel(null), false);
+  const r = interpretFmsIo({
+    [FMS_IO.ENGINE_TOTAL_FUEL_USED_L]: 152340,
+    [FMS_IO.FUEL_LEVEL_PCT]: 63,
+    [FMS_IO.ENGINE_SPEED_RPM]: 1340,
+  });
+  assert.deepEqual(r, { fuelConsumedL: 152340, fuelLevelPct: 63, engineRpm: 1340 });
+  // fora da faixa (102 = "não disponível" na FMS) ou ausente → null
+  assert.deepEqual(interpretFmsIo({ 87: 102 }), { fuelConsumedL: null, fuelLevelPct: null, engineRpm: null });
 });

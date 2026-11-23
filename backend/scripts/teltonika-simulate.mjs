@@ -100,6 +100,8 @@ Opções:
   --ack-timeout <ms>          timeout do ACK (padrão 8000)
   --voltage <V>               tensão da bateria do veículo (IO 66), padrão 27.6
   --ibutton <hex>             iButton do motorista (IO 78, só FMB130 com leitor)
+  --profile fmb|fms           fms = FMC650: consumo (IO 86), tanque (87) e
+                              rotação (88) lidos do caminhão; padrão fmb
   --driving-events            injeta eventos de condução (frenagem, aceleração,
                               curva e excesso de velocidade) para demonstração
   --help
@@ -249,6 +251,7 @@ const ibuttonHex =
     ? String(ibuttonRaw).replace(/[^0-9a-fA-F]/g, "").toUpperCase().padStart(16, "0").slice(-16)
     : null;
 const drivingEvents = hasFlag("driving-events");
+const fmsProfile = String(arg("profile", "fmb")).toLowerCase() === "fms";
 // Ciclo de eventos de demonstração: [tipo green driving (1/2/3) | overspeed]
 const DEMO_EVENTS = [
   { every: 7, type: 2, value: 48 }, // frenagem brusca 0,48 g
@@ -341,6 +344,14 @@ function buildRecords(startIndex, n, state) {
       }
     }
 
+    if (fmsProfile) {
+      // FMC650: dados do motor pela FMS (litros inteiros, %, rpm).
+      io.ones.push({ id: 87, value: Math.round(state.fuelLevelPct) });
+      io.twos.push({ id: 88, value: speed > 0 ? 1100 + Math.round(speed * 6) : ignition ? 650 : 0 });
+      // contador do motor de um caminhão já rodado (~150 mil litros)
+      io.fours = [{ id: 86, value: 150_000 + Math.round(state.fuelUsedMl / 1000) }];
+    }
+
     records.push({
       io,
       recordedAt: new Date(state.recordedAt),
@@ -352,8 +363,8 @@ function buildRecords(startIndex, n, state) {
       angle,
       satellites: 10 + (idx % 5),
       odometerM: Math.round(state.odometerM),
-      fuelUsedMl: Math.round(state.fuelUsedMl),
-      fuelLevelPct: Math.round(state.fuelLevelPct),
+      fuelUsedMl: fmsProfile ? undefined : Math.round(state.fuelUsedMl),
+      fuelLevelPct: fmsProfile ? undefined : Math.round(state.fuelLevelPct),
       eventIoId,
       priority: idx % 8 === 0 ? 1 : 0,
     });

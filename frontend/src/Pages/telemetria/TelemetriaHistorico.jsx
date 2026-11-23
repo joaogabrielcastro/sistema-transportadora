@@ -38,6 +38,8 @@ import {
   useTelemetryHistoryQuery,
 } from "../../hooks/queries/useTelemetryQueries.js";
 
+const brl = (n) => Number(n).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
 function toLocalInputValue(date) {
   const pad = (n) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
@@ -308,7 +310,12 @@ export default function TelemetriaHistorico() {
   const applyPreset = (hours) => {
     const end = new Date();
     const start = new Date(end.getTime() - hours * 3600_000);
-    if (hours === "hoje") start.setTime(new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime());
+    // "Hoje", "7 dias" e "30 dias" contam dias inteiros (desde 00:00), como o
+    // resumo diário da frota; assim a visão da frota e a do veículo batem.
+    const midnight = (daysBack) =>
+      new Date(end.getFullYear(), end.getMonth(), end.getDate() - daysBack).getTime();
+    if (hours === "hoje") start.setTime(midnight(0));
+    else if (hours >= 48) start.setTime(midnight(hours / 24 - 1));
     const f = toLocalInputValue(start);
     const t = toLocalInputValue(end);
     setFrom(f);
@@ -435,6 +442,11 @@ export default function TelemetriaHistorico() {
       withFuel.reduce((acc, v) => acc + Number(litersOf(v) || 0), 0),
       withFuel.reduce((acc, v) => acc + Number(v.km || 0), 0),
     );
+    // Custo total da frota (todos os gastos lançados) ÷ km rodados pelos veículos com gasto.
+    const withCost = vehicles.filter((v) => v.total_cost != null && Number(v.km) > 0);
+    const fleetCost = withCost.reduce((acc, v) => acc + Number(v.total_cost || 0), 0);
+    const costKm = withCost.reduce((acc, v) => acc + Number(v.km || 0), 0);
+    const fleetCostPerKm = costKm > 0 && fleetCost > 0 ? fleetCost / costKm : null;
     const implausibleCount = withFuel.filter((v) => !consumption(v).plausible).length;
     const sorted = [...vehicles].sort((a, b) => Number(b.km || 0) - Number(a.km || 0));
 
@@ -448,7 +460,7 @@ export default function TelemetriaHistorico() {
           />
           <div>{filters}</div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               layout="compact"
               title="Km rodados no período"
@@ -477,6 +489,18 @@ export default function TelemetriaHistorico() {
               }
               color={fleetLKm.value != null && !fleetLKm.plausible ? "amber" : "green"}
               icon={<Icon name="fuel" />}
+            />
+            <StatCard
+              layout="compact"
+              title="Custo total por km"
+              value={loadingEff ? "…" : fleetCostPerKm == null ? "—" : brl(fleetCostPerKm)}
+              hint={
+                fleetCostPerKm == null
+                  ? "Sem gastos lançados no período"
+                  : `${brl(fleetCost)} em gastos lançados`
+              }
+              color="purple"
+              icon={<Icon name="money" />}
             />
           </div>
 
@@ -515,7 +539,8 @@ export default function TelemetriaHistorico() {
                     <DataTableTh align="right">Km</DataTableTh>
                     <DataTableTh align="right">Litros</DataTableTh>
                     <DataTableTh align="right">Litros por km</DataTableTh>
-                    <DataTableTh align="right">Custo / km</DataTableTh>
+                    <DataTableTh align="right">Diesel / km</DataTableTh>
+                    <DataTableTh align="right">Custo total / km</DataTableTh>
                     <DataTableTh align="right"><span className="sr-only">Ações</span></DataTableTh>
                   </tr>
                 </DataTableHead>
@@ -551,7 +576,17 @@ export default function TelemetriaHistorico() {
                           )}
                         </DataTableTd>
                         <DataTableTd align="right" className="tabular-nums">
-                          {v.cost_per_km != null ? Number(v.cost_per_km).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : <span className="text-text-light">—</span>}
+                          {v.cost_per_km != null ? brl(v.cost_per_km) : <span className="text-text-light">—</span>}
+                        </DataTableTd>
+                        <DataTableTd align="right" className="whitespace-nowrap tabular-nums">
+                          {v.total_cost_per_km != null ? (
+                            <>
+                              <span className="font-semibold text-text-primary">{brl(v.total_cost_per_km)}</span>
+                              <span className="block text-[11px] text-text-light">{brl(v.total_cost)} em gastos</span>
+                            </>
+                          ) : (
+                            <span className="text-text-light">—</span>
+                          )}
                         </DataTableTd>
                         <DataTableTd align="right">
                           <button

@@ -11,7 +11,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { FLEET_MAP_STYLES } from "./mapStyles.js";
+import { FLEET_MAP_STYLES, MAP_MAX_ZOOM } from "./mapStyles.js";
 
 const BRAZIL_CENTER = [-14.235, -51.9253];
 
@@ -309,6 +309,7 @@ export default function FleetMap({
         zoom={points.length ? 13 : 4}
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom
+        maxZoom={MAP_MAX_ZOOM}
         zoomControl={false}
       >
         <TileLayer
@@ -316,7 +317,8 @@ export default function FleetMap({
           attribution={style.attribution}
           url={style.url}
           {...(style.subdomains ? { subdomains: style.subdomains } : {})}
-          maxZoom={19}
+          maxNativeZoom={style.maxNativeZoom}
+          maxZoom={MAP_MAX_ZOOM}
         />
         <ZoomControlBottomRight />
         <FitBounds

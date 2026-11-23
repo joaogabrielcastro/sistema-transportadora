@@ -91,3 +91,28 @@ test("eventos de condução e saúde do rastreador", () => {
   assert.equal(gsmLabel(5), "Bom (5/5)");
   assert.equal(gsmLabel(1), "Fraco (1/5)");
 });
+
+test("segmentTrips: noite desligada não vira 'parado ligado'; posição final não é parada", () => {
+  const t0 = Date.parse("2026-11-17T18:00:00Z");
+  const at = (min) => new Date(t0 + min * 60_000).toISOString();
+  const pts = [
+    { lat: 0, lng: 0, speedKmh: 70, when: at(0), ignition: true, odometerKm: 100 },
+    { lat: 0, lng: 0.1, speedKmh: 0, when: at(30), ignition: false, odometerKm: 130 },
+    // noite: 12 h desligado; liga 10 min antes de sair
+    { lat: 0, lng: 0.1, speedKmh: 0, when: at(30 + 720), ignition: true, odometerKm: 130 },
+    { lat: 0, lng: 0.2, speedKmh: 60, when: at(30 + 730), ignition: true, odometerKm: 131 },
+    { lat: 0, lng: 0.3, speedKmh: 0, when: at(30 + 760), ignition: true, odometerKm: 160 },
+  ];
+  const segs = segmentTrips(pts);
+  assert.equal(segs[1].type, "stop");
+  assert.ok(segs[1].durationMs >= 720 * 60_000);
+  assert.equal(segs[1].ignitionOn, false);
+
+  // Último ponto parado há segundos: é a posição atual, não vira "Parada 0 min".
+  const live = [
+    { lat: 0, lng: 0, speedKmh: 60, when: at(0), ignition: true },
+    { lat: 0, lng: 0.1, speedKmh: 65, when: at(5), ignition: true },
+    { lat: 0, lng: 0.2, speedKmh: 0, when: at(10), ignition: true },
+  ];
+  assert.deepEqual(segmentTrips(live).map((s) => s.type), ["trip"]);
+});

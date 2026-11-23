@@ -259,6 +259,7 @@ test("Teltonika ponta a ponta: eventos de condução, iButton e relatório", { s
           speedKmh: 70,
           ignition: true,
           odometerM: 500000,
+          fuelUsedMl: 1_000_000, // contador acumulado: 1.000 L
           eventIoId: IO.GREEN_DRIVING_TYPE,
           io: {
             ones: [
@@ -277,6 +278,7 @@ test("Teltonika ponta a ponta: eventos de condução, iButton e relatório", { s
           speedKmh: 98,
           ignition: true,
           odometerM: 520000,
+          fuelUsedMl: 1_012_000, // +12 L em 20 km
           eventIoId: IO.OVERSPEEDING,
           // IOs permanentes (tensão, GSM, iButton) vêm em todo registro.
           io: {
@@ -332,7 +334,38 @@ test("Teltonika ponta a ponta: eventos de condução, iButton e relatório", { s
     });
     assert.equal(stored.io[String(IO.GREEN_DRIVING_TYPE)], 2);
     assert.equal(stored.gsm_sinal, 4);
+
+    // Resumo diário: consumo = diferença do contador (12 L), não o valor acumulado.
+    const daily = await prisma.telemetry_daily.findMany({
+      where: { caminhao_id: fleet.truck.id },
+    });
+    const dayKm = daily.reduce((a, d) => a + Number(d.km || 0), 0);
+    const dayFuel = daily.reduce((a, d) => a + Number(d.fuel_consumed_l || 0), 0);
+    assert.equal(dayKm, 20);
+    assert.equal(dayFuel, 12);
+
+    // Custo total por km: todos os gastos lançados do veículo ÷ km do rastreador.
+    await prisma.gastos.create({
+      data: {
+        tenant_id: fleet.secondary.tenant.id,
+        caminhao_id: fleet.truck.id,
+        valor: 100,
+        data_gasto: new Date(),
+        descricao: "Pedágio teste",
+      },
+    });
+    const eff = await request(app)
+      .get("/api/telemetry/reports/efficiency")
+      .set(fleet.auth.authHeader);
+    assert.equal(eff.status, 200, eff.body?.error);
+    const effVeh = eff.body.data.vehicles.find((v) => v.caminhao_id === fleet.truck.id);
+    assert.equal(effVeh.km, 20);
+    assert.equal(effVeh.total_cost, 100);
+    assert.equal(effVeh.total_cost_per_km, 5);
   } finally {
+    await prisma.gastos
+      .deleteMany({ where: { tenant_id: fleet.secondary.tenant.id } })
+      .catch(() => {});
     await prisma.telemetry_driving_events
       .deleteMany({ where: { tenant_id: fleet.secondary.tenant.id } })
       .catch(() => {});

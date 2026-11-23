@@ -168,7 +168,7 @@ export function segmentTrips(points, { minStopMs = 5 * 60_000, maxGapMs = 20 * 6
     else out.push({ ...b });
   }
 
-  return out.map((b) => {
+  const segs = out.map((b) => {
     const slice = valid.slice(b.start, b.end + 1);
     const first = slice[0];
     // a parada termina quando o próximo bloco começa
@@ -196,10 +196,32 @@ export function segmentTrips(points, { minStopMs = 5 * 60_000, maxGapMs = 20 * 6
       durationMs: new Date(endAt).getTime() - new Date(startAt).getTime(),
       km,
       maxSpeedKmh: speeds.length ? Math.max(...speeds) : null,
-      ignitionOn: !b.moving && slice.some((p) => p.ignition === true),
+      // "Parado ligado" só quando a ignição ficou ligada na maior parte da
+      // parada: o motor ligado alguns minutos antes de sair de manhã não
+      // transforma a noite inteira em parado ligado.
+      ignitionOn: !b.moving && ignitionOnMs(valid, b.start, b.end) * 2 >= durationOf(startAt, endAt),
       at: { lat: first.lat, lng: first.lng },
     };
   });
+  // A última "parada" de poucos segundos é só a posição atual, não uma parada.
+  const last = segs[segs.length - 1];
+  if (last && last.type === "stop" && last.durationMs < 60_000) segs.pop();
+  return segs;
+}
+
+function durationOf(a, b) {
+  return new Date(b).getTime() - new Date(a).getTime();
+}
+
+/** Tempo com ignição ligada entre os pontos start..end (cada ponto vale até o próximo). */
+function ignitionOnMs(points, start, end) {
+  let ms = 0;
+  for (let i = start; i <= end; i += 1) {
+    const next = points[i + 1];
+    if (!next || points[i].ignition !== true) continue;
+    ms += durationOf(points[i].when, next.when);
+  }
+  return ms;
 }
 
 export function googleMapsUrl(lat, lng) {

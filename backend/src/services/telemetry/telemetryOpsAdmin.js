@@ -332,6 +332,21 @@ export async function efficiencyReport(tenantId, { from, to } = {}) {
     },
   });
 
+  // Todos os gastos lançados por veículo no período (diesel, pedágio,
+  // manutenção, peças…), para o custo total por km.
+  const allCosts = await prisma.gastos.groupBy({
+    by: ["caminhao_id"],
+    where: {
+      tenant_id: Number(tenantId),
+      data_gasto: { gte: fromDate, lte: toDate },
+      caminhao_id: { not: null },
+    },
+    _sum: { valor: true },
+  });
+  const totalByTruck = new Map(
+    allCosts.map((r) => [r.caminhao_id, Number(r._sum.valor || 0)]),
+  );
+
   const fuelByTruck = new Map();
   for (const g of gastos) {
     if (!g.caminhao_id) continue;
@@ -368,6 +383,11 @@ export async function efficiencyReport(tenantId, { from, to } = {}) {
             : null,
       cost_per_km:
         v.km > 0 && manual.valor > 0 ? manual.valor / v.km : null,
+      total_cost: totalByTruck.get(v.caminhao_id) || null,
+      total_cost_per_km:
+        v.km > 0 && (totalByTruck.get(v.caminhao_id) || 0) > 0
+          ? totalByTruck.get(v.caminhao_id) / v.km
+          : null,
       divergence_l:
         telemFuel != null && manual.litros > 0
           ? telemFuel - manual.litros

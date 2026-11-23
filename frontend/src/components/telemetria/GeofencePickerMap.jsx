@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import PropTypes from "prop-types";
 import { Circle, MapContainer, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { FLEET_MAP_STYLES } from "./mapStyles.js";
+import { FLEET_MAP_STYLES, MAP_MAX_ZOOM } from "./mapStyles.js";
 
 function ClickCapture({ onPick }) {
   useMapEvents({
@@ -38,8 +38,14 @@ export default function GeofencePickerMap({ center, radiusM, existing = [], onPi
       zoom={12}
       className="h-full w-full cursor-crosshair"
       scrollWheelZoom
+      maxZoom={MAP_MAX_ZOOM}
     >
-      <TileLayer url={style.url} attribution={style.attribution} />
+      <TileLayer
+        url={style.url}
+        attribution={style.attribution}
+        maxNativeZoom={style.maxNativeZoom}
+        maxZoom={MAP_MAX_ZOOM}
+      />
       <ClickCapture onPick={onPick} />
       <FlyTo center={focus} />
       {existing

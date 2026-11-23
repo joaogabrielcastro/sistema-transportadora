@@ -108,6 +108,12 @@ export async function enqueueTeltonikaRecords(device, records, imei) {
       odometerKm: rec.odometerKm ?? null,
       fuelConsumedL: rec.fuelConsumedL ?? null,
       fuelLevelPct: rec.fuelLevelPct ?? null,
+      batteryV: rec.batteryV ?? null,
+      satellites: rec.satellites ?? null,
+      gsmSignal: rec.gsmSignal ?? null,
+      ibutton: rec.ibutton ?? null,
+      io: rec.io ?? null,
+      drivingEvents: Array.isArray(rec.drivingEvents) ? rec.drivingEvents : [],
     });
     accepted += 1;
   }

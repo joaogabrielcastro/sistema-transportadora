@@ -90,6 +90,22 @@ export function useTelemetryEfficiencyQuery(params = {}, options = {}) {
   });
 }
 
+/** Eventos de condução (frenagem/aceleração/curva bruscas, excesso de velocidade…). */
+export function useTelemetryDrivingQuery(params = {}, options = {}) {
+  return useQuery({
+    queryKey: queryKeys.telemetry.driving(params),
+    enabled: options.enabled !== false,
+    queryFn: async () =>
+      extractApiData(
+        await apiFetch({
+          method: "GET",
+          url: "/telemetry/reports/driving",
+          params,
+        }),
+      ),
+  });
+}
+
 function invalidateTelemetry(qc) {
   return qc.invalidateQueries({ queryKey: queryKeys.telemetry.all });
 }

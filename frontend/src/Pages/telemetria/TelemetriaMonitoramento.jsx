@@ -12,7 +12,9 @@ import {
 } from "../../hooks/queries/useTelemetryQueries.js";
 import {
   VEHICLE_STATUS,
+  batteryStatus,
   googleMapsUrl,
+  gsmLabel,
   formatLitersPerKm,
   litersPerKm,
   relativeTime,
@@ -70,8 +72,12 @@ function toRow(row, motoristaById) {
     rpm: row.engine_rpm != null ? Number(row.engine_rpm) : null,
     engineTempC: row.engine_temp_c != null ? Number(row.engine_temp_c) : null,
     batteryV: row.battery_v != null ? Number(row.battery_v) : null,
+    gsm: row.gsm_sinal != null ? Number(row.gsm_sinal) : null,
+    satellites: row.satelites != null ? Number(row.satelites) : null,
     rawWhen: row.registrado_em,
-    motorista: motoristaById.get(row.caminhao_id) || null,
+    // Motorista identificado pelo iButton no rastreador; senão, o vinculado ao veículo.
+    motorista: row.motorista_nome || motoristaById.get(row.caminhao_id) || null,
+    motoristaViaIbutton: Boolean(row.motorista_por_ibutton && row.motorista_nome),
     subtitle: [
       speedKmh != null ? `${Math.round(speedKmh)} km/h` : null,
       VEHICLE_STATUS[status]?.label,
@@ -263,6 +269,42 @@ export default function TelemetriaMonitoramento() {
   }, [filtered, selected]);
 
   const trailPath = showTrail && selected ? liveTrails[selected.id] || [] : [];
+  const battery = batteryStatus(selected?.batteryV);
+  const hot = selected?.engineTempC != null && selected.engineTempC >= 105;
+  // Até 4 indicadores, só com o que o rastreador realmente envia
+  // (FMB920/FMB130 não leem nível de tanque, RPM nem temperatura — isso exige CAN).
+  const detailMetrics = selected
+    ? [
+        { label: "Velocidade", value: selected.speedKmh != null ? `${Math.round(selected.speedKmh)} km/h` : "—" },
+        {
+          label: "Hodômetro",
+          value: selected.odometerKm != null ? `${selected.odometerKm.toLocaleString("pt-BR", { maximumFractionDigits: 0 })} km` : "—",
+        },
+        selected.batteryV != null
+          ? {
+              label: "Bateria do veículo",
+              value: battery.label,
+              warn: battery.tone === "bad" || battery.tone === "warn",
+              hint: battery.tone === "bad" ? "Rastreador na bateria interna" : null,
+            }
+          : null,
+        selected.fuelLevelPct != null
+          ? {
+              label: "Combustível",
+              value: `${Math.round(selected.fuelLevelPct)}%`,
+              warn: selected.fuelLevelPct <= 15,
+              hint: selected.fuelLevelPct <= 15 ? "Nível baixo" : null,
+            }
+          : null,
+        selected.engineTempC != null
+          ? { label: "Temp. motor", value: `${Math.round(selected.engineTempC)} °C`, warn: hot, hint: hot ? "Acima do limite" : null }
+          : null,
+        selected.rpm != null ? { label: "RPM", value: selected.rpm.toLocaleString("pt-BR") } : null,
+        { label: "Ignição", value: selected.ignition == null ? "—" : selected.ignition ? "Ligada" : "Desligada" },
+      ]
+        .filter(Boolean)
+        .slice(0, 4)
+    : [];
   const fuelInfo = selected ? sessionFuel[selected.id] : null;
   const sessionLKm = litersPerKm(fuelInfo?.liters, fuelInfo?.km);
   const lastUpdateSec = dataUpdatedAt ? Math.max(0, Math.round((now - dataUpdatedAt) / 1000)) : null;
@@ -449,7 +491,6 @@ export default function TelemetriaMonitoramento() {
         {selected && !(listOpen && isNarrow()) && (() => {
           const s = VEHICLE_STATUS[selected.vstatus];
           const mapsUrl = googleMapsUrl(selected.lat, selected.lng);
-          const hot = selected.engineTempC != null && selected.engineTempC >= 105;
           return (
             <div className="absolute bottom-3 left-3 right-3 z-[500] max-h-[70vh] overflow-y-auto rounded-xl border border-border/80 bg-white/95 shadow-xl backdrop-blur sm:left-auto sm:right-4 sm:w-[340px]">
               <div className="flex items-start justify-between gap-2 border-b border-border p-4 pb-3">
@@ -460,6 +501,11 @@ export default function TelemetriaMonitoramento() {
                   <p className="mt-1.5 truncate text-xs text-text-secondary">
                     <Icon name="user" className="mr-1 inline h-3.5 w-3.5 align-[-2px]" />
                     {selected.motorista || "Sem motorista vinculado"}
+                    {selected.motoristaViaIbutton ? (
+                      <span className="ml-1.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200" title="Identificado pela chave iButton lida no rastreador">
+                        iButton
+                      </span>
+                    ) : null}
                   </p>
                 </div>
                 <button
@@ -484,22 +530,9 @@ export default function TelemetriaMonitoramento() {
                 </div>
 
                 <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                  <Metric label="Velocidade" value={selected.speedKmh != null ? `${Math.round(selected.speedKmh)} km/h` : "—"} />
-                  <Metric
-                    label="Combustível"
-                    value={selected.fuelLevelPct != null ? `${Math.round(selected.fuelLevelPct)}%` : "—"}
-                    warn={selected.fuelLevelPct != null && selected.fuelLevelPct <= 15}
-                    hint={selected.fuelLevelPct != null && selected.fuelLevelPct <= 15 ? "Nível baixo" : null}
-                  />
-                  <Metric
-                    label="Hodômetro"
-                    value={selected.odometerKm != null ? `${selected.odometerKm.toLocaleString("pt-BR")} km` : "—"}
-                  />
-                  {selected.engineTempC != null ? (
-                    <Metric label="Temp. motor" value={`${Math.round(selected.engineTempC)} °C`} warn={hot} hint={hot ? "Acima do limite" : null} />
-                  ) : (
-                    <Metric label="RPM" value={selected.rpm != null ? selected.rpm.toLocaleString("pt-BR") : "—"} />
-                  )}
+                  {detailMetrics.map((m) => (
+                    <Metric key={m.label} {...m} />
+                  ))}
                   {fuelInfo?.km != null && fuelInfo.km > 1 ? (
                     <div className="col-span-2">
                       <Metric
@@ -509,11 +542,23 @@ export default function TelemetriaMonitoramento() {
                             ? ` · ${formatLitersPerKm(sessionLKm.value)}`
                             : ""
                         }`}
-                        hint={sessionLKm.value != null && !sessionLKm.plausible ? "Consumo fora da faixa esperada — verifique o sensor." : null}
+                        hint={
+                          sessionLKm.value == null
+                            ? null
+                            : !sessionLKm.plausible
+                              ? "Consumo fora da faixa esperada — verifique o sensor."
+                              : "Consumo estimado pelo rastreador"
+                        }
                       />
                     </div>
                   ) : null}
                 </dl>
+
+                <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-text-secondary" aria-label="Saúde do rastreador">
+                  <span className="font-semibold uppercase tracking-wide text-text-light">Rastreador</span>
+                  <span>Sinal {gsmLabel(selected.gsm)}</span>
+                  <span>{selected.satellites != null ? `${selected.satellites} satélites` : "Satélites —"}</span>
+                </p>
 
                 <p className="mt-3 flex items-start gap-1.5 text-xs text-text-secondary">
                   <Icon name="map" className="mt-px h-3.5 w-3.5 shrink-0" />

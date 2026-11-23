@@ -111,3 +111,11 @@ export const efficiencyQuerySchema = z.object({
   from: z.string().datetime({ offset: true }).optional(),
   to: z.string().datetime({ offset: true }).optional(),
 });
+
+export const drivingReportQuerySchema = z.object({
+  from: z.string().datetime({ offset: true }).optional(),
+  to: z.string().datetime({ offset: true }).optional(),
+  caminhao_id: z.coerce.number().int().positive().optional(),
+  motorista_id: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
+});

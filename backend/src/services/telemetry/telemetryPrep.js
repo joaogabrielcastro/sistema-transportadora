@@ -349,6 +349,11 @@ export async function applyIngestedTelemetryEvent({
   engineTempC = null,
   engineHours = null,
   batteryV = null,
+  satellites = null,
+  gsmSignal = null,
+  ibutton = null,
+  io = null,
+  drivingEvents = [],
 }) {
   const device = await prisma.telemetry_devices.findFirst({
     where: { id: Number(deviceId) },
@@ -372,6 +377,12 @@ export async function applyIngestedTelemetryEvent({
   const previousState = await prisma.telemetry_current_state.findUnique({
     where: { caminhao_id: assignment.caminhao_id },
   });
+  const motoristaId = await resolveMotoristaForEvent({
+    tenantId: device.tenant_id,
+    caminhaoId: assignment.caminhao_id,
+    ibutton,
+  });
+  const ioJson = io && typeof io === "object" ? JSON.stringify(io) : null;
 
   const result = await prisma.$transaction(async (tx) => {
     const insertedRows = await tx.$queryRaw`
@@ -381,7 +392,8 @@ export async function applyIngestedTelemetryEvent({
         latitude, longitude, velocidade_kmh, heading, altitude_m,
         odometro_km, ignicao,
         engine_rpm, fuel_level_pct, fuel_consumed_l,
-        engine_temp_c, engine_hours, battery_v
+        engine_temp_c, engine_hours, battery_v,
+        io, satelites, gsm_sinal, ibutton, motorista_id
       ) VALUES (
         ${device.tenant_id},
         ${device.id},
@@ -401,7 +413,12 @@ export async function applyIngestedTelemetryEvent({
         ${fuelConsumedL},
         ${engineTempC},
         ${engineHours},
-        ${batteryV}
+        ${batteryV},
+        ${ioJson}::jsonb,
+        ${satellites},
+        ${gsmSignal},
+        ${ibutton},
+        ${motoristaId}
       )
       ON CONFLICT (device_id, event_id) DO NOTHING
       RETURNING id
@@ -415,7 +432,8 @@ export async function applyIngestedTelemetryEvent({
         latitude, longitude, velocidade_kmh, heading, altitude_m,
         odometro_km, ignicao,
         engine_rpm, fuel_level_pct, fuel_consumed_l,
-        engine_temp_c, engine_hours, battery_v, atualizado_em
+        engine_temp_c, engine_hours, battery_v,
+        satelites, gsm_sinal, ibutton, motorista_id, atualizado_em
       )
       SELECT
         e.tenant_id, e.caminhao_id, e.device_id,
@@ -423,7 +441,8 @@ export async function applyIngestedTelemetryEvent({
         e.latitude, e.longitude, e.velocidade_kmh, e.heading, e.altitude_m,
         e.odometro_km, e.ignicao,
         e.engine_rpm, e.fuel_level_pct, e.fuel_consumed_l,
-        e.engine_temp_c, e.engine_hours, e.battery_v, NOW()
+        e.engine_temp_c, e.engine_hours, e.battery_v,
+        e.satelites, e.gsm_sinal, e.ibutton, e.motorista_id, NOW()
       FROM telemetry_events e
       WHERE e.device_id = ${device.id}
         AND e.event_id = ${eventKey}
@@ -445,10 +464,31 @@ export async function applyIngestedTelemetryEvent({
         engine_temp_c = EXCLUDED.engine_temp_c,
         engine_hours = EXCLUDED.engine_hours,
         battery_v = EXCLUDED.battery_v,
+        satelites = EXCLUDED.satelites,
+        gsm_sinal = EXCLUDED.gsm_sinal,
+        ibutton = EXCLUDED.ibutton,
+        motorista_id = EXCLUDED.motorista_id,
         atualizado_em = NOW()
       WHERE telemetry_current_state.tenant_id = EXCLUDED.tenant_id
         AND telemetry_current_state.registrado_em < EXCLUDED.registrado_em
     `;
+
+    if (inserted && Array.isArray(drivingEvents) && drivingEvents.length) {
+      for (const ev of drivingEvents) {
+        if (!ev?.tipo) continue;
+        await tx.$executeRaw`
+          INSERT INTO telemetry_driving_events (
+            tenant_id, device_id, caminhao_id, motorista_id, event_key, tipo,
+            valor, velocidade_kmh, latitude, longitude, ocorrido_em
+          ) VALUES (
+            ${device.tenant_id}, ${device.id}, ${assignment.caminhao_id}, ${motoristaId},
+            ${`${eventKey}:${ev.tipo}`.slice(0, 100)}, ${String(ev.tipo).slice(0, 32)},
+            ${ev.valor ?? null}, ${speedKmh}, ${latitude}, ${longitude}, ${recorded}
+          )
+          ON CONFLICT (device_id, event_key) DO NOTHING
+        `;
+      }
+    }
 
     return { inserted, duplicate: !inserted, skipped: false };
   });
@@ -471,6 +511,29 @@ export async function applyIngestedTelemetryEvent({
   }
 
   return result;
+}
+
+/**
+ * Motorista do ponto: iButton lido (FMB130) tem prioridade; senão, o motorista
+ * vinculado ao veículo no cadastro.
+ */
+async function resolveMotoristaForEvent({ tenantId, caminhaoId, ibutton }) {
+  try {
+    if (ibutton) {
+      const byIbutton = await prisma.motoristas.findFirst({
+        where: { tenant_id: Number(tenantId), ibutton_id: String(ibutton) },
+        select: { id: true },
+      });
+      if (byIbutton) return byIbutton.id;
+    }
+    const truck = await prisma.caminhoes.findFirst({
+      where: { id: Number(caminhaoId), tenant_id: Number(tenantId) },
+      select: { motorista_id: true },
+    });
+    return truck?.motorista_id ?? null;
+  } catch {
+    return null;
+  }
 }
 
 async function upsertTelemetryDaily({

@@ -3,6 +3,7 @@ import {
   assignTelemetryDeviceBodySchema,
   createTelemetryDeviceBodySchema,
   efficiencyQuerySchema,
+  drivingReportQuerySchema,
   geofenceBodySchema,
   geofenceUpdateBodySchema,
   rotateCredentialBodySchema,
@@ -37,6 +38,7 @@ import {
   upsertSubscription,
 } from "../services/telemetry/telemetryOpsAdmin.js";
 import { listSupportedProtocols } from "../services/telemetry/protocols/registry.js";
+import { drivingReport } from "../services/telemetry/telemetryDrivingAdmin.js";
 import { catchAsync } from "../utils/catchAsync.js";
 import { requireTenantId } from "../utils/tenant.js";
 
@@ -192,6 +194,19 @@ export const telemetryAdminController = {
     const tenantId = requireTenantId(req);
     const query = efficiencyQuerySchema.parse(req.query);
     const data = await efficiencyReport(tenantId, query);
+    res.json({ success: true, data });
+  }),
+
+  driving: catchAsync(async (req, res) => {
+    const tenantId = requireTenantId(req);
+    const q = drivingReportQuerySchema.parse(req.query);
+    const data = await drivingReport(tenantId, {
+      from: q.from,
+      to: q.to,
+      caminhaoId: q.caminhao_id,
+      motoristaId: q.motorista_id,
+      limit: q.limit,
+    });
     res.json({ success: true, data });
   }),
 

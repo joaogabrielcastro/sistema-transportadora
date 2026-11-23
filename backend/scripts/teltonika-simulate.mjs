@@ -98,6 +98,10 @@ Opções:
   --disconnect-every <n>      fecha TCP a cada N pacotes (0=off)
   --reconnect-delay <ms>      espera antes de reconectar (padrão 1500)
   --ack-timeout <ms>          timeout do ACK (padrão 8000)
+  --voltage <V>               tensão da bateria do veículo (IO 66), padrão 27.6
+  --ibutton <hex>             iButton do motorista (IO 78, só FMB130 com leitor)
+  --driving-events            injeta eventos de condução (frenagem, aceleração,
+                              curva e excesso de velocidade) para demonstração
   --help
 `);
 }
@@ -238,6 +242,20 @@ const reconnectDelay = Number(arg("reconnect-delay", "1500"));
 const ackTimeout = Number(arg("ack-timeout", "8000"));
 const ignitionMode = String(arg("ignition", "on")).toLowerCase();
 const routeName = String(arg("route", "curitiba"));
+const voltageV = Number(arg("voltage", "27.6"));
+const ibuttonRaw = arg("ibutton");
+const ibuttonHex =
+  ibuttonRaw && ibuttonRaw !== true
+    ? String(ibuttonRaw).replace(/[^0-9a-fA-F]/g, "").toUpperCase().padStart(16, "0").slice(-16)
+    : null;
+const drivingEvents = hasFlag("driving-events");
+// Ciclo de eventos de demonstração: [tipo green driving (1/2/3) | overspeed]
+const DEMO_EVENTS = [
+  { every: 7, type: 2, value: 48 }, // frenagem brusca 0,48 g
+  { every: 11, type: 1, value: 36 }, // aceleração brusca 0,36 g
+  { every: 13, type: 3, value: 41 }, // curva brusca
+  { every: 9, overspeed: true },
+];
 const stepsPerSegment = Number(arg("steps-per-segment", "12"));
 
 let rawPoints;
@@ -304,7 +322,27 @@ function buildRecords(startIndex, n, state) {
       );
     }
 
+    // IOs permanentes do FMB: tensão externa (mV), sinal GSM e iButton.
+    const io = {
+      ones: [{ id: 21, value: 3 + (idx % 3) }],
+      twos: Number.isFinite(voltageV) ? [{ id: 66, value: Math.round(voltageV * 1000) }] : [],
+      eights: ibuttonHex ? [{ id: 78, value: ibuttonHex }] : [],
+    };
+    let eventIoId = ignition ? 239 : 0;
+    if (drivingEvents && moving && idx > 0) {
+      const ev = DEMO_EVENTS.find((e) => idx % e.every === 0);
+      if (ev?.overspeed) {
+        speed = Math.max(speed, 95 + (idx % 15));
+        io.ones.push({ id: 255, value: speed });
+        eventIoId = 255;
+      } else if (ev) {
+        io.ones.push({ id: 253, value: ev.type }, { id: 254, value: ev.value });
+        eventIoId = 253;
+      }
+    }
+
     records.push({
+      io,
       recordedAt: new Date(state.recordedAt),
       latitude: from[0],
       longitude: from[1],
@@ -316,7 +354,7 @@ function buildRecords(startIndex, n, state) {
       odometerM: Math.round(state.odometerM),
       fuelUsedMl: Math.round(state.fuelUsedMl),
       fuelLevelPct: Math.round(state.fuelLevelPct),
-      eventIoId: ignition ? 239 : 0,
+      eventIoId,
       priority: idx % 8 === 0 ? 1 : 0,
     });
   }

@@ -1,6 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  batteryStatus,
+  drivingEventLabel,
+  formatDrivingValue,
+  gsmLabel,
   formatLitersPerKm,
   litersPerKm,
   litersPerKmFromKmPerL,
@@ -72,4 +76,18 @@ test("segmentTrips quebra viagem em lacuna longa sem pontos", () => {
   assert.deepEqual(segs.map((s) => s.type), ["trip", "stop", "trip"]);
   assert.equal(segs[0].km, 30);
   assert.equal(segs[1].durationMs, 170 * 60_000);
+});
+
+test("eventos de condução e saúde do rastreador", () => {
+  assert.equal(drivingEventLabel("harsh_braking"), "Frenagem brusca");
+  assert.equal(formatDrivingValue("harsh_braking", 0.48), "0,48 g");
+  assert.equal(formatDrivingValue("overspeed", 104), "104 km/h");
+  assert.equal(formatDrivingValue("unplug", null), null);
+  assert.deepEqual(batteryStatus(27.4), { label: "27,4 V", tone: "ok" });
+  assert.equal(batteryStatus(12.1).tone, "ok");
+  assert.equal(batteryStatus(22.1).tone, "warn");
+  assert.equal(batteryStatus(0).tone, "bad");
+  assert.equal(batteryStatus(null).tone, "none");
+  assert.equal(gsmLabel(5), "Bom (5/5)");
+  assert.equal(gsmLabel(1), "Fraco (1/5)");
 });

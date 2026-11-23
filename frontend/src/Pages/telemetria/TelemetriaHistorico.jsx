@@ -534,7 +534,7 @@ export default function TelemetriaHistorico() {
                           {litersOf(v) != null ? formatLiters(litersOf(v)) : <span className="text-text-light">—</span>}
                           <span className="block text-[11px] text-text-light">
                             {v.efficiency_source === "telemetry"
-                              ? `telemetria${v.fuel_manual_l != null ? ` · lançados ${formatLiters(v.fuel_manual_l)}` : ""}`
+                              ? `estimado pelo rastreador${v.fuel_manual_l != null ? ` · lançados ${formatLiters(v.fuel_manual_l)}` : ""}`
                               : v.efficiency_source === "manual"
                                 ? "abastecimentos lançados"
                                 : ""}

@@ -257,6 +257,22 @@ export async function listCurrentStates(tenantId, { caminhaoId } = {}) {
     orderBy: { registrado_em: "desc" },
   });
 
+  // Motorista do último ponto (iButton) ou o vinculado ao veículo.
+  const motoristaIds = [
+    ...new Set(
+      rows
+        .map((r) => r.motorista_id ?? r.caminhoes?.motorista_id)
+        .filter((id) => id != null),
+    ),
+  ];
+  const motoristas = motoristaIds.length
+    ? await prisma.motoristas.findMany({
+        where: { tenant_id: Number(tenantId), id: { in: motoristaIds } },
+        select: { id: true, nome: true },
+      })
+    : [];
+  const nomeMotorista = new Map(motoristas.map((m) => [m.id, m.nome]));
+
   return rows.map((row) => ({
     caminhao_id: row.caminhao_id,
     placa: row.caminhoes?.placa ?? null,
@@ -280,6 +296,13 @@ export async function listCurrentStates(tenantId, { caminhaoId } = {}) {
       row.engine_temp_c != null ? Number(row.engine_temp_c) : null,
     engine_hours: row.engine_hours != null ? Number(row.engine_hours) : null,
     battery_v: row.battery_v != null ? Number(row.battery_v) : null,
+    satelites: row.satelites ?? null,
+    gsm_sinal: row.gsm_sinal ?? null,
+    ibutton: row.ibutton ?? null,
+    motorista_id: row.motorista_id ?? row.caminhoes?.motorista_id ?? null,
+    motorista_nome:
+      nomeMotorista.get(row.motorista_id ?? row.caminhoes?.motorista_id) ?? null,
+    motorista_por_ibutton: Boolean(row.ibutton && row.motorista_id),
     last_seen_at: row.devices?.last_seen_at ?? null,
   }));
 }

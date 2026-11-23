@@ -122,6 +122,12 @@ router.get(
 );
 
 router.get(
+  "/reports/driving",
+  requirePermission(PERMISSIONS.TELEMETRY_READ),
+  telemetryAdminController.driving,
+);
+
+router.get(
   "/protocols",
   requirePermission(PERMISSIONS.TELEMETRY_READ),
   telemetryAdminController.protocols,

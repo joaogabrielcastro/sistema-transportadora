@@ -11,6 +11,14 @@ import {
 } from "../helpers/dbTestFixtures.js";
 import { waitForTelemetryQueueIdle } from "../../src/queues/telemetryJobQueue.js";
 import { hashPassword } from "../../src/utils/password.js";
+import {
+  CODEC8,
+  buildAvlPacket,
+  tryParseAvlPacket,
+} from "../../src/services/telemetry/protocols/teltonika/codec8.js";
+import { IO } from "../../src/services/telemetry/protocols/teltonika/teltonikaIo.js";
+import { enqueueTeltonikaRecords } from "../../src/services/telemetry/protocols/teltonika/tcpServer.js";
+import { findActiveDeviceByImei } from "../../src/services/telemetry/protocols/teltonika/deviceByImei.js";
 
 const skip = shouldRunDbTests ? false : "Defina RUN_DB_TESTS=1 ou rode no CI";
 
@@ -205,6 +213,129 @@ test("plano/preço do módulo (PUT /subscription) só o admin altera", { skip },
       .send({ plan: "basic", seat_limit: 10, monthly_price: 49 });
     assert.equal(allowed.status, 200);
   } finally {
+    await cleanupTenant(fleet.secondary.tenant.id);
+  }
+});
+
+test("Teltonika ponta a ponta: eventos de condução, iButton e relatório", { skip }, async () => {
+  const fleet = await makeTelemetryTenant("drv");
+  try {
+    const imei = `35209${Date.now().toString().slice(-10)}`;
+    const ibutton = "01A2B3C4D5E6F708";
+    const motorista = await request(app)
+      .post("/api/motoristas")
+      .set(fleet.auth.authHeader)
+      .send({ nome: "Motorista iButton", ibutton_id: ibutton.toLowerCase() });
+    assert.equal(motorista.status, 201, motorista.body?.error);
+    assert.equal(motorista.body.data.ibutton_id, ibutton);
+
+    // iButton repetido no mesmo tenant é recusado.
+    const dup = await request(app)
+      .post("/api/motoristas")
+      .set(fleet.auth.authHeader)
+      .send({ nome: "Outro", ibutton_id: ibutton });
+    assert.equal(dup.status, 409);
+
+    const created = await request(app)
+      .post("/api/telemetry/devices")
+      .set(fleet.auth.authHeader)
+      .send({
+        external_id: `fmb-${imei}`,
+        imei,
+        protocol: "teltonika",
+        caminhao_id: fleet.truck.id,
+      });
+    assert.equal(created.status, 201, created.body?.error);
+
+    const now = Date.now();
+    const at = (s) => new Date(now + s * 1000);
+    const packet = buildAvlPacket({
+      codecId: CODEC8,
+      records: [
+        {
+          recordedAt: at(1),
+          latitude: -25.4,
+          longitude: -49.2,
+          speedKmh: 70,
+          ignition: true,
+          odometerM: 500000,
+          eventIoId: IO.GREEN_DRIVING_TYPE,
+          io: {
+            ones: [
+              { id: IO.GREEN_DRIVING_TYPE, value: 2 },
+              { id: IO.GREEN_DRIVING_VALUE, value: 52 },
+              { id: IO.GSM_SIGNAL, value: 4 },
+            ],
+            twos: [{ id: IO.EXTERNAL_VOLTAGE_MV, value: 27400 }],
+            eights: [{ id: IO.IBUTTON, value: ibutton }],
+          },
+        },
+        {
+          recordedAt: at(2),
+          latitude: -25.41,
+          longitude: -49.21,
+          speedKmh: 98,
+          ignition: true,
+          odometerM: 520000,
+          eventIoId: IO.OVERSPEEDING,
+          // IOs permanentes (tensão, GSM, iButton) vêm em todo registro.
+          io: {
+            ones: [
+              { id: IO.OVERSPEEDING, value: 98 },
+              { id: IO.GSM_SIGNAL, value: 4 },
+            ],
+            twos: [{ id: IO.EXTERNAL_VOLTAGE_MV, value: 27400 }],
+            eights: [{ id: IO.IBUTTON, value: ibutton }],
+          },
+        },
+      ],
+    });
+    const parsed = tryParseAvlPacket(packet);
+    const device = await findActiveDeviceByImei(imei);
+    assert.ok(device, "device resolvido pelo IMEI");
+    const accepted = await enqueueTeltonikaRecords(device, parsed.records, imei);
+    assert.equal(accepted, 2);
+    await waitForTelemetryQueueIdle();
+
+    // Reenvio do mesmo pacote (aparelho sem ACK) não duplica eventos.
+    await enqueueTeltonikaRecords(device, parsed.records, imei);
+    await waitForTelemetryQueueIdle();
+
+    const report = await request(app)
+      .get("/api/telemetry/reports/driving")
+      .query({
+        from: new Date(now - 3600_000).toISOString(),
+        to: new Date(now + 3600_000).toISOString(),
+      })
+      .set(fleet.auth.authHeader);
+    assert.equal(report.status, 200, report.body?.error);
+    assert.equal(report.body.data.totals.harsh_braking, 1);
+    assert.equal(report.body.data.totals.overspeed, 1);
+    assert.equal(report.body.data.events.length, 2);
+    assert.ok(report.body.data.events.every((e) => e.motorista === "Motorista iButton"));
+    assert.equal(report.body.data.drivers[0].behavior_events, 2);
+    const veh = report.body.data.vehicles.find((v) => v.caminhao_id === fleet.truck.id);
+    assert.equal(veh.behavior_events, 2);
+
+    const current = await request(app)
+      .get("/api/telemetry/current")
+      .set(fleet.auth.authHeader);
+    const row = current.body.data.find((r) => r.caminhao_id === fleet.truck.id);
+    assert.equal(row.battery_v, 27.4);
+    assert.equal(row.ibutton, ibutton);
+    assert.equal(row.motorista_nome, "Motorista iButton");
+    assert.equal(row.motorista_por_ibutton, true);
+
+    const stored = await prisma.telemetry_events.findFirst({
+      where: { device_id: device.id },
+      orderBy: { registrado_em: "asc" },
+    });
+    assert.equal(stored.io[String(IO.GREEN_DRIVING_TYPE)], 2);
+    assert.equal(stored.gsm_sinal, 4);
+  } finally {
+    await prisma.telemetry_driving_events
+      .deleteMany({ where: { tenant_id: fleet.secondary.tenant.id } })
+      .catch(() => {});
     await cleanupTenant(fleet.secondary.tenant.id);
   }
 });

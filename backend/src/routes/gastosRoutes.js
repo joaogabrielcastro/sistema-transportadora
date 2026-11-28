@@ -30,22 +30,22 @@ router.post(
 );
 router.get(
   "/",
-  requirePermission(PERMISSIONS.FROTA_READ),
+  requirePermission(PERMISSIONS.FROTA_READ, PERMISSIONS.GASTOS_READ),
   gastosController.getAllGastos,
 );
 router.get(
   "/caminhao/:id",
-  requirePermission(PERMISSIONS.FROTA_READ),
+  requirePermission(PERMISSIONS.FROTA_READ, PERMISSIONS.GASTOS_READ),
   gastosController.getGastosByCaminhao,
 );
 router.get(
   "/consumo/:id",
-  requirePermission(PERMISSIONS.FROTA_READ),
+  requirePermission(PERMISSIONS.FROTA_READ, PERMISSIONS.GASTOS_READ),
   gastosController.getConsumoCombustivel,
 );
 router.get(
   "/:id",
-  requirePermission(PERMISSIONS.FROTA_READ),
+  requirePermission(PERMISSIONS.FROTA_READ, PERMISSIONS.GASTOS_READ),
   gastosController.getGastoById,
 );
 router.put(

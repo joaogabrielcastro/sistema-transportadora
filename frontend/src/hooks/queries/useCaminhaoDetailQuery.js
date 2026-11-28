@@ -19,9 +19,15 @@ function calcConsumoKmPorLitro(consumoData) {
   return null;
 }
 
-export function useCaminhaoDetailQuery(placa) {
+/**
+ * @param {string} placa
+ * @param {{ gastos?: boolean }} [options] gastos=false pula gastos e consumo
+ *   (usuário sem permissão de ver valores da frota).
+ */
+export function useCaminhaoDetailQuery(placa, { gastos: withGastos = true } = {}) {
+  const empty = Promise.resolve({ success: true, data: [] });
   return useQuery({
-    queryKey: queryKeys.caminhoes.detail(placa),
+    queryKey: [...queryKeys.caminhoes.detail(placa), withGastos ? "gastos" : "sem-gastos"],
     enabled: Boolean(placa),
     queryFn: async () => {
       const caminhaoRes = await apiFetch({
@@ -49,11 +55,13 @@ export function useCaminhaoDetailQuery(placa) {
       const listLimit = API_CONFIG.LIST_MAX;
       const [gastosRes, checklistRes, pneusRes, consumoRes] =
         await Promise.all([
-          apiFetch({
-            method: "GET",
-            url: `/gastos/caminhao/${caminhao.id}`,
-            params: { limit: listLimit },
-          }),
+          withGastos
+            ? apiFetch({
+                method: "GET",
+                url: `/gastos/caminhao/${caminhao.id}`,
+                params: { limit: listLimit },
+              })
+            : empty,
           apiFetch({
             method: "GET",
             url: `/checklist/caminhao/${caminhao.id}`,
@@ -64,10 +72,12 @@ export function useCaminhaoDetailQuery(placa) {
             url: `/pneus/caminhao/${caminhao.id}`,
             params: { limit: listLimit },
           }),
-          apiFetch({
-            method: "GET",
-            url: `/gastos/consumo/${caminhao.id}`,
-          }),
+          withGastos
+            ? apiFetch({
+                method: "GET",
+                url: `/gastos/consumo/${caminhao.id}`,
+              })
+            : empty,
         ]);
 
       const gastosData = extractApiArray(gastosRes);

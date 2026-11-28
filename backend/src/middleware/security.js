@@ -225,7 +225,9 @@ function applyJwtUser(req, jwtPayload) {
     email: jwtPayload.email,
     nome: jwtPayload.nome,
     tenantId,
-    permissions: resolvePermissions(role, jwtPayload.permissions || []),
+    permissions: Array.isArray(jwtPayload.px)
+      ? resolvePermissions(role, jwtPayload.px)
+      : resolvePermissions(role, jwtPayload.permissions || []),
   });
   return { ok: true };
 }

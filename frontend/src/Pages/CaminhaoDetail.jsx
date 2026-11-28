@@ -58,7 +58,9 @@ const CaminhaoDetail = () => {
     }, { replace: true });
   };
 
-  const { data, isLoading: loading, error } = useCaminhaoDetailQuery(placa);
+  const { data, isLoading: loading, error } = useCaminhaoDetailQuery(placa, {
+    gastos: userHasPermission(user, PERMISSIONS.GASTOS_READ),
+  });
   const {
     caminhoes,
     pneus: stockPneus,

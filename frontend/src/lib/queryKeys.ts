@@ -49,6 +49,14 @@ export const queryKeys = {
     all: ["registros"] as const,
     list: (params: ListParams) => ["registros", "list", params] as const,
   },
+  viagens: {
+    all: ["viagens"] as const,
+    list: (params: ListParams) => ["viagens", "list", params] as const,
+    resumo: (params: ListParams) => ["viagens", "resumo", params] as const,
+    relatorio: (params: ListParams) => ["viagens", "relatorio", params] as const,
+    detail: (id: number | string) => ["viagens", "detail", String(id)] as const,
+    historico: (id: number | string) => ["viagens", "historico", String(id)] as const,
+  },
   motoristas: {
     list: (params: ListParams) => ["motoristas", "list", params] as const,
   },

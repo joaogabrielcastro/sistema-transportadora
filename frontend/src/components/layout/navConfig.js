@@ -40,7 +40,8 @@ export const NAV_SECTIONS = [
     id: "operacao",
     label: "Operação",
     items: [
-      { path: "/manutencao-gastos", label: "Manutenção e gastos", icon: "wrench", keywords: "despesas combustivel abastecimento multas pedagio checklist" },
+      { path: "/viagens", label: "Viagens", icon: "route", permission: PERMISSIONS.VIAGENS_READ, keywords: "viagem operacao saida destino despesas motorista frete" },
+      { path: "/manutencao-gastos", label: "Manutenção e gastos", icon: "wrench", permission: PERMISSIONS.GASTOS_READ, keywords: "despesas combustivel abastecimento multas pedagio checklist" },
       { path: "/relatorios", label: "Relatórios", icon: "chart", permission: PERMISSIONS.REPORTS_READ, keywords: "custo por km indicadores exportar" },
       { path: "/ordem-coleta", label: "Ordem de coleta", icon: "clipboard", feature: "ordem_coleta", permission: PERMISSIONS.ORDEM_SEND, keywords: "coleta envio" },
       { path: "/notas-estoque", label: "Notas e estoque", icon: "box", feature: "notas_estoque", permission: PERMISSIONS.NOTAS_READ, keywords: "nfe xml produtos pecas" },
@@ -154,6 +155,8 @@ const PAGE_TITLES = [
   ["/pneus/atribuir", "Instalar pneus", "Frota"],
   ["/pneu/editar/", "Editar pneu", "Frota"],
   ["/pneus", "Pneus em uso", "Frota"],
+  ["/viagens/", "Viagem", "Operação"],
+  ["/viagens", "Viagens", "Operação"],
   ["/manutencao-gastos", "Manutenção e gastos", "Operação"],
   ["/relatorios", "Relatórios", "Operação"],
   ["/ordem-coleta", "Ordem de coleta", "Operação"],

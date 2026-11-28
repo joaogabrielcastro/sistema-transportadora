@@ -85,6 +85,9 @@ function buildAuthPayload(user, tenant) {
     nome: user.nome,
     tenantId,
     permissions,
+    // Entradas cruas (extras e revogações "-perm"): o modo sem revalidação no
+    // banco (AUTH_ENABLED=false) recalcula a partir delas.
+    px: Array.isArray(user.permissions) ? user.permissions : [],
     sv: Number(user.session_version ?? 0),
   });
 

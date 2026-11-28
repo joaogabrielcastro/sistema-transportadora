@@ -30,6 +30,7 @@ import usersRoutes from "./routes/usersRoutes.js";
 import notasFiscaisRoutes from "./routes/notasFiscaisRoutes.js";
 import billingRoutes from "./routes/billingRoutes.js";
 import motoristasRoutes from "./routes/motoristasRoutes.js";
+import viagensRoutes from "./routes/viagensRoutes.js";
 import tenantRoutes from "./routes/tenantRoutes.js";
 import opsRoutes from "./routes/opsRoutes.js";
 import fiscalRoutes from "./routes/fiscalRoutes.js";
@@ -174,6 +175,7 @@ apiRouter.use("/reports", reportsRoutes);
 apiRouter.use("/registros", registrosRoutes);
 apiRouter.use("/users", usersRoutes);
 apiRouter.use("/motoristas", motoristasRoutes);
+apiRouter.use("/viagens", viagensRoutes);
 apiRouter.use("/ops", opsRoutes);
 apiRouter.use("/notas-fiscais", notasFiscaisRoutes);
 apiRouter.use(

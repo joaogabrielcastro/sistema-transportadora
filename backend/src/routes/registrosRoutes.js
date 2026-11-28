@@ -7,7 +7,7 @@ const router = Router();
 
 router.get(
   "/",
-  requirePermission(PERMISSIONS.FROTA_READ),
+  requirePermission(PERMISSIONS.FROTA_READ, PERMISSIONS.GASTOS_READ),
   registrosController.list,
 );
 

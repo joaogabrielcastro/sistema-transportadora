@@ -56,6 +56,8 @@ model tenants {
   telemetry_alert_rules        telemetry_alert_rules[]
   telemetry_subscriptions      telemetry_subscriptions[]
   telemetry_device_commands    telemetry_device_commands[]
+  viagens                      viagens[]
+  viagem_historico             viagem_historico[]
 
   @@index([slug])
   @@index([stripe_customer_id])
@@ -108,6 +110,7 @@ model caminhoes {
   telemetry_alert_rules        telemetry_alert_rules[]
   telemetry_alerts             telemetry_alerts[]
   telemetry_device_commands    telemetry_device_commands[]
+  viagens                      viagens[]
 
   @@unique([tenant_id, placa])
   @@index([tenant_id])
@@ -172,6 +175,7 @@ model motoristas {
   caminhoes                caminhoes[]
   gastos                   gastos[]
   telemetry_driving_events telemetry_driving_events[]
+  viagens                  viagens[]
 
   @@index([tenant_id])
   @@index([tenant_id, ativo])
@@ -236,6 +240,12 @@ model users {
   tenants                   tenants                     @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   auth_tokens               auth_tokens[]
   telemetry_device_commands telemetry_device_commands[]
+  viagens_criadas           viagens[]                   @relation("ViagemCriadaPor")
+  viagens_iniciadas         viagens[]                   @relation("ViagemIniciadaPor")
+  viagens_encerradas        viagens[]                   @relation("ViagemEncerradaPor")
+  viagens_canceladas        viagens[]                   @relation("ViagemCanceladaPor")
+  viagem_historico          viagem_historico[]
+  gastos_criados            gastos[]                    @relation("GastoCriadoPor")
 
   @@index([role])
   @@index([tenant_id])
@@ -316,11 +326,22 @@ model gastos {
   empresa                String?       @db.VarChar(80)
   /// Detalhes por tipo (AIT, órgão, posto, apólice, praça…). Sem schema rígido.
   detalhes               Json?         @db.JsonB
+  /// Viagem a que a despesa pertence (módulo de viagens). Nulo nos gastos comuns.
+  viagem_id              Int?
+  /// Usuário que lançou (gravado nas despesas de viagem).
+  criado_por             Int?
+  /// Data e hora da despesa (as despesas de viagem guardam o horário).
+  registrado_em          DateTime?     @db.Timestamptz(6)
+  comprovante_path       String?       @db.VarChar(500)
+  comprovante_nome       String?       @db.VarChar(255)
+  comprovante_mime       String?       @db.VarChar(100)
   tenants                tenants       @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   caminhoes              caminhoes?    @relation(fields: [caminhao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   tipos_gastos           tipos_gastos? @relation(fields: [tipo_gasto_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   produtos               produtos?     @relation(fields: [produto_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   motoristas             motoristas?   @relation(fields: [motorista_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  viagens                viagens?      @relation(fields: [viagem_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  criado_por_user        users?        @relation("GastoCriadoPor", fields: [criado_por], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([caminhao_id])
   @@index([data_gasto])
@@ -330,6 +351,7 @@ model gastos {
   @@index([produto_id])
   @@index([motorista_id])
   @@index([tenant_id, status_pagamento, data_vencimento])
+  @@index([viagem_id])
   @@index([tenant_id, empresa])
 }
 
@@ -1457,4 +1479,74 @@ model telemetry_device_commands {
   @@index([device_id, status])
   @@index([tenant_id, criado_em])
   @@index([caminhao_id, criado_em])
+}
+
+/// Viagem de um caminhão: saída, destino, despesas e encerramento.
+model viagens {
+  id                       Int                @id @default(autoincrement())
+  tenant_id                Int
+  /// Número sequencial da viagem dentro da empresa.
+  numero                   Int
+  caminhao_id              Int
+  motorista_id             Int?
+  /// Nome do motorista no momento da viagem (mantém o histórico se o cadastro for removido).
+  motorista_nome           String?            @db.VarChar(120)
+  /// planejada | em_andamento | finalizada | cancelada
+  status                   String             @default("em_andamento") @db.VarChar(20)
+  origem                   String             @db.VarChar(160)
+  destino                  String             @db.VarChar(160)
+  saida_em                 DateTime           @db.Timestamptz(6)
+  chegada_em               DateTime?          @db.Timestamptz(6)
+  km_inicial               Int
+  km_final                 Int?
+  observacoes              String?
+  observacoes_encerramento String?
+  ocorrencias              String?
+  motivo_cancelamento      String?
+  criado_por               Int?
+  iniciado_por             Int?
+  encerrado_por            Int?
+  cancelado_por            Int?
+  criado_em                DateTime           @default(now()) @db.Timestamptz(6)
+  atualizado_em            DateTime           @default(now()) @updatedAt @db.Timestamptz(6)
+  iniciado_em              DateTime?          @db.Timestamptz(6)
+  encerrado_em             DateTime?          @db.Timestamptz(6)
+  cancelado_em             DateTime?          @db.Timestamptz(6)
+  tenants                  tenants            @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  caminhoes                caminhoes          @relation(fields: [caminhao_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  motoristas               motoristas?        @relation(fields: [motorista_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  criado_por_user          users?             @relation("ViagemCriadaPor", fields: [criado_por], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  iniciado_por_user        users?             @relation("ViagemIniciadaPor", fields: [iniciado_por], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  encerrado_por_user       users?             @relation("ViagemEncerradaPor", fields: [encerrado_por], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  cancelado_por_user       users?             @relation("ViagemCanceladaPor", fields: [cancelado_por], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  gastos                   gastos[]
+  viagem_historico         viagem_historico[]
+
+  @@unique([tenant_id, numero])
+  @@index([tenant_id, status])
+  @@index([tenant_id, saida_em])
+  @@index([caminhao_id, saida_em])
+  @@index([motorista_id, saida_em])
+}
+
+/// Histórico de ações de uma viagem (auditoria; a aplicação não apaga).
+model viagem_historico {
+  id         BigInt   @id @default(autoincrement())
+  tenant_id  Int
+  viagem_id  Int
+  user_id    Int?
+  user_nome  String?  @db.VarChar(120)
+  /// criada | iniciada | editada | encerrada | cancelada | despesa_registrada | despesa_editada | despesa_excluida
+  acao       String   @db.VarChar(40)
+  despesa_id Int?
+  /// { campo: { de, para } } ou o retrato da despesa excluída.
+  alteracoes Json?    @db.JsonB
+  motivo     String?
+  criado_em  DateTime @default(now()) @db.Timestamptz(6)
+  tenants    tenants  @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  viagens    viagens  @relation(fields: [viagem_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  users      users?   @relation(fields: [user_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([viagem_id, criado_em])
+  @@index([tenant_id, criado_em])
 }

@@ -10,6 +10,7 @@ import { extractApiArray } from "../utils/extractApiArray.js";
 import { isUserQuotaReached } from "../utils/billing.js";
 import PlanQuotaBanner from "../components/PlanQuotaBanner.jsx";
 import EmptyState from "../components/EmptyState.jsx";
+import UserPermissionsModal from "../components/users/UserPermissionsModal.jsx";
 
 const ROLE_LABEL = {
   admin: "Administrador",
@@ -34,6 +35,7 @@ export default function Usuarios() {
     role: "operator",
   });
   const [withTempPassword, setWithTempPassword] = useState(false);
+  const [permsTarget, setPermsTarget] = useState(null);
 
   const loadUsers = useCallback(async (signal) => {
     setLoading(true);
@@ -220,6 +222,9 @@ export default function Usuarios() {
             <br />
             <strong>Somente leitura:</strong> consulta frota, relatórios e
             documentos, sem alterar dados.
+            <br />
+            Em <strong>Permissões</strong> você ajusta cada pessoa: por exemplo,
+            um motorista que inicia e encerra viagens sem ver valores.
           </p>
         </section>
 
@@ -284,6 +289,11 @@ export default function Usuarios() {
                         >
                           {u.ativo ? "Ativo" : "Inativo"}
                         </span>
+                        {u.role !== "admin" && u.permissions_custom?.length ? (
+                          <span className="inline-flex text-xs px-2 py-0.5 rounded-full border bg-violet-50 text-violet-800 border-violet-200">
+                            Permissões personalizadas
+                          </span>
+                        ) : null}
                       </div>
                     </div>
 
@@ -301,6 +311,15 @@ export default function Usuarios() {
                         <option value="viewer">Somente leitura</option>
                         <option value="admin">Administrador</option>
                       </select>
+                      {u.role !== "admin" ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setPermsTarget(u)}
+                        >
+                          Permissões
+                        </Button>
+                      ) : null}
                       <Button
                         type="button"
                         variant="secondary"
@@ -322,6 +341,15 @@ export default function Usuarios() {
         </section>
       </div>
       </div>
+      <UserPermissionsModal
+        target={permsTarget}
+        isOpen={Boolean(permsTarget)}
+        onClose={() => setPermsTarget(null)}
+        onSaved={async () => {
+          setSuccess(`Permissões de ${permsTarget?.nome} atualizadas`);
+          await loadUsers();
+        }}
+      />
     </PageLayout>
   );
 }

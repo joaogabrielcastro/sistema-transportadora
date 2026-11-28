@@ -293,7 +293,7 @@ export const caminhoesModel = {
 
     const caminhaoId = caminhao.id;
 
-    const [gastos, checklists, pneus, documentos, ordensEnvio] =
+    const [gastos, checklists, pneus, documentos, ordensEnvio, viagens] =
       await prisma.$transaction([
         prisma.gastos.count({
           where: withTenant(tenantId, { caminhao_id: caminhaoId }),
@@ -310,6 +310,9 @@ export const caminhoesModel = {
         prisma.ordens_coleta_envio.count({
           where: withTenant(tenantId, { caminhao_id: caminhaoId }),
         }),
+        prisma.viagens.count({
+          where: withTenant(tenantId, { caminhao_id: caminhaoId }),
+        }),
       ]);
 
     return {
@@ -319,8 +322,9 @@ export const caminhoesModel = {
         pneus,
         documentos,
         ordens_envio: ordensEnvio,
+        viagens,
       },
-      total: gastos + checklists + pneus + documentos,
+      total: gastos + checklists + pneus + documentos + viagens,
     };
   },
 
@@ -343,6 +347,19 @@ export const caminhoesModel = {
 
     if (!caminhao) {
       throw new Error("Caminhão não encontrado");
+    }
+
+    // Viagens são histórico operacional: não são apagadas em cascata.
+    const viagens = await prisma.viagens.count({
+      where: withTenant(tenantId, { caminhao_id: caminhao.id }),
+    });
+    if (viagens > 0) {
+      const err = new Error(
+        `O caminhão tem ${viagens} viagem(ns) registrada(s) e não pode ser excluído. O histórico de viagens é mantido.`,
+      );
+      err.statusCode = 409;
+      err.code = "CAMINHAO_COM_VIAGENS";
+      throw err;
     }
 
     const data = await prisma.$transaction(async (tx) => {

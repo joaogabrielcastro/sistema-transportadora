@@ -7,6 +7,18 @@ import { isVehicleQuotaReached } from "../../utils/billing.js";
  */
 export function quickActionsFor(user) {
   const actions = [];
+  if (
+    userHasPermission(user, [PERMISSIONS.VIAGENS_READ, PERMISSIONS.VIAGENS_CREATE])
+  ) {
+    actions.push({
+      id: "viagem",
+      label: "Nova viagem",
+      description: "Saída do caminhão com motorista e destino",
+      icon: "route",
+      to: "/viagens?nova=1",
+      keywords: "viagem saida operacao frete",
+    });
+  }
   if (userHasPermission(user, PERMISSIONS.GASTOS_WRITE)) {
     actions.push({
       id: "gasto",

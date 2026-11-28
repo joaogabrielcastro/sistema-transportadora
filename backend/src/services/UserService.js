@@ -1,7 +1,13 @@
 import prisma from "../lib/prisma.js";
 import { hashPassword } from "../utils/password.js";
 import { logger } from "../utils/logger.js";
-import { normalizeRole } from "../utils/permissions.js";
+import {
+  CONFIGURABLE_PERMISSIONS,
+  diffPermissionsForRole,
+  normalizeRole,
+  resolvePermissions,
+  rolePermissions,
+} from "../utils/permissions.js";
 import { assertMailConfigured, sendMail } from "../utils/mailer.js";
 import { config } from "../config/index.js";
 import {
@@ -19,15 +25,41 @@ const userSelect = {
   ativo: true,
   criado_em: true,
   tenant_id: true,
+  permissions: true,
 };
+
+/** Usuário para a API: permissões efetivas + quais diferem do perfil. */
+function presentUser(u) {
+  if (!u) return u;
+  const { permissions: raw, ...rest } = u;
+  const effective = resolvePermissions(u.role, raw);
+  return {
+    ...rest,
+    permissions: effective,
+    permissions_custom: Array.isArray(raw)
+      ? raw.filter((p) => typeof p === "string" && CONFIGURABLE_PERMISSIONS.includes(p.replace(/^-/, "")))
+      : [],
+  };
+}
 
 export class UserService {
   static async list(tenantId) {
-    return prisma.users.findMany({
+    const rows = await prisma.users.findMany({
       where: { tenant_id: Number(tenantId) },
       select: userSelect,
       orderBy: [{ ativo: "desc" }, { nome: "asc" }],
     });
+    return rows.map(presentUser);
+  }
+
+  /** Catálogo para a tela de permissões: chaves configuráveis e padrão de cada perfil. */
+  static permissionsCatalog() {
+    const roles = {};
+    for (const role of ["admin", "operator", "viewer"]) {
+      const base = new Set(rolePermissions(role));
+      roles[role] = CONFIGURABLE_PERMISSIONS.filter((p) => base.has(p));
+    }
+    return { configurable: [...CONFIGURABLE_PERMISSIONS], roles };
   }
 
   static async create(tenantId, { email, nome, password, role }, actorUserId) {
@@ -74,7 +106,7 @@ export class UserService {
       by: actorUserId,
     });
 
-    return user;
+    return presentUser(user);
   }
 
   static async invite(tenantId, { email, nome, role }, actorUserId) {
@@ -203,6 +235,19 @@ export class UserService {
       patch.role = normalizeRole(data.role);
     }
     if (data.ativo != null) patch.ativo = Boolean(data.ativo);
+    if (data.permissions) {
+      patch.permissions = diffPermissionsForRole(
+        normalizeRole(data.role ?? existing.role),
+        data.permissions,
+        existing.permissions,
+      );
+      logger.info("Permissões do usuário alteradas", {
+        tenantId,
+        userId: id,
+        by: actorUserId,
+        entries: patch.permissions,
+      });
+    }
     if (data.password) {
       patch.password_hash = await hashPassword(data.password);
       patch.session_version = { increment: 1 };
@@ -218,10 +263,12 @@ export class UserService {
       throw err;
     }
 
-    return prisma.users.findFirst({
-      where: { id, tenant_id: Number(tenantId) },
-      select: userSelect,
-    });
+    return presentUser(
+      await prisma.users.findFirst({
+        where: { id, tenant_id: Number(tenantId) },
+        select: userSelect,
+      }),
+    );
   }
 
   static async assertCanChangeRole(tenantId, target, newRole, actorUserId) {

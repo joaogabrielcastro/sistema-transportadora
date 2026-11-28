@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CONFIGURABLE_PERMISSIONS } from "../utils/permissions.js";
 
 export const ROLES = ["admin", "operator", "viewer"];
 
@@ -21,6 +22,11 @@ export const updateUserSchema = z
     role: z.enum(ROLES).optional(),
     ativo: z.boolean().optional(),
     password: z.string().min(8).max(128).optional(),
+    /** Conjunto desejado das permissões configuráveis (o servidor grava a diferença para o perfil). */
+    permissions: z
+      .array(z.enum(CONFIGURABLE_PERMISSIONS))
+      .max(CONFIGURABLE_PERMISSIONS.length)
+      .optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: "Informe ao menos um campo para atualizar",

@@ -318,7 +318,9 @@ export async function cleanupTenant(tenantId) {
   await prisma.notas_fiscais.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.produtos.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.vinculos_composicao.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
+  await prisma.viagem_historico.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.gastos.deleteMany({ where: { tenant_id: tenantId } });
+  await prisma.viagens.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.checklist.deleteMany({ where: { tenant_id: tenantId } });
   await prisma.pneus.deleteMany({ where: { tenant_id: tenantId } });
   await prisma.ordens_coleta_envio.deleteMany({ where: { tenant_id: tenantId } });

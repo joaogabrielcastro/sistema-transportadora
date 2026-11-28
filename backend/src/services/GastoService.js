@@ -29,6 +29,18 @@ const assertMotoristaPertenceAoTenant = async (tenantId, motoristaId) => {
   return motorista;
 };
 
+/** Despesas de viagem só mudam pela viagem (permissões próprias e histórico). */
+const assertNaoVinculadoAViagem = (gasto) => {
+  if (gasto?.viagem_id) {
+    const err = new Error(
+      "Esta despesa pertence a uma viagem. Altere ou exclua pela tela da viagem.",
+    );
+    err.statusCode = 409;
+    err.code = "GASTO_DE_VIAGEM";
+    throw err;
+  }
+};
+
 export class GastoService {
   static async createWithCaminhaoUpdate(tenantId, gastoData) {
     const {
@@ -95,6 +107,7 @@ export class GastoService {
     if (!existing) {
       throw new Error("Gasto não encontrado");
     }
+    assertNaoVinculadoAViagem(existing);
 
     const { produto_id, quantidade_estoque, ...rest } = gastoData;
     void produto_id;
@@ -138,6 +151,7 @@ export class GastoService {
     if (!existing) {
       throw new Error("Gasto não encontrado");
     }
+    assertNaoVinculadoAViagem(existing);
 
     const caminhaoId = existing.caminhao_id;
 

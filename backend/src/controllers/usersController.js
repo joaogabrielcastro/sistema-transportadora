@@ -14,6 +14,10 @@ export const usersController = {
     res.status(200).json({ success: true, data });
   }),
 
+  permissionsCatalog: catchAsync(async (_req, res) => {
+    res.status(200).json({ success: true, data: UserService.permissionsCatalog() });
+  }),
+
   create: catchAsync(async (req, res) => {
     const tenantId = requireTenantId(req);
     const parsed = createUserSchema.parse(req.body);

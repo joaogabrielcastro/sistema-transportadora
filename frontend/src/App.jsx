@@ -48,6 +48,8 @@ const Usuarios = lazy(() => import("./Pages/Usuarios.jsx"));
 const Assinatura = lazy(() => import("./Pages/Assinatura.jsx"));
 const Empresa = lazy(() => import("./Pages/Empresa.jsx"));
 const Motoristas = lazy(() => import("./Pages/Motoristas.jsx"));
+const Viagens = lazy(() => import("./Pages/viagens/Viagens.jsx"));
+const ViagemDetail = lazy(() => import("./Pages/viagens/ViagemDetail.jsx"));
 const Documentos = lazy(() => import("./Pages/Documentos.jsx"));
 const Auditoria = lazy(() => import("./Pages/Auditoria.jsx"));
 const TelemetriaMonitoramento = lazy(
@@ -172,6 +174,22 @@ function AppRoutes() {
               permission={PERMISSIONS.SETTINGS_WRITE}
             >
               <Empresa />
+            </GuardedRoute>
+          }
+        />
+        <Route
+          path="/viagens"
+          element={
+            <GuardedRoute permission={PERMISSIONS.VIAGENS_READ}>
+              <Viagens />
+            </GuardedRoute>
+          }
+        />
+        <Route
+          path="/viagens/:id"
+          element={
+            <GuardedRoute permission={PERMISSIONS.VIAGENS_READ}>
+              <ViagemDetail />
             </GuardedRoute>
           }
         />
@@ -341,7 +359,7 @@ function AppRoutes() {
         <Route
           path="/manutencao-gastos"
           element={
-            <GuardedRoute>
+            <GuardedRoute permission={PERMISSIONS.GASTOS_READ}>
               <ManutencaoGastos />
             </GuardedRoute>
           }

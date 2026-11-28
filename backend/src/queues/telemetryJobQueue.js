@@ -222,6 +222,11 @@ export async function enqueueTelemetryEvent(data) {
     engineTempC: data.engineTempC ?? null,
     engineHours: data.engineHours ?? null,
     batteryV: data.batteryV ?? null,
+    satellites: data.satellites ?? null,
+    gsmSignal: data.gsmSignal ?? null,
+    ibutton: data.ibutton ?? null,
+    io: data.io ?? null,
+    drivingEvents: Array.isArray(data.drivingEvents) ? data.drivingEvents : [],
     key,
   };
 

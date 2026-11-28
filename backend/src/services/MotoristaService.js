@@ -4,6 +4,16 @@ import {
   motoristaUpdateSchema,
 } from "../schemas/motoristaSchema.js";
 
+function ibuttonConflict(err) {
+  const text = `${err?.message || ""} ${err?.meta?.target || ""}`;
+  if (err?.code === "P2002" || /motoristas_tenant_ibutton_key/.test(text)) {
+    const e = new Error("Este iButton já está vinculado a outro motorista.");
+    e.statusCode = 409;
+    return e;
+  }
+  return err;
+}
+
 function parseDate(value) {
   if (value === undefined || value === null || value === "") return null;
   const d = new Date(value);
@@ -63,7 +73,10 @@ export class MotoristaService {
         whatsapp: data.whatsapp || null,
         ativo: data.ativo !== false,
         observacao: data.observacao || null,
+        ibutton_id: data.ibutton_id || null,
       },
+    }).catch((err) => {
+      throw ibuttonConflict(err);
     });
   }
 
@@ -92,7 +105,12 @@ export class MotoristaService {
         ...(data.observacao !== undefined
           ? { observacao: data.observacao || null }
           : {}),
+        ...(data.ibutton_id !== undefined
+          ? { ibutton_id: data.ibutton_id || null }
+          : {}),
       },
+    }).catch((err) => {
+      throw ibuttonConflict(err);
     });
     if (updated.count === 0) {
       const err = new Error("Motorista não encontrado");

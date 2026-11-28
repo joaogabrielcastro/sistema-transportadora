@@ -23,6 +23,12 @@ import {
   buildAvlPacket,
   buildImeiHandshake,
 } from "../src/services/telemetry/protocols/teltonika/codec8.js";
+import {
+  CODEC12_RESPONSE,
+  buildCodec12Command,
+  isCodec12Packet,
+  tryParseCodec12,
+} from "../src/services/telemetry/protocols/teltonika/codec12.js";
 
 const ROUTES = {
   curitiba: [
@@ -98,6 +104,12 @@ Opções:
   --disconnect-every <n>      fecha TCP a cada N pacotes (0=off)
   --reconnect-delay <ms>      espera antes de reconectar (padrão 1500)
   --ack-timeout <ms>          timeout do ACK (padrão 8000)
+  --voltage <V>               tensão da bateria do veículo (IO 66), padrão 27.6
+  --ibutton <hex>             iButton do motorista (IO 78, só FMB130 com leitor)
+  --profile fmb|fms           fms = FMC650: consumo (IO 86), tanque (87) e
+                              rotação (88) lidos do caminhão; padrão fmb
+  --driving-events            injeta eventos de condução (frenagem, aceleração,
+                              curva e excesso de velocidade) para demonstração
   --help
 `);
 }
@@ -153,38 +165,72 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function readExact(socket, size, timeoutMs) {
-  return new Promise((resolve, reject) => {
-    let buf = Buffer.alloc(0);
-    const onData = (chunk) => {
-      buf = Buffer.concat([buf, chunk]);
-      if (buf.length >= size) {
-        cleanup();
-        resolve(buf.subarray(0, size));
+/**
+ * Leitor único por conexão: separa os comandos Codec 12 enviados pelo
+ * servidor (respondidos como um aparelho real faria) dos bytes de handshake/ACK.
+ */
+const readers = new WeakMap();
+function readerFor(socket) {
+  if (readers.has(socket)) return readers.get(socket);
+  const state = { buf: Buffer.alloc(0), waiters: [], dout1: 0 };
+  const pump = () => {
+    for (;;) {
+      if (isCodec12Packet(state.buf)) {
+        const msg = tryParseCodec12(state.buf);
+        if (!msg) return;
+        state.buf = state.buf.subarray(msg.bytesConsumed);
+        const m = /^setdigout\s+([01?])/i.exec(msg.text);
+        if (m && m[1] !== "?") state.dout1 = Number(m[1]);
+        const reply = m ? `DOUT1:${state.dout1} DOUT2:IGNORED` : `ERR:Unknown command`;
+        console.log(`[comando] recebido "${msg.text}" → respondendo "${reply}"`);
+        socket.write(buildCodec12Command(reply, CODEC12_RESPONSE));
+        continue;
       }
-    };
-    const onErr = (err) => {
-      cleanup();
-      reject(err);
-    };
-    const onClose = () => {
-      cleanup();
-      reject(new Error("socket fechado antes do ACK"));
-    };
-    const timer = setTimeout(() => {
-      cleanup();
-      reject(new Error(`timeout aguardando ${size} byte(s) do servidor`));
-    }, timeoutMs);
-    const cleanup = () => {
-      clearTimeout(timer);
-      socket.off("data", onData);
-      socket.off("error", onErr);
-      socket.off("close", onClose);
-    };
-    socket.on("data", onData);
-    socket.on("error", onErr);
-    socket.on("close", onClose);
+      const w = state.waiters[0];
+      if (!w || state.buf.length < w.size) return;
+      state.waiters.shift();
+      const out = state.buf.subarray(0, w.size);
+      state.buf = state.buf.subarray(w.size);
+      w.done(null, out);
+    }
+  };
+  socket.on("data", (chunk) => {
+    state.buf = Buffer.concat([state.buf, chunk]);
+    pump();
   });
+  socket.on("close", () => {
+    for (const w of state.waiters.splice(0)) w.done(new Error("socket fechado antes do ACK"));
+  });
+  socket.on("error", (err) => {
+    for (const w of state.waiters.splice(0)) w.done(err);
+  });
+  const api = {
+    readExact(size, timeoutMs) {
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          const i = state.waiters.indexOf(waiter);
+          if (i >= 0) state.waiters.splice(i, 1);
+          reject(new Error(`timeout aguardando ${size} byte(s) do servidor`));
+        }, timeoutMs);
+        const waiter = {
+          size,
+          done: (err, out) => {
+            clearTimeout(timer);
+            if (err) reject(err);
+            else resolve(out);
+          },
+        };
+        state.waiters.push(waiter);
+        pump();
+      });
+    },
+  };
+  readers.set(socket, api);
+  return api;
+}
+
+function readExact(socket, size, timeoutMs) {
+  return readerFor(socket).readExact(size, timeoutMs);
 }
 
 function connect(host, port) {
@@ -238,6 +284,21 @@ const reconnectDelay = Number(arg("reconnect-delay", "1500"));
 const ackTimeout = Number(arg("ack-timeout", "8000"));
 const ignitionMode = String(arg("ignition", "on")).toLowerCase();
 const routeName = String(arg("route", "curitiba"));
+const voltageV = Number(arg("voltage", "27.6"));
+const ibuttonRaw = arg("ibutton");
+const ibuttonHex =
+  ibuttonRaw && ibuttonRaw !== true
+    ? String(ibuttonRaw).replace(/[^0-9a-fA-F]/g, "").toUpperCase().padStart(16, "0").slice(-16)
+    : null;
+const drivingEvents = hasFlag("driving-events");
+const fmsProfile = String(arg("profile", "fmb")).toLowerCase() === "fms";
+// Ciclo de eventos de demonstração: [tipo green driving (1/2/3) | overspeed]
+const DEMO_EVENTS = [
+  { every: 7, type: 2, value: 48 }, // frenagem brusca 0,48 g
+  { every: 11, type: 1, value: 36 }, // aceleração brusca 0,36 g
+  { every: 13, type: 3, value: 41 }, // curva brusca
+  { every: 9, overspeed: true },
+];
 const stepsPerSegment = Number(arg("steps-per-segment", "12"));
 
 let rawPoints;
@@ -304,7 +365,36 @@ function buildRecords(startIndex, n, state) {
       );
     }
 
+    // IOs permanentes do FMB: tensão externa (mV), sinal GSM e iButton.
+    const io = {
+      ones: [{ id: 21, value: 3 + (idx % 3) }],
+      twos: Number.isFinite(voltageV) ? [{ id: 66, value: Math.round(voltageV * 1000) }] : [],
+      eights: ibuttonHex ? [{ id: 78, value: ibuttonHex }] : [],
+    };
+    let eventIoId = ignition ? 239 : 0;
+    if (drivingEvents && moving && idx > 0) {
+      const ev = DEMO_EVENTS.find((e) => idx % e.every === 0);
+      if (ev?.overspeed) {
+        speed = Math.max(speed, 95 + (idx % 15));
+        io.ones.push({ id: 255, value: speed });
+        eventIoId = 255;
+      } else if (ev) {
+        io.ones.push({ id: 253, value: ev.type }, { id: 254, value: ev.value });
+        eventIoId = 253;
+      }
+    }
+
+    if (fmsProfile) {
+      // FMC650: dados do motor pela FMS (litros inteiros, %, rpm).
+      io.ones.push({ id: 87, value: Math.round(state.fuelLevelPct) });
+      io.ones.push({ id: 127, value: 40 + 82 + (idx % 6) }); // 82–87 °C (byte − 40)
+      io.twos.push({ id: 88, value: speed > 0 ? 1100 + Math.round(speed * 6) : ignition ? 650 : 0 });
+      // contador do motor de um caminhão já rodado (~150 mil litros)
+      io.fours = [{ id: 86, value: 150_000 + Math.round(state.fuelUsedMl / 1000) }];
+    }
+
     records.push({
+      io,
       recordedAt: new Date(state.recordedAt),
       latitude: from[0],
       longitude: from[1],
@@ -314,9 +404,9 @@ function buildRecords(startIndex, n, state) {
       angle,
       satellites: 10 + (idx % 5),
       odometerM: Math.round(state.odometerM),
-      fuelUsedMl: Math.round(state.fuelUsedMl),
-      fuelLevelPct: Math.round(state.fuelLevelPct),
-      eventIoId: ignition ? 239 : 0,
+      fuelUsedMl: fmsProfile ? undefined : Math.round(state.fuelUsedMl),
+      fuelLevelPct: fmsProfile ? undefined : Math.round(state.fuelLevelPct),
+      eventIoId,
       priority: idx % 8 === 0 ? 1 : 0,
     });
   }

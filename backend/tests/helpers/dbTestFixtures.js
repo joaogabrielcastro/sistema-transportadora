@@ -295,6 +295,8 @@ export async function cleanupCaminhao(caminhaoId) {
 
 export async function cleanupTenant(tenantId) {
   if (!tenantId) return;
+  await prisma.telemetry_device_commands.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
+  await prisma.telemetry_driving_events.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.telemetry_events.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.telemetry_current_state.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});
   await prisma.telemetry_daily.deleteMany({ where: { tenant_id: tenantId } }).catch(() => {});

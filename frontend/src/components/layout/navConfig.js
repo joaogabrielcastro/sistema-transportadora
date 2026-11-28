@@ -53,6 +53,7 @@ export const NAV_SECTIONS = [
     items: [
       { path: "/telemetria", label: "Monitoramento", icon: "signal", exact: true, permission: PERMISSIONS.TELEMETRY_READ, keywords: "mapa rastreamento ao vivo gps" },
       { path: "/telemetria/historico", label: "Histórico", icon: "clock", permission: PERMISSIONS.TELEMETRY_READ, keywords: "rotas trajetos" },
+      { path: "/telemetria/conducao", label: "Condução", icon: "gauge", permission: PERMISSIONS.TELEMETRY_READ, keywords: "frenagem brusca aceleracao excesso velocidade motorista comportamento" },
       { path: "/telemetria/dispositivos", label: "Dispositivos", icon: "device", permission: PERMISSIONS.TELEMETRY_READ, keywords: "rastreadores imei" },
       { path: "/telemetria/geocercas", label: "Geocercas", icon: "map", permission: PERMISSIONS.TELEMETRY_READ, keywords: "cercas areas" },
       { path: "/telemetria/config", label: "Ajustes", icon: "cog", permission: PERMISSIONS.TELEMETRY_READ, keywords: "telemetria plano retencao equipamentos" },
@@ -159,6 +160,7 @@ const PAGE_TITLES = [
   ["/notas-estoque", "Notas e estoque", "Operação"],
   ["/telemetria/dispositivos", "Dispositivos", "Telemetria"],
   ["/telemetria/historico", "Histórico e desempenho", "Telemetria"],
+  ["/telemetria/conducao", "Condução", "Telemetria"],
   ["/telemetria/geocercas", "Geocercas", "Telemetria"],
   ["/telemetria/config", "Ajustes da telemetria", "Telemetria"],
   ["/telemetria", "Monitoramento", "Telemetria"],

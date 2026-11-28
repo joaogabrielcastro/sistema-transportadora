@@ -25,6 +25,13 @@ export const motoristaSchema = z.object({
   whatsapp: phoneOptionalSchema,
   ativo: z.boolean().optional(),
   observacao: observacaoOptionalSchema,
+  // Código do iButton (chaveiro 1-Wire) lido pelo rastreador FMB130, em hexadecimal.
+  ibutton_id: z.preprocess((val) => {
+    if (val === undefined) return undefined;
+    if (val === null || String(val).trim() === "") return null;
+    const hex = String(val).trim().toUpperCase().replace(/^0X/, "").replace(/[\s:-]/g, "");
+    return hex.padStart(16, "0");
+  }, z.string().regex(/^[0-9A-F]{16}$/, "iButton inválido: use até 16 dígitos hexadecimais.").nullable().optional()),
 });
 
 export const motoristaUpdateSchema = motoristaSchema.partial();

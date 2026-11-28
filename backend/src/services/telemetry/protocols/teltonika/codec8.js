@@ -1,7 +1,12 @@
 /**
- * Teltonika Codec 8 / Codec 8 Extended — parse mínimo para GPS + ignição.
+ * Teltonika Codec 8 / Codec 8 Extended — GPS, todos os IOs e eventos.
  * Spec: Teltonika Data Sending Protocols (AVL).
  */
+import {
+  interpretTeltonikaIo,
+  ioMapToJson,
+  teltonikaDrivingEvents,
+} from "./teltonikaIo.js";
 
 export const CODEC8 = 0x08;
 export const CODEC8_EXTENDED = 0x8e;
@@ -120,10 +125,21 @@ function readIoMap(buf, offset, codecId) {
   const n8 = readCount();
   for (let i = 0; i < n8; i += 1) {
     const id = readId();
-    const hi = buf.readUInt32BE(o);
-    const lo = buf.readUInt32BE(o + 4);
+    // 8 bytes (ex.: iButton) não cabem em Number com precisão: guarda em hex.
+    map.set(id, buf.subarray(o, o + 8).toString("hex").toUpperCase());
     o += 8;
-    map.set(id, hi * 0x100000000 + lo);
+  }
+
+  // Codec 8E: seção de IOs de tamanho variável (NX) após os de 8 bytes.
+  if (extended) {
+    const nx = readCount();
+    for (let i = 0; i < nx; i += 1) {
+      const id = readId();
+      const len = buf.readUInt16BE(o);
+      o += 2;
+      map.set(id, buf.subarray(o, o + len).toString("hex").toUpperCase());
+      o += len;
+    }
   }
 
   return { map, offset: o };
@@ -152,33 +168,22 @@ function parseAvlRecord(buf, offset, codecId) {
   const speed = buf.readUInt16BE(o);
   o += 2;
 
+  let eventIoId;
   if (codecId === CODEC8_EXTENDED) {
-    o += 2; // event IO ID (2 bytes)
+    eventIoId = buf.readUInt16BE(o);
+    o += 2;
     o += 2; // total IO count (2 bytes in 8E)
   } else {
-    o += 1; // event IO ID
+    eventIoId = buf.readUInt8(o);
+    o += 1;
     o += 1; // N of total IO
   }
 
   const io = readIoMap(buf, o, codecId);
-  const ignitionRaw = io.map.get(IO_IGNITION);
-  const ignition =
-    ignitionRaw == null ? false : Boolean(Number(ignitionRaw) !== 0);
-  const odometerRaw = io.map.get(IO_ODOMETER);
-  const odometerKm =
-    odometerRaw == null || !Number.isFinite(Number(odometerRaw))
-      ? null
-      : Number(odometerRaw) / 1000;
-  const fuelUsedRaw = io.map.get(IO_FUEL_USED_ML);
-  const fuelConsumedL =
-    fuelUsedRaw == null || !Number.isFinite(Number(fuelUsedRaw))
-      ? null
-      : Number(fuelUsedRaw) / 1000;
-  const fuelLevelRaw = io.map.get(IO_FUEL_LEVEL_PCT);
-  const fuelLevelPct =
-    fuelLevelRaw == null || !Number.isFinite(Number(fuelLevelRaw))
-      ? null
-      : Math.max(0, Math.min(100, Number(fuelLevelRaw)));
+  const parsed = interpretTeltonikaIo(io.map);
+  const ignition = parsed.ignition ?? false;
+  const { odometerKm, fuelConsumedL, fuelLevelPct, batteryV, gsmSignal, ibutton } = parsed;
+  const drivingEvents = teltonikaDrivingEvents({ eventIoId, io: io.map, speedKmh: speed });
 
   return {
     recordedAt: new Date(timestampMs),
@@ -192,6 +197,12 @@ function parseAvlRecord(buf, offset, codecId) {
     odometerKm,
     fuelConsumedL,
     fuelLevelPct,
+    batteryV,
+    gsmSignal,
+    ibutton,
+    eventIoId: eventIoId || null,
+    io: ioMapToJson(io.map),
+    drivingEvents,
     nextOffset: io.offset,
   };
 }
@@ -245,31 +256,7 @@ export function tryParseAvlPacket(buf) {
   return {
     codecId,
     recordCount: count1,
-    records: records.map(
-      ({
-        recordedAt,
-        latitude,
-        longitude,
-        altitudeM,
-        heading,
-        speedKmh,
-        ignition,
-        odometerKm,
-        fuelConsumedL,
-        fuelLevelPct,
-      }) => ({
-        recordedAt,
-        latitude,
-        longitude,
-        altitudeM,
-        heading,
-        speedKmh,
-        ignition,
-        odometerKm,
-        fuelConsumedL,
-        fuelLevelPct,
-      }),
-    ),
+    records: records.map(({ nextOffset: _ignored, ...rec }) => rec),
     bytesConsumed: totalNeeded,
   };
 }
@@ -337,8 +324,15 @@ function encodeIoBlock(codecId, io = {}) {
   for (const item of eights) {
     pushId(item.id);
     const b = Buffer.alloc(8);
-    b.writeBigUInt64BE(BigInt(item.value), 0);
+    // String = hexadecimal (ex.: iButton "01A2B3C4D5E6F708"); número = decimal.
+    b.writeBigUInt64BE(
+      typeof item.value === "string" ? BigInt(`0x${item.value}`) : BigInt(item.value),
+      0,
+    );
     parts.push(b);
+  }
+  if (extended) {
+    pushU16(0); // NX: nenhum IO de tamanho variável nos pacotes de teste
   }
 
   return Buffer.concat(parts);
@@ -366,10 +360,14 @@ function encodeAvlRecord(codecId, rec) {
       value: Math.max(0, Math.round(Number(rec.fuelUsedMl))),
     });
   }
+  // IOs extras (ex.: eventos de condução, tensão, iButton) para simulação/testes.
+  const extra = rec.io || {};
   const io = encodeIoBlock(codecId, {
     eventIoId: rec.eventIoId ?? IO_IGNITION,
-    ones,
-    fours,
+    ones: [...ones, ...(extra.ones || [])],
+    twos: [...(extra.twos || [])],
+    fours: [...fours, ...(extra.fours || [])],
+    eights: [...(extra.eights || [])],
   });
 
   const record = Buffer.alloc(8 + 1 + 4 + 4 + 2 + 2 + 1 + 2 + io.length);

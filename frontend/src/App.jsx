@@ -59,6 +59,9 @@ const TelemetriaDispositivos = lazy(
 const TelemetriaHistorico = lazy(
   () => import("./Pages/telemetria/TelemetriaHistorico.jsx"),
 );
+const TelemetriaConducao = lazy(
+  () => import("./Pages/telemetria/TelemetriaConducao.jsx"),
+);
 const TelemetriaGeocercas = lazy(
   () => import("./Pages/telemetria/TelemetriaGeocercas.jsx"),
 );
@@ -223,6 +226,17 @@ function AppRoutes() {
               permission={PERMISSIONS.TELEMETRY_READ}
             >
               <TelemetriaHistorico />
+            </GuardedRoute>
+          }
+        />
+        <Route
+          path="/telemetria/conducao"
+          element={
+            <GuardedRoute
+              feature="telemetria"
+              permission={PERMISSIONS.TELEMETRY_READ}
+            >
+              <TelemetriaConducao />
             </GuardedRoute>
           }
         />

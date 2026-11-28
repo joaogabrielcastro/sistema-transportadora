@@ -168,7 +168,7 @@ export function segmentTrips(points, { minStopMs = 5 * 60_000, maxGapMs = 20 * 6
     else out.push({ ...b });
   }
 
-  return out.map((b) => {
+  const segs = out.map((b) => {
     const slice = valid.slice(b.start, b.end + 1);
     const first = slice[0];
     // a parada termina quando o próximo bloco começa
@@ -196,13 +196,92 @@ export function segmentTrips(points, { minStopMs = 5 * 60_000, maxGapMs = 20 * 6
       durationMs: new Date(endAt).getTime() - new Date(startAt).getTime(),
       km,
       maxSpeedKmh: speeds.length ? Math.max(...speeds) : null,
-      ignitionOn: !b.moving && slice.some((p) => p.ignition === true),
+      // "Parado ligado" só quando a ignição ficou ligada na maior parte da
+      // parada: o motor ligado alguns minutos antes de sair de manhã não
+      // transforma a noite inteira em parado ligado.
+      ignitionOn: !b.moving && ignitionOnMs(valid, b.start, b.end) * 2 >= durationOf(startAt, endAt),
       at: { lat: first.lat, lng: first.lng },
     };
   });
+  // A última "parada" de poucos segundos é só a posição atual, não uma parada.
+  const last = segs[segs.length - 1];
+  if (last && last.type === "stop" && last.durationMs < 60_000) segs.pop();
+  return segs;
+}
+
+function durationOf(a, b) {
+  return new Date(b).getTime() - new Date(a).getTime();
+}
+
+/** Tempo com ignição ligada entre os pontos start..end (cada ponto vale até o próximo). */
+function ignitionOnMs(points, start, end) {
+  let ms = 0;
+  for (let i = start; i <= end; i += 1) {
+    const next = points[i + 1];
+    if (!next || points[i].ignition !== true) continue;
+    ms += durationOf(points[i].when, next.when);
+  }
+  return ms;
 }
 
 export function googleMapsUrl(lat, lng) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+}
+
+/** Eventos de condução gerados pelo rastreador (Teltonika: green driving, overspeeding, unplug…). */
+export const DRIVING_EVENTS = {
+  harsh_braking: { label: "Frenagem brusca", short: "Frenagens", unit: "g" },
+  harsh_acceleration: { label: "Aceleração brusca", short: "Acelerações", unit: "g" },
+  harsh_cornering: { label: "Curva brusca", short: "Curvas", unit: "g" },
+  overspeed: { label: "Excesso de velocidade", short: "Excessos", unit: "km/h" },
+  unplug: { label: "Rastreador desligado da bateria", short: "Desconexões", unit: null },
+  towing: { label: "Movido com ignição desligada", short: "Reboque", unit: null },
+  crash: { label: "Possível colisão", short: "Colisões", unit: null },
+  jamming: { label: "Bloqueio de sinal (jammer)", short: "Jammer", unit: null },
+  fuel_drop: { label: "Queda de combustível com o caminhão parado", short: "Combustível", unit: "pct" },
+};
+
+/** Eventos que dependem do motorista (os demais são de segurança do veículo). */
+export const BEHAVIOR_EVENT_TYPES = ["harsh_braking", "harsh_acceleration", "harsh_cornering", "overspeed"];
+export const SECURITY_EVENT_TYPES = ["unplug", "towing", "crash", "jamming", "fuel_drop"];
+
+export function drivingEventLabel(tipo) {
+  return DRIVING_EVENTS[tipo]?.label || tipo || "—";
+}
+
+/** "0,48 g" / "104 km/h" — intensidade do evento quando o rastreador informa. */
+export function formatDrivingValue(tipo, valor) {
+  const n = Number(valor);
+  if (valor == null || !Number.isFinite(n)) return null;
+  const unit = DRIVING_EVENTS[tipo]?.unit;
+  if (unit === "g") return `${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} g`;
+  if (unit === "km/h") return `${Math.round(n)} km/h`;
+  if (unit === "pct") return `−${n.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} % do tanque`;
+  return null;
+}
+
+/**
+ * Tensão da bateria do veículo (IO 66). Caminhões usam 24 V, utilitários 12 V.
+ * Perto de 0 V o rastreador está sem alimentação externa (bateria interna).
+ * @returns {{ label: string, tone: "ok"|"warn"|"bad"|"none" }}
+ */
+export function batteryStatus(volts) {
+  const v = Number(volts);
+  if (volts == null || !Number.isFinite(v)) return { label: "—", tone: "none" };
+  const label = `${v.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} V`;
+  if (v < 1) return { label: `${label} · sem alimentação`, tone: "bad" };
+  const system = v >= 18 ? 24 : 12;
+  const low = system === 24 ? 23 : 11.6;
+  if (v < low) return { label: `${label} · baixa`, tone: "warn" };
+  return { label, tone: "ok" };
+}
+
+/** Sinal GSM 0–5 → texto. */
+export function gsmLabel(level) {
+  const n = Number(level);
+  if (level == null || !Number.isFinite(n)) return "—";
+  if (n <= 1) return `Fraco (${n}/5)`;
+  if (n <= 3) return `Médio (${n}/5)`;
+  return `Bom (${n}/5)`;
 }

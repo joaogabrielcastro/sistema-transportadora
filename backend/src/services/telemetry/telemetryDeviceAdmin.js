@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { isFmsModel } from "./protocols/teltonika/teltonikaIo.js";
 import prisma from "../../lib/prisma.js";
 import {
   assignTelemetryDevice,
@@ -251,11 +252,29 @@ export async function listCurrentStates(tenantId, { caminhaoId } = {}) {
           last_seen_at: true,
           ativo: true,
           revogado_em: true,
+          model: true,
+          protocol: true,
         },
       },
     },
     orderBy: { registrado_em: "desc" },
   });
+
+  // Motorista do último ponto (iButton) ou o vinculado ao veículo.
+  const motoristaIds = [
+    ...new Set(
+      rows
+        .map((r) => r.motorista_id ?? r.caminhoes?.motorista_id)
+        .filter((id) => id != null),
+    ),
+  ];
+  const motoristas = motoristaIds.length
+    ? await prisma.motoristas.findMany({
+        where: { tenant_id: Number(tenantId), id: { in: motoristaIds } },
+        select: { id: true, nome: true },
+      })
+    : [];
+  const nomeMotorista = new Map(motoristas.map((m) => [m.id, m.nome]));
 
   return rows.map((row) => ({
     caminhao_id: row.caminhao_id,
@@ -276,10 +295,22 @@ export async function listCurrentStates(tenantId, { caminhaoId } = {}) {
       row.fuel_level_pct != null ? Number(row.fuel_level_pct) : null,
     fuel_consumed_l:
       row.fuel_consumed_l != null ? Number(row.fuel_consumed_l) : null,
+    // "can" = medido pelo caminhão (FMS); "gps" = estimado pelo rastreador.
+    fuel_source: isFmsModel(row.devices?.model) ? "can" : "gps",
+    device_model: row.devices?.model ?? null,
+    // Bloqueio/desbloqueio por comando (Codec 12) só em rastreadores Teltonika.
+    commands_supported: String(row.devices?.protocol || "").toLowerCase() === "teltonika",
     engine_temp_c:
       row.engine_temp_c != null ? Number(row.engine_temp_c) : null,
     engine_hours: row.engine_hours != null ? Number(row.engine_hours) : null,
     battery_v: row.battery_v != null ? Number(row.battery_v) : null,
+    satelites: row.satelites ?? null,
+    gsm_sinal: row.gsm_sinal ?? null,
+    ibutton: row.ibutton ?? null,
+    motorista_id: row.motorista_id ?? row.caminhoes?.motorista_id ?? null,
+    motorista_nome:
+      nomeMotorista.get(row.motorista_id ?? row.caminhoes?.motorista_id) ?? null,
+    motorista_por_ibutton: Boolean(row.ibutton && row.motorista_id),
     last_seen_at: row.devices?.last_seen_at ?? null,
   }));
 }

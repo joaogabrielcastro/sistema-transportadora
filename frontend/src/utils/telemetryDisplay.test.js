@@ -1,6 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  batteryStatus,
+  drivingEventLabel,
+  formatDrivingValue,
+  gsmLabel,
   formatLitersPerKm,
   litersPerKm,
   litersPerKmFromKmPerL,
@@ -72,4 +76,45 @@ test("segmentTrips quebra viagem em lacuna longa sem pontos", () => {
   assert.deepEqual(segs.map((s) => s.type), ["trip", "stop", "trip"]);
   assert.equal(segs[0].km, 30);
   assert.equal(segs[1].durationMs, 170 * 60_000);
+});
+
+test("eventos de condução e saúde do rastreador", () => {
+  assert.equal(drivingEventLabel("harsh_braking"), "Frenagem brusca");
+  assert.equal(formatDrivingValue("harsh_braking", 0.48), "0,48 g");
+  assert.equal(formatDrivingValue("overspeed", 104), "104 km/h");
+  assert.equal(formatDrivingValue("unplug", null), null);
+  assert.equal(formatDrivingValue("fuel_drop", 16), "−16 % do tanque");
+  assert.equal(drivingEventLabel("fuel_drop"), "Queda de combustível com o caminhão parado");
+  assert.deepEqual(batteryStatus(27.4), { label: "27,4 V", tone: "ok" });
+  assert.equal(batteryStatus(12.1).tone, "ok");
+  assert.equal(batteryStatus(22.1).tone, "warn");
+  assert.equal(batteryStatus(0).tone, "bad");
+  assert.equal(batteryStatus(null).tone, "none");
+  assert.equal(gsmLabel(5), "Bom (5/5)");
+  assert.equal(gsmLabel(1), "Fraco (1/5)");
+});
+
+test("segmentTrips: noite desligada não vira 'parado ligado'; posição final não é parada", () => {
+  const t0 = Date.parse("2026-11-17T18:00:00Z");
+  const at = (min) => new Date(t0 + min * 60_000).toISOString();
+  const pts = [
+    { lat: 0, lng: 0, speedKmh: 70, when: at(0), ignition: true, odometerKm: 100 },
+    { lat: 0, lng: 0.1, speedKmh: 0, when: at(30), ignition: false, odometerKm: 130 },
+    // noite: 12 h desligado; liga 10 min antes de sair
+    { lat: 0, lng: 0.1, speedKmh: 0, when: at(30 + 720), ignition: true, odometerKm: 130 },
+    { lat: 0, lng: 0.2, speedKmh: 60, when: at(30 + 730), ignition: true, odometerKm: 131 },
+    { lat: 0, lng: 0.3, speedKmh: 0, when: at(30 + 760), ignition: true, odometerKm: 160 },
+  ];
+  const segs = segmentTrips(pts);
+  assert.equal(segs[1].type, "stop");
+  assert.ok(segs[1].durationMs >= 720 * 60_000);
+  assert.equal(segs[1].ignitionOn, false);
+
+  // Último ponto parado há segundos: é a posição atual, não vira "Parada 0 min".
+  const live = [
+    { lat: 0, lng: 0, speedKmh: 60, when: at(0), ignition: true },
+    { lat: 0, lng: 0.1, speedKmh: 65, when: at(5), ignition: true },
+    { lat: 0, lng: 0.2, speedKmh: 0, when: at(10), ignition: true },
+  ];
+  assert.deepEqual(segmentTrips(live).map((s) => s.type), ["trip"]);
 });

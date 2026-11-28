@@ -46,7 +46,7 @@ export const ToastProvider = ({ children }) => {
     <ToastContext.Provider value={api}>
       {children}
       <div
-        className="pointer-events-none fixed inset-x-4 bottom-4 z-[1000] flex flex-col gap-2 sm:inset-x-auto sm:bottom-auto sm:right-5 sm:top-5 sm:w-[400px]"
+        className="pointer-events-none fixed inset-x-4 bottom-4 z-[1200] flex flex-col gap-2 sm:inset-x-auto sm:bottom-auto sm:right-5 sm:top-5 sm:w-[400px]"
         aria-live="polite"
       >
         {toasts.map((t) => {

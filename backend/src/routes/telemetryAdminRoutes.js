@@ -122,6 +122,25 @@ router.get(
 );
 
 router.get(
+  "/reports/driving",
+  requirePermission(PERMISSIONS.TELEMETRY_READ),
+  telemetryAdminController.driving,
+);
+
+// Bloqueio/desbloqueio do motor: ação de segurança, só administradores pedem.
+router.get(
+  "/commands",
+  requirePermission(PERMISSIONS.TELEMETRY_READ),
+  telemetryAdminController.listCommands,
+);
+router.post(
+  "/commands",
+  requirePermission(PERMISSIONS.TELEMETRY_WRITE),
+  requireRole("admin"),
+  telemetryAdminController.createCommand,
+);
+
+router.get(
   "/protocols",
   requirePermission(PERMISSIONS.TELEMETRY_READ),
   telemetryAdminController.protocols,

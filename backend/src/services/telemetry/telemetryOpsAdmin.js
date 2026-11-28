@@ -1,3 +1,4 @@
+import { isFmsModel } from "./protocols/teltonika/teltonikaIo.js";
 import prisma from "../../lib/prisma.js";
 import { isInsideGeofence } from "./geofenceMath.js";
 import {
@@ -332,6 +333,21 @@ export async function efficiencyReport(tenantId, { from, to } = {}) {
     },
   });
 
+  // Todos os gastos lançados por veículo no período (diesel, pedágio,
+  // manutenção, peças…), para o custo total por km.
+  const allCosts = await prisma.gastos.groupBy({
+    by: ["caminhao_id"],
+    where: {
+      tenant_id: Number(tenantId),
+      data_gasto: { gte: fromDate, lte: toDate },
+      caminhao_id: { not: null },
+    },
+    _sum: { valor: true },
+  });
+  const totalByTruck = new Map(
+    allCosts.map((r) => [r.caminhao_id, Number(r._sum.valor || 0)]),
+  );
+
   const fuelByTruck = new Map();
   for (const g of gastos) {
     if (!g.caminhao_id) continue;
@@ -340,6 +356,16 @@ export async function efficiencyReport(tenantId, { from, to } = {}) {
     cur.valor += Number(g.valor || 0);
     fuelByTruck.set(g.caminhao_id, cur);
   }
+
+  // Origem do combustível da telemetria por veículo, pelo aparelho vinculado:
+  // FMC650 e afins leem o consumo do motor (CAN/FMS); os demais estimam por GPS.
+  const assignments = await prisma.telemetry_device_assignments.findMany({
+    where: { tenant_id: Number(tenantId), fim_em: null },
+    select: { caminhao_id: true, devices: { select: { model: true } } },
+  });
+  const fuelSourceByTruck = new Map(
+    assignments.map((a) => [a.caminhao_id, isFmsModel(a.devices?.model) ? "can" : "gps"]),
+  );
 
   const vehicles = [...byTruck.values()].map((v) => {
     const manual = fuelByTruck.get(v.caminhao_id) || { litros: 0, valor: 0 };
@@ -357,6 +383,8 @@ export async function efficiencyReport(tenantId, { from, to } = {}) {
     return {
       ...v,
       fuel_telemetry_l: telemFuel,
+      fuel_telemetry_source:
+        telemFuel != null ? fuelSourceByTruck.get(v.caminhao_id) || "gps" : null,
       fuel_manual_l: manual.litros || null,
       fuel_manual_cost: manual.valor || null,
       km_per_l: kmPerL,
@@ -368,6 +396,11 @@ export async function efficiencyReport(tenantId, { from, to } = {}) {
             : null,
       cost_per_km:
         v.km > 0 && manual.valor > 0 ? manual.valor / v.km : null,
+      total_cost: totalByTruck.get(v.caminhao_id) || null,
+      total_cost_per_km:
+        v.km > 0 && (totalByTruck.get(v.caminhao_id) || 0) > 0
+          ? totalByTruck.get(v.caminhao_id) / v.km
+          : null,
       divergence_l:
         telemFuel != null && manual.litros > 0
           ? telemFuel - manual.litros

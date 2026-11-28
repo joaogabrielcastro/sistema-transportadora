@@ -17,6 +17,7 @@ import { PERMISSIONS, userHasPermission } from "../utils/permissions.js";
 import { FIELD_LIMITS } from "../utils/fieldLimits.js";
 import { formatDate } from "../utils/formatters.js";
 import { cnhStatus } from "../utils/cnhStatus.js";
+import { featureEnabled } from "../utils/billing.js";
 
 const emptyForm = {
   nome: "",
@@ -27,6 +28,7 @@ const emptyForm = {
   telefone: "",
   whatsapp: "",
   observacao: "",
+  ibutton_id: "",
 };
 
 const FILTERS = [
@@ -66,6 +68,8 @@ function whatsappHref(phone) {
 
 export default function Motoristas() {
   const { user } = useAuth();
+  // iButton só faz sentido com telemetria (identifica o motorista no rastreador).
+  const hasTelemetry = featureEnabled(user, "telemetria");
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const canWrite = userHasPermission(user, PERMISSIONS.MOTORISTAS_WRITE);
@@ -130,16 +134,18 @@ export default function Motoristas() {
     if (!canWrite) return;
     setSaving(true);
     setFormError("");
+    const payload = { ...form };
+    if (!hasTelemetry) delete payload.ibutton_id;
     try {
       if (editingId) {
         await apiFetch({
           method: "PATCH",
           url: `/motoristas/${editingId}`,
-          data: form,
+          data: payload,
         });
         toast.success("Motorista atualizado.");
       } else {
-        await apiFetch({ method: "POST", url: "/motoristas", data: form });
+        await apiFetch({ method: "POST", url: "/motoristas", data: payload });
         toast.success("Motorista cadastrado.");
       }
       invalidateQueriesFromMutation("motoristas", editingId ? "patch" : "post");
@@ -167,6 +173,7 @@ export default function Motoristas() {
       telefone: m.telefone || "",
       whatsapp: m.whatsapp || "",
       observacao: m.observacao || "",
+      ibutton_id: m.ibutton_id || "",
     });
     setFormOpen(true);
   };
@@ -405,6 +412,9 @@ export default function Motoristas() {
                               <p className="text-xs text-text-secondary">
                                 {m.cpf ? `CPF ${m.cpf}` : "CPF não informado"}
                                 {m.ativo === false ? <span className="ml-2 rounded bg-slate-100 px-1.5 py-px text-[11px] font-medium text-slate-600">Inativo</span> : null}
+                                {hasTelemetry && m.ibutton_id ? (
+                                  <span className="ml-2 rounded bg-emerald-50 px-1.5 py-px text-[11px] font-medium text-emerald-700" title={`iButton ${m.ibutton_id}`}>iButton</span>
+                                ) : null}
                               </p>
                             </DataTableTd>
                             <DataTableTd>
@@ -492,6 +502,21 @@ export default function Motoristas() {
               helperText={form.cnh_validade ? cnhStatus(form.cnh_validade).label : "Gera alerta 30 dias antes."}
             />
           </div>
+          {hasTelemetry ? (
+            <>
+            <p className="section-label pb-2 pt-2">Telemetria</p>
+            <FormField
+              label="iButton (chave do motorista)"
+              name="ibutton_id"
+              value={form.ibutton_id}
+              onChange={setField("ibutton_id")}
+              placeholder="Ex.: 01A2B3C4D5E6F708"
+              maxLength={23}
+              autoComplete="off"
+              helperText="Opcional. Código gravado na chave iButton (rastreador com leitor, ex.: FMB130). Quando o rastreador lê a chave, os eventos de condução ficam no nome deste motorista."
+            />
+            </>
+          ) : null}
           <FormField
             label="Observações"
             name="observacao"

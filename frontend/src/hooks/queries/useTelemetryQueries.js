@@ -90,6 +90,22 @@ export function useTelemetryEfficiencyQuery(params = {}, options = {}) {
   });
 }
 
+/** Eventos de condução (frenagem/aceleração/curva bruscas, excesso de velocidade…). */
+export function useTelemetryDrivingQuery(params = {}, options = {}) {
+  return useQuery({
+    queryKey: queryKeys.telemetry.driving(params),
+    enabled: options.enabled !== false,
+    queryFn: async () =>
+      extractApiData(
+        await apiFetch({
+          method: "GET",
+          url: "/telemetry/reports/driving",
+          params,
+        }),
+      ),
+  });
+}
+
 function invalidateTelemetry(qc) {
   return qc.invalidateQueries({ queryKey: queryKeys.telemetry.all });
 }
@@ -153,5 +169,27 @@ export function useRotateTelemetryCredentialMutation() {
         data: {},
       }),
     onSuccess: () => invalidateTelemetry(qc),
+  });
+}
+
+/** Comandos enviados ao rastreador do veículo (bloqueio/desbloqueio). */
+export function useTelemetryCommandsQuery(params = {}, options = {}) {
+  return useQuery({
+    queryKey: queryKeys.telemetry.commands(params),
+    enabled: options.enabled !== false,
+    refetchInterval: options.refetchInterval ?? false,
+    queryFn: async () =>
+      extractApiArray(
+        await apiFetch({ method: "GET", url: "/telemetry/commands", params }),
+      ),
+  });
+}
+
+export function useCreateTelemetryCommandMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data) =>
+      apiFetch({ method: "POST", url: "/telemetry/commands", data }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["telemetry", "commands"] }),
   });
 }

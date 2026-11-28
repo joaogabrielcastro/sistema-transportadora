@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { checkFuelDrop } from "./telemetryFuelWatch.js";
 import prisma from "../../lib/prisma.js";
 import {
   assertDeviceCredentialAllowed,
@@ -349,6 +350,11 @@ export async function applyIngestedTelemetryEvent({
   engineTempC = null,
   engineHours = null,
   batteryV = null,
+  satellites = null,
+  gsmSignal = null,
+  ibutton = null,
+  io = null,
+  drivingEvents = [],
 }) {
   const device = await prisma.telemetry_devices.findFirst({
     where: { id: Number(deviceId) },
@@ -369,9 +375,12 @@ export async function applyIngestedTelemetryEvent({
     return { skipped: true, reason: "no_assignment" };
   }
 
-  const previousState = await prisma.telemetry_current_state.findUnique({
-    where: { caminhao_id: assignment.caminhao_id },
+  const motoristaId = await resolveMotoristaForEvent({
+    tenantId: device.tenant_id,
+    caminhaoId: assignment.caminhao_id,
+    ibutton,
   });
+  const ioJson = io && typeof io === "object" ? JSON.stringify(io) : null;
 
   const result = await prisma.$transaction(async (tx) => {
     const insertedRows = await tx.$queryRaw`
@@ -381,7 +390,8 @@ export async function applyIngestedTelemetryEvent({
         latitude, longitude, velocidade_kmh, heading, altitude_m,
         odometro_km, ignicao,
         engine_rpm, fuel_level_pct, fuel_consumed_l,
-        engine_temp_c, engine_hours, battery_v
+        engine_temp_c, engine_hours, battery_v,
+        io, satelites, gsm_sinal, ibutton, motorista_id
       ) VALUES (
         ${device.tenant_id},
         ${device.id},
@@ -401,7 +411,12 @@ export async function applyIngestedTelemetryEvent({
         ${fuelConsumedL},
         ${engineTempC},
         ${engineHours},
-        ${batteryV}
+        ${batteryV},
+        ${ioJson}::jsonb,
+        ${satellites},
+        ${gsmSignal},
+        ${ibutton},
+        ${motoristaId}
       )
       ON CONFLICT (device_id, event_id) DO NOTHING
       RETURNING id
@@ -415,7 +430,8 @@ export async function applyIngestedTelemetryEvent({
         latitude, longitude, velocidade_kmh, heading, altitude_m,
         odometro_km, ignicao,
         engine_rpm, fuel_level_pct, fuel_consumed_l,
-        engine_temp_c, engine_hours, battery_v, atualizado_em
+        engine_temp_c, engine_hours, battery_v,
+        satelites, gsm_sinal, ibutton, motorista_id, atualizado_em
       )
       SELECT
         e.tenant_id, e.caminhao_id, e.device_id,
@@ -423,7 +439,8 @@ export async function applyIngestedTelemetryEvent({
         e.latitude, e.longitude, e.velocidade_kmh, e.heading, e.altitude_m,
         e.odometro_km, e.ignicao,
         e.engine_rpm, e.fuel_level_pct, e.fuel_consumed_l,
-        e.engine_temp_c, e.engine_hours, e.battery_v, NOW()
+        e.engine_temp_c, e.engine_hours, e.battery_v,
+        e.satelites, e.gsm_sinal, e.ibutton, e.motorista_id, NOW()
       FROM telemetry_events e
       WHERE e.device_id = ${device.id}
         AND e.event_id = ${eventKey}
@@ -445,10 +462,31 @@ export async function applyIngestedTelemetryEvent({
         engine_temp_c = EXCLUDED.engine_temp_c,
         engine_hours = EXCLUDED.engine_hours,
         battery_v = EXCLUDED.battery_v,
+        satelites = EXCLUDED.satelites,
+        gsm_sinal = EXCLUDED.gsm_sinal,
+        ibutton = EXCLUDED.ibutton,
+        motorista_id = EXCLUDED.motorista_id,
         atualizado_em = NOW()
       WHERE telemetry_current_state.tenant_id = EXCLUDED.tenant_id
         AND telemetry_current_state.registrado_em < EXCLUDED.registrado_em
     `;
+
+    if (inserted && Array.isArray(drivingEvents) && drivingEvents.length) {
+      for (const ev of drivingEvents) {
+        if (!ev?.tipo) continue;
+        await tx.$executeRaw`
+          INSERT INTO telemetry_driving_events (
+            tenant_id, device_id, caminhao_id, motorista_id, event_key, tipo,
+            valor, velocidade_kmh, latitude, longitude, ocorrido_em
+          ) VALUES (
+            ${device.tenant_id}, ${device.id}, ${assignment.caminhao_id}, ${motoristaId},
+            ${`${eventKey}:${ev.tipo}`.slice(0, 100)}, ${String(ev.tipo).slice(0, 32)},
+            ${ev.valor ?? null}, ${speedKmh}, ${latitude}, ${longitude}, ${recorded}
+          )
+          ON CONFLICT (device_id, event_key) DO NOTHING
+        `;
+      }
+    }
 
     return { inserted, duplicate: !inserted, skipped: false };
   });
@@ -459,87 +497,130 @@ export async function applyIngestedTelemetryEvent({
         tenantId: device.tenant_id,
         caminhaoId: assignment.caminhao_id,
         recordedAt: recorded,
-        speedKmh,
-        fuelConsumedL,
-        engineHours,
-        previousOdometer: previousState?.odometro_km,
-        odometerKm,
       });
     } catch {
       // daily não bloqueia ingestão
     }
+    // Queda do nível do tanque com o caminhão parado (possível furto).
+    await checkFuelDrop({
+      device,
+      caminhaoId: assignment.caminhao_id,
+      motoristaId,
+      eventKey,
+      recordedAt: recorded,
+      fuelLevelPct,
+      fuelConsumedL,
+      speedKmh,
+      latitude,
+      longitude,
+    });
   }
 
   return result;
 }
 
-async function upsertTelemetryDaily({
-  tenantId,
-  caminhaoId,
-  recordedAt,
-  speedKmh,
-  fuelConsumedL,
-  engineHours,
-  previousOdometer,
-  odometerKm,
-}) {
+/**
+ * Motorista do ponto: iButton lido (FMB130) tem prioridade; senão, o motorista
+ * vinculado ao veículo no cadastro.
+ */
+async function resolveMotoristaForEvent({ tenantId, caminhaoId, ibutton }) {
+  try {
+    if (ibutton) {
+      const byIbutton = await prisma.motoristas.findFirst({
+        where: { tenant_id: Number(tenantId), ibutton_id: String(ibutton) },
+        select: { id: true },
+      });
+      if (byIbutton) return byIbutton.id;
+    }
+    const truck = await prisma.caminhoes.findFirst({
+      where: { id: Number(caminhaoId), tenant_id: Number(tenantId) },
+      select: { motorista_id: true },
+    });
+    return truck?.motorista_id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resumo diário por veículo, RECALCULADO a partir dos pontos do dia.
+ *
+ * Hodômetro e combustível do rastreador são contadores acumulados: o valor
+ * do dia é (última leitura do dia − última leitura antes do dia), por
+ * aparelho. Recalcular em vez de somar diferenças torna o resumo correto
+ * mesmo com registros fora de ordem, reenvios e a fila processando pontos do
+ * mesmo veículo em paralelo. Contador que volta (troca/reset do aparelho)
+ * usa só a variação dentro do dia, nunca valor negativo.
+ */
+async function upsertTelemetryDaily({ tenantId, caminhaoId, recordedAt }) {
   const day = new Date(recordedAt);
-  const dayOnly = new Date(
+  const dayStart = new Date(
     Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate()),
   );
-  let deltaKm = null;
-  if (
-    previousOdometer != null &&
-    odometerKm != null &&
-    Number(odometerKm) >= Number(previousOdometer)
-  ) {
-    deltaKm = Number(odometerKm) - Number(previousOdometer);
+  const dayEnd = new Date(dayStart.getTime() + 86_400_000);
+  const tid = Number(tenantId);
+  const cid = Number(caminhaoId);
+
+  const rows = await prisma.$queryRaw`
+    WITH d AS (
+      SELECT device_id,
+             MAX(odometro_km) AS mx_o, MIN(odometro_km) AS mn_o,
+             MAX(fuel_consumed_l) AS mx_f, MIN(fuel_consumed_l) AS mn_f,
+             MAX(velocidade_kmh) AS vmax, MAX(engine_hours) AS eh,
+             COUNT(*)::int AS n
+        FROM telemetry_events
+       WHERE caminhao_id = ${cid}
+         AND registrado_em >= ${dayStart} AND registrado_em < ${dayEnd}
+       GROUP BY device_id
+    )
+    SELECT d.*,
+      (SELECT p.odometro_km FROM telemetry_events p
+        WHERE p.device_id = d.device_id AND p.caminhao_id = ${cid}
+          AND p.registrado_em < ${dayStart} AND p.odometro_km IS NOT NULL
+        ORDER BY p.registrado_em DESC LIMIT 1) AS prev_o,
+      (SELECT p.fuel_consumed_l FROM telemetry_events p
+        WHERE p.device_id = d.device_id AND p.caminhao_id = ${cid}
+          AND p.registrado_em < ${dayStart} AND p.fuel_consumed_l IS NOT NULL
+        ORDER BY p.registrado_em DESC LIMIT 1) AS prev_f
+    FROM d
+  `;
+  if (!rows.length) return;
+
+  const num = (v) => (v == null ? null : Number(v));
+  const counterDelta = (mx, mn, prev) => {
+    if (mx == null) return null;
+    const base = prev != null && prev <= mx ? prev : mn;
+    return base == null ? null : Math.max(0, mx - base);
+  };
+  let km = null;
+  let fuel = null;
+  let vmax = null;
+  let engineHours = null;
+  let samples = 0;
+  for (const r of rows) {
+    const dk = counterDelta(num(r.mx_o), num(r.mn_o), num(r.prev_o));
+    const df = counterDelta(num(r.mx_f), num(r.mn_f), num(r.prev_f));
+    if (dk != null) km = (km ?? 0) + dk;
+    if (df != null) fuel = (fuel ?? 0) + df;
+    if (r.vmax != null) vmax = Math.max(vmax ?? 0, Number(r.vmax));
+    if (r.eh != null) engineHours = Math.max(engineHours ?? 0, Number(r.eh));
+    samples += Number(r.n || 0);
   }
 
-  const existing = await prisma.telemetry_daily.findUnique({
-    where: {
-      tenant_id_caminhao_id_dia: {
-        tenant_id: Number(tenantId),
-        caminhao_id: Number(caminhaoId),
-        dia: dayOnly,
-      },
-    },
-  });
-
-  if (!existing) {
-    await prisma.telemetry_daily.create({
-      data: {
-        tenant_id: Number(tenantId),
-        caminhao_id: Number(caminhaoId),
-        dia: dayOnly,
-        km: deltaKm,
-        velocidade_max_kmh: speedKmh,
-        fuel_consumed_l: fuelConsumedL,
-        engine_hours: engineHours,
-        amostras: 1,
-      },
-    });
-    return;
-  }
-
-  const maxSpeed =
-    speedKmh == null
-      ? existing.velocidade_max_kmh
-      : existing.velocidade_max_kmh == null
-        ? speedKmh
-        : Math.max(Number(existing.velocidade_max_kmh), Number(speedKmh));
-
-  await prisma.telemetry_daily.update({
-    where: { id: existing.id },
-    data: {
-      amostras: existing.amostras + 1,
-      velocidade_max_kmh: maxSpeed,
-      km:
-        deltaKm == null
-          ? existing.km
-          : Number(existing.km || 0) + Number(deltaKm),
-      fuel_consumed_l: fuelConsumedL ?? existing.fuel_consumed_l,
-      engine_hours: engineHours ?? existing.engine_hours,
-    },
-  });
+  await prisma.$executeRaw`
+    INSERT INTO telemetry_daily (
+      tenant_id, caminhao_id, dia, km, velocidade_max_kmh, fuel_consumed_l,
+      engine_hours, amostras, criado_em, atualizado_em
+    ) VALUES (
+      ${tid}, ${cid}, ${dayStart}::date, ${km}, ${vmax}, ${fuel},
+      ${engineHours}, ${samples}, NOW(), NOW()
+    )
+    ON CONFLICT (tenant_id, caminhao_id, dia) DO UPDATE SET
+      km = EXCLUDED.km,
+      velocidade_max_kmh = EXCLUDED.velocidade_max_kmh,
+      fuel_consumed_l = EXCLUDED.fuel_consumed_l,
+      engine_hours = EXCLUDED.engine_hours,
+      amostras = EXCLUDED.amostras,
+      atualizado_em = NOW()
+  `;
 }

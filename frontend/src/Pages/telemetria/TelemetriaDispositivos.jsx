@@ -510,7 +510,19 @@ export default function TelemetriaDispositivos() {
             )}
             <FormField label="Nome" name="nome" value={form.nome} onChange={setField("nome")} maxLength={120} placeholder="Ex.: FMB920 cavalo 12" />
             <FormField label="Fabricante" name="manufacturer" value={form.manufacturer} onChange={setField("manufacturer")} maxLength={64} />
-            <FormField label="Modelo" name="model" value={form.model} onChange={setField("model")} maxLength={64} />
+            <FormField
+              label="Modelo"
+              name="model"
+              value={form.model}
+              onChange={setField("model")}
+              maxLength={64}
+              placeholder="Ex.: FMC650"
+              helperText={
+                /FM[A-Z]?6[45]0/i.test(form.model || "")
+                  ? "Lê os dados do caminhão (CAN/FMS): consumo medido, tanque e rotação."
+                  : "Use o modelo da etiqueta. FMC650 lê consumo e tanque do caminhão."
+              }
+            />
             <FormField
               label="Propriedade"
               type="select"

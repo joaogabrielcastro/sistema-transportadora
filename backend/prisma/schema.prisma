@@ -8,52 +8,54 @@ datasource db {
 }
 
 model tenants {
-  id                     Int                     @id @default(autoincrement())
-  nome                   String                  @db.VarChar(120)
-  slug                   String                  @unique @db.VarChar(64)
-  ativo                  Boolean                 @default(true)
-  features               Json                    @default("{}") @db.JsonB
+  id                           Int                            @id @default(autoincrement())
+  nome                         String                         @db.VarChar(120)
+  slug                         String                         @unique @db.VarChar(64)
+  ativo                        Boolean                        @default(true)
+  features                     Json                           @default("{}") @db.JsonB
   /// Clientes legados / parceiros: sem cobrança Stripe
-  billing_exempt         Boolean                 @default(false)
+  billing_exempt               Boolean                        @default(false)
   /// starter | ops | fiscal | complete
-  plan                   String?                 @db.VarChar(32)
+  plan                         String?                        @db.VarChar(32)
   /// trialing | active | past_due | canceled | none
-  subscription_status    String?                 @db.VarChar(32)
-  trial_ends_at          DateTime?               @db.Timestamptz(6)
-  stripe_customer_id     String?                 @unique @db.VarChar(255)
-  stripe_subscription_id String?                 @unique @db.VarChar(255)
-  stripe_price_id        String?                 @db.VarChar(255)
-  onboarding_completed_at DateTime?              @db.Timestamptz(6)
+  subscription_status          String?                        @db.VarChar(32)
+  trial_ends_at                DateTime?                      @db.Timestamptz(6)
+  stripe_customer_id           String?                        @unique @db.VarChar(255)
+  stripe_subscription_id       String?                        @unique @db.VarChar(255)
+  stripe_price_id              String?                        @db.VarChar(255)
+  onboarding_completed_at      DateTime?                      @db.Timestamptz(6)
   /// Versão dos termos/privacidade aceita no cadastro da empresa
-  legal_version          String?                 @db.VarChar(16)
-  legal_accepted_at      DateTime?               @db.Timestamptz(6)
-  alert_email            String?                 @db.VarChar(255)
-  whatsapp_notify_phone  String?                 @db.VarChar(30)
-  weekly_digest_enabled  Boolean                 @default(true)
-  last_weekly_digest_at  DateTime?               @db.Timestamptz(6)
-  criado_em              DateTime                @default(now()) @db.Timestamptz(6)
-  users                  users[]
-  caminhoes              caminhoes[]
-  gastos                 gastos[]
-  checklist              checklist[]
-  pneus                  pneus[]
-  ordens_coleta_envio    ordens_coleta_envio[]
-  caminhao_documentos    caminhao_documentos[]
-  vinculos_composicao    vinculos_composicao[]
-  produtos               produtos[]
-  notas_fiscais          notas_fiscais[]
-  estoque_movimentos     estoque_movimentos[]
-  motoristas             motoristas[]
-  auth_tokens            auth_tokens[]
-  telemetry_devices      telemetry_devices[]
+  legal_version                String?                        @db.VarChar(16)
+  legal_accepted_at            DateTime?                      @db.Timestamptz(6)
+  alert_email                  String?                        @db.VarChar(255)
+  whatsapp_notify_phone        String?                        @db.VarChar(30)
+  weekly_digest_enabled        Boolean                        @default(true)
+  last_weekly_digest_at        DateTime?                      @db.Timestamptz(6)
+  criado_em                    DateTime                       @default(now()) @db.Timestamptz(6)
+  users                        users[]
+  caminhoes                    caminhoes[]
+  gastos                       gastos[]
+  checklist                    checklist[]
+  pneus                        pneus[]
+  ordens_coleta_envio          ordens_coleta_envio[]
+  caminhao_documentos          caminhao_documentos[]
+  vinculos_composicao          vinculos_composicao[]
+  produtos                     produtos[]
+  notas_fiscais                notas_fiscais[]
+  estoque_movimentos           estoque_movimentos[]
+  motoristas                   motoristas[]
+  auth_tokens                  auth_tokens[]
+  telemetry_devices            telemetry_devices[]
   telemetry_device_assignments telemetry_device_assignments[]
-  telemetry_events       telemetry_events[]
-  telemetry_current_state telemetry_current_state[]
-  telemetry_daily        telemetry_daily[]
-  telemetry_geofences    telemetry_geofences[]
-  telemetry_alerts       telemetry_alerts[]
-  telemetry_alert_rules  telemetry_alert_rules[]
-  telemetry_subscriptions telemetry_subscriptions[]
+  telemetry_events             telemetry_events[]
+  telemetry_driving_events     telemetry_driving_events[]
+  telemetry_current_state      telemetry_current_state[]
+  telemetry_daily              telemetry_daily[]
+  telemetry_geofences          telemetry_geofences[]
+  telemetry_alerts             telemetry_alerts[]
+  telemetry_alert_rules        telemetry_alert_rules[]
+  telemetry_subscriptions      telemetry_subscriptions[]
+  telemetry_device_commands    telemetry_device_commands[]
 
   @@index([slug])
   @@index([stripe_customer_id])
@@ -62,48 +64,50 @@ model tenants {
 
 /// This table contains check constraints and requires additional setup for migrations.
 model caminhoes {
-  id                  Int                   @id @default(autoincrement())
-  tenant_id           Int
-  placa               String                @db.VarChar(10)
-  qtd_pneus           Int
-  km_atual            Int?                  @default(0)
-  criado_em           DateTime?             @default(now()) @db.Timestamptz(6)
-  numero_carreta_1    Int?
-  numero_cavalo       Int?
-  motorista           String?               @db.VarChar(100)
-  motorista_id        Int?
-  numero_carreta_2    Int?
-  placa_carreta_1     String?               @db.VarChar(10)
-  placa_carreta_2     String?               @db.VarChar(10)
-  ano                 Int?
-  marca               String?               @db.VarChar(100)
-  modelo              String?               @db.VarChar(100)
+  id                           Int                            @id @default(autoincrement())
+  tenant_id                    Int
+  placa                        String                         @db.VarChar(10)
+  qtd_pneus                    Int
+  km_atual                     Int?                           @default(0)
+  criado_em                    DateTime?                      @default(now()) @db.Timestamptz(6)
+  numero_carreta_1             Int?
+  numero_cavalo                Int?
+  motorista                    String?                        @db.VarChar(100)
+  motorista_id                 Int?
+  numero_carreta_2             Int?
+  placa_carreta_1              String?                        @db.VarChar(10)
+  placa_carreta_2              String?                        @db.VarChar(10)
+  ano                          Int?
+  marca                        String?                        @db.VarChar(100)
+  modelo                       String?                        @db.VarChar(100)
   /// truck | cavalo | carreta
-  tipo_veiculo        String                @default("truck") @db.VarChar(20)
+  tipo_veiculo                 String                         @default("truck") @db.VarChar(20)
   /// ex: 6x2, 6x4, 8x2, 8x4
-  config_eixos        String?               @db.VarChar(32)
-  com_4_eixo          Boolean               @default(false)
-  chassi              String?               @db.VarChar(40)
+  config_eixos                 String?                        @db.VarChar(32)
+  com_4_eixo                   Boolean                        @default(false)
+  chassi                       String?                        @db.VarChar(40)
   /// Solofino | Colombocal | Transmotin (opcional)
-  empresa             String?               @db.VarChar(80)
-  tenants             tenants               @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  motorista_ref       motoristas?           @relation(fields: [motorista_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  checklist           checklist[]
-  gastos              gastos[]
-  pneus               pneus[]
-  ordens_coleta_envio ordens_coleta_envio[]
-  caminhao_documentos caminhao_documentos[]
-  vinculos_como_cavalo  vinculos_composicao[] @relation("VinculoCavalo")
-  vinculos_como_carreta vinculos_composicao[] @relation("VinculoCarreta")
-  estoque_movimentos  estoque_movimentos[]
-  notas_fiscais       notas_fiscais[]
+  empresa                      String?                        @db.VarChar(80)
+  tenants                      tenants                        @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  motorista_ref                motoristas?                    @relation(fields: [motorista_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  checklist                    checklist[]
+  gastos                       gastos[]
+  pneus                        pneus[]
+  ordens_coleta_envio          ordens_coleta_envio[]
+  caminhao_documentos          caminhao_documentos[]
+  vinculos_como_cavalo         vinculos_composicao[]          @relation("VinculoCavalo")
+  vinculos_como_carreta        vinculos_composicao[]          @relation("VinculoCarreta")
+  estoque_movimentos           estoque_movimentos[]
+  notas_fiscais                notas_fiscais[]
   telemetry_device_assignments telemetry_device_assignments[]
-  telemetry_events    telemetry_events[]
-  telemetry_current_state telemetry_current_state?
-  telemetry_daily     telemetry_daily[]
-  telemetry_geofence_vehicles telemetry_geofence_vehicles[]
-  telemetry_alert_rules telemetry_alert_rules[]
-  telemetry_alerts    telemetry_alerts[]
+  telemetry_events             telemetry_events[]
+  telemetry_driving_events     telemetry_driving_events[]
+  telemetry_current_state      telemetry_current_state?
+  telemetry_daily              telemetry_daily[]
+  telemetry_geofence_vehicles  telemetry_geofence_vehicles[]
+  telemetry_alert_rules        telemetry_alert_rules[]
+  telemetry_alerts             telemetry_alerts[]
+  telemetry_device_commands    telemetry_device_commands[]
 
   @@unique([tenant_id, placa])
   @@index([tenant_id])
@@ -112,17 +116,17 @@ model caminhoes {
 }
 
 model vinculos_composicao {
-  id          Int       @id @default(autoincrement())
-  tenant_id   Int
-  cavalo_id   Int
-  carreta_id  Int
-  ordem       Int       @default(1)
-  ativo       Boolean   @default(true)
-  inicio_em   DateTime  @default(now()) @db.Timestamptz(6)
-  fim_em      DateTime? @db.Timestamptz(6)
-  tenants     tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  cavalo      caminhoes @relation("VinculoCavalo", fields: [cavalo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  carreta     caminhoes @relation("VinculoCarreta", fields: [carreta_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id         Int       @id @default(autoincrement())
+  tenant_id  Int
+  cavalo_id  Int
+  carreta_id Int
+  ordem      Int       @default(1)
+  ativo      Boolean   @default(true)
+  inicio_em  DateTime  @default(now()) @db.Timestamptz(6)
+  fim_em     DateTime? @db.Timestamptz(6)
+  tenants    tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  cavalo     caminhoes @relation("VinculoCavalo", fields: [cavalo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  carreta    caminhoes @relation("VinculoCarreta", fields: [carreta_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([tenant_id])
   @@index([cavalo_id, ativo])
@@ -150,21 +154,24 @@ model caminhao_documentos {
 }
 
 model motoristas {
-  id            Int         @id @default(autoincrement())
-  tenant_id     Int
-  nome          String      @db.VarChar(120)
-  cpf           String?     @db.VarChar(14)
-  cnh           String?     @db.VarChar(30)
-  cnh_categoria String?     @db.VarChar(8)
-  cnh_validade  DateTime?   @db.Date
-  telefone      String?     @db.VarChar(30)
-  whatsapp      String?     @db.VarChar(30)
-  ativo         Boolean     @default(true)
-  observacao    String?
-  criado_em     DateTime    @default(now()) @db.Timestamptz(6)
-  tenants       tenants     @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  caminhoes     caminhoes[]
-  gastos        gastos[]
+  id                       Int                        @id @default(autoincrement())
+  tenant_id                Int
+  nome                     String                     @db.VarChar(120)
+  cpf                      String?                    @db.VarChar(14)
+  cnh                      String?                    @db.VarChar(30)
+  cnh_categoria            String?                    @db.VarChar(8)
+  cnh_validade             DateTime?                  @db.Date
+  telefone                 String?                    @db.VarChar(30)
+  whatsapp                 String?                    @db.VarChar(30)
+  ativo                    Boolean                    @default(true)
+  observacao               String?
+  /// Código do iButton do motorista (identificação no rastreador FMB130).
+  ibutton_id               String?                    @db.VarChar(32)
+  criado_em                DateTime                   @default(now()) @db.Timestamptz(6)
+  tenants                  tenants                    @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  caminhoes                caminhoes[]
+  gastos                   gastos[]
+  telemetry_driving_events telemetry_driving_events[]
 
   @@index([tenant_id])
   @@index([tenant_id, ativo])
@@ -172,19 +179,19 @@ model motoristas {
 }
 
 model audit_logs {
-  id          BigInt   @id @default(autoincrement())
-  tenant_id   Int?
-  user_id     Int?
-  user_email  String?  @db.VarChar(255)
-  action      String   @db.VarChar(32)
-  method      String   @db.VarChar(16)
-  path        String   @db.VarChar(500)
-  entity      String?  @db.VarChar(64)
-  entity_id   String?  @db.VarChar(64)
-  ip          String?  @db.VarChar(64)
-  request_id  String?  @db.VarChar(64)
-  summary     Json?
-  criado_em   DateTime @default(now()) @db.Timestamptz(6)
+  id         BigInt   @id @default(autoincrement())
+  tenant_id  Int?
+  user_id    Int?
+  user_email String?  @db.VarChar(255)
+  action     String   @db.VarChar(32)
+  method     String   @db.VarChar(16)
+  path       String   @db.VarChar(500)
+  entity     String?  @db.VarChar(64)
+  entity_id  String?  @db.VarChar(64)
+  ip         String?  @db.VarChar(64)
+  request_id String?  @db.VarChar(64)
+  summary    Json?
+  criado_em  DateTime @default(now()) @db.Timestamptz(6)
 
   @@index([tenant_id])
   @@index([criado_em])
@@ -212,22 +219,23 @@ model ordens_coleta_envio {
 }
 
 model users {
-  id            Int      @id @default(autoincrement())
-  tenant_id     Int
-  email         String   @unique @db.VarChar(255)
-  nome          String   @db.VarChar(120)
-  password_hash String   @db.VarChar(255)
-  role          String   @default("operator") @db.VarChar(32)
+  id                        Int                         @id @default(autoincrement())
+  tenant_id                 Int
+  email                     String                      @unique @db.VarChar(255)
+  nome                      String                      @db.VarChar(120)
+  password_hash             String                      @db.VarChar(255)
+  role                      String                      @default("operator") @db.VarChar(32)
   /// Permissões extras além do role (array JSON de strings)
-  permissions   Json     @default("[]") @db.JsonB
-  ativo         Boolean  @default(true)
-  criado_em     DateTime @default(now()) @db.Timestamptz(6)
+  permissions               Json                        @default("[]") @db.JsonB
+  ativo                     Boolean                     @default(true)
+  criado_em                 DateTime                    @default(now()) @db.Timestamptz(6)
   /// Incrementado ao alterar senha; o JWT carrega `sv` e a sessão é rejeitada se divergir.
-  session_version Int     @default(0)
-  legal_version     String?   @db.VarChar(16)
-  legal_accepted_at DateTime? @db.Timestamptz(6)
-  tenants       tenants       @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  auth_tokens   auth_tokens[]
+  session_version           Int                         @default(0)
+  legal_version             String?                     @db.VarChar(16)
+  legal_accepted_at         DateTime?                   @db.Timestamptz(6)
+  tenants                   tenants                     @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  auth_tokens               auth_tokens[]
+  telemetry_device_commands telemetry_device_commands[]
 
   @@index([role])
   @@index([tenant_id])
@@ -267,9 +275,13 @@ model checklist {
   valor           Decimal?         @db.Decimal(10, 2)
   km_registro     BigInt?
   km_manutencao   Int?
-  /** KM previsto para a próxima manutenção (ex.: troca de óleo). */
+  /**
+   * KM previsto para a próxima manutenção (ex.: troca de óleo).
+   */
   proxima_km      Int?
-  /** Data prevista para a próxima manutenção. */
+  /**
+   * Data prevista para a próxima manutenção.
+   */
   proxima_data    DateTime?        @db.Date
   tenants         tenants          @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   caminhoes       caminhoes?       @relation(fields: [caminhao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -377,7 +389,9 @@ model produtos {
   unidade            String               @default("UN") @db.VarChar(20)
   ncm                String?              @db.VarChar(20)
   saldo              Decimal              @default(0) @db.Decimal(14, 4)
-  /** Último preço unitário da NF-e (usado para preencher gasto/manutenção). */
+  /**
+   * Último preço unitário da NF-e (usado para preencher gasto/manutenção).
+   */
   preco_custo        Decimal?             @db.Decimal(14, 4)
   criado_em          DateTime             @default(now()) @db.Timestamptz(6)
   atualizado_em      DateTime             @default(now()) @updatedAt @db.Timestamptz(6)
@@ -393,77 +407,77 @@ model produtos {
 }
 
 model notas_fiscais {
-  id            Int         @id @default(autoincrement())
-  tenant_id     Int
-  chave_acesso  String?     @db.VarChar(44)
-  numero        String      @db.VarChar(20)
-  serie         String?     @db.VarChar(10)
-  emitente      String?     @db.VarChar(255)
-  cnpj_emitente String?     @db.VarChar(18)
-  data_emissao  DateTime?   @db.Date
-  valor_total   Decimal?    @db.Decimal(14, 2)
-  valor_desconto      Decimal?    @db.Decimal(14, 2)
-  valor_frete         Decimal?    @db.Decimal(14, 2)
-  valor_ipi           Decimal?    @db.Decimal(14, 2)
-  pdf_path            String?     @db.VarChar(500)
-  xml_path            String?     @db.VarChar(500)
-  status              String      @default("confirmada") @db.VarChar(32)
-  origem              String      @default("xml") @db.VarChar(20)
-  observacao          String?
-  data_vencimento     DateTime?   @db.Date
-  condicao_pagamento  String?     @db.VarChar(80)
+  id                 Int                  @id @default(autoincrement())
+  tenant_id          Int
+  chave_acesso       String?              @db.VarChar(44)
+  numero             String               @db.VarChar(20)
+  serie              String?              @db.VarChar(10)
+  emitente           String?              @db.VarChar(255)
+  cnpj_emitente      String?              @db.VarChar(18)
+  data_emissao       DateTime?            @db.Date
+  valor_total        Decimal?             @db.Decimal(14, 2)
+  valor_desconto     Decimal?             @db.Decimal(14, 2)
+  valor_frete        Decimal?             @db.Decimal(14, 2)
+  valor_ipi          Decimal?             @db.Decimal(14, 2)
+  pdf_path           String?              @db.VarChar(500)
+  xml_path           String?              @db.VarChar(500)
+  status             String               @default("confirmada") @db.VarChar(32)
+  origem             String               @default("xml") @db.VarChar(20)
+  observacao         String?
+  data_vencimento    DateTime?            @db.Date
+  condicao_pagamento String?              @db.VarChar(80)
   /// Solofino | Colombocal | Transmotin (opcional) — mesma convenção de caminhoes.empresa
-  empresa             String?     @db.VarChar(80)
-  caminhao_id         Int?
-  criado_em     DateTime    @default(now()) @db.Timestamptz(6)
-  tenants       tenants     @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  caminhoes     caminhoes?  @relation(fields: [caminhao_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  itens         nota_itens[]
-  movimentos    estoque_movimentos[]
+  empresa            String?              @db.VarChar(80)
+  caminhao_id        Int?
+  criado_em          DateTime             @default(now()) @db.Timestamptz(6)
+  tenants            tenants              @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  caminhoes          caminhoes?           @relation(fields: [caminhao_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  itens              nota_itens[]
+  movimentos         estoque_movimentos[]
 
+  // Várias notas sem chave (NULL) continuam válidas no PostgreSQL.
+  @@unique([tenant_id, chave_acesso], map: "notas_fiscais_tenant_chave_uidx")
   @@index([tenant_id])
   @@index([tenant_id, numero])
   @@index([tenant_id, chave_acesso])
   @@index([caminhao_id])
   @@index([tenant_id, empresa])
-  // Várias notas sem chave (NULL) continuam válidas no PostgreSQL.
-  @@unique([tenant_id, chave_acesso], map: "notas_fiscais_tenant_chave_uidx")
 }
 
 model nota_itens {
-  id              Int           @id @default(autoincrement())
-  nota_id         Int
-  produto_id      Int?
-  codigo          String?       @db.VarChar(60)
-  descricao       String        @db.VarChar(500)
-  unidade         String        @default("UN") @db.VarChar(20)
-  ncm             String?       @db.VarChar(20)
-  quantidade      Decimal       @db.Decimal(14, 4)
-  valor_unitario  Decimal?      @db.Decimal(14, 4)
-  valor_total     Decimal?      @db.Decimal(14, 2)
-  valor_desconto  Decimal?      @db.Decimal(14, 2)
-  valor_ipi       Decimal?      @db.Decimal(14, 2)
-  notas_fiscais   notas_fiscais @relation(fields: [nota_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  produtos        produtos?     @relation(fields: [produto_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  id             Int           @id @default(autoincrement())
+  nota_id        Int
+  produto_id     Int?
+  codigo         String?       @db.VarChar(60)
+  descricao      String        @db.VarChar(500)
+  unidade        String        @default("UN") @db.VarChar(20)
+  ncm            String?       @db.VarChar(20)
+  quantidade     Decimal       @db.Decimal(14, 4)
+  valor_unitario Decimal?      @db.Decimal(14, 4)
+  valor_total    Decimal?      @db.Decimal(14, 2)
+  valor_desconto Decimal?      @db.Decimal(14, 2)
+  valor_ipi      Decimal?      @db.Decimal(14, 2)
+  notas_fiscais  notas_fiscais @relation(fields: [nota_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  produtos       produtos?     @relation(fields: [produto_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([nota_id])
   @@index([produto_id])
 }
 
 model estoque_movimentos {
-  id           Int            @id @default(autoincrement())
-  tenant_id    Int
-  produto_id   Int
-  tipo         String         @db.VarChar(20)
-  quantidade   Decimal        @db.Decimal(14, 4)
-  nota_id      Int?
-  caminhao_id  Int?
-  motivo       String?        @db.VarChar(500)
-  criado_em    DateTime       @default(now()) @db.Timestamptz(6)
-  tenants      tenants        @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  produtos     produtos       @relation(fields: [produto_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  id            Int            @id @default(autoincrement())
+  tenant_id     Int
+  produto_id    Int
+  tipo          String         @db.VarChar(20)
+  quantidade    Decimal        @db.Decimal(14, 4)
+  nota_id       Int?
+  caminhao_id   Int?
+  motivo        String?        @db.VarChar(500)
+  criado_em     DateTime       @default(now()) @db.Timestamptz(6)
+  tenants       tenants        @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  produtos      produtos       @relation(fields: [produto_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   notas_fiscais notas_fiscais? @relation(fields: [nota_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  caminhoes    caminhoes?     @relation(fields: [caminhao_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  caminhoes     caminhoes?     @relation(fields: [caminhao_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([tenant_id])
   @@index([produto_id])
@@ -572,147 +586,147 @@ model fiscal_clientes {
 }
 
 model fiscal_ctes {
-  id                  Int       @id @default(autoincrement())
-  tenant_id           Int
+  id                              Int       @id @default(autoincrement())
+  tenant_id                       Int
   /// FK -> fiscal_empresas.id (CNPJ emissor; resolvido na emissão). Opcional para linhas antigas.
-  fiscal_empresa_id   Int?
+  fiscal_empresa_id               Int?
   /// FK -> fiscal_clientes.id
-  cliente_id          Int
+  cliente_id                      Int
   /// FK -> caminhoes.id (opcional)
-  caminhao_id         Int?
+  caminhao_id                     Int?
   /// FK -> motoristas.id (opcional)
-  motorista_id        Int?
+  motorista_id                    Int?
   /// FK -> fiscal_mdfes.id (opcional)
-  manifesto_id        Int?
+  manifesto_id                    Int?
   /// FK -> fiscal_ctes.id — CT-e original referenciado por Complemento (1) / Substituto (3)
-  cte_referenciado_id Int?
+  cte_referenciado_id             Int?
   /// Snapshot da chave de acesso (44) do CT-e original — grupo infCteComp/infCteSub (1.5)
-  cte_referenciado_chave String? @db.VarChar(44)
+  cte_referenciado_chave          String?   @db.VarChar(44)
   /// indAlteraToma do infCteSub (1.5): o Substituto alterou o tomador. Só tipo 3.
-  ind_alt_toma        Boolean?
-  chave_acesso        String?   @unique @db.VarChar(44)
+  ind_alt_toma                    Boolean?
+  chave_acesso                    String?   @unique @db.VarChar(44)
   /// rascunho | processando | processado | rejeitado | cancelado | erro | pendente (legado)
-  status              String    @default("rascunho") @db.VarChar(20)
+  status                          String    @default("rascunho") @db.VarChar(20)
   /// Payload do rascunho (DTO da API) — usado na emissão e na reedição.
-  payload_json        Json?     @db.JsonB
+  payload_json                    Json?     @db.JsonB
   /// 1 = produção, 2 = homologação (snapshot no momento da emissão/rascunho)
-  ambiente            Int?      @db.SmallInt
-  autorizado_em       DateTime? @db.Timestamptz(6)
-  cancelado_em        DateTime? @db.Timestamptz(6)
-  cancelado_justificativa String? @db.VarChar(1000)
-  cancelado_protocolo String?   @db.VarChar(30)
-  sefaz_codigo        Int?
-  sefaz_mensagem      String?
-  sefaz_detalhes      Json?     @db.JsonB
-  sefaz_operacao      String?   @db.VarChar(40)
-  sefaz_em            DateTime? @db.Timestamptz(6)
-  brasil_nfe_id       String?   @unique @db.VarChar(80)
+  ambiente                        Int?      @db.SmallInt
+  autorizado_em                   DateTime? @db.Timestamptz(6)
+  cancelado_em                    DateTime? @db.Timestamptz(6)
+  cancelado_justificativa         String?   @db.VarChar(1000)
+  cancelado_protocolo             String?   @db.VarChar(30)
+  sefaz_codigo                    Int?
+  sefaz_mensagem                  String?
+  sefaz_detalhes                  Json?     @db.JsonB
+  sefaz_operacao                  String?   @db.VarChar(40)
+  sefaz_em                        DateTime? @db.Timestamptz(6)
+  brasil_nfe_id                   String?   @unique @db.VarChar(80)
   /// Unicidade de numeração (tenant+empresa+ambiente+série+número) é índice
   /// parcial na migration fiscal_unicidade_emissao — Prisma não modela WHERE.
-  emissao_iniciada_em DateTime? @db.Timestamptz(6)
-  numero              String?   @db.VarChar(20)
-  serie               String?   @db.VarChar(10)
+  emissao_iniciada_em             DateTime? @db.Timestamptz(6)
+  numero                          String?   @db.VarChar(20)
+  serie                           String?   @db.VarChar(10)
   /// Número do protocolo de autorização devolvido pelo provedor na emissão.
   /// Usado no cancelamento (NumeroProtocolo). Nullable — CT-e emitidos antes
   /// desta coluna seguem sem ele e o provedor resolve pela chave de acesso.
-  numero_protocolo    String?   @db.VarChar(30)
-  data_emissao        DateTime? @db.Timestamptz(6)
-  valor_frete         Decimal?  @db.Decimal(14, 2)
+  numero_protocolo                String?   @db.VarChar(30)
+  data_emissao                    DateTime? @db.Timestamptz(6)
+  valor_frete                     Decimal?  @db.Decimal(14, 2)
   /// FK -> fiscal_contratos_frete.id (operação de transporte). Opcional.
-  contrato_frete_id   Int?
+  contrato_frete_id               Int?
   /// Número do CIOT (ANTT) já obtido para a operação, quando houver.
   /// Snapshot do identificador — não é o contrato de frete.
-  antt_ciot           String?   @db.VarChar(20)
-  xml_path            String?   @db.VarChar(500)
+  antt_ciot                       String?   @db.VarChar(20)
+  xml_path                        String?   @db.VarChar(500)
   /// DACTE (PDF) decodificado do base64DACTe do provedor — mesmo padrão de xml_path
-  pdf_path            String?   @db.VarChar(500)
+  pdf_path                        String?   @db.VarChar(500)
   /// Grupo imp.ICMS do CT-e 4.0 — só os campos lidos na validação de emissão.
   /// icms_cst: 00, 20, 40, 41, 51, 90, ... O objeto `imposto` livre segue repassado ao provedor.
-  icms_cst            String?   @db.VarChar(3)
-  icms_base           Decimal?  @db.Decimal(14, 2)
-  icms_aliquota       Decimal?  @db.Decimal(7, 4)
-  icms_valor          Decimal?  @db.Decimal(14, 2)
-  icms_reducao_base   Decimal?  @db.Decimal(7, 4)
+  icms_cst                        String?   @db.VarChar(3)
+  icms_base                       Decimal?  @db.Decimal(14, 2)
+  icms_aliquota                   Decimal?  @db.Decimal(7, 4)
+  icms_valor                      Decimal?  @db.Decimal(14, 2)
+  icms_reducao_base               Decimal?  @db.Decimal(7, 4)
   /// ICMS devido a outra UF (Imposto.ICMS.AliquotaOutraUF / ValorICMSOutraUF do
   /// provedor). Passthrough puro, opcional — só entra no payload quando preenchido.
-  icms_aliquota_outra_uf Decimal? @db.Decimal(7, 4)
-  icms_valor_outra_uf    Decimal? @db.Decimal(14, 2)
+  icms_aliquota_outra_uf          Decimal?  @db.Decimal(7, 4)
+  icms_valor_outra_uf             Decimal?  @db.Decimal(14, 2)
   /// Grupo imp.IBSCBS do CT-e 4.0 (Reforma Tributária). Obrigatório para emitente
   /// fora do Simples Nacional a partir de 05/01/2026 (validado no CteService).
-  ibscbs_cst          String?   @db.VarChar(3)
-  ibscbs_c_class_trib String?   @db.VarChar(6)
-  ibscbs_base         Decimal?  @db.Decimal(14, 2)
-  ibs_uf_valor        Decimal?  @db.Decimal(14, 2)
-  ibs_mun_valor       Decimal?  @db.Decimal(14, 2)
-  cbs_valor           Decimal?  @db.Decimal(14, 2)
-  ibscbs_valor_total  Decimal?  @db.Decimal(14, 2)
+  ibscbs_cst                      String?   @db.VarChar(3)
+  ibscbs_c_class_trib             String?   @db.VarChar(6)
+  ibscbs_base                     Decimal?  @db.Decimal(14, 2)
+  ibs_uf_valor                    Decimal?  @db.Decimal(14, 2)
+  ibs_mun_valor                   Decimal?  @db.Decimal(14, 2)
+  cbs_valor                       Decimal?  @db.Decimal(14, 2)
+  ibscbs_valor_total              Decimal?  @db.Decimal(14, 2)
   /// Alíquotas do grupo imp.IBSCBS (Imposto.IBSCBS.AliquotaIBSUF / AliquotaIBSMun
   /// / AliquotaCBS do provedor). Passthrough puro, sem cálculo; só entram no
   /// payload quando preenchidas.
-  ibs_uf_aliquota    Decimal?  @db.Decimal(7, 4)
-  ibs_mun_aliquota   Decimal?  @db.Decimal(7, 4)
-  cbs_aliquota       Decimal?  @db.Decimal(7, 4)
+  ibs_uf_aliquota                 Decimal?  @db.Decimal(7, 4)
+  ibs_mun_aliquota                Decimal?  @db.Decimal(7, 4)
+  cbs_aliquota                    Decimal?  @db.Decimal(7, 4)
   /// Reduções / diferimento do grupo imp.IBSCBS (Imposto.IBSCBS.PercentualReducaoIBS
   /// / PercentualReducaoCBS / PercentualDiferimento do provedor). Opcionais.
-  ibscbs_percentual_reducao_ibs Decimal? @db.Decimal(7, 4)
-  ibscbs_percentual_reducao_cbs Decimal? @db.Decimal(7, 4)
-  ibscbs_percentual_diferimento Decimal? @db.Decimal(7, 4)
+  ibscbs_percentual_reducao_ibs   Decimal?  @db.Decimal(7, 4)
+  ibscbs_percentual_reducao_cbs   Decimal?  @db.Decimal(7, 4)
+  ibscbs_percentual_diferimento   Decimal?  @db.Decimal(7, 4)
   /// Grupo infCarga do CT-e (valores planos; o grupo infQ vai em fiscal_cte_carga_quantidades)
-  valor_carga            Decimal? @db.Decimal(14, 2)
-  produto_predominante   String?  @db.VarChar(60)
-  outras_caracteristicas String?  @db.VarChar(30)
+  valor_carga                     Decimal?  @db.Decimal(14, 2)
+  produto_predominante            String?   @db.VarChar(60)
+  outras_caracteristicas          String?   @db.VarChar(30)
   /// Grupo seg do CT-e (1.6) — seguro da carga. Opcional no schema da SEFAZ
   /// (sem bloqueio de emissão); mesmos nomes do MDF-e (fiscal_mdfes.seg_*).
-  seg_responsavel        Int?     @db.SmallInt
-  seg_cnpj_seguradora    String?  @db.VarChar(14)
-  seg_numero_apolice     String?  @db.VarChar(40)
-  seg_numero_averbacao   String?  @db.VarChar(40)
-  seg_nome_seguradora    String?  @db.VarChar(60)
+  seg_responsavel                 Int?      @db.SmallInt
+  seg_cnpj_seguradora             String?   @db.VarChar(14)
+  seg_numero_apolice              String?   @db.VarChar(40)
+  seg_numero_averbacao            String?   @db.VarChar(40)
+  seg_nome_seguradora             String?   @db.VarChar(60)
   /// ide.toma do CT-e (1.2): 0 = remetente, 1 = expedidor, 2 = recebedor,
   /// 3 = destinatário, 4 = outros (dados no campo livre `tomador`). Os grupos
   /// rem/dest/exped/receb com endereço completo ficam em fiscal_cte_participantes.
-  toma                   Int?     @db.SmallInt
+  toma                            Int?      @db.SmallInt
   /// Grupo ICMSUFFim do CT-e (partilha do ICMS / DIFAL para a UF de fim) — 1.3.
   /// uf_ini/uf_fim: base do teste de operação interestadual.
   /// tomador_ind_ie: 1 = contribuinte, 2 = isento, 9 = não contribuinte.
   /// Obrigatório (validado no CteService, só na emissão nova) quando a operação
   /// é interestadual, o tomador é não contribuinte e o tomador != remetente.
-  uf_ini                 String?  @db.VarChar(2)
-  uf_fim                 String?  @db.VarChar(2)
-  tomador_ind_ie         Int?     @db.SmallInt
-  difal_vbc_uf_fim       Decimal? @db.Decimal(14, 2)
-  difal_p_fcp_uf_fim     Decimal? @db.Decimal(7, 4)
-  difal_p_icms_uf_fim    Decimal? @db.Decimal(7, 4)
-  difal_p_icms_inter     Decimal? @db.Decimal(7, 4)
-  difal_v_fcp_uf_fim     Decimal? @db.Decimal(14, 2)
-  difal_v_icms_uf_fim    Decimal? @db.Decimal(14, 2)
-  difal_v_icms_uf_ini    Decimal? @db.Decimal(14, 2)
+  uf_ini                          String?   @db.VarChar(2)
+  uf_fim                          String?   @db.VarChar(2)
+  tomador_ind_ie                  Int?      @db.SmallInt
+  difal_vbc_uf_fim                Decimal?  @db.Decimal(14, 2)
+  difal_p_fcp_uf_fim              Decimal?  @db.Decimal(7, 4)
+  difal_p_icms_uf_fim             Decimal?  @db.Decimal(7, 4)
+  difal_p_icms_inter              Decimal?  @db.Decimal(7, 4)
+  difal_v_fcp_uf_fim              Decimal?  @db.Decimal(14, 2)
+  difal_v_icms_uf_fim             Decimal?  @db.Decimal(14, 2)
+  difal_v_icms_uf_ini             Decimal?  @db.Decimal(14, 2)
   /// Percentual de partilha do ICMS para a UF de fim (Imposto.Difal.PercentualPartilhaICMS
   /// do provedor). Opcional — só entra no payload quando preenchido.
-  icms_uf_fim_percentual_partilha Decimal? @db.Decimal(7, 4)
+  icms_uf_fim_percentual_partilha Decimal?  @db.Decimal(7, 4)
   /// Contingência do CT-e (item 1.2): dhCont / xJust. infSolicNFF (solicitação
   /// NFF — contingência raríssima) fica como JSON genérico: a estrutura NÃO foi
   /// modelada campo a campo por depender do XSD oficial. Nenhuma validação de
   /// obrigatoriedade — contingência é exceção, não regra; CT-e já emitidos não
   /// passam por aqui.
-  dh_contingencia            DateTime? @db.Timestamptz(6)
-  justificativa_contingencia String?   @db.VarChar(256)
-  inf_solic_nff              Json?     @db.JsonB
+  dh_contingencia                 DateTime? @db.Timestamptz(6)
+  justificativa_contingencia      String?   @db.VarChar(256)
+  inf_solic_nff                   Json?     @db.JsonB
   /// Preparação para pagamento antecipado / split payment do frete
   /// (NT2026.001/002). Em 2026 ainda é opcional; o campo entra agora como JSON
   /// genérico para não exigir nova migração em 2027. É PREPARAÇÃO — a estrutura
   /// definitiva da NT não está implementada; passthrough puro, sem validação.
-  pagamento_antecipado       Json?     @db.JsonB
+  pagamento_antecipado            Json?     @db.JsonB
   /// Grupo infTribFed / TributosFederal do CT-e (item 1.4 / 0.8): totalizadores
   /// simples de tributos federais. vPIS / vCOFINS e, do provedor, vIR / vINSS /
   /// vCSLL. Sem CST/base/alíquota detalhados (isso é da NF-e). Nenhum cálculo,
   /// nenhuma alíquota hardcoded — passthrough puro. Opcionais, sem validação.
-  pis_valor                  Decimal?  @db.Decimal(14, 2)
-  cofins_valor               Decimal?  @db.Decimal(14, 2)
-  ir_valor                   Decimal?  @db.Decimal(14, 2)
-  inss_valor                 Decimal?  @db.Decimal(14, 2)
-  csll_valor                 Decimal?  @db.Decimal(14, 2)
-  criado_em           DateTime  @default(now()) @db.Timestamptz(6)
+  pis_valor                       Decimal?  @db.Decimal(14, 2)
+  cofins_valor                    Decimal?  @db.Decimal(14, 2)
+  ir_valor                        Decimal?  @db.Decimal(14, 2)
+  inss_valor                      Decimal?  @db.Decimal(14, 2)
+  csll_valor                      Decimal?  @db.Decimal(14, 2)
+  criado_em                       DateTime  @default(now()) @db.Timestamptz(6)
 
   @@index([tenant_id])
   @@index([tenant_id, cliente_id])
@@ -828,88 +842,88 @@ model fiscal_cte_carga_quantidades {
 }
 
 model fiscal_mdfes {
-  id                Int       @id @default(autoincrement())
-  tenant_id         Int
+  id                                Int       @id @default(autoincrement())
+  tenant_id                         Int
   /// FK -> fiscal_empresas.id (CNPJ emissor; resolvido na emissão). Opcional para linhas antigas.
-  fiscal_empresa_id Int?
+  fiscal_empresa_id                 Int?
   /// FK -> caminhoes.id (opcional)
-  caminhao_id       Int?
+  caminhao_id                       Int?
   /// FK -> motoristas.id (opcional)
-  motorista_id      Int?
-  chave_acesso      String?   @unique @db.VarChar(44)
-  numero            String?   @db.VarChar(20)
-  serie             String?   @db.VarChar(10)
-  numero_protocolo  String?   @db.VarChar(30)
+  motorista_id                      Int?
+  chave_acesso                      String?   @unique @db.VarChar(44)
+  numero                            String?   @db.VarChar(20)
+  serie                             String?   @db.VarChar(10)
+  numero_protocolo                  String?   @db.VarChar(30)
   /// rascunho | processando | processado | rejeitado | encerrado | cancelado | erro | pendente (legado)
-  status            String    @default("rascunho") @db.VarChar(20)
-  payload_json      Json?     @db.JsonB
-  ambiente          Int?      @db.SmallInt
-  autorizado_em     DateTime? @db.Timestamptz(6)
-  sefaz_codigo      Int?
-  sefaz_mensagem    String?
-  sefaz_detalhes    Json?     @db.JsonB
-  sefaz_operacao    String?   @db.VarChar(40)
-  sefaz_em          DateTime? @db.Timestamptz(6)
-  brasil_nfe_id     String?   @unique @db.VarChar(80)
-  emissao_iniciada_em DateTime? @db.Timestamptz(6)
-  data_emissao      DateTime? @db.Timestamptz(6)
-  xml_path          String?   @db.VarChar(500)
+  status                            String    @default("rascunho") @db.VarChar(20)
+  payload_json                      Json?     @db.JsonB
+  ambiente                          Int?      @db.SmallInt
+  autorizado_em                     DateTime? @db.Timestamptz(6)
+  sefaz_codigo                      Int?
+  sefaz_mensagem                    String?
+  sefaz_detalhes                    Json?     @db.JsonB
+  sefaz_operacao                    String?   @db.VarChar(40)
+  sefaz_em                          DateTime? @db.Timestamptz(6)
+  brasil_nfe_id                     String?   @unique @db.VarChar(80)
+  emissao_iniciada_em               DateTime? @db.Timestamptz(6)
+  data_emissao                      DateTime? @db.Timestamptz(6)
+  xml_path                          String?   @db.VarChar(500)
   /// DAMDFE (PDF) decodificado do base64DAMDFe do provedor — mesmo padrão de xml_path
-  pdf_path          String?   @db.VarChar(500)
+  pdf_path                          String?   @db.VarChar(500)
   /// Grupo seg do MDF-e (2.1). seg_responsavel: 1 = emitente do MDF-e, 2 = contratante.
   /// Obrigatoriedade de seg_responsavel cobrada no MdfeService, só na emissão nova.
-  seg_responsavel      Int?      @db.SmallInt
-  seg_cnpj_seguradora  String?   @db.VarChar(14)
-  seg_numero_apolice   String?   @db.VarChar(40)
-  seg_numero_averbacao String?   @db.VarChar(40)
-  seg_nome_seguradora  String?   @db.VarChar(60)
+  seg_responsavel                   Int?      @db.SmallInt
+  seg_cnpj_seguradora               String?   @db.VarChar(14)
+  seg_numero_apolice                String?   @db.VarChar(40)
+  seg_numero_averbacao              String?   @db.VarChar(40)
+  seg_nome_seguradora               String?   @db.VarChar(60)
   /// FK -> fiscal_contratos_frete.id (operação de transporte). Opcional.
-  contrato_frete_id    Int?
+  contrato_frete_id                 Int?
   /// Grupo infANTT do MDF-e (2.2). Exigido em código só quando tipo_emitente vier explicitamente 1 ou 3 (prestador).
-  antt_rntrc           String?   @db.VarChar(9)
+  antt_rntrc                        String?   @db.VarChar(9)
   /// Número do CIOT já obtido para a operação (não é o contrato de frete).
-  antt_ciot            String?   @db.VarChar(20)
-  antt_vale_pedagio    Json?     @db.JsonB
+  antt_ciot                         String?   @db.VarChar(20)
+  antt_vale_pedagio                 Json?     @db.JsonB
   /// infANTT bancário / PIX da instituição de pagamento do frete (item 0.1). No
   /// payload vão como `infoBancaria` dentro de `pagamentos[]`; aqui só persiste.
-  antt_cod_banco            String?  @db.VarChar(5)
-  antt_cod_agencia          String?  @db.VarChar(10)
-  antt_cnpj_inst_pagamento  String?  @db.VarChar(14)
-  antt_pix                  String?  @db.VarChar(120)
+  antt_cod_banco                    String?   @db.VarChar(5)
+  antt_cod_agencia                  String?   @db.VarChar(10)
+  antt_cnpj_inst_pagamento          String?   @db.VarChar(14)
+  antt_pix                          String?   @db.VarChar(120)
   /// Grupo tot do MDF-e (2.3): calculado dos CT-e/NF-e vinculados na emissão.
-  tot_qcte             Int?
-  tot_valor_carga      Decimal?  @db.Decimal(14, 2)
-  tot_peso_bruto       Decimal?  @db.Decimal(14, 3)
+  tot_qcte                          Int?
+  tot_valor_carga                   Decimal?  @db.Decimal(14, 2)
+  tot_peso_bruto                    Decimal?  @db.Decimal(14, 3)
   /// Grupo prodPred do MDF-e (2.4). Mesmo critério do infANTT.
-  prod_pred_descricao  String?   @db.VarChar(120)
-  prod_pred_ncm        String?   @db.VarChar(8)
-  prod_pred_tp_carga   String?   @db.VarChar(2)
+  prod_pred_descricao               String?   @db.VarChar(120)
+  prod_pred_ncm                     String?   @db.VarChar(8)
+  prod_pred_tp_carga                String?   @db.VarChar(2)
   /// prodPred mais rico (item 0.3): c_ean (GTIN ou "SEM GTIN") + infLotacao
   /// (CEP/latitude/longitude do local de carregamento e de descarregamento).
-  prod_pred_c_ean                   String?  @db.VarChar(14)
-  prod_pred_lotacao_carrega_cep     String?  @db.VarChar(8)
-  prod_pred_lotacao_carrega_lat     Decimal? @db.Decimal(10, 7)
-  prod_pred_lotacao_carrega_long    Decimal? @db.Decimal(10, 7)
-  prod_pred_lotacao_descarrega_cep  String?  @db.VarChar(8)
-  prod_pred_lotacao_descarrega_lat  Decimal? @db.Decimal(10, 7)
-  prod_pred_lotacao_descarrega_long Decimal? @db.Decimal(10, 7)
+  prod_pred_c_ean                   String?   @db.VarChar(14)
+  prod_pred_lotacao_carrega_cep     String?   @db.VarChar(8)
+  prod_pred_lotacao_carrega_lat     Decimal?  @db.Decimal(10, 7)
+  prod_pred_lotacao_carrega_long    Decimal?  @db.Decimal(10, 7)
+  prod_pred_lotacao_descarrega_cep  String?   @db.VarChar(8)
+  prod_pred_lotacao_descarrega_lat  Decimal?  @db.Decimal(10, 7)
+  prod_pred_lotacao_descarrega_long Decimal?  @db.Decimal(10, 7)
   /// Campos básicos do grupo ide do MDF-e (2.5).
-  ide_uf_ini           String?   @db.VarChar(2)
-  ide_uf_fim           String?   @db.VarChar(2)
-  ide_dh_ini_viagem    DateTime? @db.Timestamptz(6)
-  ide_tp_transp        Int?      @db.SmallInt
-  ide_modal            Int?      @db.SmallInt
+  ide_uf_ini                        String?   @db.VarChar(2)
+  ide_uf_fim                        String?   @db.VarChar(2)
+  ide_dh_ini_viagem                 DateTime? @db.Timestamptz(6)
+  ide_tp_transp                     Int?      @db.SmallInt
+  ide_modal                         Int?      @db.SmallInt
   /// Evento de encerramento estruturado (2.2). Preenchido no MdfeService.encerrar.
-  encerrado_em               DateTime? @db.Timestamptz(6)
-  encerrado_uf               String?   @db.VarChar(2)
-  encerrado_codigo_municipio String?   @db.VarChar(7)
-  encerrado_nome_municipio   String?   @db.VarChar(120)
-  encerrado_protocolo        String?   @db.VarChar(30)
+  encerrado_em                      DateTime? @db.Timestamptz(6)
+  encerrado_uf                      String?   @db.VarChar(2)
+  encerrado_codigo_municipio        String?   @db.VarChar(7)
+  encerrado_nome_municipio          String?   @db.VarChar(120)
+  encerrado_protocolo               String?   @db.VarChar(30)
   /// Evento de cancelamento estruturado (2.3). Preenchido no MdfeService.cancelar.
-  cancelado_em               DateTime? @db.Timestamptz(6)
-  cancelado_protocolo        String?   @db.VarChar(30)
-  cancelado_justificativa    String?   @db.VarChar(1000)
-  criado_em         DateTime  @default(now()) @db.Timestamptz(6)
+  cancelado_em                      DateTime? @db.Timestamptz(6)
+  cancelado_protocolo               String?   @db.VarChar(30)
+  cancelado_justificativa           String?   @db.VarChar(1000)
+  criado_em                         DateTime  @default(now()) @db.Timestamptz(6)
 
   @@index([tenant_id])
   @@index([tenant_id, fiscal_empresa_id])
@@ -922,18 +936,18 @@ model fiscal_mdfes {
 /// seguro para MDF-e antigos. FK escalar mdfe_id, sem @relation — mesma
 /// convenção do módulo.
 model fiscal_mdfe_seguros {
-  id               Int      @id @default(autoincrement())
-  tenant_id        Int
+  id                Int      @id @default(autoincrement())
+  tenant_id         Int
   /// FK -> fiscal_mdfes.id (ON DELETE CASCADE na migration SQL)
-  mdfe_id          Int
+  mdfe_id           Int
   /// indicadorResponsavel: 1 = emitente do MDF-e, 2 = contratante do serviço
-  responsavel      Int?     @db.SmallInt
-  cnpj_seguradora  String?  @db.VarChar(14)
-  numero_apolice   String?  @db.VarChar(40)
-  nome_seguradora  String?  @db.VarChar(60)
+  responsavel       Int?     @db.SmallInt
+  cnpj_seguradora   String?  @db.VarChar(14)
+  numero_apolice    String?  @db.VarChar(40)
+  nome_seguradora   String?  @db.VarChar(60)
   /// numerosAverbacao do provedor: array de strings (múltiplas averbações)
-  numeros_averbacao Json?   @db.JsonB
-  criado_em        DateTime @default(now()) @db.Timestamptz(6)
+  numeros_averbacao Json?    @db.JsonB
+  criado_em         DateTime @default(now()) @db.Timestamptz(6)
 
   @@index([mdfe_id])
   @@index([tenant_id])
@@ -974,49 +988,49 @@ model fiscal_mdfe_municipios_carrega {
 /// Contrato de Frete / operação de transporte. Existe independentemente do
 /// provedor de CIOT e do CT-e/MDF-e. O CIOT (quando houver) fica em fiscal_ciots.
 model fiscal_contratos_frete {
-  id                            Int       @id @default(autoincrement())
-  tenant_id                     Int
+  id                           Int       @id @default(autoincrement())
+  tenant_id                    Int
   /// FK -> fiscal_empresas.id (certificado usado no registro do CIOT)
-  fiscal_empresa_id             Int
+  fiscal_empresa_id            Int
   /// FK -> caminhoes.id (opcional)
-  caminhao_id                   Int?
+  caminhao_id                  Int?
   /// FK -> motoristas.id (opcional)
-  motorista_id                  Int?
+  motorista_id                 Int?
   /// FK -> fiscal_mdfes.id (opcional). O contrato pode existir sem MDF-e.
-  mdfe_id                       Int?
+  mdfe_id                      Int?
   /// 1 = lotação, 2 = fracionada, 3 = TAC-agregado
-  tipo_operacao                 Int?      @db.SmallInt
+  tipo_operacao                Int?      @db.SmallInt
   /// lotacao | fracionada | tac_agregado
-  categoria_operacao            String?   @db.VarChar(20)
-  cpf_cnpj_contratado           String?   @db.VarChar(14)
-  rntrc_contratado              String?   @db.VarChar(9)
-  cpf_cnpj_contratante          String?   @db.VarChar(14)
-  rntrc_contratante             String?   @db.VarChar(9)
-  cpf_cnpj_destinatario         String?   @db.VarChar(14)
-  valor_frete                   Decimal   @db.Decimal(14, 2)
-  valor_piso_minimo_frete       Decimal?  @db.Decimal(14, 2)
-  valor_vale_pedagio            Decimal?  @db.Decimal(14, 2)
-  data_inicio_viagem            DateTime? @db.Timestamptz(6)
-  data_fim_viagem               DateTime? @db.Timestamptz(6)
-  origem_destino                Json?     @db.JsonB
-  dados_carga                   Json?     @db.JsonB
-  carga_ncm                     String?   @db.VarChar(8)
-  veiculos                      Json      @default("[]") @db.JsonB
-  inf_pagamento                 Json      @default("[]") @db.JsonB
-  inf_indicadores_operacionais  Json?     @db.JsonB
-  informacoes_adicionais        String?   @db.VarChar(2000)
-  rntrc_contratado_situacao     String?   @db.VarChar(20)
-  rntrc_contratado_situacao_em  DateTime? @db.Timestamptz(6)
-  rntrc_contratado_snapshot     Json?     @db.JsonB
-  retencao_base                 Decimal?  @db.Decimal(14, 2)
-  retencao_inss_aliquota        Decimal?  @db.Decimal(7, 4)
-  retencao_inss_valor           Decimal?  @db.Decimal(14, 2)
-  retencao_sest_senat_aliquota  Decimal?  @db.Decimal(7, 4)
-  retencao_sest_senat_valor     Decimal?  @db.Decimal(14, 2)
+  categoria_operacao           String?   @db.VarChar(20)
+  cpf_cnpj_contratado          String?   @db.VarChar(14)
+  rntrc_contratado             String?   @db.VarChar(9)
+  cpf_cnpj_contratante         String?   @db.VarChar(14)
+  rntrc_contratante            String?   @db.VarChar(9)
+  cpf_cnpj_destinatario        String?   @db.VarChar(14)
+  valor_frete                  Decimal   @db.Decimal(14, 2)
+  valor_piso_minimo_frete      Decimal?  @db.Decimal(14, 2)
+  valor_vale_pedagio           Decimal?  @db.Decimal(14, 2)
+  data_inicio_viagem           DateTime? @db.Timestamptz(6)
+  data_fim_viagem              DateTime? @db.Timestamptz(6)
+  origem_destino               Json?     @db.JsonB
+  dados_carga                  Json?     @db.JsonB
+  carga_ncm                    String?   @db.VarChar(8)
+  veiculos                     Json      @default("[]") @db.JsonB
+  inf_pagamento                Json      @default("[]") @db.JsonB
+  inf_indicadores_operacionais Json?     @db.JsonB
+  informacoes_adicionais       String?   @db.VarChar(2000)
+  rntrc_contratado_situacao    String?   @db.VarChar(20)
+  rntrc_contratado_situacao_em DateTime? @db.Timestamptz(6)
+  rntrc_contratado_snapshot    Json?     @db.JsonB
+  retencao_base                Decimal?  @db.Decimal(14, 2)
+  retencao_inss_aliquota       Decimal?  @db.Decimal(7, 4)
+  retencao_inss_valor          Decimal?  @db.Decimal(14, 2)
+  retencao_sest_senat_aliquota Decimal?  @db.Decimal(7, 4)
+  retencao_sest_senat_valor    Decimal?  @db.Decimal(14, 2)
   /// rascunho | ativo | em_andamento | concluido | cancelado
-  status                        String    @default("ativo") @db.VarChar(20)
-  criado_em                     DateTime  @default(now()) @db.Timestamptz(6)
-  atualizado_em                 DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+  status                       String    @default("ativo") @db.VarChar(20)
+  criado_em                    DateTime  @default(now()) @db.Timestamptz(6)
+  atualizado_em                DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
 
   @@index([tenant_id])
   @@index([tenant_id, fiscal_empresa_id])
@@ -1059,27 +1073,27 @@ model fiscal_ciots {
 /// Credenciais (usuario/senha AT&M) são cifradas com FISCAL_SECRETS_KEY
 /// (mesmo AES-256-GCM de fiscal_empresas). Nunca devolver plaintext na API.
 model fiscal_seguro_config {
-  id                      Int       @id @default(autoincrement())
-  tenant_id               Int       @unique
+  id                    Int       @id @default(autoincrement())
+  tenant_id             Int       @unique
   /// atm (primeiro provedor). Novos valores entram no factory, não no CT-e.
-  provider                String    @default("atm") @db.VarChar(32)
+  provider              String    @default("atm") @db.VarChar(32)
   /// homologacao | producao — a URL do provedor é resolvida só por este campo.
-  ambiente                String    @default("homologacao") @db.VarChar(16)
-  automatico              Boolean   @default(false)
-  ativo                   Boolean   @default(false)
-  seguradora              String?   @db.VarChar(80)
-  numero_apolice          String?   @db.VarChar(40)
-  tipo_cobertura          String?   @db.VarChar(40)
+  ambiente              String    @default("homologacao") @db.VarChar(16)
+  automatico            Boolean   @default(false)
+  ativo                 Boolean   @default(false)
+  seguradora            String?   @db.VarChar(80)
+  numero_apolice        String?   @db.VarChar(40)
+  tipo_cobertura        String?   @db.VarChar(40)
   /// Código AT&M do segurado (identificador da conta, não é senha).
-  codigo_atm              String?   @db.VarChar(32)
-  usuario_encrypted       String?
-  senha_encrypted         String?
+  codigo_atm            String?   @db.VarChar(32)
+  usuario_encrypted     String?
+  senha_encrypted       String?
   /// inactive | ok | error
-  status_integracao       String    @default("inactive") @db.VarChar(20)
-  ultima_validacao_em     DateTime? @db.Timestamptz(6)
-  ultima_validacao_erro   String?   @db.VarChar(500)
-  criado_em               DateTime  @default(now()) @db.Timestamptz(6)
-  atualizado_em           DateTime  @updatedAt @db.Timestamptz(6)
+  status_integracao     String    @default("inactive") @db.VarChar(20)
+  ultima_validacao_em   DateTime? @db.Timestamptz(6)
+  ultima_validacao_erro String?   @db.VarChar(500)
+  criado_em             DateTime  @default(now()) @db.Timestamptz(6)
+  atualizado_em         DateTime  @updatedAt @db.Timestamptz(6)
 
   @@index([tenant_id])
 }
@@ -1087,36 +1101,36 @@ model fiscal_seguro_config {
 /// Averbação/declaração de um CT-e ou MDF-e junto à averbadora.
 /// Isolada por tenant. Idempotência: (tenant, provider, tipo, chave).
 model fiscal_averbacoes {
-  id                   Int       @id @default(autoincrement())
-  tenant_id            Int
-  cte_id               Int?
-  mdfe_id              Int?
+  id               Int       @id @default(autoincrement())
+  tenant_id        Int
+  cte_id           Int?
+  mdfe_id          Int?
   /// cte | mdfe
-  tipo_documento       String    @db.VarChar(8)
+  tipo_documento   String    @db.VarChar(8)
   /// averbar | cancelar | declarar
-  operacao             String    @default("averbar") @db.VarChar(16)
-  provider             String    @db.VarChar(32)
-  ambiente             String    @db.VarChar(16)
-  chave_acesso         String    @db.VarChar(44)
-  seguradora           String?   @db.VarChar(80)
-  numero_apolice       String?   @db.VarChar(40)
-  external_id          String?   @db.VarChar(80)
-  protocolo            String?   @db.VarChar(40)
-  numero_averbacao     String?   @db.VarChar(40)
+  operacao         String    @default("averbar") @db.VarChar(16)
+  provider         String    @db.VarChar(32)
+  ambiente         String    @db.VarChar(16)
+  chave_acesso     String    @db.VarChar(44)
+  seguradora       String?   @db.VarChar(80)
+  numero_apolice   String?   @db.VarChar(40)
+  external_id      String?   @db.VarChar(80)
+  protocolo        String?   @db.VarChar(40)
+  numero_averbacao String?   @db.VarChar(40)
   /// pending | processing | averbed | rejected | cancelled | error
-  status               String    @default("pending") @db.VarChar(20)
+  status           String    @default("pending") @db.VarChar(20)
   /// Metadados sem credenciais (chave, hash do XML, ambiente).
-  request_meta         Json?     @db.JsonB
+  request_meta     Json?     @db.JsonB
   /// Retorno sanitizado do provedor (sem token/senha).
-  response_data        Json?     @db.JsonB
-  error_code           String?   @db.VarChar(20)
-  error_message        String?
-  attempts             Int       @default(0)
-  retryable            Boolean   @default(false)
-  averbed_at           DateTime? @db.Timestamptz(6)
-  cancelled_at         DateTime? @db.Timestamptz(6)
-  criado_em            DateTime  @default(now()) @db.Timestamptz(6)
-  atualizado_em        DateTime  @updatedAt @db.Timestamptz(6)
+  response_data    Json?     @db.JsonB
+  error_code       String?   @db.VarChar(20)
+  error_message    String?
+  attempts         Int       @default(0)
+  retryable        Boolean   @default(false)
+  averbed_at       DateTime? @db.Timestamptz(6)
+  cancelled_at     DateTime? @db.Timestamptz(6)
+  criado_em        DateTime  @default(now()) @db.Timestamptz(6)
+  atualizado_em    DateTime  @updatedAt @db.Timestamptz(6)
 
   @@unique([tenant_id, provider, tipo_documento, chave_acesso])
   @@index([tenant_id])
@@ -1138,30 +1152,32 @@ model fiscal_averbacoes {
 // =====================================================================
 
 model telemetry_devices {
-  id               Int       @id @default(autoincrement())
-  tenant_id        Int
-  external_id      String    @db.VarChar(64)
-  nome             String?   @db.VarChar(120)
-  manufacturer     String?   @db.VarChar(64)
-  model            String?   @db.VarChar(64)
-  imei             String?   @db.VarChar(32)
+  id              Int                            @id @default(autoincrement())
+  tenant_id       Int
+  external_id     String                         @db.VarChar(64)
+  nome            String?                        @db.VarChar(120)
+  manufacturer    String?                        @db.VarChar(64)
+  model           String?                        @db.VarChar(64)
+  imei            String?                        @db.VarChar(32)
   /// http_json | teltonika | …
-  protocol         String?   @db.VarChar(32)
-  connection_type  String?   @db.VarChar(32)
+  protocol        String?                        @db.VarChar(32)
+  connection_type String?                        @db.VarChar(32)
   /// ATRACK | CUSTOMER
-  ownership_type   String?   @db.VarChar(16)
+  ownership_type  String?                        @db.VarChar(16)
   /// SHA-256 da credencial. Nunca o segredo em claro.
-  credential_hash  String    @unique @db.VarChar(64)
-  ativo            Boolean   @default(true)
-  revogado_em      DateTime? @db.Timestamptz(6)
-  last_seen_at     DateTime? @db.Timestamptz(6)
-  criado_em        DateTime  @default(now()) @db.Timestamptz(6)
-  atualizado_em    DateTime  @updatedAt @db.Timestamptz(6)
-  tenants          tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  assignments      telemetry_device_assignments[]
-  events           telemetry_events[]
-  current_states   telemetry_current_state[]
-  alerts           telemetry_alerts[]
+  credential_hash String                         @unique @db.VarChar(64)
+  ativo           Boolean                        @default(true)
+  revogado_em     DateTime?                      @db.Timestamptz(6)
+  last_seen_at    DateTime?                      @db.Timestamptz(6)
+  criado_em       DateTime                       @default(now()) @db.Timestamptz(6)
+  atualizado_em   DateTime                       @updatedAt @db.Timestamptz(6)
+  tenants         tenants                        @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  assignments     telemetry_device_assignments[]
+  events          telemetry_events[]
+  driving_events  telemetry_driving_events[]
+  current_states  telemetry_current_state[]
+  alerts          telemetry_alerts[]
+  commands        telemetry_device_commands[]
 
   @@unique([tenant_id, external_id])
   @@index([tenant_id])
@@ -1171,17 +1187,17 @@ model telemetry_devices {
 }
 
 model telemetry_device_assignments {
-  id          Int       @id @default(autoincrement())
-  tenant_id   Int
-  device_id   Int
-  caminhao_id Int
-  inicio_em   DateTime  @default(now()) @db.Timestamptz(6)
-  fim_em      DateTime? @db.Timestamptz(6)
-  criado_em   DateTime  @default(now()) @db.Timestamptz(6)
-  atualizado_em DateTime @updatedAt @db.Timestamptz(6)
-  tenants     tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  devices     telemetry_devices @relation(fields: [device_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  caminhoes   caminhoes @relation(fields: [caminhao_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  id            Int               @id @default(autoincrement())
+  tenant_id     Int
+  device_id     Int
+  caminhao_id   Int
+  inicio_em     DateTime          @default(now()) @db.Timestamptz(6)
+  fim_em        DateTime?         @db.Timestamptz(6)
+  criado_em     DateTime          @default(now()) @db.Timestamptz(6)
+  atualizado_em DateTime          @updatedAt @db.Timestamptz(6)
+  tenants       tenants           @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  devices       telemetry_devices @relation(fields: [device_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  caminhoes     caminhoes         @relation(fields: [caminhao_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@index([tenant_id])
   @@index([device_id, inicio_em])
@@ -1189,31 +1205,40 @@ model telemetry_device_assignments {
 }
 
 model telemetry_events {
-  id                  BigInt    @id @default(autoincrement())
-  tenant_id           Int
-  device_id           Int
-  caminhao_id         Int?
-  event_id            String    @db.VarChar(80)
-  registrado_em       DateTime  @db.Timestamptz(6)
-  recebido_em         DateTime  @db.Timestamptz(6)
-  latitude            Decimal?  @db.Decimal(9, 6)
-  longitude           Decimal?  @db.Decimal(9, 6)
-  velocidade_kmh      Decimal?  @db.Decimal(8, 2)
-  heading             Decimal?  @db.Decimal(6, 2)
-  altitude_m          Decimal?  @db.Decimal(8, 2)
-  odometro_km         Decimal?  @db.Decimal(14, 3)
+  id              BigInt            @id @default(autoincrement())
+  tenant_id       Int
+  device_id       Int
+  caminhao_id     Int?
+  event_id        String            @db.VarChar(80)
+  registrado_em   DateTime          @db.Timestamptz(6)
+  recebido_em     DateTime          @db.Timestamptz(6)
+  latitude        Decimal?          @db.Decimal(9, 6)
+  longitude       Decimal?          @db.Decimal(9, 6)
+  velocidade_kmh  Decimal?          @db.Decimal(8, 2)
+  heading         Decimal?          @db.Decimal(6, 2)
+  altitude_m      Decimal?          @db.Decimal(8, 2)
+  odometro_km     Decimal?          @db.Decimal(14, 3)
   /// Ignição no instante do ponto. Não altera caminhoes.km_atual.
-  ignicao             Boolean?
-  engine_rpm          Decimal?  @db.Decimal(8, 2)
-  fuel_level_pct      Decimal?  @db.Decimal(6, 2)
-  fuel_consumed_l     Decimal?  @db.Decimal(12, 3)
-  engine_temp_c       Decimal?  @db.Decimal(6, 2)
-  engine_hours        Decimal?  @db.Decimal(12, 2)
-  battery_v           Decimal?  @db.Decimal(6, 2)
-  criado_em           DateTime  @default(now()) @db.Timestamptz(6)
-  tenants             tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  devices             telemetry_devices @relation(fields: [device_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  caminhoes           caminhoes? @relation(fields: [caminhao_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  ignicao         Boolean?
+  engine_rpm      Decimal?          @db.Decimal(8, 2)
+  fuel_level_pct  Decimal?          @db.Decimal(6, 2)
+  fuel_consumed_l Decimal?          @db.Decimal(12, 3)
+  engine_temp_c   Decimal?          @db.Decimal(6, 2)
+  engine_hours    Decimal?          @db.Decimal(12, 2)
+  battery_v       Decimal?          @db.Decimal(6, 2)
+  /// Todos os IOs recebidos do rastreador (AVL ID -> valor). Fonte para novos indicadores.
+  io              Json?             @db.JsonB
+  satelites       Int?              @db.SmallInt
+  /// Nível do sinal GSM informado pelo rastreador (Teltonika: 0–5).
+  gsm_sinal       Int?              @db.SmallInt
+  /// iButton lido no ponto (FMB130 com leitor 1-Wire), em hexadecimal.
+  ibutton         String?           @db.VarChar(32)
+  /// Motorista identificado (iButton) ou vinculado ao veículo no momento.
+  motorista_id    Int?
+  criado_em       DateTime          @default(now()) @db.Timestamptz(6)
+  tenants         tenants           @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  devices         telemetry_devices @relation(fields: [device_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  caminhoes       caminhoes?        @relation(fields: [caminhao_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@unique([device_id, event_id])
   @@index([tenant_id, registrado_em])
@@ -1224,31 +1249,35 @@ model telemetry_events {
 
 /// Uma linha por veículo. Não é histórico. Não substitui caminhoes.km_atual.
 model telemetry_current_state {
-  id                  Int      @id @default(autoincrement())
-  tenant_id           Int
-  caminhao_id         Int      @unique
-  device_id           Int?
-  registrado_em       DateTime @db.Timestamptz(6)
-  recebido_em         DateTime @db.Timestamptz(6)
-  latitude            Decimal? @db.Decimal(9, 6)
-  longitude           Decimal? @db.Decimal(9, 6)
-  velocidade_kmh      Decimal? @db.Decimal(8, 2)
-  heading             Decimal? @db.Decimal(6, 2)
-  altitude_m          Decimal? @db.Decimal(8, 2)
-  odometro_km         Decimal? @db.Decimal(14, 3)
-  ignicao             Boolean?
-  engine_rpm          Decimal? @db.Decimal(8, 2)
-  fuel_level_pct      Decimal? @db.Decimal(6, 2)
-  fuel_consumed_l     Decimal? @db.Decimal(12, 3)
-  engine_temp_c       Decimal? @db.Decimal(6, 2)
-  engine_hours        Decimal? @db.Decimal(12, 2)
-  battery_v           Decimal? @db.Decimal(6, 2)
+  id              Int                @id @default(autoincrement())
+  tenant_id       Int
+  caminhao_id     Int                @unique
+  device_id       Int?
+  registrado_em   DateTime           @db.Timestamptz(6)
+  recebido_em     DateTime           @db.Timestamptz(6)
+  latitude        Decimal?           @db.Decimal(9, 6)
+  longitude       Decimal?           @db.Decimal(9, 6)
+  velocidade_kmh  Decimal?           @db.Decimal(8, 2)
+  heading         Decimal?           @db.Decimal(6, 2)
+  altitude_m      Decimal?           @db.Decimal(8, 2)
+  odometro_km     Decimal?           @db.Decimal(14, 3)
+  ignicao         Boolean?
+  engine_rpm      Decimal?           @db.Decimal(8, 2)
+  fuel_level_pct  Decimal?           @db.Decimal(6, 2)
+  fuel_consumed_l Decimal?           @db.Decimal(12, 3)
+  engine_temp_c   Decimal?           @db.Decimal(6, 2)
+  engine_hours    Decimal?           @db.Decimal(12, 2)
+  battery_v       Decimal?           @db.Decimal(6, 2)
+  satelites       Int?               @db.SmallInt
+  gsm_sinal       Int?               @db.SmallInt
+  ibutton         String?            @db.VarChar(32)
+  motorista_id    Int?
   /// inside | outside | unknown — última avaliação de geocerca (opcional)
-  geofence_status     String?  @db.VarChar(16)
-  atualizado_em       DateTime @updatedAt @db.Timestamptz(6)
-  tenants             tenants  @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  caminhoes           caminhoes @relation(fields: [caminhao_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  devices             telemetry_devices? @relation(fields: [device_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  geofence_status String?            @db.VarChar(16)
+  atualizado_em   DateTime           @updatedAt @db.Timestamptz(6)
+  tenants         tenants            @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  caminhoes       caminhoes          @relation(fields: [caminhao_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  devices         telemetry_devices? @relation(fields: [device_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@index([tenant_id])
   @@index([device_id])
@@ -1256,18 +1285,18 @@ model telemetry_current_state {
 
 /// Resumo por veículo e dia. Retenção longa. Não guarda o ponto bruto.
 model telemetry_daily {
-  id                 Int      @id @default(autoincrement())
+  id                 Int       @id @default(autoincrement())
   tenant_id          Int
   caminhao_id        Int
-  dia                DateTime @db.Date
-  km                 Decimal? @db.Decimal(14, 3)
-  velocidade_max_kmh Decimal? @db.Decimal(8, 2)
-  fuel_consumed_l    Decimal? @db.Decimal(12, 3)
-  engine_hours       Decimal? @db.Decimal(12, 2)
-  amostras           Int      @default(0)
-  criado_em          DateTime @default(now()) @db.Timestamptz(6)
-  atualizado_em      DateTime @updatedAt @db.Timestamptz(6)
-  tenants            tenants  @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  dia                DateTime  @db.Date
+  km                 Decimal?  @db.Decimal(14, 3)
+  velocidade_max_kmh Decimal?  @db.Decimal(8, 2)
+  fuel_consumed_l    Decimal?  @db.Decimal(12, 3)
+  engine_hours       Decimal?  @db.Decimal(12, 2)
+  amostras           Int       @default(0)
+  criado_em          DateTime  @default(now()) @db.Timestamptz(6)
+  atualizado_em      DateTime  @updatedAt @db.Timestamptz(6)
+  tenants            tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   caminhoes          caminhoes @relation(fields: [caminhao_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@unique([tenant_id, caminhao_id, dia])
@@ -1276,32 +1305,32 @@ model telemetry_daily {
 
 /// Geocerca circular ou poligonal (geometry JSON).
 model telemetry_geofences {
-  id          Int       @id @default(autoincrement())
-  tenant_id   Int
-  name        String    @db.VarChar(120)
+  id            Int                           @id @default(autoincrement())
+  tenant_id     Int
+  name          String                        @db.VarChar(120)
   /// circle | polygon
-  shape       String    @db.VarChar(16)
+  shape         String                        @db.VarChar(16)
   /// circle: { center:{lat,lng}, radius_m } | polygon: { points:[{lat,lng},...] }
-  geometry    Json      @db.JsonB
-  enabled     Boolean   @default(true)
-  criado_em   DateTime  @default(now()) @db.Timestamptz(6)
-  atualizado_em DateTime @updatedAt @db.Timestamptz(6)
-  tenants     tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  geometry      Json                          @db.JsonB
+  enabled       Boolean                       @default(true)
+  criado_em     DateTime                      @default(now()) @db.Timestamptz(6)
+  atualizado_em DateTime                      @updatedAt @db.Timestamptz(6)
+  tenants       tenants                       @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   vehicle_links telemetry_geofence_vehicles[]
-  alerts      telemetry_alerts[]
+  alerts        telemetry_alerts[]
 
   @@index([tenant_id])
   @@index([tenant_id, enabled])
 }
 
 model telemetry_geofence_vehicles {
-  id          Int      @id @default(autoincrement())
+  id          Int                 @id @default(autoincrement())
   tenant_id   Int
   geofence_id Int
   caminhao_id Int
-  criado_em   DateTime @default(now()) @db.Timestamptz(6)
+  criado_em   DateTime            @default(now()) @db.Timestamptz(6)
   geofences   telemetry_geofences @relation(fields: [geofence_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  caminhoes   caminhoes @relation(fields: [caminhao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  caminhoes   caminhoes           @relation(fields: [caminhao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([geofence_id, caminhao_id])
   @@index([tenant_id])
@@ -1310,17 +1339,17 @@ model telemetry_geofence_vehicles {
 
 /// Regras de alerta por tenant (e opcionalmente por veículo).
 model telemetry_alert_rules {
-  id            Int       @id @default(autoincrement())
+  id            Int        @id @default(autoincrement())
   tenant_id     Int
   caminhao_id   Int?
   /// speed | offline | geofence_enter | geofence_exit | ignition_on | ignition_off | engine_temp | idle
-  alert_type    String    @db.VarChar(32)
-  enabled       Boolean   @default(true)
+  alert_type    String     @db.VarChar(32)
+  enabled       Boolean    @default(true)
   /// ex: { max_speed_kmh: 90, offline_after_min: 15, max_engine_temp_c: 105 }
-  config        Json      @default("{}") @db.JsonB
-  criado_em     DateTime  @default(now()) @db.Timestamptz(6)
-  atualizado_em DateTime  @updatedAt @db.Timestamptz(6)
-  tenants       tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  config        Json       @default("{}") @db.JsonB
+  criado_em     DateTime   @default(now()) @db.Timestamptz(6)
+  atualizado_em DateTime   @updatedAt @db.Timestamptz(6)
+  tenants       tenants    @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   caminhoes     caminhoes? @relation(fields: [caminhao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([tenant_id, enabled])
@@ -1329,24 +1358,24 @@ model telemetry_alert_rules {
 }
 
 model telemetry_alerts {
-  id            Int       @id @default(autoincrement())
-  tenant_id     Int
-  caminhao_id   Int?
-  device_id     Int?
-  geofence_id   Int?
-  alert_type    String    @db.VarChar(32)
+  id          Int                  @id @default(autoincrement())
+  tenant_id   Int
+  caminhao_id Int?
+  device_id   Int?
+  geofence_id Int?
+  alert_type  String               @db.VarChar(32)
   /// info | warning | critical
-  severity      String    @db.VarChar(16) @default("warning")
-  description   String    @db.VarChar(500)
-  status        String    @db.VarChar(16) @default("open")
-  payload       Json?     @db.JsonB
-  occurred_at   DateTime  @db.Timestamptz(6)
-  resolved_at   DateTime? @db.Timestamptz(6)
-  criado_em     DateTime  @default(now()) @db.Timestamptz(6)
-  tenants       tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  caminhoes     caminhoes? @relation(fields: [caminhao_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  devices       telemetry_devices? @relation(fields: [device_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  geofences     telemetry_geofences? @relation(fields: [geofence_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  severity    String               @default("warning") @db.VarChar(16)
+  description String               @db.VarChar(500)
+  status      String               @default("open") @db.VarChar(16)
+  payload     Json?                @db.JsonB
+  occurred_at DateTime             @db.Timestamptz(6)
+  resolved_at DateTime?            @db.Timestamptz(6)
+  criado_em   DateTime             @default(now()) @db.Timestamptz(6)
+  tenants     tenants              @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  caminhoes   caminhoes?           @relation(fields: [caminhao_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  devices     telemetry_devices?   @relation(fields: [device_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  geofences   telemetry_geofences? @relation(fields: [geofence_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([tenant_id, occurred_at])
   @@index([tenant_id, status])
@@ -1362,7 +1391,7 @@ model telemetry_subscriptions {
   plan            String    @db.VarChar(32)
   monthly_price   Decimal?  @db.Decimal(12, 2)
   seat_limit      Int       @default(0)
-  status          String    @db.VarChar(32) @default("active")
+  status          String    @default("active") @db.VarChar(32)
   started_at      DateTime  @default(now()) @db.Timestamptz(6)
   cancelled_at    DateTime? @db.Timestamptz(6)
   stripe_price_id String?   @db.VarChar(255)
@@ -1371,4 +1400,61 @@ model telemetry_subscriptions {
   tenants         tenants   @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@index([tenant_id, status])
+}
+
+/// Eventos de condução e segurança enviados pelo rastreador (Teltonika "eventual IO"):
+/// aceleração/frenagem/curva brusca, excesso de velocidade, desconexão da alimentação,
+/// reboque, colisão e bloqueio de sinal (jamming). Retenção longa (não é ponto bruto).
+model telemetry_driving_events {
+  id             BigInt            @id @default(autoincrement())
+  tenant_id      Int
+  device_id      Int
+  caminhao_id    Int?
+  motorista_id   Int?
+  /// Idempotência: mesmo evento reenviado pelo aparelho não duplica.
+  event_key      String            @db.VarChar(100)
+  /// harsh_acceleration | harsh_braking | harsh_cornering | overspeed | unplug | towing | crash | jamming
+  tipo           String            @db.VarChar(32)
+  /// Intensidade (g para acel./frenagem; rad/s ou g para curva; km/h no excesso de velocidade).
+  valor          Decimal?          @db.Decimal(10, 3)
+  velocidade_kmh Decimal?          @db.Decimal(8, 2)
+  latitude       Decimal?          @db.Decimal(9, 6)
+  longitude      Decimal?          @db.Decimal(9, 6)
+  ocorrido_em    DateTime          @db.Timestamptz(6)
+  criado_em      DateTime          @default(now()) @db.Timestamptz(6)
+  tenants        tenants           @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  devices        telemetry_devices @relation(fields: [device_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  caminhoes      caminhoes?        @relation(fields: [caminhao_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  motoristas     motoristas?       @relation(fields: [motorista_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@unique([device_id, event_key])
+  @@index([tenant_id, ocorrido_em])
+  @@index([caminhao_id, ocorrido_em])
+  @@index([motorista_id, ocorrido_em])
+}
+
+/// Comandos enviados ao rastreador (Teltonika Codec 12), com auditoria.
+model telemetry_device_commands {
+  id            Int               @id @default(autoincrement())
+  tenant_id     Int
+  device_id     Int
+  caminhao_id   Int?
+  acao          String            @db.VarChar(32)
+  comando       String            @db.VarChar(120)
+  status        String            @default("pendente") @db.VarChar(16)
+  resposta      String?
+  erro          String?           @db.VarChar(255)
+  criado_por    Int?
+  criado_em     DateTime          @default(now()) @db.Timestamptz(6)
+  expira_em     DateTime          @db.Timestamptz(6)
+  enviado_em    DateTime?         @db.Timestamptz(6)
+  respondido_em DateTime?         @db.Timestamptz(6)
+  tenants       tenants           @relation(fields: [tenant_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  devices       telemetry_devices @relation(fields: [device_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  caminhoes     caminhoes?        @relation(fields: [caminhao_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  users         users?            @relation(fields: [criado_por], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([device_id, status])
+  @@index([tenant_id, criado_em])
+  @@index([caminhao_id, criado_em])
 }
